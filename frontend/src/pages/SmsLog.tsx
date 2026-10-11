@@ -13,6 +13,13 @@ const STATUS_STYLE: Record<Sms["status"], string> = {
   disabled: "bg-stone-200 text-stone-700",
 };
 
+const KIND_STYLE: Record<Sms["kind"], string> = {
+  arrival: "bg-lime-100 text-lime-800",
+  ready: "bg-amber-100 text-amber-800",
+  reminder: "bg-fuchsia-100 text-fuchsia-800",
+  test: "bg-stone-200 text-stone-700",
+};
+
 export default function SmsLog() {
   const { t } = useI18n();
   const q = useQuery({ queryKey: ["sms"], queryFn: () => apiGet<Sms[]>("/sms") });
@@ -41,8 +48,8 @@ export default function SmsLog() {
         {rows.map((s) => (
           <div key={s.id} data-testid={`sms-item-${s.code}-${s.kind}`} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold", s.kind === "arrival" ? "bg-lime-100 text-lime-800" : "bg-amber-100 text-amber-800")}>
-                <MessageSquareText className="size-3.5" /> {s.kind === "arrival" ? t("sms_arrival") : t("sms_ready")}
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold", KIND_STYLE[s.kind])}>
+                <MessageSquareText className="size-3.5" /> {t(`sms_${s.kind}`)}
               </span>
               <CodeBadge code={s.code} />
               <span className="font-medium text-stone-900">{s.client_name}</span>

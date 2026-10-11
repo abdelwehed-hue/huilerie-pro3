@@ -13,6 +13,7 @@ import Clients from "@/pages/Clients";
 import Reports from "@/pages/Reports";
 import Certificate from "@/pages/Certificate";
 import SmsLog from "@/pages/SmsLog";
+import Cancellations from "@/pages/Cancellations";
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/certificate/:id" element={<Certificate />} />
           <Route path="/sms" element={<SmsLog />} />
+          <Route path="/cancellations" element={<Cancellations />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

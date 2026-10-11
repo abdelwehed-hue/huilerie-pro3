@@ -70,10 +70,14 @@ class Load(BaseModel):
     olive_kg: float
     oil_kg: Optional[float] = None
     yield_pct: Optional[float] = None
-    status: Literal["pending", "done", "cancelled"]
+    status: Literal["pending", "done", "delivered", "cancelled"]
     day: str
     created_at: datetime
     created_by: str
+    oil_ready_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    delivered_by: Optional[str] = None
+    reminder_sent_at: Optional[datetime] = None
     cancel_reason: Optional[str] = None
     cancelled_at: Optional[datetime] = None
     cancelled_by: Optional[str] = None
@@ -133,6 +137,41 @@ DEFAULT_SMS_READY = (
     "{mill}: {name}, votre huile est prête: {oil_kg} kg (code {code}).\n"
     "{mill}: {name}، الزيت متاعك جاهز: {oil_kg} كغ (الكود {code})."
 )
+DEFAULT_SMS_REMINDER = (
+    "{mill}: {name}, rappel: votre huile ({oil_kg} kg, code {code}) vous attend.\n"
+    "{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} كغ، الكود {code}) في انتظارك."
+)
+
+
+class TwilioConfigOut(BaseModel):
+    account_sid: str = ""
+    from_number: str = ""
+    messaging_service_sid: str = ""
+    has_token: bool = False
+    source: Literal["db", "env", "none"] = "none"
+    mode: Literal["simulated", "live"] = "simulated"
+
+
+class TwilioConfigIn(BaseModel):
+    account_sid: str = Field(min_length=10, max_length=64)
+    auth_token: str = Field(default="", max_length=128)  # empty = keep stored token
+    from_number: str = Field(default="", max_length=30)
+    messaging_service_sid: str = Field(default="", max_length=64)
+
+
+class SmsTestIn(BaseModel):
+    phone: str = Field(min_length=4, max_length=30)
+
+
+class SmsTestResult(BaseModel):
+    status: Literal["simulated", "sent", "failed", "disabled"]
+    error: Optional[str] = None
+    to_number: str
+    mode: Literal["simulated", "live"]
+
+
+class ReminderRunResult(BaseModel):
+    sent: int
 
 
 class AppSettings(MillInfo):
@@ -140,6 +179,7 @@ class AppSettings(MillInfo):
     sms_enabled: bool = True
     sms_arrival_template: str = Field(default=DEFAULT_SMS_ARRIVAL, max_length=600)
     sms_ready_template: str = Field(default=DEFAULT_SMS_READY, max_length=600)
+    sms_reminder_template: str = Field(default=DEFAULT_SMS_REMINDER, max_length=600)
 
 
 class SmsStatus(BaseModel):
@@ -153,7 +193,7 @@ class SmsLog(BaseModel):
     code: str
     client_name: str
     phone: str
-    kind: Literal["arrival", "ready"]
+    kind: Literal["arrival", "ready", "reminder", "test"]
     message: str
     status: Literal["simulated", "sent", "failed", "disabled"]
     to_number: Optional[str] = None

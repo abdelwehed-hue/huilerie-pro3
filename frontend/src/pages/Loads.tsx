@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Ban, Droplet } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Ban, Droplet, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import type { Load } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -15,8 +16,9 @@ import OilEntryDialog from "@/components/OilEntryDialog";
 import CancelLoadDialog from "@/components/CancelLoadDialog";
 
 export default function Loads() {
-  const { t } = useI18n();
+  const { t, errMsg } = useI18n();
   const isAdmin = useMe().data?.role === "admin";
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<Load | null>(null);
@@ -29,7 +31,18 @@ export default function Loads() {
   });
   const rows = loads.isError ? [] : (loads.data ?? []);
 
-  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done"), cancelled: t("cancelled") };
+  const deliver = useMutation({
+    mutationFn: (id: string) => apiPost<Load>(`/loads/${id}/deliver`, {}),
+    onSuccess: () => {
+      toast.success(t("delivered_toast"));
+      qc.invalidateQueries({ queryKey: ["loads"] });
+      qc.invalidateQueries({ queryKey: ["load-by-code"] });
+      qc.invalidateQueries({ queryKey: ["client"] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+
+  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done"), delivered: t("delivered"), cancelled: t("cancelled") };
   const active = rows.filter((r) => r.status !== "cancelled");
   const totalOlive = active.reduce((a, r) => a + r.olive_kg, 0);
   const totalOil = active.reduce((a, r) => a + (r.oil_kg ?? 0), 0);
@@ -48,6 +61,7 @@ export default function Loads() {
             <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="pending">{t("pending")}</SelectItem>
             <SelectItem value="done">{t("done")}</SelectItem>
+            <SelectItem value="delivered">{t("delivered")}</SelectItem>
             <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
           </SelectContent>
         </Select>
@@ -97,8 +111,16 @@ export default function Loads() {
                 <TableCell className="text-end">
                   {l.status === "cancelled" ? (
                     <div className="max-w-56 ms-auto text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
+                  ) : l.status === "delivered" ? (
+                    <div className="text-end text-xs text-emerald-700" data-testid={`load-delivered-info-${l.code}`}>@{l.delivered_by}{l.delivered_at && <div dir="ltr">{fmtDate(l.delivered_at)}</div>}</div>
                   ) : (
                   <div className="flex justify-end gap-1">
+                    {l.status === "done" && (
+                      <Button size="sm" onClick={() => deliver.mutate(l.id)} disabled={deliver.isPending} data-testid={`load-deliver-${l.code}`} className="rounded-lg bg-emerald-600 hover:bg-emerald-700">
+                        <PackageCheck className="size-4" />
+                        {t("mark_delivered")}
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setEditing(l)} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50">
                       <Droplet className="size-4" />
                       {l.oil_kg != null ? t("edit_oil") : t("enter_oil")}

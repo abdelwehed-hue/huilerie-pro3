@@ -14,6 +14,7 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 from lib.db import client, ensure_indexes
 from lib.auth import seed_defaults
+from lib.reminders import reminder_loop
 from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router
 
 
@@ -21,7 +22,9 @@ from routers import auth as auth_router, loads as loads_router, lab as lab_route
 async def lifespan(app: FastAPI):
     app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_defaults()
+    app.state.reminder_task = asyncio.create_task(reminder_loop())
     yield
+    app.state.reminder_task.cancel()
     client.close()
 
 

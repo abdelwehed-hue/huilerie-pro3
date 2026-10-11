@@ -60,7 +60,11 @@ export interface Load {
   olive_kg: number;
   oil_kg: number | null;
   yield_pct: number | null;
-  status: "pending" | "done" | "cancelled";
+  status: "pending" | "done" | "delivered" | "cancelled";
+  oil_ready_at: string | null;
+  delivered_at: string | null;
+  delivered_by: string | null;
+  reminder_sent_at: string | null;
   cancel_reason: string | null;
   cancelled_at: string | null;
   cancelled_by: string | null;
@@ -111,6 +115,38 @@ export interface AppSettings extends MillInfo {
   sms_enabled: boolean;
   sms_arrival_template: string;
   sms_ready_template: string;
+  sms_reminder_template: string;
+}
+
+// Mirrors DEFAULT_SMS_REMINDER in backend/models/schemas.py
+export const DEFAULT_SMS_REMINDER =
+  "{mill}: {name}, rappel: votre huile ({oil_kg} kg, code {code}) vous attend.\n{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} كغ، الكود {code}) في انتظارك.";
+
+export interface TwilioConfigOut {
+  account_sid: string;
+  from_number: string;
+  messaging_service_sid: string;
+  has_token: boolean;
+  source: "db" | "env" | "none";
+  mode: "simulated" | "live";
+}
+
+export interface TwilioConfigIn {
+  account_sid: string;
+  auth_token: string;
+  from_number: string;
+  messaging_service_sid: string;
+}
+
+export interface SmsTestResult {
+  status: "simulated" | "sent" | "failed" | "disabled";
+  error: string | null;
+  to_number: string;
+  mode: "simulated" | "live";
+}
+
+export interface ReminderRunResult {
+  sent: number;
 }
 
 // Mirrors DEFAULT_SMS_ARRIVAL / DEFAULT_SMS_READY in backend/models/schemas.py
@@ -147,7 +183,7 @@ export interface SmsLog {
   code: string;
   client_name: string;
   phone: string;
-  kind: "arrival" | "ready";
+  kind: "arrival" | "ready" | "reminder" | "test";
   message: string;
   status: "simulated" | "sent" | "failed" | "disabled";
   to_number: string | null;

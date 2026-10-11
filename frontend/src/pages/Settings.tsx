@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
+import TwilioSettings from "@/components/TwilioSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -261,7 +262,7 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
-        <TabsContent value="sms"><SmsSettings /></TabsContent>
+        <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><SmsSettings /></div></TabsContent>
       </Tabs>
     </div>
   );

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
@@ -36,8 +36,13 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
         id=doc["id"], code=doc["code"], client_name=doc["client_name"], phone=doc["phone"],
         olive_kg=doc["olive_kg"], oil_kg=oil,
         yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
-        status="cancelled" if doc.get("cancelled") else ("done" if oil is not None else "pending"),
+        status="cancelled" if doc.get("cancelled") else (
+            "delivered" if doc.get("delivered") else ("done" if oil is not None else "pending")),
         day=doc["day"], created_at=_aware(doc["created_at"]), created_by=doc["created_by"],
+        oil_ready_at=_aware(doc["oil_ready_at"]) if doc.get("oil_ready_at") else None,
+        delivered_at=_aware(doc["delivered_at"]) if doc.get("delivered_at") else None,
+        delivered_by=doc.get("delivered_by"),
+        reminder_sent_at=_aware(doc["reminder_sent_at"]) if doc.get("reminder_sent_at") else None,
         cancel_reason=doc.get("cancel_reason"), cancelled_by=doc.get("cancelled_by"),
         cancelled_at=_aware(doc["cancelled_at"]) if doc.get("cancelled_at") else None,
         price_per_kg=doc.get("price_per_kg") if is_admin else None,
@@ -85,6 +90,10 @@ async def list_loads(q: str = "", status: str = "", user: dict = Depends(current
     elif status == "done":
         flt["oil_kg"] = {"$ne": None}
         flt["cancelled"] = {"$ne": True}
+        flt["delivered"] = {"$ne": True}
+    elif status == "delivered":
+        flt["delivered"] = True
+        flt["cancelled"] = {"$ne": True}
     elif status == "cancelled":
         flt["cancelled"] = True
     docs = await db.loads.find(flt, {"_id": 0}).sort("created_at", -1).to_list(500)
@@ -106,8 +115,11 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
     before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1})
     if before and before.get("cancelled"):
         raise HTTPException(409, "load_cancelled")
+    upd: dict = {"oil_kg": body.oil_kg, "oil_by": user["username"]}
+    if before and before.get("oil_kg") is None:
+        upd["oil_ready_at"] = datetime.now(timezone.utc)
     doc = await db.loads.find_one_and_update(
-        {"id": id}, {"$set": {"oil_kg": body.oil_kg, "oil_by": user["username"]}},
+        {"id": id}, {"$set": upd},
         projection={"_id": 0}, return_document=True,
     )
     if not doc:
@@ -116,6 +128,40 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         await send_load_sms(doc, "ready")
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
+
+
+@router.post("/loads/{id}/deliver", response_model=Load)
+async def deliver_load(id: str, user: dict = Depends(current_user)):
+    cur = await db.loads.find_one({"id": id}, {"_id": 0})
+    if not cur:
+        raise HTTPException(404, "not_found")
+    if cur.get("cancelled"):
+        raise HTTPException(409, "load_cancelled")
+    if cur.get("oil_kg") is None:
+        raise HTTPException(409, "oil_not_ready")
+    if cur.get("delivered"):
+        raise HTTPException(409, "already_delivered")
+    doc = await db.loads.find_one_and_update(
+        {"id": id},
+        {"$set": {"delivered": True, "delivered_at": datetime.now(timezone.utc), "delivered_by": user["username"]}},
+        projection={"_id": 0}, return_document=True,
+    )
+    labs = await _labs_for([id])
+    return to_load(doc, user, labs.get(id))
+
+
+@router.get("/loads/cancellations", response_model=list[Load])
+async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), user: dict = Depends(require_admin)):
+    m = month or today_iso()[:7]
+    y, mo = int(m[:4]), int(m[5:7])
+    tz = _tz()
+    start = datetime(y, mo, 1, tzinfo=tz)
+    end = datetime(y + (mo == 12), 1 if mo == 12 else mo + 1, 1, tzinfo=tz)
+    docs = await db.loads.find(
+        {"cancelled": True, "cancelled_at": {"$gte": start.astimezone(timezone.utc), "$lt": end.astimezone(timezone.utc)}},
+        {"_id": 0},
+    ).sort("cancelled_at", -1).to_list(1000)
+    return [to_load(d, user) for d in docs]
 
 
 @router.post("/loads/{id}/cancel", response_model=Load)

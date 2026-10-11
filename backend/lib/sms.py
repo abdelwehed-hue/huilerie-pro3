@@ -14,19 +14,40 @@ from datetime import datetime, timezone
 import httpx
 
 from lib.db import db
-from models.schemas import DEFAULT_SMS_ARRIVAL, DEFAULT_SMS_READY
+from models.schemas import DEFAULT_SMS_ARRIVAL, DEFAULT_SMS_READY, DEFAULT_SMS_REMINDER
 
 log = logging.getLogger(__name__)
+API = "https://api.twilio.com/2010-04-01"
 
 
 def _env(k: str) -> str:
     return os.environ.get(k, "").strip()
 
 
-def sms_mode() -> str:
-    sid, token = _env("TWILIO_ACCOUNT_SID"), _env("TWILIO_AUTH_TOKEN")
-    sender = _env("TWILIO_FROM_NUMBER") or _env("TWILIO_MESSAGING_SERVICE_SID")
-    return "live" if sid and token and sender else "simulated"
+async def get_creds() -> dict:
+    """Admin-entered credentials (settings key "twilio") win; falls back to backend/.env."""
+    doc = await db.settings.find_one({"key": "twilio"}, {"_id": 0}) or {}
+    if doc.get("account_sid"):
+        return {"sid": doc["account_sid"], "token": doc.get("auth_token", ""),
+                "from": doc.get("from_number", ""), "mss": doc.get("messaging_service_sid", ""), "source": "db"}
+    if _env("TWILIO_ACCOUNT_SID"):
+        return {"sid": _env("TWILIO_ACCOUNT_SID"), "token": _env("TWILIO_AUTH_TOKEN"),
+                "from": _env("TWILIO_FROM_NUMBER"), "mss": _env("TWILIO_MESSAGING_SERVICE_SID"), "source": "env"}
+    return {"sid": "", "token": "", "from": "", "mss": "", "source": "none"}
+
+
+def _is_live(c: dict) -> bool:
+    return bool(c["sid"] and c["token"] and (c["from"] or c["mss"]))
+
+
+async def sms_mode() -> str:
+    return "live" if _is_live(await get_creds()) else "simulated"
+
+
+async def verify_twilio(sid: str, token: str) -> bool:
+    async with httpx.AsyncClient(timeout=10) as c:
+        r = await c.get(f"{API}/Accounts/{sid}.json", auth=(sid, token))
+    return r.status_code == 200
 
 
 def to_e164(phone: str) -> str:
@@ -59,22 +80,23 @@ def render(template: str, values: dict, fallback: str) -> str:
 
 
 async def _deliver(to: str, message: str) -> tuple[str, str | None]:
-    if sms_mode() != "live":
+    c = await get_creds()
+    if not _is_live(c):
         return "simulated", None
-    sid, token = _env("TWILIO_ACCOUNT_SID"), _env("TWILIO_AUTH_TOKEN")
+    sid, token = c["sid"], c["token"]
     data = {"To": to, "Body": message}
-    if _env("TWILIO_MESSAGING_SERVICE_SID"):
-        data["MessagingServiceSid"] = _env("TWILIO_MESSAGING_SERVICE_SID")
+    if c["mss"]:
+        data["MessagingServiceSid"] = c["mss"]
     else:
-        data["From"] = _env("TWILIO_FROM_NUMBER")
+        data["From"] = c["from"]
     try:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.post(f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
-                             auth=(sid, token), data=data)
+        async with httpx.AsyncClient(timeout=10) as cl:
+            r = await cl.post(f"{API}/Accounts/{sid}/Messages.json", auth=(sid, token), data=data)
         if r.status_code in (200, 201):
             return "sent", None
         try:
-            err = r.json().get("message") or r.text
+            j = r.json()
+            err = f"[{j.get('code')}] {j.get('message')}" if j.get("code") else (j.get("message") or r.text)
         except ValueError:
             err = r.text
         return "failed", f"{r.status_code}: {err}"[:300]
@@ -83,26 +105,45 @@ async def _deliver(to: str, message: str) -> tuple[str, str | None]:
         return "failed", str(e)[:300]
 
 
+async def _log(doc: dict) -> dict:
+    doc = {"id": str(uuid.uuid4()), "created_at": datetime.now(timezone.utc), **doc}
+    await db.sms_log.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+async def send_test(phone: str) -> dict:
+    s = await db.settings.find_one({"key": "app"}) or {}
+    mill = s.get("mill_name") or "Huilerie Pro"
+    msg = f"{mill}: message de test / رسالة تجريبية"
+    to = to_e164(phone)
+    status, error = await _deliver(to, msg)
+    return await _log({"load_id": "", "code": "TEST", "client_name": "Test", "phone": phone, "to_number": to,
+                       "kind": "test", "message": msg, "status": status, "error": error})
+
+
+TEMPLATES = {
+    "arrival": ("sms_arrival_template", DEFAULT_SMS_ARRIVAL),
+    "ready": ("sms_ready_template", DEFAULT_SMS_READY),
+    "reminder": ("sms_reminder_template", DEFAULT_SMS_REMINDER),
+}
+
+
 async def send_load_sms(load: dict, kind: str) -> dict:
     s = await db.settings.find_one({"key": "app"}) or {}
     values = {
         "mill": s.get("mill_name") or "Huilerie Pro", "name": load["client_name"], "code": load["code"],
         "olive_kg": _fmt(load.get("olive_kg")), "oil_kg": _fmt(load.get("oil_kg")),
     }
-    if kind == "arrival":
-        msg = render(s.get("sms_arrival_template") or DEFAULT_SMS_ARRIVAL, values, DEFAULT_SMS_ARRIVAL)
-    else:
-        msg = render(s.get("sms_ready_template") or DEFAULT_SMS_READY, values, DEFAULT_SMS_READY)
+    key, default = TEMPLATES[kind]
+    msg = render(s.get(key) or default, values, default)
     to = to_e164(load["phone"])
     if s.get("sms_enabled", True):
         status, error = await _deliver(to, msg)
     else:
         status, error = "disabled", None
-    doc = {
-        "id": str(uuid.uuid4()), "load_id": load["id"], "code": load["code"], "client_name": load["client_name"],
+    return await _log({
+        "load_id": load["id"], "code": load["code"], "client_name": load["client_name"],
         "phone": load["phone"], "to_number": to, "kind": kind, "message": msg,
-        "status": status, "error": error, "created_at": datetime.now(timezone.utc),
-    }
-    await db.sms_log.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+        "status": status, "error": error,
+    })

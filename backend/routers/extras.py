@@ -5,14 +5,17 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
-from lib.sms import sms_mode
+from lib.reminders import run_reminders
+from lib.sms import get_creds, send_test, sms_mode, verify_twilio
 from models.schemas import (
+    ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut,
     Certificate, ClientHistory, ClientSummary, LabAnalysis, MillInfo, ReportRow,
     RevenueReport, SmsLog, SmsStatus, WorkerReport, WorkerRow,
 )
@@ -47,7 +50,59 @@ async def list_sms(_: dict = Depends(current_user)):
 @router.get("/sms/status", response_model=SmsStatus)
 async def sms_status(_: dict = Depends(current_user)):
     s = await db.settings.find_one({"key": "app"}) or {}
-    return SmsStatus(mode=sms_mode(), enabled=s.get("sms_enabled", True))
+    return SmsStatus(mode=await sms_mode(), enabled=s.get("sms_enabled", True))
+
+
+async def _twilio_out() -> TwilioConfigOut:
+    c = await get_creds()
+    return TwilioConfigOut(account_sid=c["sid"], from_number=c["from"], messaging_service_sid=c["mss"],
+                           has_token=bool(c["token"]), source=c["source"], mode=await sms_mode())
+
+
+@router.get("/sms/twilio", response_model=TwilioConfigOut)
+async def get_twilio(_: dict = Depends(require_admin)):
+    return await _twilio_out()
+
+
+@router.put("/sms/twilio", response_model=TwilioConfigOut)
+async def put_twilio(body: TwilioConfigIn, _: dict = Depends(require_admin)):
+    sid = body.account_sid.strip()
+    if not sid.startswith("AC"):
+        raise HTTPException(400, "twilio_bad_sid")
+    if not (body.from_number.strip() or body.messaging_service_sid.strip()):
+        raise HTTPException(400, "twilio_sender_required")
+    stored = await db.settings.find_one({"key": "twilio"}) or {}
+    token = body.auth_token.strip() or (stored.get("auth_token", "") if stored.get("account_sid") == sid else "")
+    if not token:
+        raise HTTPException(400, "twilio_token_required")
+    try:
+        ok = await verify_twilio(sid, token)
+    except httpx.HTTPError:
+        raise HTTPException(502, "twilio_unreachable")
+    if not ok:
+        raise HTTPException(400, "twilio_invalid_credentials")
+    await db.settings.update_one({"key": "twilio"}, {"$set": {
+        "account_sid": sid, "auth_token": token, "from_number": body.from_number.strip(),
+        "messaging_service_sid": body.messaging_service_sid.strip(),
+    }}, upsert=True)
+    return await _twilio_out()
+
+
+@router.delete("/sms/twilio", response_model=TwilioConfigOut)
+async def delete_twilio(_: dict = Depends(require_admin)):
+    await db.settings.delete_one({"key": "twilio"})
+    return await _twilio_out()
+
+
+@router.post("/sms/test", response_model=SmsTestResult)
+async def sms_test(body: SmsTestIn, _: dict = Depends(require_admin)):
+    d = await send_test(body.phone)
+    return SmsTestResult(status=d["status"], error=d.get("error"), to_number=d["to_number"], mode=await sms_mode())
+
+
+@router.post("/sms/reminders/run", response_model=ReminderRunResult)
+async def sms_reminders_run(_: dict = Depends(require_admin)):
+    return ReminderRunResult(sent=await run_reminders())
 
 
 # ---------- Reports ----------

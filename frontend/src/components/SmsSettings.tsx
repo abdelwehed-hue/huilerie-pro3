@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RotateCcw, Radio, TriangleAlert } from "lucide-react";
+import { BellRing, RotateCcw, Radio, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { apiGet, apiPut } from "@/lib/api";
-import { DEFAULT_SMS_ARRIVAL, DEFAULT_SMS_READY } from "@/lib/types";
-import type { AppSettings, SmsStatus } from "@/lib/types";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { DEFAULT_SMS_ARRIVAL, DEFAULT_SMS_READY, DEFAULT_SMS_REMINDER } from "@/lib/types";
+import type { AppSettings, ReminderRunResult, SmsStatus } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
 const VARS = ["mill", "name", "code", "olive_kg", "oil_kg"] as const;
@@ -18,7 +18,7 @@ function renderPreview(tpl: string, mill: string) {
   return tpl.replace(/\{(\w+)\}/g, (m, k: string) => (k === "mill" ? mill || "Huilerie Pro" : (SAMPLE[k] ?? m)));
 }
 
-type TplKey = "sms_arrival_template" | "sms_ready_template";
+type TplKey = "sms_arrival_template" | "sms_ready_template" | "sms_reminder_template";
 
 function TemplateField({
   k, label, value, onChange, mill, defaultValue,
@@ -79,6 +79,7 @@ export default function SmsSettings() {
   const data = s.isError ? undefined : s.data;
   const arrival = edit.sms_arrival_template ?? data?.sms_arrival_template ?? "";
   const ready = edit.sms_ready_template ?? data?.sms_ready_template ?? "";
+  const reminder = edit.sms_reminder_template ?? data?.sms_reminder_template ?? DEFAULT_SMS_REMINDER;
   const enabled = edit.sms_enabled ?? data?.sms_enabled ?? true;
   const live = !status.isError && status.data?.mode === "live";
 
@@ -93,11 +94,20 @@ export default function SmsSettings() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
+  const rem = useMutation({
+    mutationFn: () => apiPost<ReminderRunResult>("/sms/reminders/run", {}),
+    onSuccess: (r) => {
+      toast.success(`${t("reminders_sent")}: ${r.sent}`);
+      qc.invalidateQueries({ queryKey: ["sms"] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (data) m.mutate({ ...data, sms_enabled: enabled, sms_arrival_template: arrival, sms_ready_template: ready });
+        if (data) m.mutate({ ...data, sms_enabled: enabled, sms_arrival_template: arrival, sms_ready_template: ready, sms_reminder_template: reminder });
       }}
       className="max-w-4xl space-y-5"
       data-testid="sms-settings-form"
@@ -113,10 +123,16 @@ export default function SmsSettings() {
       <div className="grid gap-5 lg:grid-cols-2">
         <TemplateField k="sms_arrival_template" label={t("sms_arrival_tpl")} value={arrival} onChange={(v) => setEdit({ ...edit, sms_arrival_template: v })} mill={data?.mill_name ?? ""} defaultValue={DEFAULT_SMS_ARRIVAL} />
         <TemplateField k="sms_ready_template" label={t("sms_ready_tpl")} value={ready} onChange={(v) => setEdit({ ...edit, sms_ready_template: v })} mill={data?.mill_name ?? ""} defaultValue={DEFAULT_SMS_READY} />
+        <TemplateField k="sms_reminder_template" label={t("sms_reminder_tpl")} value={reminder} onChange={(v) => setEdit({ ...edit, sms_reminder_template: v })} mill={data?.mill_name ?? ""} defaultValue={DEFAULT_SMS_REMINDER} />
       </div>
-      <Button type="submit" disabled={!data || m.isPending || !arrival.trim() || !ready.trim()} data-testid="sms-settings-save" className="h-11 rounded-xl bg-pink-600 px-8 hover:bg-pink-700">
+      <div className="flex flex-wrap gap-3">
+      <Button type="submit" disabled={!data || m.isPending || !arrival.trim() || !ready.trim() || !reminder.trim()} data-testid="sms-settings-save" className="h-11 rounded-xl bg-pink-600 px-8 hover:bg-pink-700">
         {t("save")}
       </Button>
+      <Button type="button" variant="outline" onClick={() => rem.mutate()} disabled={rem.isPending} data-testid="sms-run-reminders" className="h-11 rounded-xl border-fuchsia-300 text-fuchsia-800 hover:bg-fuchsia-50">
+        <BellRing className="size-4" /> {t("run_reminders")}
+      </Button>
+      </div>
     </form>
   );
 }

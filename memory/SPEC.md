@@ -48,3 +48,13 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - Reception ticket has a QR code (qrcode.react) -> {origin}/search?code=CODE (requires login).
 ## Twilio live SMS
 - Automatic: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER (or TWILIO_MESSAGING_SERVICE_SID) to backend/.env and restart backend -> mode switches to "live". 8-digit numbers get +216 (SMS_COUNTRY_CODE).
+
+## Delivery + pickup reminder
+- POST /api/loads/{id}/deliver (any user; 409 oil_not_ready / already_delivered / load_cancelled). Status "delivered". Loads filter has "delivered".
+- set_oil stamps oil_ready_at on first oil entry. lib/reminders.py loop (every REMINDER_CHECK_MINUTES=30) sends ONE "reminder" SMS when oil ready >= REMINDER_HOURS (48h) and not delivered/cancelled; sets reminder_sent_at. Admin manual trigger: POST /api/sms/reminders/run. Template: settings.sms_reminder_template.
+## Twilio admin config
+- GET/PUT/DELETE /api/sms/twilio (admin). PUT verifies creds against Twilio (GET Accounts/{sid}.json) and stores them in settings key "twilio" (DB overrides .env). Empty auth_token on PUT keeps stored token. POST /api/sms/test {phone} sends a test SMS (logged kind "test").
+## Cancellations log
+- GET /api/loads/cancellations?month=YYYY-MM (admin) -> page /cancellations (nav "Annulations").
+## QR scan
+- Header "Scanner QR" button opens camera (html5-qrcode); ticket QR URL or raw code -> /search?code=.

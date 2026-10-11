@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   FlaskConical,
@@ -13,7 +13,10 @@ import {
   BookUser,
   BarChart3,
   MessageSquareText,
+  Ban,
+  ScanLine,
 } from "lucide-react";
+import QrScanDialog from "@/components/QrScanDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
@@ -30,6 +33,7 @@ const NAV = [
   { to: "/clients", key: "clients", icon: BookUser, id: "nav-clients", color: "text-teal-300" },
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
   { to: "/reports", key: "reports", icon: BarChart3, id: "nav-reports", color: "text-fuchsia-300", admin: true },
+  { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
 
@@ -114,6 +118,8 @@ export default function AppShell() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
+  const closeScan = useCallback(() => setScanOpen(false), []);
 
   if (me.isError) return <Navigate to="/login" replace />;
   const user = me.data;
@@ -143,7 +149,12 @@ export default function AppShell() {
             <Button type="submit" data-testid="quick-code-search-btn" className="h-10 rounded-xl bg-lime-700 hover:bg-lime-800">
               {t("go")}
             </Button>
+            <Button type="button" onClick={() => setScanOpen(true)} data-testid="qr-scan-button" className="h-10 rounded-xl bg-sky-600 hover:bg-sky-700" title={t("scan_qr")}>
+              <ScanLine className="size-4" />
+              <span className="hidden sm:inline">{t("scan_qr")}</span>
+            </Button>
           </form>
+          <QrScanDialog open={scanOpen} onClose={closeScan} />
           <div className="ms-auto flex items-center gap-3">
             <LangToggle />
             {user && (
