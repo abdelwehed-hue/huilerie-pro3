@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Droplet, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Droplet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiDelete, apiGet } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import type { Load } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -15,9 +14,8 @@ import { CodeBadge, GradeBadge, PageHeader, StatusPill } from "@/components/shar
 import OilEntryDialog from "@/components/OilEntryDialog";
 
 export default function Loads() {
-  const { t, errMsg } = useI18n();
+  const { t } = useI18n();
   const isAdmin = useMe().data?.role === "admin";
-  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<Load | null>(null);
@@ -28,15 +26,6 @@ export default function Loads() {
     queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(q)}&status=${st}`),
   });
   const rows = loads.isError ? [] : (loads.data ?? []);
-
-  const del = useMutation({
-    mutationFn: (id: string) => apiDelete(`/loads/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["loads"] });
-      qc.invalidateQueries({ queryKey: ["stats"] });
-    },
-    onError: (e) => toast.error(errMsg(e)),
-  });
 
   const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done") };
   const totalOlive = rows.reduce((a, r) => a + r.olive_kg, 0);
@@ -107,17 +96,6 @@ export default function Loads() {
                       <Droplet className="size-4" />
                       {l.oil_kg != null ? t("edit_oil") : t("enter_oil")}
                     </Button>
-                    {isAdmin && (
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        data-testid={`load-delete-${l.code}`}
-                        onClick={() => window.confirm(t("confirm_delete")) && del.mutate(l.id)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
                   </div>
                 </TableCell>
               </TableRow>

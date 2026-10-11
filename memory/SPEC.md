@@ -33,3 +33,9 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 ## Worker revenue (Reports page, admin only)
 - GET /api/reports/workers?period=&start=&end= -> per-day rows + per-worker totals; revenue attributed to the user who logged the arrival. Shown in Reports page "Recettes par ouvrier" section.
 - SMS stays in SIMULATED mode until Twilio keys are added to backend/.env.
+
+## UI changes (latest)
+- Navigation: fixed bottom icon bar (BottomNav in AppShell) replaces the sidebar; brand moved to header.
+- Dashboard embeds IntakePanel (components/IntakePanel.tsx, shared with /intake).
+- Client name field suggests previous clients via GET /api/clients?q=; picking one fills name + phone.
+- Loads page: delete button removed from UI (only oil entry action remains). Backend DELETE /loads/{id} still exists (admin).

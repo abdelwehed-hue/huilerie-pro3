@@ -8,6 +8,7 @@ import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { CodeBadge, PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { buttonVariants } from "@/components/ui/button";
+import IntakePanel from "@/components/IntakePanel";
 
 export default function Dashboard() {
   const { t } = useI18n();
@@ -25,6 +26,10 @@ export default function Dashboard() {
         sub={t("dashboard")}
         accent="bg-gradient-to-r from-lime-500 via-amber-400 to-violet-500"
       />
+
+      <section className="mb-8" data-testid="dashboard-intake-section">
+        <IntakePanel />
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard tone="olive" testId="kpi-loads-today" label={t("loads_today")} value={s?.loads_today ?? "—"} icon={<Layers />} sub={`${t("totals")}: ${s?.loads_total ?? "—"}`} />
