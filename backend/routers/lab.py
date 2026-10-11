@@ -36,6 +36,8 @@ async def create_lab(body: LabCreate, user: dict = Depends(current_user)):
     load = await db.loads.find_one({"code": body.code.strip()}, {"_id": 0})
     if not load:
         raise HTTPException(404, "code_not_found")
+    if load.get("cancelled"):
+        raise HTTPException(409, "load_cancelled")
     doc = {
         **body.model_dump(),
         "id": str(uuid.uuid4()), "load_id": load["id"], "code": load["code"],

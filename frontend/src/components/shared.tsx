@@ -41,10 +41,11 @@ export function StatusPill({ status }: { status: Load["status"] }) {
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        status === "done" ? "bg-sky-100 text-sky-800" : "bg-orange-100 text-orange-800",
+        status === "done" ? "bg-sky-100 text-sky-800" : status === "cancelled" ? "bg-red-100 text-red-700 line-through decoration-red-300" : "bg-orange-100 text-orange-800",
       )}
+      data-testid={`status-pill-${status}`}
     >
-      <span className={cn("size-1.5 rounded-full", status === "done" ? "bg-sky-500" : "bg-orange-500 animate-pulse")} />
+      <span className={cn("size-1.5 rounded-full", status === "done" ? "bg-sky-500" : status === "cancelled" ? "bg-red-500" : "bg-orange-500 animate-pulse")} />
       {t(status)}
     </span>
   );
@@ -89,6 +90,12 @@ export function LoadDetail({ load }: { load: Load }) {
   const { t } = useI18n();
   return (
     <div data-testid="load-detail" className="code-reveal space-y-5">
+      {load.status === "cancelled" && (
+        <div data-testid="load-detail-cancelled-banner" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="font-semibold">{t("cancelled")} — {load.cancel_reason}</div>
+          <div className="text-xs opacity-80">{t("cancelled_by")}: @{load.cancelled_by}{load.cancelled_at && <span dir="ltr"> · {fmtDate(load.cancelled_at)}</span>}</div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">{t("client")}</div>

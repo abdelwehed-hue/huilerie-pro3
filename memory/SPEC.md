@@ -39,3 +39,12 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - Dashboard embeds IntakePanel (components/IntakePanel.tsx, shared with /intake).
 - Client name field suggests previous clients via GET /api/clients?q=; picking one fills name + phone.
 - Loads page: delete button removed from UI (only oil entry action remains). Backend DELETE /loads/{id} still exists (admin).
+
+## Load cancellation (admin)
+- POST /api/loads/{id}/cancel {reason (3-300 chars)} -> sets cancelled, cancel_reason, cancelled_at, cancelled_by. Load.status = "cancelled". 409 load_cancelled on re-cancel / oil entry / lab creation. Workers 403.
+- Cancelled loads stay listed (Loads filter "cancelled") but are excluded from /stats, revenue + worker reports (PDF/Excel), client summaries and client history totals.
+## Intake extras
+- Picking a suggested client shows a quick history card (GET /api/clients/{phone}): count, olives, oil, avg yield, last 6 loads.
+- Reception ticket has a QR code (qrcode.react) -> {origin}/search?code=CODE (requires login).
+## Twilio live SMS
+- Automatic: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER (or TWILIO_MESSAGING_SERVICE_SID) to backend/.env and restart backend -> mode switches to "live". 8-digit numbers get +216 (SMS_COUNTRY_CODE).

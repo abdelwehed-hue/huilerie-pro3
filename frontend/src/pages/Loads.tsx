@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Droplet } from "lucide-react";
+import { Ban, Droplet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { CodeBadge, GradeBadge, PageHeader, StatusPill } from "@/components/shared";
 import OilEntryDialog from "@/components/OilEntryDialog";
+import CancelLoadDialog from "@/components/CancelLoadDialog";
 
 export default function Loads() {
   const { t } = useI18n();
@@ -19,6 +20,7 @@ export default function Loads() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<Load | null>(null);
+  const [cancelling, setCancelling] = useState<Load | null>(null);
   const st = status === "all" ? "" : status;
 
   const loads = useQuery({
@@ -27,10 +29,11 @@ export default function Loads() {
   });
   const rows = loads.isError ? [] : (loads.data ?? []);
 
-  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done") };
-  const totalOlive = rows.reduce((a, r) => a + r.olive_kg, 0);
-  const totalOil = rows.reduce((a, r) => a + (r.oil_kg ?? 0), 0);
-  const totalAmount = rows.reduce((a, r) => a + (r.amount ?? 0), 0);
+  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done"), cancelled: t("cancelled") };
+  const active = rows.filter((r) => r.status !== "cancelled");
+  const totalOlive = active.reduce((a, r) => a + r.olive_kg, 0);
+  const totalOil = active.reduce((a, r) => a + (r.oil_kg ?? 0), 0);
+  const totalAmount = active.reduce((a, r) => a + (r.amount ?? 0), 0);
 
   return (
     <div>
@@ -45,6 +48,7 @@ export default function Loads() {
             <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="pending">{t("pending")}</SelectItem>
             <SelectItem value="done">{t("done")}</SelectItem>
+            <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
           </SelectContent>
         </Select>
         <div className="ms-auto flex flex-wrap gap-2 text-sm">
@@ -77,7 +81,7 @@ export default function Loads() {
               </TableRow>
             )}
             {rows.map((l) => (
-              <TableRow key={l.id} data-testid={`load-row-${l.code}`} className="transition-colors hover:bg-amber-50/40">
+              <TableRow key={l.id} data-testid={`load-row-${l.code}`} className={l.status === "cancelled" ? "bg-red-50/40 opacity-70" : "transition-colors hover:bg-amber-50/40"}>
                 <TableCell>
                   <Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link>
                   <div className="mt-1 text-xs text-stone-500" dir="ltr">{fmtDate(l.created_at)}</div>
@@ -91,12 +95,22 @@ export default function Loads() {
                 <TableCell><StatusPill status={l.status} /></TableCell>
                 {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
                 <TableCell className="text-end">
+                  {l.status === "cancelled" ? (
+                    <div className="max-w-56 ms-auto text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
+                  ) : (
                   <div className="flex justify-end gap-1">
                     <Button size="sm" variant="outline" onClick={() => setEditing(l)} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50">
                       <Droplet className="size-4" />
                       {l.oil_kg != null ? t("edit_oil") : t("enter_oil")}
                     </Button>
+                    {isAdmin && (
+                      <Button size="sm" variant="ghost" onClick={() => setCancelling(l)} data-testid={`load-cancel-${l.code}`} className="rounded-lg text-red-600 hover:bg-red-50">
+                        <Ban className="size-4" />
+                        {t("cancel_load")}
+                      </Button>
+                    )}
                   </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -104,6 +118,7 @@ export default function Loads() {
         </Table>
       </div>
       <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
+      <CancelLoadDialog load={cancelling} onClose={() => setCancelling(null)} />
     </div>
   );
 }

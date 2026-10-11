@@ -161,6 +161,20 @@ const fr = {
   worker_col: "Ouvrier",
   sms_sent_live_toast: "SMS envoyé au client",
   chars: "caractères",
+  cancelled: "Annulé",
+  cancel_load: "Annuler",
+  cancel_load_title: "Annuler ce chargement",
+  cancel_reason: "Motif de l'annulation",
+  cancel_reason_ph: "Ex. erreur de saisie du poids",
+  cancel_confirm: "Confirmer l'annulation",
+  cancel_hint: "Le chargement reste visible mais n'est plus compté dans les recettes et statistiques.",
+  cancelled_by: "Annulé par",
+  load_cancelled_toast: "Chargement annulé",
+  err_load_cancelled: "Ce chargement est annulé",
+  client_quick_history: "Historique du client",
+  previous_loads: "Chargements précédents",
+  no_previous_loads: "Aucun chargement précédent",
+  scan_to_open: "Scannez pour ouvrir",
 } as const;
 
 type Key = keyof typeof fr;
@@ -325,6 +339,20 @@ const ar: Record<Key, string> = {
   worker_col: "العامل",
   sms_sent_live_toast: "تم إرسال SMS للحريف",
   chars: "حرف",
+  cancelled: "ملغاة",
+  cancel_load: "إلغاء",
+  cancel_load_title: "إلغاء هذه الحمولة",
+  cancel_reason: "سبب الإلغاء",
+  cancel_reason_ph: "مثال: خطأ في إدخال الوزن",
+  cancel_confirm: "تأكيد الإلغاء",
+  cancel_hint: "تبقى الحمولة ظاهرة لكنها لا تُحسب في المداخيل والإحصائيات.",
+  cancelled_by: "ألغاها",
+  load_cancelled_toast: "تم إلغاء الحمولة",
+  err_load_cancelled: "هذه الحمولة ملغاة",
+  client_quick_history: "سجل الحريف",
+  previous_loads: "الحمولات السابقة",
+  no_previous_loads: "لا توجد حمولات سابقة",
+  scan_to_open: "امسح للفتح",
 };
 
 export type Lang = "fr" | "ar";

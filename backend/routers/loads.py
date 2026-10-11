@@ -11,7 +11,7 @@ from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
 from lib.sms import send_load_sms
-from models.schemas import DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats
+from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats
 
 router = APIRouter(tags=["loads"])
 
@@ -36,8 +36,10 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
         id=doc["id"], code=doc["code"], client_name=doc["client_name"], phone=doc["phone"],
         olive_kg=doc["olive_kg"], oil_kg=oil,
         yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
-        status="done" if oil is not None else "pending",
+        status="cancelled" if doc.get("cancelled") else ("done" if oil is not None else "pending"),
         day=doc["day"], created_at=_aware(doc["created_at"]), created_by=doc["created_by"],
+        cancel_reason=doc.get("cancel_reason"), cancelled_by=doc.get("cancelled_by"),
+        cancelled_at=_aware(doc["cancelled_at"]) if doc.get("cancelled_at") else None,
         price_per_kg=doc.get("price_per_kg") if is_admin else None,
         amount=round(doc["olive_kg"] * doc.get("price_per_kg", 0), 3) if is_admin else None,
         lab=LabAnalysis(**{**lab, "created_at": _aware(lab["created_at"])}) if lab else None,
@@ -79,8 +81,12 @@ async def list_loads(q: str = "", status: str = "", user: dict = Depends(current
         flt["$or"] = [{"code": rx}, {"client_name": rx}, {"phone": rx}]
     if status == "pending":
         flt["oil_kg"] = None
+        flt["cancelled"] = {"$ne": True}
     elif status == "done":
         flt["oil_kg"] = {"$ne": None}
+        flt["cancelled"] = {"$ne": True}
+    elif status == "cancelled":
+        flt["cancelled"] = True
     docs = await db.loads.find(flt, {"_id": 0}).sort("created_at", -1).to_list(500)
     labs = await _labs_for([d["id"] for d in docs])
     return [to_load(d, user, labs.get(d["id"])) for d in docs]
@@ -97,7 +103,9 @@ async def get_by_code(code: str, user: dict = Depends(current_user)):
 
 @router.patch("/loads/{id}/oil", response_model=Load)
 async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
-    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1})
+    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1})
+    if before and before.get("cancelled"):
+        raise HTTPException(409, "load_cancelled")
     doc = await db.loads.find_one_and_update(
         {"id": id}, {"$set": {"oil_kg": body.oil_kg, "oil_by": user["username"]}},
         projection={"_id": 0}, return_document=True,
@@ -106,6 +114,22 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         raise HTTPException(404, "not_found")
     if before and before.get("oil_kg") is None:
         await send_load_sms(doc, "ready")
+    labs = await _labs_for([id])
+    return to_load(doc, user, labs.get(id))
+
+
+@router.post("/loads/{id}/cancel", response_model=Load)
+async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_admin)):
+    doc = await db.loads.find_one_and_update(
+        {"id": id, "cancelled": {"$ne": True}},
+        {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
+                  "cancelled_at": datetime.now(timezone.utc), "cancelled_by": user["username"]}},
+        projection={"_id": 0}, return_document=True,
+    )
+    if not doc:
+        if await db.loads.find_one({"id": id}):
+            raise HTTPException(409, "load_cancelled")
+        raise HTTPException(404, "not_found")
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
@@ -123,7 +147,7 @@ async def delete_load(id: str, _: dict = Depends(require_admin)):
 async def stats(user: dict = Depends(current_user)):
     is_admin = user["role"] == "admin"
     today = today_iso()
-    docs = await db.loads.find({}, {"_id": 0}).to_list(100000)
+    docs = await db.loads.find({"cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
     by_day: dict[str, list[float]] = {}
     o_t = oil_t = rev_t = 0.0
     olive_done = oil_done = 0.0

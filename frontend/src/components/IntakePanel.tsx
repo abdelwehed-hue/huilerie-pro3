@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Printer, Plus, Sprout, UserRound } from "lucide-react";
+import { History, Printer, Plus, Sprout, UserRound } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiGet, apiPost } from "@/lib/api";
-import type { ClientSummary, Load, LoadCreate, MillInfo, SmsStatus } from "@/lib/types";
+import type { ClientHistory, ClientSummary, Load, LoadCreate, MillInfo, SmsStatus } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
-import { CodeBadge } from "@/components/shared";
+import { CodeBadge, StatusPill } from "@/components/shared";
 
 type BothFn = ReturnType<typeof useI18n>["both"];
 
@@ -45,8 +46,18 @@ export default function IntakePanel() {
   const pick = (c: ClientSummary) => {
     setName(c.client_name);
     setPhone(c.phone);
+    setPicked(c.phone);
     setShowSug(false);
   };
+
+  const [picked, setPicked] = useState<string | null>(null);
+  const histPhone = picked && picked === phone.trim() ? picked : null;
+  const hist = useQuery({
+    queryKey: ["client", histPhone],
+    queryFn: () => apiGet<ClientHistory>(`/clients/${encodeURIComponent(histPhone!)}`),
+    enabled: !!histPhone,
+  });
+  const h = hist.isError ? undefined : hist.data;
 
   const m = useMutation({
     mutationFn: (b: LoadCreate) => apiPost<Load>("/loads", b),
@@ -131,6 +142,38 @@ export default function IntakePanel() {
           <Plus className="size-5" />
           {t("register_arrival")}
         </Button>
+
+        {histPhone && h && (
+          <div data-testid="intake-client-history" className="rounded-xl border border-teal-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-semibold text-teal-900"><History className="size-4 text-teal-600" /> {t("client_quick_history")}</div>
+              <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-800" data-testid="intake-history-avg-yield">
+                {t("yield")}: <span dir="ltr">{h.avg_yield != null ? `${fmtNum(h.avg_yield, 2)} %` : "—"}</span>
+              </span>
+            </div>
+            <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-lg bg-amber-50 p-2"><div className="text-stone-500">{t("loads")}</div><div className="text-base font-bold text-amber-800" data-testid="intake-history-count">{h.loads_count}</div></div>
+              <div className="rounded-lg bg-lime-50 p-2"><div className="text-stone-500">{t("olives")}</div><div className="text-base font-bold text-lime-800">{fmtNum(h.olive_kg)}</div></div>
+              <div className="rounded-lg bg-yellow-50 p-2"><div className="text-stone-500">{t("oil")}</div><div className="text-base font-bold text-yellow-800">{fmtNum(h.oil_kg)}</div></div>
+            </div>
+            <div className="mb-1 text-xs font-semibold text-stone-500">{t("previous_loads")}</div>
+            {h.loads.length === 0 ? (
+              <p className="text-sm text-stone-500">{t("no_previous_loads")}</p>
+            ) : (
+              <ul className="max-h-48 divide-y divide-stone-100 overflow-auto text-sm">
+                {h.loads.slice(0, 6).map((l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-2 py-1.5" data-testid={`intake-history-load-${l.code}`}>
+                    <span className="font-mono text-xs text-stone-600" dir="ltr">{l.code}</span>
+                    <span className="text-lime-800">{fmtNum(l.olive_kg)} kg</span>
+                    <span className="text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg)} kg` : "—"}</span>
+                    <span className="text-sky-700" dir="ltr">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</span>
+                    <StatusPill status={l.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </form>
 
       <div>
@@ -147,10 +190,16 @@ export default function IntakePanel() {
                 <div className="mt-1 text-xs text-stone-500" dir="ltr">{fmtDate(created.created_at)}</div>
               </div>
             </div>
-            <div className="my-8 text-center">
-              <BiLabel k="code" both={both} className="mb-2 text-xs text-stone-500" />
-              <CodeBadge code={created.code} testId="intake-generated-code" big />
-              <BiLabel k="code_hint" both={both} className="mt-3 text-sm text-stone-500" />
+            <div className="my-8 flex flex-wrap items-center justify-center gap-8 text-center">
+              <div>
+                <BiLabel k="code" both={both} className="mb-2 text-xs text-stone-500" />
+                <CodeBadge code={created.code} testId="intake-generated-code" big />
+                <BiLabel k="code_hint" both={both} className="mt-3 text-sm text-stone-500" />
+              </div>
+              <div data-testid="intake-ticket-qr" className="flex flex-col items-center gap-1">
+                <QRCodeSVG value={`${window.location.origin}/search?code=${encodeURIComponent(created.code)}`} size={112} level="M" marginSize={1} />
+                <BiLabel k="scan_to_open" both={both} className="text-[10px] text-stone-500" />
+              </div>
             </div>
             <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
               <div><dt><BiLabel k="client" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="intake-ticket-name">{created.client_name}</dd></div>

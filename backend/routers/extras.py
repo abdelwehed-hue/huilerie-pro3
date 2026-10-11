@@ -61,7 +61,7 @@ def _range(period: str, start: str | None, end: str | None) -> tuple[str, str]:
 
 async def build_report(period: str, start: str | None, end: str | None) -> RevenueReport:
     start, end = _range(period, start, end)
-    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}}, {"_id": 0}).to_list(100000)
+    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
     agg: dict[str, list[float]] = {}
     for d in docs:
         key = d["day"] if period == "daily" else d["day"][:7]
@@ -84,7 +84,7 @@ async def build_report(period: str, start: str | None, end: str | None) -> Reven
 async def build_worker_report(period: str, start: str | None, end: str | None) -> WorkerReport:
     """Loads are credited to the worker who registered the arrival (created_by)."""
     start, end = _range(period, start, end)
-    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}}, {"_id": 0}).to_list(100000)
+    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
     names = {u["username"]: u["full_name"] async for u in db.users.find({}, {"_id": 0, "username": 1, "full_name": 1})}
     per: dict[tuple[str, str], list[float]] = {}
     tot: dict[str, list[float]] = {}
@@ -292,10 +292,10 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
 # ---------- Clients ----------
 @router.get("/clients", response_model=list[ClientSummary])
 async def list_clients(q: str = "", user: dict = Depends(current_user)):
-    match: dict = {}
+    match: dict = {"cancelled": {"$ne": True}}
     if q.strip():
         rx = {"$regex": re.escape(q.strip()), "$options": "i"}
-        match = {"$or": [{"phone": rx}, {"client_name": rx}]}
+        match["$or"] = [{"phone": rx}, {"client_name": rx}]
     pipeline = [
         {"$match": match},
         {"$sort": {"created_at": -1}},
@@ -326,15 +326,18 @@ async def client_history(phone: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "client_not_found")
     labs = await _labs_for([d["id"] for d in docs])
     loads = [to_load(d, user, labs.get(d["id"])) for d in docs]
-    olive = sum(d["olive_kg"] for d in docs)
-    oil = sum(d.get("oil_kg") or 0 for d in docs)
-    done_olive = sum(d["olive_kg"] for d in docs if d.get("oil_kg") is not None)
+    valid = [d for d in docs if not d.get("cancelled")]
+    olive = sum(d["olive_kg"] for d in valid)
+    oil = sum(d.get("oil_kg") or 0 for d in valid)
+    done = [d for d in valid if d.get("oil_kg") is not None]
+    done_olive = sum(d["olive_kg"] for d in done)
+    done_oil = sum(d["oil_kg"] for d in done)
     is_admin = user["role"] == "admin"
     return ClientHistory(
-        phone=docs[0]["phone"], client_name=docs[0]["client_name"], loads_count=len(docs),
+        phone=docs[0]["phone"], client_name=docs[0]["client_name"], loads_count=len(valid),
         olive_kg=round(olive, 2), oil_kg=round(oil, 2),
-        avg_yield=round(oil / done_olive * 100, 2) if done_olive else None,
-        amount=round(sum(l.amount or 0 for l in loads), 3) if is_admin else None,
+        avg_yield=round(done_oil / done_olive * 100, 2) if done_olive else None,
+        amount=round(sum(l.amount or 0 for l in loads if l.status != "cancelled"), 3) if is_admin else None,
         loads=loads,
     )
 

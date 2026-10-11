@@ -60,7 +60,10 @@ export interface Load {
   olive_kg: number;
   oil_kg: number | null;
   yield_pct: number | null;
-  status: "pending" | "done";
+  status: "pending" | "done" | "cancelled";
+  cancel_reason: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
   day: string;
   created_at: string;
   created_by: string;

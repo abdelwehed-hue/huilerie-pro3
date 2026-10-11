@@ -70,10 +70,13 @@ class Load(BaseModel):
     olive_kg: float
     oil_kg: Optional[float] = None
     yield_pct: Optional[float] = None
-    status: Literal["pending", "done"]
+    status: Literal["pending", "done", "cancelled"]
     day: str
     created_at: datetime
     created_by: str
+    cancel_reason: Optional[str] = None
+    cancelled_at: Optional[datetime] = None
+    cancelled_by: Optional[str] = None
     # admin-only fields — None for workers
     price_per_kg: Optional[float] = None
     amount: Optional[float] = None
@@ -84,6 +87,10 @@ class LoadCreate(BaseModel):
     client_name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=4, max_length=30)
     olive_kg: float = Field(gt=0)
+
+
+class CancelBody(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
 
 
 class OilUpdate(BaseModel):
