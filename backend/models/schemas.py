@@ -112,5 +112,66 @@ class Stats(BaseModel):
     daily: list[DailyPoint]
 
 
-class AppSettings(BaseModel):
+class MillInfo(BaseModel):
+    mill_name: str = ""
+    mill_address: str = ""
+    mill_phone: str = ""
+
+
+class AppSettings(MillInfo):
     price_per_kg: float = Field(ge=0)
+
+
+class SmsLog(BaseModel):
+    id: str
+    load_id: str
+    code: str
+    client_name: str
+    phone: str
+    kind: Literal["arrival", "ready"]
+    message: str
+    status: Literal["simulated", "sent", "failed"]
+    created_at: datetime
+
+
+class ReportRow(BaseModel):
+    period: str
+    loads: int
+    olive_kg: float
+    oil_kg: float
+    revenue: float
+
+
+class RevenueReport(BaseModel):
+    period: Literal["daily", "monthly"]
+    start: str
+    end: str
+    rows: list[ReportRow]
+    total: ReportRow
+
+
+class ClientSummary(BaseModel):
+    phone: str
+    client_name: str
+    loads_count: int
+    olive_kg: float
+    oil_kg: float
+    last_visit: datetime
+    amount: Optional[float] = None
+
+
+class ClientHistory(BaseModel):
+    phone: str
+    client_name: str
+    loads_count: int
+    olive_kg: float
+    oil_kg: float
+    avg_yield: Optional[float] = None
+    amount: Optional[float] = None
+    loads: list[Load]
+
+
+class Certificate(BaseModel):
+    analysis: LabAnalysis
+    load: Optional[Load] = None
+    mill: MillInfo

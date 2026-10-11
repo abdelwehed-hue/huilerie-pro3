@@ -27,6 +27,9 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
       qc.invalidateQueries({ queryKey: ["loads"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["load-by-code"] });
+      qc.invalidateQueries({ queryKey: ["sms"] });
+      qc.invalidateQueries({ queryKey: ["client"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
       onClose();
     },
     onError: (e) => toast.error(errMsg(e)),

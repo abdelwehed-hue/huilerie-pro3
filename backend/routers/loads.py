@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
+from lib.sms import send_load_sms
 from models.schemas import DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats
 
 router = APIRouter(tags=["loads"])
@@ -60,11 +61,13 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
         code = f"{base}-{n}"
     doc = {
         "id": str(uuid.uuid4()), "code": code, "client_name": body.client_name.strip(),
-        "phone": body.phone.strip(), "olive_kg": body.olive_kg, "oil_kg": None,
+        "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
         "day": now_local.strftime("%Y-%m-%d"), "created_at": datetime.now(timezone.utc),
         "created_by": user["username"], "price_per_kg": await _price(),
     }
     await db.loads.insert_one(doc)
+    doc.pop("_id", None)
+    await send_load_sms(doc, "arrival")
     return to_load(doc, user)
 
 
@@ -94,12 +97,15 @@ async def get_by_code(code: str, user: dict = Depends(current_user)):
 
 @router.patch("/loads/{id}/oil", response_model=Load)
 async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
+    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1})
     doc = await db.loads.find_one_and_update(
         {"id": id}, {"$set": {"oil_kg": body.oil_kg, "oil_by": user["username"]}},
         projection={"_id": 0}, return_document=True,
     )
     if not doc:
         raise HTTPException(404, "not_found")
+    if before and before.get("oil_kg") is None:
+        await send_load_sms(doc, "ready")
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 

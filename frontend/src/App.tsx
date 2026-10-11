@@ -9,6 +9,10 @@ import SearchPage from "@/pages/Search";
 import Loads from "@/pages/Loads";
 import Lab from "@/pages/Lab";
 import SettingsPage from "@/pages/Settings";
+import Clients from "@/pages/Clients";
+import Reports from "@/pages/Reports";
+import Certificate from "@/pages/Certificate";
+import SmsLog from "@/pages/SmsLog";
 
 export default function App() {
   return (
@@ -22,6 +26,10 @@ export default function App() {
           <Route path="/loads" element={<Loads />} />
           <Route path="/lab" element={<Lab />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/clients" element={<Clients />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/certificate/:id" element={<Certificate />} />
+          <Route path="/sms" element={<SmsLog />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

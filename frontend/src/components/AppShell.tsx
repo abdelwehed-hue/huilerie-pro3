@@ -11,6 +11,9 @@ import {
   Settings,
   Droplets,
   Languages,
+  BookUser,
+  BarChart3,
+  MessageSquareText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,9 @@ const NAV = [
   { to: "/search", key: "search", icon: Search, id: "nav-search", color: "text-sky-300" },
   { to: "/loads", key: "loads", icon: Layers, id: "nav-loads", color: "text-amber-300" },
   { to: "/lab", key: "lab", icon: FlaskConical, id: "nav-lab", color: "text-cyan-300" },
+  { to: "/clients", key: "clients", icon: BookUser, id: "nav-clients", color: "text-teal-300" },
+  { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
+  { to: "/reports", key: "reports", icon: BarChart3, id: "nav-reports", color: "text-fuchsia-300", admin: true },
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
 

@@ -1,0 +1,138 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { FileSpreadsheet, FileText, ShieldAlert, Wallet, Layers, Sprout, Droplet } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buttonVariants } from "@/components/ui/button";
+import { apiGet } from "@/lib/api";
+import type { RevenueReport } from "@/lib/types";
+import { fmtNum, useI18n } from "@/lib/i18n";
+import { useMe } from "@/lib/useMe";
+import { PageHeader, StatCard } from "@/components/shared";
+import { cn } from "@/lib/utils";
+
+export default function Reports() {
+  const { t } = useI18n();
+  const me = useMe();
+  const [period, setPeriod] = useState<"daily" | "monthly">("daily");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const qs = `period=${period}${start ? `&start=${start}` : ""}${end ? `&end=${end}` : ""}`;
+  const isAdmin = me.data?.role === "admin";
+
+  const rep = useQuery({
+    queryKey: ["report", qs],
+    queryFn: () => apiGet<RevenueReport>(`/reports/revenue?${qs}`),
+    enabled: isAdmin,
+  });
+  const r = rep.isError ? undefined : rep.data;
+
+  if (me.data && !isAdmin) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" data-testid="admin-only-notice">
+        <ShieldAlert /> {t("admin_only")}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title={t("reports")}
+        sub={t("reports_sub")}
+        accent="bg-violet-500"
+        right={
+          <div className="flex gap-2">
+            <a href={`/api/reports/revenue.xlsx?${qs}`} download data-testid="report-export-excel" className={cn(buttonVariants(), "rounded-xl bg-green-700 hover:bg-green-800")}>
+              <FileSpreadsheet className="size-4" /> {t("export_excel")}
+            </a>
+            <a href={`/api/reports/revenue.pdf?${qs}`} download data-testid="report-export-pdf" className={cn(buttonVariants(), "rounded-xl bg-rose-600 hover:bg-rose-700")}>
+              <FileText className="size-4" /> {t("export_pdf")}
+            </a>
+          </div>
+        }
+      />
+      <div className="mb-6 flex flex-wrap items-end gap-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-4">
+        <div className="space-y-2">
+          <Label>{t("period")}</Label>
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
+            <TabsList>
+              <TabsTrigger value="daily" data-testid="report-period-daily">{t("daily")}</TabsTrigger>
+              <TabsTrigger value="monthly" data-testid="report-period-monthly">{t("monthly")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="rs">{t("from")}</Label>
+          <Input id="rs" type="date" data-testid="report-start-input" value={start || r?.start || ""} onChange={(e) => setStart(e.target.value)} className="h-9 rounded-xl bg-white" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="re">{t("to")}</Label>
+          <Input id="re" type="date" data-testid="report-end-input" value={end || r?.end || ""} onChange={(e) => setEnd(e.target.value)} className="h-9 rounded-xl bg-white" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard tone="violet" testId="report-total-revenue" label={t("revenue")} value={fmtNum(r?.total.revenue, 3)} unit={t("dt")} icon={<Wallet />} />
+        <StatCard tone="rose" label={t("loads")} value={r?.total.loads ?? "—"} icon={<Layers />} />
+        <StatCard tone="olive" label={t("olive_kg")} value={fmtNum(r?.total.olive_kg)} unit={t("kg")} icon={<Sprout />} />
+        <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+          <div className="h-72" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={r?.rows ?? []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+                <XAxis dataKey="period" fontSize={11} stroke="#78716C" />
+                <YAxis fontSize={11} stroke="#78716C" />
+                <Tooltip formatter={(v: number) => [`${fmtNum(v, 3)} ${t("dt")}`, t("revenue")]} />
+                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+          <Table data-testid="report-table">
+            <TableHeader className="bg-stone-50">
+              <TableRow>
+                <TableHead className="text-start">{t("period")}</TableHead>
+                <TableHead className="text-end">{t("loads")}</TableHead>
+                <TableHead className="text-end">{t("olive_kg")}</TableHead>
+                <TableHead className="text-end">{t("oil_kg")}</TableHead>
+                <TableHead className="text-end">{t("revenue")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(r?.rows ?? []).length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-10 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+              )}
+              {r?.rows.map((row) => (
+                <TableRow key={row.period} data-testid={`report-row-${row.period}`}>
+                  <TableCell dir="ltr" className="text-start font-mono text-sm">{row.period}</TableCell>
+                  <TableCell className="text-end">{row.loads}</TableCell>
+                  <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
+                  <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
+                  <TableCell className="text-end font-semibold text-violet-700">{fmtNum(row.revenue, 3)}</TableCell>
+                </TableRow>
+              ))}
+              {r && r.rows.length > 0 && (
+                <TableRow className="bg-violet-50 font-bold">
+                  <TableCell>{t("totals")}</TableCell>
+                  <TableCell className="text-end">{r.total.loads}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.total.olive_kg)}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.total.oil_kg)}</TableCell>
+                  <TableCell className="text-end text-violet-800">{fmtNum(r.total.revenue, 3)}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}

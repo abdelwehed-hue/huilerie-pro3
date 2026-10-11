@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Grade, Load } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 import { Droplet, FlaskConical, Phone, Sprout, Wallet, Percent } from "lucide-react";
 
 const GRADE_STYLE: Record<Grade, string> = {
@@ -94,7 +95,7 @@ export function LoadDetail({ load }: { load: Load }) {
           <div data-testid="load-detail-client-name" className="font-heading text-3xl font-bold text-stone-900">{load.client_name}</div>
           <div className="mt-1 flex items-center gap-2 text-sm text-stone-600">
             <Phone className="size-4" />
-            <span data-testid="load-detail-phone" dir="ltr">{load.phone}</span>
+            <Link to={`/clients?phone=${encodeURIComponent(load.phone)}`} data-testid="load-detail-phone" dir="ltr" className="text-teal-700 underline-offset-2 hover:underline">{load.phone}</Link>
             <span className="text-stone-300">•</span>
             <span dir="ltr">{fmtDate(load.created_at)}</span>
           </div>

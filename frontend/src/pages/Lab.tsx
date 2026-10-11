@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FlaskConical, CheckCircle2, XCircle } from "lucide-react";
+import { FlaskConical, CheckCircle2, XCircle, Award } from "lucide-react";
+import { Link } from "react-router-dom";
+import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,11 +162,12 @@ export default function Lab() {
                 <TableHead className="text-end">%</TableHead>
                 <TableHead className="text-start">{t("classification")}</TableHead>
                 <TableHead className="text-start">{t("date")}</TableHead>
+                <TableHead className="text-end">{t("certificate")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
               )}
               {rows.map((r) => (
                 <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
@@ -180,6 +183,11 @@ export default function Lab() {
                   <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
                   <TableCell><GradeBadge grade={r.classification} /></TableCell>
                   <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.created_at)}</TableCell>
+                  <TableCell className="text-end">
+                    <Link to={`/certificate/${r.id}`} data-testid={`lab-certificate-${r.code}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                      <Award className="size-4 text-emerald-600" /> {t("view_certificate")}
+                    </Link>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

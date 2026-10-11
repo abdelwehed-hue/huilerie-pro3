@@ -59,11 +59,11 @@ async def update_user(id: str, body: UserUpdate, admin: dict = Depends(require_a
 
 @router.get("/settings", response_model=AppSettings)
 async def get_settings(_: dict = Depends(require_admin)):
-    s = await db.settings.find_one({"key": "app"})
-    return AppSettings(price_per_kg=s["price_per_kg"] if s else 0)
+    s = await db.settings.find_one({"key": "app"}, {"_id": 0, "key": 0}) or {"price_per_kg": 0}
+    return AppSettings(**s)
 
 
 @router.put("/settings", response_model=AppSettings)
 async def put_settings(body: AppSettings, _: dict = Depends(require_admin)):
-    await db.settings.update_one({"key": "app"}, {"$set": {"price_per_kg": body.price_per_kg}}, upsert=True)
+    await db.settings.update_one({"key": "app"}, {"$set": body.model_dump()}, upsert=True)
     return body

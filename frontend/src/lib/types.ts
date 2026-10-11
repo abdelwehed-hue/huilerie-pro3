@@ -97,6 +97,67 @@ export interface Stats {
   daily: DailyPoint[];
 }
 
-export interface AppSettings {
+export interface MillInfo {
+  mill_name: string;
+  mill_address: string;
+  mill_phone: string;
+}
+
+export interface AppSettings extends MillInfo {
   price_per_kg: number;
+}
+
+export interface SmsLog {
+  id: string;
+  load_id: string;
+  code: string;
+  client_name: string;
+  phone: string;
+  kind: "arrival" | "ready";
+  message: string;
+  status: "simulated" | "sent" | "failed";
+  created_at: string;
+}
+
+export interface ReportRow {
+  period: string;
+  loads: number;
+  olive_kg: number;
+  oil_kg: number;
+  revenue: number;
+}
+
+export interface RevenueReport {
+  period: "daily" | "monthly";
+  start: string;
+  end: string;
+  rows: ReportRow[];
+  total: ReportRow;
+}
+
+export interface ClientSummary {
+  phone: string;
+  client_name: string;
+  loads_count: number;
+  olive_kg: number;
+  oil_kg: number;
+  last_visit: string;
+  amount: number | null;
+}
+
+export interface ClientHistory {
+  phone: string;
+  client_name: string;
+  loads_count: number;
+  olive_kg: number;
+  oil_kg: number;
+  avg_yield: number | null;
+  amount: number | null;
+  loads: Load[];
+}
+
+export interface Certificate {
+  analysis: LabAnalysis;
+  load: Load | null;
+  mill: MillInfo;
 }

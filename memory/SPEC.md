@@ -22,3 +22,10 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 
 ## Pages
 /login, / (dashboard KPIs + chart + recent), /intake (form → ticket with code, print), /search?code=, /loads (table, oil dialog), /lab, /settings (admin: users tab + tariff tab)
+
+## v2 additions
+- **SMS (MOCKED)**: `lib/sms.py` logs bilingual FR+AR messages to `sms_log` with status `simulated` on load creation (kind `arrival`) and when oil is first entered (kind `ready`). No provider wired yet. GET /api/sms; page /sms.
+- **Revenue report (admin)**: GET /api/reports/revenue?period=daily|monthly&start=&end= (defaults: daily last 30 days, monthly from Jan 1), plus `.xlsx` (openpyxl) and `.pdf` (reportlab) downloads. Page /reports.
+- **Client book**: GET /api/clients?q= (grouped by phone; phone stored without spaces), GET /api/clients/{phone} history with loads + lab. Page /clients?phone=.
+- **Lab certificate**: GET /api/lab/{id}/certificate → analysis + load + mill info. Printable page /certificate/:id.
+- Settings now hold mill_name, mill_address, mill_phone alongside price_per_kg (PUT /api/settings full body).

@@ -25,7 +25,9 @@ export default function Intake() {
       setName("");
       setPhone("");
       setKg("");
-      toast.success(`${t("created")} — ${l.code}`);
+      toast.success(`${t("created")} — ${l.code}`, { description: t("sms_sent_toast") });
+      qc.invalidateQueries({ queryKey: ["sms"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["loads"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
     },

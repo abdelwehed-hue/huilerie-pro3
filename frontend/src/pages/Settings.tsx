@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Plus, ShieldAlert, UserPlus, Coins } from "lucide-react";
+import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,37 +20,54 @@ function PriceForm() {
   const { t, errMsg } = useI18n();
   const qc = useQueryClient();
   const s = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
-  const [price, setPrice] = useState<string | null>(null);
-  const value = price ?? (s.data ? String(s.data.price_per_kg) : "");
+  const [edit, setEdit] = useState<Partial<Record<keyof AppSettings, string>>>({});
+  const val = (k: keyof AppSettings) => edit[k] ?? (s.data ? String(s.data[k] ?? "") : "");
   const m = useMutation({
-    mutationFn: (v: number) => apiPut<AppSettings>("/settings", { price_per_kg: v }),
+    mutationFn: (b: AppSettings) => apiPut<AppSettings>("/settings", b),
     onSuccess: () => {
       toast.success(t("saved"));
-      setPrice(null);
+      setEdit({});
       qc.invalidateQueries({ queryKey: ["settings"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
-  const v = parseFloat(value.replace(",", "."));
+  const v = parseFloat(val("price_per_kg").replace(",", "."));
+  const field = (k: keyof AppSettings, label: string, testId: string, extra = "") => (
+    <div className="space-y-2">
+      <Label htmlFor={k}>{label}</Label>
+      <Input id={k} data-testid={testId} value={val(k)} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} className={cn("h-11 rounded-xl bg-white", extra)} />
+    </div>
+  );
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!isNaN(v) && v >= 0) m.mutate(v);
+        if (!isNaN(v) && v >= 0)
+          m.mutate({ price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone") });
       }}
-      className="max-w-md space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6"
+      className="grid max-w-4xl gap-6 md:grid-cols-2"
     >
-      <div className="flex items-center gap-3 text-violet-900">
-        <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
-        <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
+      <div className="space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6">
+        <div className="flex items-center gap-3 text-violet-900">
+          <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
+          <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
+        </div>
+        {field("price_per_kg", t("price_per_kg"), "admin-price-per-kg-input", "text-lg font-semibold")}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="pr">{t("price_per_kg")}</Label>
-        <Input id="pr" inputMode="decimal" data-testid="admin-price-per-kg-input" value={value} onChange={(e) => setPrice(e.target.value)} className="h-11 rounded-xl bg-white text-lg font-semibold" />
+      <div className="space-y-4 rounded-2xl border border-teal-200 bg-teal-50/60 p-6">
+        <div className="flex items-center gap-3 text-teal-900">
+          <div className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white"><Building2 className="size-5" /></div>
+          <h2 className="font-heading text-xl font-bold">{t("mill_info")}</h2>
+        </div>
+        {field("mill_name", t("mill_name"), "admin-mill-name-input")}
+        {field("mill_address", t("mill_address"), "admin-mill-address-input")}
+        {field("mill_phone", t("mill_phone"), "admin-mill-phone-input")}
       </div>
-      <Button type="submit" disabled={isNaN(v) || m.isPending} data-testid="admin-price-save-button" className="rounded-xl bg-violet-700 hover:bg-violet-800">
-        {t("save")}
-      </Button>
+      <div>
+        <Button type="submit" disabled={isNaN(v) || m.isPending} data-testid="admin-price-save-button" className="h-11 rounded-xl bg-violet-700 px-8 hover:bg-violet-800">
+          {t("save")}
+        </Button>
+      </div>
     </form>
   );
 }
