@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2 } from "lucide-react";
+import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText } from "lucide-react";
+import SmsSettings from "@/components/SmsSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +44,7 @@ function PriceForm() {
       onSubmit={(e) => {
         e.preventDefault();
         if (!isNaN(v) && v >= 0)
-          m.mutate({ price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone") });
+          m.mutate({ ...s.data!, price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone") });
       }}
       className="grid max-w-4xl gap-6 md:grid-cols-2"
     >
@@ -256,9 +257,11 @@ export default function SettingsPage() {
         <TabsList className="mb-6">
           <TabsTrigger value="users" data-testid="settings-tab-users"><Plus className="size-4" />{t("users")}</TabsTrigger>
           <TabsTrigger value="tariff" data-testid="settings-tab-tariff"><Coins className="size-4" />{t("tariff")}</TabsTrigger>
+          <TabsTrigger value="sms" data-testid="settings-tab-sms"><MessageSquareText className="size-4" />{t("sms_settings")}</TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
+        <TabsContent value="sms"><SmsSettings /></TabsContent>
       </Tabs>
     </div>
   );

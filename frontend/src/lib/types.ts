@@ -105,6 +105,37 @@ export interface MillInfo {
 
 export interface AppSettings extends MillInfo {
   price_per_kg: number;
+  sms_enabled: boolean;
+  sms_arrival_template: string;
+  sms_ready_template: string;
+}
+
+// Mirrors DEFAULT_SMS_ARRIVAL / DEFAULT_SMS_READY in backend/models/schemas.py
+export const DEFAULT_SMS_ARRIVAL =
+  "{mill}: Bonjour {name}, votre code: {code} - Olives: {olive_kg} kg.\n{mill}: مرحبا {name}، الكود متاعك: {code} - الزيتون: {olive_kg} كغ.";
+export const DEFAULT_SMS_READY =
+  "{mill}: {name}, votre huile est prête: {oil_kg} kg (code {code}).\n{mill}: {name}، الزيت متاعك جاهز: {oil_kg} كغ (الكود {code}).";
+
+export interface SmsStatus {
+  mode: "simulated" | "live";
+  enabled: boolean;
+}
+
+export interface WorkerRow {
+  day: string;
+  username: string;
+  full_name: string;
+  loads: number;
+  olive_kg: number;
+  oil_kg: number;
+  revenue: number;
+}
+
+export interface WorkerReport {
+  start: string;
+  end: string;
+  rows: WorkerRow[];
+  totals: WorkerRow[];
 }
 
 export interface SmsLog {
@@ -115,7 +146,9 @@ export interface SmsLog {
   phone: string;
   kind: "arrival" | "ready";
   message: string;
-  status: "simulated" | "sent" | "failed";
+  status: "simulated" | "sent" | "failed" | "disabled";
+  to_number: string | null;
+  error: string | null;
   created_at: string;
 }
 

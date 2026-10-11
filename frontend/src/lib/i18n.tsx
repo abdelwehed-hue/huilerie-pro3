@@ -144,6 +144,23 @@ const fr = {
   limit_ev: "Limite extra vierge",
   message: "Message",
   back: "Retour",
+  sms_settings: "Messages SMS",
+  sms_enabled: "Envoi SMS activé",
+  sms_arrival_tpl: "Message à l'arrivée",
+  sms_ready_tpl: "Message quand l'huile est prête",
+  placeholders: "Variables (cliquez pour insérer)",
+  preview: "Aperçu",
+  reset_default: "Texte par défaut",
+  sms_live: "Envoi réel activé (Twilio)",
+  sms_disabled_note: "L'envoi de SMS est désactivé dans les paramètres",
+  sms_status_sent: "Envoyé",
+  sms_status_failed: "Échec",
+  sms_status_simulated: "Simulation",
+  sms_status_disabled: "Désactivé",
+  by_worker: "Recettes par ouvrier",
+  worker_col: "Ouvrier",
+  sms_sent_live_toast: "SMS envoyé au client",
+  chars: "caractères",
 } as const;
 
 type Key = keyof typeof fr;
@@ -291,6 +308,23 @@ const ar: Record<Key, string> = {
   limit_ev: "حد البكر الممتاز",
   message: "الرسالة",
   back: "رجوع",
+  sms_settings: "رسائل SMS",
+  sms_enabled: "إرسال SMS مفعّل",
+  sms_arrival_tpl: "رسالة عند الوصول",
+  sms_ready_tpl: "رسالة عند جاهزية الزيت",
+  placeholders: "المتغيرات (اضغط للإضافة)",
+  preview: "معاينة",
+  reset_default: "النص الافتراضي",
+  sms_live: "الإرسال الحقيقي مفعّل (Twilio)",
+  sms_disabled_note: "إرسال SMS معطّل في الإعدادات",
+  sms_status_sent: "أُرسل",
+  sms_status_failed: "فشل",
+  sms_status_simulated: "تجريبي",
+  sms_status_disabled: "معطّل",
+  by_worker: "المداخيل حسب العامل",
+  worker_col: "العامل",
+  sms_sent_live_toast: "تم إرسال SMS للحريف",
+  chars: "حرف",
 };
 
 export type Lang = "fr" | "ar";
@@ -300,6 +334,7 @@ interface I18nCtx {
   lang: Lang;
   setLang: (l: Lang) => void;
   t: (k: Key) => string;
+  both: (k: Key) => { fr: string; ar: string };
   errMsg: (e: unknown) => string;
 }
 
@@ -331,7 +366,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [lang],
   );
 
-  const value = useMemo(() => ({ lang, setLang: setLangState, t, errMsg }), [lang, t, errMsg]);
+  const both = useCallback((k: Key) => ({ fr: fr[k], ar: ar[k] }), []);
+  const value = useMemo(() => ({ lang, setLang: setLangState, t, both, errMsg }), [lang, t, both, errMsg]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

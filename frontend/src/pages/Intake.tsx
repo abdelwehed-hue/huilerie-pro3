@@ -1,18 +1,33 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Printer, Plus, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiPost } from "@/lib/api";
-import type { Load, LoadCreate } from "@/lib/types";
+import { apiGet, apiPost } from "@/lib/api";
+import type { Load, LoadCreate, MillInfo, SmsStatus } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, PageHeader } from "@/components/shared";
 
+type BothFn = ReturnType<typeof useI18n>["both"];
+
+function BiLabel({ k, both, className }: { k: Parameters<BothFn>[0]; both: BothFn; className?: string }) {
+  const v = both(k);
+  return (
+    <div className={className}>
+      <span dir="ltr" className="block">{v.fr}</span>
+      <span dir="rtl" className="block">{v.ar}</span>
+    </div>
+  );
+}
+
 export default function Intake() {
-  const { t, errMsg } = useI18n();
+  const { t, both, errMsg } = useI18n();
   const qc = useQueryClient();
+  const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
+  const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
+  const smsNote = sms.data && !sms.isError && sms.data.enabled ? (sms.data.mode === "live" ? t("sms_sent_live_toast") : t("sms_sent_toast")) : undefined;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [kg, setKg] = useState("");
@@ -25,7 +40,7 @@ export default function Intake() {
       setName("");
       setPhone("");
       setKg("");
-      toast.success(`${t("created")} — ${l.code}`, { description: t("sms_sent_toast") });
+      toast.success(`${t("created")} — ${l.code}`, { description: smsNote });
       qc.invalidateQueries({ queryKey: ["sms"] });
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["loads"] });
@@ -74,20 +89,28 @@ export default function Intake() {
         <div>
           {created ? (
             <div className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm" data-testid="intake-ticket">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">{t("ticket")}</div>
-                <div className="text-xs text-stone-500" dir="ltr">{fmtDate(created.created_at)}</div>
+              <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+                <div>
+                  <div className="font-heading text-lg font-bold text-stone-900" data-testid="intake-ticket-mill">{(!mill.isError && mill.data?.mill_name) || t("app_name")}</div>
+                  {!mill.isError && mill.data?.mill_address && <div className="text-xs text-stone-500">{mill.data.mill_address}</div>}
+                  {!mill.isError && mill.data?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{mill.data.mill_phone}</div>}
+                </div>
+                <div className="text-end">
+                  <BiLabel k="ticket" both={both} className="text-xs font-semibold uppercase tracking-wider text-amber-700" />
+                  <div className="mt-1 text-xs text-stone-500" dir="ltr">{fmtDate(created.created_at)}</div>
+                </div>
               </div>
               <div className="my-8 text-center">
+                <BiLabel k="code" both={both} className="mb-2 text-xs text-stone-500" />
                 <CodeBadge code={created.code} testId="intake-generated-code" big />
-                <p className="mt-3 text-sm text-stone-500">{t("code_hint")}</p>
+                <BiLabel k="code_hint" both={both} className="mt-3 text-sm text-stone-500" />
               </div>
               <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
-                <div><dt className="text-stone-500">{t("client")}</dt><dd className="font-semibold text-stone-900" data-testid="intake-ticket-name">{created.client_name}</dd></div>
-                <div><dt className="text-stone-500">{t("phone")}</dt><dd className="font-semibold text-stone-900" dir="ltr">{created.phone}</dd></div>
-                <div><dt className="text-stone-500">{t("olive_kg")}</dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="intake-ticket-kg">{fmtNum(created.olive_kg)} {t("kg")}</dd></div>
+                <div><dt><BiLabel k="client" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="intake-ticket-name">{created.client_name}</dd></div>
+                <div><dt><BiLabel k="phone" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" dir="ltr">{created.phone}</dd></div>
+                <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="intake-ticket-kg">{fmtNum(created.olive_kg)} kg</dd></div>
                 {created.amount != null && (
-                  <div><dt className="text-stone-500">{t("amount")}</dt><dd className="font-heading text-2xl font-bold text-violet-700">{fmtNum(created.amount, 3)} {t("dt")}</dd></div>
+                  <div><dt><BiLabel k="amount" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-violet-700">{fmtNum(created.amount, 3)} DT</dd></div>
                 )}
               </dl>
               <div className="no-print mt-8 flex gap-3">

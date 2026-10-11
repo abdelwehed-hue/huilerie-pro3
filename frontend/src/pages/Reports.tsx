@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
 import { apiGet } from "@/lib/api";
-import type { RevenueReport } from "@/lib/types";
+import type { RevenueReport, WorkerReport } from "@/lib/types";
 import { fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader, StatCard } from "@/components/shared";
@@ -29,6 +29,12 @@ export default function Reports() {
     enabled: isAdmin,
   });
   const r = rep.isError ? undefined : rep.data;
+  const wrep = useQuery({
+    queryKey: ["report-workers", qs],
+    queryFn: () => apiGet<WorkerReport>(`/reports/workers?${qs}`),
+    enabled: isAdmin,
+  });
+  const w = wrep.isError ? undefined : wrep.data;
 
   if (me.data && !isAdmin) {
     return (
@@ -132,6 +138,47 @@ export default function Reports() {
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl border border-teal-200 bg-white shadow-sm" data-testid="worker-report-section">
+        <div className="border-b border-teal-100 bg-teal-50 px-5 py-3 font-semibold text-teal-900">{t("by_worker")}</div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          {(w?.totals ?? []).map((tot) => (
+            <div key={tot.username} className="rounded-xl border border-teal-100 bg-teal-50/50 p-4" data-testid={`worker-total-${tot.username}`}>
+              <div className="text-sm font-semibold text-stone-800">{tot.full_name}</div>
+              <div className="text-xs text-stone-500" dir="ltr">@{tot.username}</div>
+              <div className="mt-2 text-2xl font-bold text-teal-800">{fmtNum(tot.revenue, 3)} <span className="text-sm font-medium">{t("dt")}</span></div>
+              <div className="text-xs text-stone-600">{tot.loads} {t("loads")} · {fmtNum(tot.olive_kg)} {t("kg")}</div>
+            </div>
+          ))}
+        </div>
+        <Table data-testid="worker-report-table">
+          <TableHeader className="bg-stone-50">
+            <TableRow>
+              <TableHead className="text-start">{t("period")}</TableHead>
+              <TableHead className="text-start">{t("worker_col")}</TableHead>
+              <TableHead className="text-end">{t("loads")}</TableHead>
+              <TableHead className="text-end">{t("olive_kg")}</TableHead>
+              <TableHead className="text-end">{t("oil_kg")}</TableHead>
+              <TableHead className="text-end">{t("revenue")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(w?.rows ?? []).length === 0 && (
+              <TableRow><TableCell colSpan={6} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+            )}
+            {w?.rows.map((row) => (
+              <TableRow key={`${row.day}-${row.username}`} data-testid={`worker-row-${row.day}-${row.username}`}>
+                <TableCell dir="ltr" className="text-start font-mono text-sm">{row.day}</TableCell>
+                <TableCell className="text-start">{row.full_name}</TableCell>
+                <TableCell className="text-end">{row.loads}</TableCell>
+                <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
+                <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
+                <TableCell className="text-end font-semibold text-teal-700">{fmtNum(row.revenue, 3)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

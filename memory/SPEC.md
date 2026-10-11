@@ -29,3 +29,7 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - **Client book**: GET /api/clients?q= (grouped by phone; phone stored without spaces), GET /api/clients/{phone} history with loads + lab. Page /clients?phone=.
 - **Lab certificate**: GET /api/lab/{id}/certificate → analysis + load + mill info. Printable page /certificate/:id.
 - Settings now hold mill_name, mill_address, mill_phone alongside price_per_kg (PUT /api/settings full body).
+
+## Worker revenue (Reports page, admin only)
+- GET /api/reports/workers?period=&start=&end= -> per-day rows + per-worker totals; revenue attributed to the user who logged the arrival. Shown in Reports page "Recettes par ouvrier" section.
+- SMS stays in SIMULATED mode until Twilio keys are added to backend/.env.

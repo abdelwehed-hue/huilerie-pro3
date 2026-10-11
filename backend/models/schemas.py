@@ -118,8 +118,26 @@ class MillInfo(BaseModel):
     mill_phone: str = ""
 
 
+DEFAULT_SMS_ARRIVAL = (
+    "{mill}: Bonjour {name}, votre code: {code} - Olives: {olive_kg} kg.\n"
+    "{mill}: مرحبا {name}، الكود متاعك: {code} - الزيتون: {olive_kg} كغ."
+)
+DEFAULT_SMS_READY = (
+    "{mill}: {name}, votre huile est prête: {oil_kg} kg (code {code}).\n"
+    "{mill}: {name}، الزيت متاعك جاهز: {oil_kg} كغ (الكود {code})."
+)
+
+
 class AppSettings(MillInfo):
     price_per_kg: float = Field(ge=0)
+    sms_enabled: bool = True
+    sms_arrival_template: str = Field(default=DEFAULT_SMS_ARRIVAL, max_length=600)
+    sms_ready_template: str = Field(default=DEFAULT_SMS_READY, max_length=600)
+
+
+class SmsStatus(BaseModel):
+    mode: Literal["simulated", "live"]
+    enabled: bool
 
 
 class SmsLog(BaseModel):
@@ -130,8 +148,27 @@ class SmsLog(BaseModel):
     phone: str
     kind: Literal["arrival", "ready"]
     message: str
-    status: Literal["simulated", "sent", "failed"]
+    status: Literal["simulated", "sent", "failed", "disabled"]
+    to_number: Optional[str] = None
+    error: Optional[str] = None
     created_at: datetime
+
+
+class WorkerRow(BaseModel):
+    day: str
+    username: str
+    full_name: str
+    loads: int
+    olive_kg: float
+    oil_kg: float
+    revenue: float
+
+
+class WorkerReport(BaseModel):
+    start: str
+    end: str
+    rows: list[WorkerRow]
+    totals: list[WorkerRow]
 
 
 class ReportRow(BaseModel):
