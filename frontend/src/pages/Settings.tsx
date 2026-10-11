@@ -1,0 +1,248 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { KeyRound, Plus, ShieldAlert, UserPlus, Coins } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import type { AppSettings, Role, User, UserCreate, UserUpdate } from "@/lib/types";
+import { fmtDate, useI18n } from "@/lib/i18n";
+import { useMe } from "@/lib/useMe";
+import { PageHeader } from "@/components/shared";
+import { cn } from "@/lib/utils";
+
+function PriceForm() {
+  const { t, errMsg } = useI18n();
+  const qc = useQueryClient();
+  const s = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
+  const [price, setPrice] = useState<string | null>(null);
+  const value = price ?? (s.data ? String(s.data.price_per_kg) : "");
+  const m = useMutation({
+    mutationFn: (v: number) => apiPut<AppSettings>("/settings", { price_per_kg: v }),
+    onSuccess: () => {
+      toast.success(t("saved"));
+      setPrice(null);
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const v = parseFloat(value.replace(",", "."));
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!isNaN(v) && v >= 0) m.mutate(v);
+      }}
+      className="max-w-md space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6"
+    >
+      <div className="flex items-center gap-3 text-violet-900">
+        <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
+        <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="pr">{t("price_per_kg")}</Label>
+        <Input id="pr" inputMode="decimal" data-testid="admin-price-per-kg-input" value={value} onChange={(e) => setPrice(e.target.value)} className="h-11 rounded-xl bg-white text-lg font-semibold" />
+      </div>
+      <Button type="submit" disabled={isNaN(v) || m.isPending} data-testid="admin-price-save-button" className="rounded-xl bg-violet-700 hover:bg-violet-800">
+        {t("save")}
+      </Button>
+    </form>
+  );
+}
+
+function UserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t, errMsg } = useI18n();
+  const qc = useQueryClient();
+  const [f, setF] = useState<UserCreate>({ username: "", full_name: "", password: "", role: "worker" });
+  const m = useMutation({
+    mutationFn: (b: UserCreate) => apiPost<User>("/users", b),
+    onSuccess: () => {
+      toast.success(t("created"));
+      qc.invalidateQueries({ queryKey: ["users"] });
+      setF({ username: "", full_name: "", password: "", role: "worker" });
+      onClose();
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const ROLE: Record<string, string> = { worker: t("worker"), admin: t("admin") };
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent data-testid="user-create-dialog">
+        <DialogHeader><DialogTitle>{t("new_user")}</DialogTitle></DialogHeader>
+        <form onSubmit={(e) => { e.preventDefault(); m.mutate(f); }} className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("full_name")}</Label>
+            <Input data-testid="user-fullname-input" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("username")}</Label>
+            <Input dir="ltr" data-testid="user-username-input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("password")}</Label>
+            <Input type="text" dir="ltr" data-testid="user-password-input" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("role")}</Label>
+            <Select value={f.role} onValueChange={(v: string) => setF({ ...f, role: v as Role })}>
+              <SelectTrigger className="w-full" data-testid="user-role-select">
+                <SelectValue>{(v) => ROLE[v as string]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="worker">{t("worker")}</SelectItem>
+                <SelectItem value="admin">{t("admin")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t("cancel")}</Button>
+            <Button type="submit" data-testid="user-create-submit" disabled={m.isPending || f.username.length < 2 || f.password.length < 4 || !f.full_name} className="bg-lime-700 hover:bg-lime-800">
+              {t("create")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PasswordDialog({ user, onClose }: { user: User | null; onClose: () => void }) {
+  const { t, errMsg } = useI18n();
+  const [pw, setPw] = useState("");
+  const m = useMutation({
+    mutationFn: (p: string) => apiPatch<User>(`/users/${user!.id}`, { password: p } satisfies UserUpdate),
+    onSuccess: () => {
+      toast.success(t("saved"));
+      setPw("");
+      onClose();
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent data-testid="password-dialog">
+        <DialogHeader><DialogTitle>{t("change_password")} — {user?.full_name}</DialogTitle></DialogHeader>
+        <form onSubmit={(e) => { e.preventDefault(); if (pw.length >= 4) m.mutate(pw); }} className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("new_password")}</Label>
+            <Input dir="ltr" data-testid="new-password-input" value={pw} onChange={(e) => setPw(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t("cancel")}</Button>
+            <Button type="submit" disabled={pw.length < 4 || m.isPending} data-testid="new-password-submit" className="bg-amber-600 hover:bg-amber-700">{t("save")}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UsersPanel() {
+  const { t, errMsg } = useI18n();
+  const me = useMe().data;
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [pwUser, setPwUser] = useState<User | null>(null);
+  const users = useQuery({ queryKey: ["users"], queryFn: () => apiGet<User[]>("/users") });
+  const rows = users.isError ? [] : (users.data ?? []);
+  const patch = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UserUpdate }) => apiPatch<User>(`/users/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    onError: (e) => toast.error(errMsg(e)),
+  });
+
+  return (
+    <div>
+      <div className="mb-4 flex justify-end">
+        <Button onClick={() => setCreating(true)} data-testid="admin-user-create-button" className="rounded-xl bg-lime-700 hover:bg-lime-800">
+          <UserPlus className="size-4" /> {t("new_user")}
+        </Button>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <Table data-testid="users-table">
+          <TableHeader className="bg-stone-50">
+            <TableRow>
+              <TableHead className="text-start">{t("full_name")}</TableHead>
+              <TableHead className="text-start">{t("username")}</TableHead>
+              <TableHead className="text-start">{t("role")}</TableHead>
+              <TableHead className="text-start">{t("status")}</TableHead>
+              <TableHead className="text-start">{t("date")}</TableHead>
+              <TableHead className="text-end">{t("actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((u) => {
+              const self = u.id === me?.id;
+              return (
+                <TableRow key={u.id} data-testid={`user-row-${u.username}`}>
+                  <TableCell className="font-medium">{u.full_name}</TableCell>
+                  <TableCell dir="ltr" className="text-start font-mono text-sm">{u.username}</TableCell>
+                  <TableCell>
+                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", u.role === "admin" ? "bg-violet-100 text-violet-800" : "bg-emerald-100 text-emerald-800")}>
+                      {u.role === "admin" ? t("admin") : t("worker")}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      disabled={self || patch.isPending}
+                      onClick={() => patch.mutate({ id: u.id, body: { active: !u.active } })}
+                      data-testid={`admin-user-toggle-status-${u.username}`}
+                      className="inline-flex items-center gap-2 disabled:opacity-50"
+                      title={u.active ? t("deactivate") : t("activate")}
+                    >
+                      <span className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200", u.active ? "bg-green-500" : "bg-stone-300")}>
+                        <span className={cn("inline-block size-5 rounded-full bg-white shadow transition-transform duration-200", u.active ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0.5 rtl:-translate-x-0.5")} />
+                      </span>
+                      <span className={cn("text-xs font-semibold", u.active ? "text-green-700" : "text-stone-500")} data-testid={`user-status-${u.username}`}>
+                        {u.active ? t("active") : t("inactive")}
+                      </span>
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(u.created_at)}</TableCell>
+                  <TableCell className="text-end">
+                    <Button size="sm" variant="outline" onClick={() => setPwUser(u)} data-testid={`admin-user-password-${u.username}`} className="rounded-lg">
+                      <KeyRound className="size-4" /> {t("change_password")}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <UserDialog open={creating} onClose={() => setCreating(false)} />
+      <PasswordDialog user={pwUser} onClose={() => setPwUser(null)} />
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  const { t } = useI18n();
+  const me = useMe();
+  if (me.data && me.data.role !== "admin") {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" data-testid="admin-only-notice">
+        <ShieldAlert /> {t("admin_only")}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <PageHeader title={t("settings")} accent="bg-violet-500" />
+      <Tabs defaultValue="users">
+        <TabsList className="mb-6">
+          <TabsTrigger value="users" data-testid="settings-tab-users"><Plus className="size-4" />{t("users")}</TabsTrigger>
+          <TabsTrigger value="tariff" data-testid="settings-tab-tariff"><Coins className="size-4" />{t("tariff")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users"><UsersPanel /></TabsContent>
+        <TabsContent value="tariff"><PriceForm /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}

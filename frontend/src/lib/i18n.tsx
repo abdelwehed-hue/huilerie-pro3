@@ -1,0 +1,284 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { ApiError } from "@/lib/api";
+
+const fr = {
+  app_name: "Huilerie Pro",
+  app_tagline: "Gestion de la maâsra",
+  dashboard: "Tableau de bord",
+  intake: "Nouvelle réception",
+  search: "Recherche par code",
+  loads: "Chargements",
+  lab: "Laboratoire",
+  settings: "Paramètres",
+  logout: "Déconnexion",
+  admin: "Administrateur",
+  worker: "Ouvrier",
+  login_title: "Connexion",
+  login_sub: "Accédez à votre espace de travail",
+  username: "Nom d'utilisateur",
+  password: "Mot de passe",
+  sign_in: "Se connecter",
+  quick_search: "Code (ex. 2503141035)",
+  go: "Chercher",
+  code: "Code",
+  client: "Client",
+  client_name: "Nom du client",
+  phone: "Téléphone",
+  olive_kg: "Olives (kg)",
+  oil_kg: "Huile (kg)",
+  yield: "Rendement",
+  status: "Statut",
+  pending: "En attente",
+  done: "Terminé",
+  amount: "Montant",
+  price_per_kg: "Prix de trituration (DT / kg d'olives)",
+  date: "Date",
+  actions: "Actions",
+  by: "Par",
+  loads_today: "Chargements aujourd'hui",
+  olive_today: "Olives reçues aujourd'hui",
+  oil_today: "Huile produite aujourd'hui",
+  avg_yield: "Rendement moyen",
+  pending_loads: "En attente d'huile",
+  revenue_today: "Recettes aujourd'hui",
+  revenue_total: "Recettes totales",
+  totals: "Totaux",
+  last_14_days: "Production — 14 derniers jours",
+  recent_loads: "Derniers chargements",
+  see_all: "Tout voir",
+  register_arrival: "Enregistrer l'arrivée",
+  arrival_sub: "Le code est généré automatiquement : AAMMJJHHMM",
+  ticket: "Ticket de réception",
+  print: "Imprimer",
+  new_arrival: "Nouvelle arrivée",
+  code_hint: "Remettez ce code au client",
+  search_sub: "Saisissez le code pour retrouver le client, ses olives et son huile",
+  not_found: "Code introuvable",
+  enter_oil: "Saisir l'huile",
+  edit_oil: "Modifier l'huile",
+  save: "Enregistrer",
+  cancel: "Annuler",
+  delete: "Supprimer",
+  confirm_delete: "Supprimer ce chargement ?",
+  filter_placeholder: "Code, nom ou téléphone…",
+  all: "Tous",
+  no_data: "Aucune donnée",
+  lab_title: "Analyse de l'huile",
+  lab_sub: "Liez chaque analyse au code du client",
+  acidity: "Acidité (%)",
+  peroxide: "Indice de peroxyde (meq O₂/kg)",
+  k232: "K232",
+  k270: "K270",
+  oil_content: "Teneur en huile (%)",
+  classification: "Classification",
+  auto: "Automatique",
+  notes: "Remarques",
+  extra_vierge: "Extra vierge",
+  vierge: "Vierge",
+  lampante: "Lampante",
+  analyses: "Analyses",
+  no_lab: "Pas encore analysé",
+  users: "Utilisateurs",
+  tariff: "Tarif",
+  new_user: "Nouvel utilisateur",
+  full_name: "Nom complet",
+  role: "Rôle",
+  active: "Actif",
+  inactive: "Désactivé",
+  activate: "Activer",
+  deactivate: "Désactiver",
+  change_password: "Changer le mot de passe",
+  new_password: "Nouveau mot de passe",
+  create: "Créer",
+  saved: "Enregistré",
+  created: "Créé",
+  admin_only: "Réservé à l'administrateur",
+  revenue: "Recettes",
+  err_generic: "Une erreur est survenue",
+  err_bad_credentials: "Identifiants incorrects",
+  err_account_disabled: "Compte désactivé",
+  err_username_taken: "Nom d'utilisateur déjà utilisé",
+  err_cannot_demote_self: "Vous ne pouvez pas vous désactiver vous-même",
+  err_code_not_found: "Code introuvable",
+  loading: "Chargement…",
+  client_found: "Client trouvé",
+  olives: "Olives",
+  oil: "Huile",
+  kg: "kg",
+  dt: "DT",
+  welcome: "Bonjour",
+} as const;
+
+type Key = keyof typeof fr;
+
+const ar: Record<Key, string> = {
+  app_name: "معصرة برو",
+  app_tagline: "تسيير معصرة الزيتون",
+  dashboard: "لوحة القيادة",
+  intake: "استلام جديد",
+  search: "بحث بالكود",
+  loads: "الحمولات",
+  lab: "المخبر",
+  settings: "الإعدادات",
+  logout: "خروج",
+  admin: "مدير",
+  worker: "عامل",
+  login_title: "تسجيل الدخول",
+  login_sub: "ادخل إلى فضاء العمل الخاص بك",
+  username: "اسم المستخدم",
+  password: "كلمة السر",
+  sign_in: "دخول",
+  quick_search: "الكود (مثال 2503141035)",
+  go: "بحث",
+  code: "الكود",
+  client: "الحريف",
+  client_name: "اسم الحريف",
+  phone: "الهاتف",
+  olive_kg: "الزيتون (كغ)",
+  oil_kg: "الزيت (كغ)",
+  yield: "المردود",
+  status: "الحالة",
+  pending: "في الانتظار",
+  done: "منتهية",
+  amount: "المبلغ",
+  price_per_kg: "سعر الرحي (د.ت / كغ زيتون)",
+  date: "التاريخ",
+  actions: "إجراءات",
+  by: "بواسطة",
+  loads_today: "حمولات اليوم",
+  olive_today: "زيتون اليوم",
+  oil_today: "زيت اليوم",
+  avg_yield: "معدل المردود",
+  pending_loads: "في انتظار الزيت",
+  revenue_today: "مداخيل اليوم",
+  revenue_total: "جملة المداخيل",
+  totals: "المجموع",
+  last_14_days: "الإنتاج — آخر 14 يوما",
+  recent_loads: "آخر الحمولات",
+  see_all: "عرض الكل",
+  register_arrival: "تسجيل الوصول",
+  arrival_sub: "يتم توليد الكود آليا: سنة شهر يوم ساعة دقيقة",
+  ticket: "وصل الاستلام",
+  print: "طباعة",
+  new_arrival: "وصول جديد",
+  code_hint: "سلّم هذا الكود للحريف",
+  search_sub: "أدخل الكود لعرض الحريف وكمية الزيتون والزيت",
+  not_found: "الكود غير موجود",
+  enter_oil: "إدخال الزيت",
+  edit_oil: "تعديل الزيت",
+  save: "حفظ",
+  cancel: "إلغاء",
+  delete: "حذف",
+  confirm_delete: "حذف هذه الحمولة؟",
+  filter_placeholder: "الكود، الاسم أو الهاتف…",
+  all: "الكل",
+  no_data: "لا توجد بيانات",
+  lab_title: "تحليل الزيت",
+  lab_sub: "اربط كل تحليل بكود الحريف",
+  acidity: "الحموضة (%)",
+  peroxide: "مؤشر البيروكسيد (meq O₂/kg)",
+  k232: "K232",
+  k270: "K270",
+  oil_content: "نسبة الزيت (%)",
+  classification: "التصنيف",
+  auto: "آلي",
+  notes: "ملاحظات",
+  extra_vierge: "بكر ممتاز",
+  vierge: "بكر",
+  lampante: "وقّاد",
+  analyses: "التحاليل",
+  no_lab: "لم يُحلّل بعد",
+  users: "المستخدمون",
+  tariff: "التعريفة",
+  new_user: "مستخدم جديد",
+  full_name: "الاسم الكامل",
+  role: "الدور",
+  active: "مفعّل",
+  inactive: "معطّل",
+  activate: "تفعيل",
+  deactivate: "تعطيل",
+  change_password: "تغيير كلمة السر",
+  new_password: "كلمة السر الجديدة",
+  create: "إنشاء",
+  saved: "تم الحفظ",
+  created: "تم الإنشاء",
+  admin_only: "مخصص للمدير فقط",
+  revenue: "المداخيل",
+  err_generic: "حدث خطأ",
+  err_bad_credentials: "بيانات الدخول غير صحيحة",
+  err_account_disabled: "الحساب معطّل",
+  err_username_taken: "اسم المستخدم مستعمل",
+  err_cannot_demote_self: "لا يمكنك تعطيل حسابك",
+  err_code_not_found: "الكود غير موجود",
+  loading: "جار التحميل…",
+  client_found: "تم العثور على الحريف",
+  olives: "زيتون",
+  oil: "زيت",
+  kg: "كغ",
+  dt: "د.ت",
+  welcome: "مرحبا",
+};
+
+export type Lang = "fr" | "ar";
+const DICTS: Record<Lang, Record<Key, string>> = { fr, ar };
+
+interface I18nCtx {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (k: Key) => string;
+  errMsg: (e: unknown) => string;
+}
+
+const Ctx = createContext<I18nCtx | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() =>
+    localStorage.getItem("lang") === "ar" ? "ar" : "fr",
+  );
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    localStorage.setItem("lang", lang);
+  }, [lang]);
+
+  const t = useCallback((k: Key) => DICTS[lang][k], [lang]);
+  const errMsg = useCallback(
+    (e: unknown) => {
+      if (e instanceof ApiError) {
+        const d = (e.body as { detail?: unknown } | null)?.detail;
+        if (typeof d === "string") {
+          const key = `err_${d}` as Key;
+          if (key in fr) return DICTS[lang][key];
+        }
+      }
+      return DICTS[lang].err_generic;
+    },
+    [lang],
+  );
+
+  const value = useMemo(() => ({ lang, setLang: setLangState, t, errMsg }), [lang, t, errMsg]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useI18n(): I18nCtx {
+  const c = useContext(Ctx);
+  if (!c) throw new Error("useI18n outside provider");
+  return c;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const fmtNum = (n: number | null | undefined, digits = 1) =>
+  n == null ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: digits });
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleString("fr-FR", {
+    timeZone: "Africa/Tunis",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
