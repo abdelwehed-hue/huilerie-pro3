@@ -215,6 +215,19 @@ const fr = {
   err_twilio_sender_required: "Numéro d'envoi ou Messaging Service requis",
   err_twilio_token_required: "Auth Token requis",
   err_twilio_unreachable: "Twilio injoignable, réessayez",
+  new_reception: "Nouvelle réception",
+  today_arrivals: "Arrivages du jour",
+  quick_search_title: "Recherche rapide par code",
+  quick_search_hint: "Saisissez le code date-heure (AAMMJJHHmm)",
+  search_btn: "Rechercher",
+  edit: "Modifier",
+  edit_client: "Modifier le client",
+  delete_client: "Supprimer le client",
+  confirm_delete_client: "Supprimer ce client et TOUS ses chargements, analyses et SMS ? Action irréversible.",
+  client_updated: "Client modifié",
+  client_deleted: "Client supprimé",
+  load_deleted: "Chargement supprimé",
+  err_client_not_found: "Client introuvable",
 } as const;
 
 type Key = keyof typeof fr;
@@ -433,6 +446,19 @@ const ar: Record<Key, string> = {
   err_twilio_sender_required: "رقم الإرسال أو Messaging Service مطلوب",
   err_twilio_token_required: "Auth Token مطلوب",
   err_twilio_unreachable: "تعذر الاتصال بـ Twilio، حاول مجدداً",
+  new_reception: "استقبال جديد",
+  today_arrivals: "وصولات اليوم",
+  quick_search_title: "بحث سريع بالكود",
+  quick_search_hint: "أدخل كود التاريخ والساعة (AAMMJJHHmm)",
+  search_btn: "بحث",
+  edit: "تعديل",
+  edit_client: "تعديل الحريف",
+  delete_client: "حذف الحريف",
+  confirm_delete_client: "حذف هذا الحريف وكل حمولاته وتحاليله ورسائله؟ لا يمكن التراجع.",
+  client_updated: "تم تعديل الحريف",
+  client_deleted: "تم حذف الحريف",
+  load_deleted: "تم حذف الحمولة",
+  err_client_not_found: "الحريف غير موجود",
 };
 
 export type Lang = "fr" | "ar";

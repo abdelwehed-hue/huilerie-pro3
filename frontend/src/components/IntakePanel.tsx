@@ -23,7 +23,7 @@ function BiLabel({ k, both, className }: { k: Parameters<BothFn>[0]; both: BothF
   );
 }
 
-export default function IntakePanel() {
+export default function IntakePanel({ stacked = false }: { stacked?: boolean }) {
   const { t, both, errMsg } = useI18n();
   const qc = useQueryClient();
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
@@ -79,7 +79,7 @@ export default function IntakePanel() {
   const valid = name.trim() && phone.trim().length >= 4 && kgVal > 0;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+    <div className={stacked ? "grid gap-6" : "grid gap-6 xl:grid-cols-[1fr_1fr]"}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

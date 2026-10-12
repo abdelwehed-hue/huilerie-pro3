@@ -234,6 +234,15 @@ class RevenueReport(BaseModel):
     total: ReportRow
 
 
+class ClientUpdate(BaseModel):
+    client_name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(min_length=4, max_length=30)
+
+
+class ClientDeleteResult(BaseModel):
+    deleted: int
+
+
 class ClientSummary(BaseModel):
     phone: str
     client_name: str

@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Ban, Droplet, PackageCheck } from "lucide-react";
+import { Ban, Droplet, PackageCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import type { Load } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -30,6 +30,15 @@ export default function Loads() {
     queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(q)}&status=${st}`),
   });
   const rows = loads.isError ? [] : (loads.data ?? []);
+
+  const del = useMutation({
+    mutationFn: (id: string) => apiDelete(`/loads/${id}`),
+    onSuccess: () => {
+      toast.success(t("load_deleted"));
+      for (const k of ["loads", "stats", "clients", "client"]) qc.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
 
   const deliver = useMutation({
     mutationFn: (id: string) => apiPost<Load>(`/loads/${id}/deliver`, {}),
@@ -109,8 +118,9 @@ export default function Loads() {
                 <TableCell><StatusPill status={l.status} /></TableCell>
                 {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
                 <TableCell className="text-end">
+                  <div className="flex items-center justify-end gap-1">
                   {l.status === "cancelled" ? (
-                    <div className="max-w-56 ms-auto text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
+                    <div className="max-w-56 text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
                   ) : l.status === "delivered" ? (
                     <div className="text-end text-xs text-emerald-700" data-testid={`load-delivered-info-${l.code}`}>@{l.delivered_by}{l.delivered_at && <div dir="ltr">{fmtDate(l.delivered_at)}</div>}</div>
                   ) : (
@@ -133,6 +143,19 @@ export default function Loads() {
                     )}
                   </div>
                   )}
+                  {isAdmin && (
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      title={t("delete")}
+                      data-testid={`load-delete-${l.code}`}
+                      onClick={() => window.confirm(t("confirm_delete")) && del.mutate(l.id)}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

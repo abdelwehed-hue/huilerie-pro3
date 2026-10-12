@@ -58,3 +58,10 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - GET /api/loads/cancellations?month=YYYY-MM (admin) -> page /cancellations (nav "Annulations").
 ## QR scan
 - Header "Scanner QR" button opens camera (html5-qrcode); ticket QR URL or raw code -> /search?code=.
+
+## Layout (latest)
+- Header: brand left, single language switch button, user name/role, logout icon. No header search.
+- Dashboard (matches user mockup): greeting + "Nouvelle réception" button (opens right Sheet with IntakePanel), dark quick-search card with QR scan icon, 4 KPI cards (revenue for admin / pending for worker), "Arrivages du jour" table.
+- Loads: admin delete icon restored (DELETE /api/loads/{id}) alongside cancel.
+## Client edit/delete (admin)
+- PUT /api/clients/{phone} {client_name, phone} renames across all loads. DELETE /api/clients/{phone} deletes all their loads + lab + sms_log.

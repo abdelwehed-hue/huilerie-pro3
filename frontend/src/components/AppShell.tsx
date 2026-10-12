@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { Navigate, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Navigate, NavLink, Outlet } from "react-router-dom";
 import {
   FlaskConical,
   Layers,
@@ -14,11 +13,8 @@ import {
   BarChart3,
   MessageSquareText,
   Ban,
-  ScanLine,
 } from "lucide-react";
-import QrScanDialog from "@/components/QrScanDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { endSession } from "@/lib/session";
@@ -39,27 +35,17 @@ const NAV = [
 
 export function LangToggle({ className }: { className?: string }) {
   const { lang, setLang } = useI18n();
+  const other = lang === "fr" ? "ar" : "fr";
   return (
-    <div
-      data-testid="lang-toggle-button"
-      className={cn("inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/80 p-1 shadow-sm backdrop-blur", className)}
+    <button
+      type="button"
+      data-testid={`lang-option-${other}`}
+      onClick={() => setLang(other)}
+      className={cn("inline-flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 font-semibold text-stone-800 shadow-sm transition-colors duration-200 hover:bg-stone-50", className)}
     >
-      <Languages className="mx-1 size-4 text-stone-500" />
-      {(["fr", "ar"] as const).map((l) => (
-        <button
-          key={l}
-          type="button"
-          data-testid={`lang-option-${l}`}
-          onClick={() => setLang(l)}
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-semibold transition-colors duration-200",
-            lang === l ? "bg-lime-700 text-white" : "text-stone-600 hover:bg-stone-100",
-          )}
-        >
-          {l === "fr" ? "FR" : "عربي"}
-        </button>
-      ))}
-    </div>
+      <Languages className="size-4 text-stone-600" />
+      <span lang={other}>{other === "ar" ? "العربية" : "Français"}</span>
+    </button>
   );
 }
 
@@ -68,9 +54,9 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   return (
     <nav
       data-testid="bottom-nav"
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#1E291E]/95 shadow-[0_-8px_30px_rgba(30,41,30,0.25)] backdrop-blur-md"
+      className="no-print fixed inset-x-0 bottom-0 z-40 bg-[#1E2B20] shadow-[0_-10px_30px_rgba(20,35,22,0.25)]"
     >
-      <div className="mx-auto flex max-w-6xl items-stretch gap-1 overflow-x-auto px-2 py-2 [scrollbar-width:none]">
+      <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-2.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
           <NavLink
             key={n.to}
@@ -79,18 +65,13 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             data-testid={n.id}
             className={({ isActive }) =>
               cn(
-                "group relative flex min-w-[4.5rem] flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors duration-200",
-                isActive ? "bg-[#2D3E2D] text-white" : "text-[#A1B0A1] hover:bg-white/5 hover:text-white",
+                "group flex min-w-[5.5rem] flex-1 flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-2.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
+                isActive ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/5 hover:text-white",
               )
             }
           >
-            {({ isActive }) => (
-              <>
-                {isActive && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-lime-400" />}
-                <n.icon className={cn("size-5 transition-transform duration-200 group-hover:-translate-y-0.5", n.color)} />
-                <span className="whitespace-nowrap">{t(n.key)}</span>
-              </>
-            )}
+            <n.icon className="size-6 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
+            <span className="whitespace-nowrap">{t(n.key)}</span>
           </NavLink>
         ))}
       </div>
@@ -102,12 +83,12 @@ function Brand() {
   const { t } = useI18n();
   return (
     <div className="flex items-center gap-3" data-testid="header-brand">
-      <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-lime-400 to-amber-400 shadow-md shadow-lime-900/20">
-        <Droplets className="size-5 text-[#1E291E]" />
+      <div className="grid size-12 place-items-center rounded-2xl bg-[#1F3A24] shadow-md shadow-green-950/20">
+        <Droplets className="size-6 text-amber-400" />
       </div>
-      <div className="hidden md:block">
-        <div className="font-heading text-lg font-bold leading-tight text-stone-900">{t("app_name")}</div>
-        <div className="text-xs text-stone-500">{t("app_tagline")}</div>
+      <div>
+        <div className="font-heading text-xl font-bold leading-tight text-stone-900">{t("app_name")}</div>
+        <div className="hidden text-sm text-stone-500 sm:block">{t("app_tagline")}</div>
       </div>
     </div>
   );
@@ -116,65 +97,32 @@ function Brand() {
 export default function AppShell() {
   const me = useMe();
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const [code, setCode] = useState("");
-  const [scanOpen, setScanOpen] = useState(false);
-  const closeScan = useCallback(() => setScanOpen(false), []);
 
   if (me.isError) return <Navigate to="/login" replace />;
   const user = me.data;
   const isAdmin = user?.role === "admin";
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.trim()) navigate(`/search?code=${encodeURIComponent(code.trim())}`);
-  };
-
   return (
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
-        <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-stone-200/70 bg-[#F9F8F3]/80 px-4 py-3 backdrop-blur-md md:px-8">
-          <Brand />
-          <form onSubmit={submitSearch} className="flex min-w-0 flex-1 items-center gap-2 md:max-w-md">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-              <Input
-                data-testid="quick-code-search-input"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder={t("quick_search")}
-                className="h-10 rounded-xl bg-white ps-9 font-mono"
-              />
+        <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
+          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 md:px-8">
+            <Brand />
+            <div className="ms-auto flex items-center gap-4">
+              <LangToggle />
+              {user && (
+                <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">
+                  <div className="font-semibold text-stone-900">{user.full_name}</div>
+                  <div className="text-sm text-stone-500">{isAdmin ? t("admin") : t("worker")} · <span dir="ltr">@{user.username}</span></div>
+                </div>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => endSession()} data-testid="logout-button" title={t("logout")} className="rounded-xl text-stone-600 hover:bg-stone-200/60">
+                <LogOut className="size-5 rtl:rotate-180" />
+              </Button>
             </div>
-            <Button type="submit" data-testid="quick-code-search-btn" className="h-10 rounded-xl bg-lime-700 hover:bg-lime-800">
-              {t("go")}
-            </Button>
-            <Button type="button" onClick={() => setScanOpen(true)} data-testid="qr-scan-button" className="h-10 rounded-xl bg-sky-600 hover:bg-sky-700" title={t("scan_qr")}>
-              <ScanLine className="size-4" />
-              <span className="hidden sm:inline">{t("scan_qr")}</span>
-            </Button>
-          </form>
-          <QrScanDialog open={scanOpen} onClose={closeScan} />
-          <div className="ms-auto flex items-center gap-3">
-            <LangToggle />
-            {user && (
-              <span
-                data-testid="user-role-badge"
-                className={cn(
-                  "hidden rounded-full px-3 py-1 text-xs font-semibold sm:inline-block",
-                  isAdmin ? "bg-violet-100 text-violet-800" : "bg-emerald-100 text-emerald-800",
-                )}
-              >
-                {user.full_name} · {isAdmin ? t("admin") : t("worker")}
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={() => endSession()} data-testid="logout-button" className="rounded-xl">
-              <LogOut className="size-4 rtl:rotate-180" />
-              <span className="hidden sm:inline">{t("logout")}</span>
-            </Button>
           </div>
         </header>
-        <main className="px-4 pb-28 pt-6 md:px-8 md:pt-8">
+        <main className="px-4 pb-32 pt-6 md:px-8 md:pt-8">
           <Outlet />
         </main>
       </div>

@@ -149,6 +149,15 @@ export interface ReminderRunResult {
   sent: number;
 }
 
+export interface ClientUpdate {
+  client_name: string;
+  phone: string;
+}
+
+export interface ClientDeleteResult {
+  deleted: number;
+}
+
 // Mirrors DEFAULT_SMS_ARRIVAL / DEFAULT_SMS_READY in backend/models/schemas.py
 export const DEFAULT_SMS_ARRIVAL =
   "{mill}: Bonjour {name}, votre code: {code} - Olives: {olive_kg} kg.\n{mill}: مرحبا {name}، الكود متاعك: {code} - الزيتون: {olive_kg} كغ.";

@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { BookUser, Droplet, Layers, Percent, Phone, Sprout, Wallet } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { BookUser, Droplet, Layers, Pencil, Percent, Phone, Sprout, Trash2, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiGet } from "@/lib/api";
-import type { ClientHistory, ClientSummary } from "@/lib/types";
+import { apiDelete, apiGet } from "@/lib/api";
+import type { ClientDeleteResult, ClientHistory, ClientSummary, ClientUpdate } from "@/lib/types";
+import { useMe } from "@/lib/useMe";
+import EditClientDialog from "@/components/EditClientDialog";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, GradeBadge, PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 export default function Clients() {
-  const { t } = useI18n();
+  const { t, errMsg } = useI18n();
   const [params, setParams] = useSearchParams();
   const phone = params.get("phone") ?? "";
   const [q, setQ] = useState("");
@@ -28,6 +32,18 @@ export default function Clients() {
   });
   const rows = list.isError ? [] : (list.data ?? []);
   const h = hist.isError ? null : hist.data;
+  const isAdmin = useMe().data?.role === "admin";
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState<ClientUpdate | null>(null);
+  const del = useMutation({
+    mutationFn: (p: string) => apiDelete<ClientDeleteResult>(`/clients/${encodeURIComponent(p)}`),
+    onSuccess: () => {
+      toast.success(t("client_deleted"));
+      setParams({});
+      for (const k of ["clients", "loads", "stats", "sms"]) qc.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
 
   return (
     <div>
@@ -76,10 +92,28 @@ export default function Clients() {
           )}
           {h && (
             <div className="code-reveal space-y-5" data-testid="client-history">
-              <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-                <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">{t("client")}</div>
-                <div className="font-heading text-3xl font-bold text-stone-900" data-testid="client-history-name">{h.client_name}</div>
-                <div className="mt-1 flex items-center gap-2 text-sm text-stone-600"><Phone className="size-4" /><span dir="ltr">{h.phone}</span></div>
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">{t("client")}</div>
+                  <div className="font-heading text-3xl font-bold text-stone-900" data-testid="client-history-name">{h.client_name}</div>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-stone-600"><Phone className="size-4" /><span dir="ltr">{h.phone}</span></div>
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setEditing({ client_name: h.client_name, phone: h.phone })} data-testid="client-edit-button" className="rounded-xl border-teal-300 text-teal-800 hover:bg-teal-50">
+                      <Pencil className="size-4" /> {t("edit")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.confirm(t("confirm_delete_client")) && del.mutate(h.phone)}
+                      disabled={del.isPending}
+                      data-testid="client-delete-button"
+                      className="rounded-xl border-red-200 text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="size-4" /> {t("delete")}
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <StatCard tone="rose" testId="client-history-visits" label={t("visits")} value={h.loads_count} icon={<Layers />} />
@@ -130,6 +164,14 @@ export default function Clients() {
           )}
         </div>
       </div>
+      <EditClientDialog
+        client={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(c) => {
+          setEditing(null);
+          setParams({ phone: c.phone });
+        }}
+      />
     </div>
   );
 }

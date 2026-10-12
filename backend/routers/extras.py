@@ -15,7 +15,7 @@ from lib.db import db
 from lib.reminders import run_reminders
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
 from models.schemas import (
-    ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut,
+    ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut, ClientUpdate, ClientDeleteResult,
     Certificate, ClientHistory, ClientSummary, LabAnalysis, MillInfo, ReportRow,
     RevenueReport, SmsLog, SmsStatus, WorkerReport, WorkerRow,
 )
@@ -372,6 +372,28 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
             last_visit=_aware(g["last_visit"]), amount=round(g["amount"], 3) if is_admin else None,
         ))
     return out
+
+
+@router.put("/clients/{phone}", response_model=ClientUpdate)
+async def update_client(phone: str, body: ClientUpdate, _: dict = Depends(require_admin)):
+    new_phone = re.sub(r"\s+", "", body.phone)
+    res = await db.loads.update_many(
+        {"phone": phone.strip()}, {"$set": {"client_name": body.client_name.strip(), "phone": new_phone}}
+    )
+    if not res.matched_count:
+        raise HTTPException(404, "client_not_found")
+    return ClientUpdate(client_name=body.client_name.strip(), phone=new_phone)
+
+
+@router.delete("/clients/{phone}", response_model=ClientDeleteResult)
+async def delete_client(phone: str, _: dict = Depends(require_admin)):
+    ids = [d["id"] async for d in db.loads.find({"phone": phone.strip()}, {"_id": 0, "id": 1})]
+    if not ids:
+        raise HTTPException(404, "client_not_found")
+    await db.lab.delete_many({"load_id": {"$in": ids}})
+    await db.sms_log.delete_many({"load_id": {"$in": ids}})
+    res = await db.loads.delete_many({"id": {"$in": ids}})
+    return ClientDeleteResult(deleted=res.deleted_count)
 
 
 @router.get("/clients/{phone}", response_model=ClientHistory)
