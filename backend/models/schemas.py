@@ -29,6 +29,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = Field(default=None, min_length=2, max_length=40)
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
     role: Optional[Role] = None
     active: Optional[bool] = None
@@ -70,10 +71,15 @@ class Load(BaseModel):
     olive_kg: float
     oil_kg: Optional[float] = None
     yield_pct: Optional[float] = None
-    status: Literal["pending", "done", "delivered", "cancelled"]
+    status: Literal["pending", "pressing", "done", "delivered", "cancelled"]
     day: str
+    season: str = ""
     created_at: datetime
     created_by: str
+    created_by_name: Optional[str] = None
+    bags: Optional[int] = None
+    variety: Optional[str] = None
+    notes: Optional[str] = None
     oil_ready_at: Optional[datetime] = None
     delivered_at: Optional[datetime] = None
     delivered_by: Optional[str] = None
@@ -90,7 +96,35 @@ class Load(BaseModel):
 class LoadCreate(BaseModel):
     client_name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=4, max_length=30)
-    olive_kg: float = Field(gt=0)
+    olive_kg: float = Field(gt=0, le=1_000_000)
+    bags: Optional[int] = Field(default=None, ge=0, le=100_000)
+    variety: Optional[str] = Field(default=None, max_length=60)
+    notes: Optional[str] = Field(default=None, max_length=500)
+    initial_status: Literal["pending", "pressing"] = "pending"
+
+
+class StatusUpdate(BaseModel):
+    status: Literal["pending", "pressing", "done", "delivered"]
+
+
+class SeasonInfo(BaseModel):
+    current: str
+    active: str
+    auto: bool
+    available: list[str]
+
+
+class SeasonSet(BaseModel):
+    season: str = Field(default="", pattern=r"^(\d{4}-\d{4})?$")  # "" = automatic (by date)
+
+
+class Varieties(BaseModel):
+    varieties: list[str] = Field(max_length=100)
+
+
+class ClientCreate(BaseModel):
+    client_name: str = Field(min_length=2, max_length=100)
+    phone: str = Field(min_length=4, max_length=30)
 
 
 class CancelBody(BaseModel):
@@ -110,6 +144,7 @@ class DailyPoint(BaseModel):
 
 class Stats(BaseModel):
     today: str
+    season: str = ""
     loads_today: int
     loads_total: int
     pending: int

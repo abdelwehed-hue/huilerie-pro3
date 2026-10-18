@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText } from "lucide-react";
+import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import TwilioSettings from "@/components/TwilioSettings";
+import CampaignSettings from "@/components/CampaignSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AppSettings, Role, User, UserCreate, UserUpdate } from "@/lib/types";
 import { fmtDate, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -161,12 +162,64 @@ function PasswordDialog({ user, onClose }: { user: User | null; onClose: () => v
   );
 }
 
+function EditUserDialog({ user, onClose }: { user: User | null; onClose: () => void }) {
+  const { t, errMsg } = useI18n();
+  const qc = useQueryClient();
+  const [f, setF] = useState<{ username: string; full_name: string; role: Role }>({ username: "", full_name: "", role: "worker" });
+  const [lastId, setLastId] = useState<string | null>(null);
+  if (user && user.id !== lastId) {
+    setLastId(user.id);
+    setF({ username: user.username, full_name: user.full_name, role: user.role });
+  }
+  const self = useMe().data?.id === user?.id;
+  const m = useMutation({
+    mutationFn: (b: UserUpdate) => apiPatch<User>(`/users/${user!.id}`, b),
+    onSuccess: () => {
+      toast.success(t("user_updated"));
+      qc.invalidateQueries({ queryKey: ["users"] });
+      onClose();
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const ROLE: Record<string, string> = { worker: t("worker"), admin: t("admin") };
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent data-testid="user-edit-dialog">
+        <DialogHeader><DialogTitle>{t("edit_user")}</DialogTitle></DialogHeader>
+        <form id="user-edit-form" onSubmit={(e) => { e.preventDefault(); m.mutate(self ? { username: f.username, full_name: f.full_name } : f); }} className="space-y-4">
+          <div className="space-y-2"><Label>{t("full_name")}</Label><Input data-testid="user-edit-fullname-input" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></div>
+          <div className="space-y-2"><Label>{t("username")}</Label><Input dir="ltr" data-testid="user-edit-username-input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></div>
+          <div className="space-y-2">
+            <Label>{t("role")}</Label>
+            <Select value={f.role} disabled={self} onValueChange={(v) => setF({ ...f, role: v as Role })}>
+              <SelectTrigger className="w-full" data-testid="user-edit-role-select"><SelectValue>{(v) => ROLE[v as string]}</SelectValue></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="worker">{t("worker")}</SelectItem>
+                <SelectItem value="admin">{t("admin")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button type="submit" form="user-edit-form" disabled={m.isPending || !f.full_name.trim() || f.username.trim().length < 3} data-testid="user-edit-save-button" className="rounded-xl bg-lime-700 hover:bg-lime-800">{t("save")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UsersPanel() {
   const { t, errMsg } = useI18n();
   const me = useMe().data;
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [pwUser, setPwUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const del = useMutation({
+    mutationFn: (id: string) => apiDelete<{ ok: boolean }>(`/users/${id}`),
+    onSuccess: () => { toast.success(t("user_deleted")); qc.invalidateQueries({ queryKey: ["users"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
   const users = useQuery({ queryKey: ["users"], queryFn: () => apiGet<User[]>("/users") });
   const rows = users.isError ? [] : (users.data ?? []);
   const patch = useMutation({
@@ -225,9 +278,24 @@ function UsersPanel() {
                   </TableCell>
                   <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(u.created_at)}</TableCell>
                   <TableCell className="text-end">
+                    <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditUser(u)} data-testid={`admin-user-edit-${u.username}`} className="rounded-lg">
+                      <Pencil className="size-4" /> {t("edit_user")}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setPwUser(u)} data-testid={`admin-user-password-${u.username}`} className="rounded-lg">
                       <KeyRound className="size-4" /> {t("change_password")}
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={self || del.isPending}
+                      onClick={() => { if (window.confirm(t("confirm_delete_user"))) del.mutate(u.id); }}
+                      data-testid={`admin-user-delete-${u.username}`}
+                      className="rounded-lg border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="size-4" /> {t("delete_user")}
+                    </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -237,6 +305,7 @@ function UsersPanel() {
       </div>
       <UserDialog open={creating} onClose={() => setCreating(false)} />
       <PasswordDialog user={pwUser} onClose={() => setPwUser(null)} />
+      <EditUserDialog user={editUser} onClose={() => setEditUser(null)} />
     </div>
   );
 }
@@ -259,10 +328,12 @@ export default function SettingsPage() {
           <TabsTrigger value="users" data-testid="settings-tab-users"><Plus className="size-4" />{t("users")}</TabsTrigger>
           <TabsTrigger value="tariff" data-testid="settings-tab-tariff"><Coins className="size-4" />{t("tariff")}</TabsTrigger>
           <TabsTrigger value="sms" data-testid="settings-tab-sms"><MessageSquareText className="size-4" />{t("sms_settings")}</TabsTrigger>
+          <TabsTrigger value="campaign" data-testid="settings-tab-campaign"><CalendarRange className="size-4" />{t("campaign")}</TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><SmsSettings /></div></TabsContent>
+        <TabsContent value="campaign"><CampaignSettings /></TabsContent>
       </Tabs>
     </div>
   );

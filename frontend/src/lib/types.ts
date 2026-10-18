@@ -19,6 +19,7 @@ export interface UserCreate {
 }
 
 export interface UserUpdate {
+  username?: string;
   full_name?: string;
   role?: Role;
   active?: boolean;
@@ -60,7 +61,12 @@ export interface Load {
   olive_kg: number;
   oil_kg: number | null;
   yield_pct: number | null;
-  status: "pending" | "done" | "delivered" | "cancelled";
+  status: LoadStatus;
+  season: string;
+  created_by_name: string | null;
+  bags: number | null;
+  variety: string | null;
+  notes: string | null;
   oil_ready_at: string | null;
   delivered_at: string | null;
   delivered_by: string | null;
@@ -76,10 +82,40 @@ export interface Load {
   lab: LabAnalysis | null;
 }
 
+export type LoadStatus = "pending" | "pressing" | "done" | "delivered" | "cancelled";
+
 export interface LoadCreate {
   client_name: string;
   phone: string;
   olive_kg: number;
+  bags?: number | null;
+  variety?: string | null;
+  notes?: string | null;
+  initial_status?: "pending" | "pressing";
+}
+
+export interface StatusUpdate {
+  status: "pending" | "pressing" | "done" | "delivered";
+}
+
+export interface SeasonInfo {
+  current: string;
+  active: string;
+  auto: boolean;
+  available: string[];
+}
+
+export interface SeasonSet {
+  season: string;
+}
+
+export interface Varieties {
+  varieties: string[];
+}
+
+export interface ClientCreate {
+  client_name: string;
+  phone: string;
 }
 
 export interface DailyPoint {
@@ -91,6 +127,7 @@ export interface DailyPoint {
 
 export interface Stats {
   today: string;
+  season: string;
   loads_today: number;
   loads_total: number;
   pending: number;

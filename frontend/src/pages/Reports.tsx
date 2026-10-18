@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiGet } from "@/lib/api";
-import type { RevenueReport, WorkerReport } from "@/lib/types";
-import { fmtNum, useI18n } from "@/lib/i18n";
+import type { Load, RevenueReport, User, WorkerReport } from "@/lib/types";
+import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
-import { PageHeader, StatCard } from "@/components/shared";
+import { PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 export default function Reports() {
@@ -20,8 +21,16 @@ export default function Reports() {
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const qs = `period=${period}${start ? `&start=${start}` : ""}${end ? `&end=${end}` : ""}`;
+  const [worker, setWorker] = useState("");
+  const qs = `period=${period}${start ? `&start=${start}` : ""}${end ? `&end=${end}` : ""}${worker ? `&worker=${encodeURIComponent(worker)}` : ""}`;
   const isAdmin = me.data?.role === "admin";
+  const users = useQuery({ queryKey: ["users"], queryFn: () => apiGet<User[]>("/users"), enabled: isAdmin });
+  const userList = users.isError ? [] : (users.data ?? []);
+  const wloads = useQuery({
+    queryKey: ["loads", "by-worker", worker],
+    queryFn: () => apiGet<Load[]>(`/loads?season=all&worker=${encodeURIComponent(worker)}`),
+    enabled: isAdmin && !!worker,
+  });
 
   const rep = useQuery({
     queryKey: ["report", qs],
@@ -35,6 +44,9 @@ export default function Reports() {
     enabled: isAdmin,
   });
   const w = wrep.isError ? undefined : wrep.data;
+  const rs = start || r?.start || "";
+  const re = end || r?.end || "";
+  const wl = (wloads.isError ? [] : (wloads.data ?? [])).filter((l) => (!rs || l.day >= rs) && (!re || l.day <= re));
 
   if (me.data && !isAdmin) {
     return (
@@ -62,6 +74,16 @@ export default function Reports() {
         }
       />
       <div className="mb-6 flex flex-wrap items-end gap-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-4">
+        <div className="space-y-2">
+          <Label>{t("worker_col")}</Label>
+          <Select value={worker || "__all"} onValueChange={(v) => setWorker(v === "__all" || !v ? "" : (v as string))}>
+            <SelectTrigger className="h-9 w-52 rounded-xl bg-white" data-testid="report-worker-select"><SelectValue>{(v) => (v === "__all" ? t("all_workers") : (userList.find((u) => u.username === v)?.full_name ?? String(v)))}</SelectValue></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">{t("all_workers")}</SelectItem>
+              {userList.map((u) => <SelectItem key={u.id} value={u.username} data-testid={`report-worker-option-${u.username}`}>{u.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-2">
           <Label>{t("period")}</Label>
           <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
@@ -180,6 +202,38 @@ export default function Reports() {
           </TableBody>
         </Table>
       </div>
+      {worker && (
+        <div className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" data-testid="report-worker-loads">
+          <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">
+            {t("loads")} — {userList.find((u) => u.username === worker)?.full_name ?? worker}
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-start">{t("code")}</TableHead>
+                <TableHead className="text-start">{t("client")}</TableHead>
+                <TableHead className="text-end">{t("olive_kg")}</TableHead>
+                <TableHead className="text-end">{t("oil_kg")}</TableHead>
+                <TableHead className="text-start">{t("date")}</TableHead>
+                <TableHead className="text-start">{t("status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {wl.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
+              {wl.map((l) => (
+                <TableRow key={l.id} data-testid={`report-worker-load-${l.code}`}>
+                  <TableCell dir="ltr" className="text-start font-mono text-sm">{l.code}</TableCell>
+                  <TableCell>{l.client_name}</TableCell>
+                  <TableCell className="text-end text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
+                  <TableCell className="text-end text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
+                  <TableCell dir="ltr" className="text-start text-xs text-stone-500">{fmtDate(l.created_at)}</TableCell>
+                  <TableCell><StatusPill status={l.status} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

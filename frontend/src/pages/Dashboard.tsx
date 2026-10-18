@@ -58,7 +58,8 @@ export default function Dashboard() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (code.trim()) navigate(`/search?code=${encodeURIComponent(code.trim())}`);
+            const v = code.trim();
+            if (v) navigate(/^\d{10}$/.test(v) ? `/search?code=${v}` : `/search?q=${encodeURIComponent(v)}`);
           }}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B2A1C] via-[#203320] to-[#3A3A1C] p-7 text-white shadow-xl shadow-green-950/25"
           data-testid="dashboard-quick-search"
@@ -67,17 +68,16 @@ export default function Dashboard() {
           <div className="text-sm font-semibold uppercase tracking-wide text-lime-300">{t("quick_search_title")}</div>
           <div className="mt-1 text-sm text-white/70">{t("quick_search_hint")}</div>
           <div className="mt-7 flex gap-3">
+            <button type="button" onClick={() => setScanOpen(true)} data-testid="qr-scan-button" title={t("scan_qr")} className="grid size-14 shrink-0 place-items-center rounded-xl bg-lime-400 text-[#1B2A1C] shadow-lg shadow-lime-500/30 transition-transform duration-150 hover:scale-105 active:scale-95">
+              <ScanLine className="size-8" />
+            </button>
             <div className="relative flex-1">
-              <button type="button" onClick={() => setScanOpen(true)} data-testid="qr-scan-button" title={t("scan_qr")} className="absolute start-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-white/60 transition-colors duration-150 hover:bg-white/10 hover:text-lime-300">
-                <ScanLine className="size-5" />
-              </button>
               <Input
                 data-testid="quick-code-search-input"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="2511151430"
-                dir="ltr"
-                className="h-14 rounded-xl border-white/15 bg-white/5 ps-12 font-mono text-lg tracking-wider text-white placeholder:text-white/35 focus-visible:ring-lime-400/40"
+                placeholder={t("search_any_hint")}
+                className="h-14 rounded-xl border-white/15 bg-white/5 text-lg text-white placeholder:text-sm placeholder:text-white/35 focus-visible:ring-lime-400/40"
               />
             </div>
             <Button type="submit" data-testid="quick-code-search-btn" className="h-14 rounded-xl bg-[#2F6B3A] px-6 text-base hover:bg-[#387E45]">

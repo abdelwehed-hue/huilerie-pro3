@@ -51,7 +51,7 @@ export default function Loads() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), done: t("done"), delivered: t("delivered"), cancelled: t("cancelled") };
+  const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), pressing: t("pressing"), done: t("done"), delivered: t("delivered"), cancelled: t("cancelled") };
   const active = rows.filter((r) => r.status !== "cancelled");
   const totalOlive = active.reduce((a, r) => a + r.olive_kg, 0);
   const totalOil = active.reduce((a, r) => a + (r.oil_kg ?? 0), 0);
@@ -69,6 +69,7 @@ export default function Loads() {
           <SelectContent>
             <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="pending">{t("pending")}</SelectItem>
+            <SelectItem value="pressing">{t("pressing")}</SelectItem>
             <SelectItem value="done">{t("done")}</SelectItem>
             <SelectItem value="delivered">{t("delivered")}</SelectItem>
             <SelectItem value="cancelled">{t("cancelled")}</SelectItem>

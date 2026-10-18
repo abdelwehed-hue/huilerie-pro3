@@ -15,7 +15,7 @@ load_dotenv(ROOT_DIR / '.env')
 from lib.db import client, ensure_indexes
 from lib.auth import seed_defaults
 from lib.reminders import reminder_loop
-from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router
+from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router, campaign as campaign_router
 
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ api_router.include_router(loads_router.router)
 api_router.include_router(lab_router.router)
 api_router.include_router(admin_router.router)
 api_router.include_router(extras_router.router)
+api_router.include_router(campaign_router.router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
+from lib.season import active_season, season_filter, season_of
 from lib.sms import send_load_sms
-from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats
+from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
 
 router = APIRouter(tags=["loads"])
 
@@ -37,8 +38,12 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
         olive_kg=doc["olive_kg"], oil_kg=oil,
         yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
         status="cancelled" if doc.get("cancelled") else (
-            "delivered" if doc.get("delivered") else ("done" if oil is not None else "pending")),
-        day=doc["day"], created_at=_aware(doc["created_at"]), created_by=doc["created_by"],
+            "delivered" if doc.get("delivered") else (
+                "done" if oil is not None else ("pressing" if doc.get("pressing") else "pending"))),
+        day=doc["day"], season=season_of(doc["day"]),
+        created_at=_aware(doc["created_at"]), created_by=doc["created_by"],
+        created_by_name=doc.get("created_by_name"), bags=doc.get("bags"),
+        variety=doc.get("variety"), notes=doc.get("notes"),
         oil_ready_at=_aware(doc["oil_ready_at"]) if doc.get("oil_ready_at") else None,
         delivered_at=_aware(doc["delivered_at"]) if doc.get("delivered_at") else None,
         delivered_by=doc.get("delivered_by"),
@@ -70,7 +75,10 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
         "id": str(uuid.uuid4()), "code": code, "client_name": body.client_name.strip(),
         "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
         "day": now_local.strftime("%Y-%m-%d"), "created_at": datetime.now(timezone.utc),
-        "created_by": user["username"], "price_per_kg": await _price(),
+        "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
+        "price_per_kg": await _price(),
+        "bags": body.bags, "variety": (body.variety or "").strip() or None,
+        "notes": (body.notes or "").strip() or None, "pressing": body.initial_status == "pressing",
     }
     await db.loads.insert_one(doc)
     doc.pop("_id", None)
@@ -79,14 +87,21 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
 
 
 @router.get("/loads", response_model=list[Load])
-async def list_loads(q: str = "", status: str = "", user: dict = Depends(current_user)):
-    flt: dict = {}
+async def list_loads(q: str = "", status: str = "", season: str = "", worker: str = "", user: dict = Depends(current_user)):
+    flt: dict = await season_filter(season)
+    if worker:
+        flt["created_by"] = worker
     if q.strip():
         rx = {"$regex": re.escape(q.strip()), "$options": "i"}
         flt["$or"] = [{"code": rx}, {"client_name": rx}, {"phone": rx}]
     if status == "pending":
         flt["oil_kg"] = None
         flt["cancelled"] = {"$ne": True}
+        flt["pressing"] = {"$ne": True}
+    elif status == "pressing":
+        flt["oil_kg"] = None
+        flt["cancelled"] = {"$ne": True}
+        flt["pressing"] = True
     elif status == "done":
         flt["oil_kg"] = {"$ne": None}
         flt["cancelled"] = {"$ne": True}
@@ -126,6 +141,30 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         raise HTTPException(404, "not_found")
     if before and before.get("oil_kg") is None:
         await send_load_sms(doc, "ready")
+    labs = await _labs_for([id])
+    return to_load(doc, user, labs.get(id))
+
+
+@router.patch("/loads/{id}/status", response_model=Load)
+async def set_status(id: str, body: StatusUpdate, user: dict = Depends(current_user)):
+    cur = await db.loads.find_one({"id": id}, {"_id": 0})
+    if not cur:
+        raise HTTPException(404, "not_found")
+    if cur.get("cancelled"):
+        raise HTTPException(409, "load_cancelled")
+    has_oil = cur.get("oil_kg") is not None
+    st = body.status
+    if st in ("pending", "pressing") and has_oil:
+        raise HTTPException(409, "oil_already_entered")
+    if st in ("done", "delivered") and not has_oil:
+        raise HTTPException(409, "oil_not_ready")
+    upd: dict = {"pressing": st == "pressing"}
+    if st == "delivered":
+        if not cur.get("delivered"):
+            upd.update(delivered=True, delivered_at=datetime.now(timezone.utc), delivered_by=user["username"])
+    else:
+        upd.update(delivered=False, delivered_at=None, delivered_by=None)
+    doc = await db.loads.find_one_and_update({"id": id}, {"$set": upd}, projection={"_id": 0}, return_document=True)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
@@ -193,7 +232,8 @@ async def delete_load(id: str, _: dict = Depends(require_admin)):
 async def stats(user: dict = Depends(current_user)):
     is_admin = user["role"] == "admin"
     today = today_iso()
-    docs = await db.loads.find({"cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
+    season = await active_season()
+    docs = await db.loads.find({"cancelled": {"$ne": True}, **(await season_filter(season))}, {"_id": 0}).to_list(100000)
     by_day: dict[str, list[float]] = {}
     o_t = oil_t = rev_t = 0.0
     olive_done = oil_done = 0.0
@@ -214,7 +254,7 @@ async def stats(user: dict = Depends(current_user)):
                                 revenue=round(a[2], 3) if is_admin else None))
     t = by_day.get(today, [0.0, 0.0, 0.0, 0.0])
     return Stats(
-        today=today, loads_today=int(t[3]), loads_total=len(docs),
+        today=today, season=season, loads_today=int(t[3]), loads_total=len(docs),
         pending=sum(1 for d in docs if d.get("oil_kg") is None),
         olive_kg_today=round(t[0], 2), oil_kg_today=round(t[1], 2),
         olive_kg_total=round(o_t, 2), oil_kg_total=round(oil_t, 2),

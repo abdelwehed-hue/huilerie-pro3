@@ -15,7 +15,7 @@ from lib.db import db
 from lib.reminders import run_reminders
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
 from models.schemas import (
-    ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut, ClientUpdate, ClientDeleteResult,
+    ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut, ClientUpdate, ClientDeleteResult, ClientCreate,
     Certificate, ClientHistory, ClientSummary, LabAnalysis, MillInfo, ReportRow,
     RevenueReport, SmsLog, SmsStatus, WorkerReport, WorkerRow,
 )
@@ -114,9 +114,12 @@ def _range(period: str, start: str | None, end: str | None) -> tuple[str, str]:
     return start, end
 
 
-async def build_report(period: str, start: str | None, end: str | None) -> RevenueReport:
+async def build_report(period: str, start: str | None, end: str | None, worker: str = "") -> RevenueReport:
     start, end = _range(period, start, end)
-    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
+    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}
+    if worker:
+        flt["created_by"] = worker
+    docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
     agg: dict[str, list[float]] = {}
     for d in docs:
         key = d["day"] if period == "daily" else d["day"][:7]
@@ -136,10 +139,13 @@ async def build_report(period: str, start: str | None, end: str | None) -> Reven
     return RevenueReport(period=period, start=start, end=end, rows=rows, total=total)
 
 
-async def build_worker_report(period: str, start: str | None, end: str | None) -> WorkerReport:
+async def build_worker_report(period: str, start: str | None, end: str | None, worker: str = "") -> WorkerReport:
     """Loads are credited to the worker who registered the arrival (created_by)."""
     start, end = _range(period, start, end)
-    docs = await db.loads.find({"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}, {"_id": 0}).to_list(100000)
+    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}
+    if worker:
+        flt["created_by"] = worker
+    docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
     names = {u["username"]: u["full_name"] async for u in db.users.find({}, {"_id": 0, "username": 1, "full_name": 1})}
     per: dict[tuple[str, str], list[float]] = {}
     tot: dict[str, list[float]] = {}
@@ -163,14 +169,14 @@ PeriodQ = Query("daily", pattern="^(daily|monthly)$")
 
 @router.get("/reports/revenue", response_model=RevenueReport)
 async def revenue_report(period: str = PeriodQ, start: str | None = None, end: str | None = None,
-                         _: dict = Depends(require_admin)):
-    return await build_report(period, start, end)
+                         worker: str = "", _: dict = Depends(require_admin)):
+    return await build_report(period, start, end, worker)
 
 
 @router.get("/reports/workers", response_model=WorkerReport)
 async def worker_report(period: str = PeriodQ, start: str | None = None, end: str | None = None,
-                        _: dict = Depends(require_admin)):
-    return await build_worker_report(period, start, end)
+                        worker: str = "", _: dict = Depends(require_admin)):
+    return await build_worker_report(period, start, end, worker)
 
 
 HEAD_FR = ["Période", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"]
@@ -188,12 +194,12 @@ def _titles(period: str) -> tuple[str, str]:
 
 @router.get("/reports/revenue.xlsx")
 async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str | None = None,
-                       _: dict = Depends(require_admin)):
+                       worker: str = "", _: dict = Depends(require_admin)):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
 
-    rep = await build_report(period, start, end)
-    wrep = await build_worker_report(period, start, end)
+    rep = await build_report(period, start, end, worker)
+    wrep = await build_worker_report(period, start, end, worker)
     mill = (await _mill()).mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
     wb = Workbook()
@@ -269,7 +275,7 @@ def ar(text: str) -> str:
 
 @router.get("/reports/revenue.pdf")
 async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str | None = None,
-                      _: dict = Depends(require_admin)):
+                      worker: str = "", _: dict = Depends(require_admin)):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.pagesizes import A4
@@ -277,8 +283,8 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     _register_fonts()
-    rep = await build_report(period, start, end)
-    wrep = await build_worker_report(period, start, end)
+    rep = await build_report(period, start, end, worker)
+    wrep = await build_worker_report(period, start, end, worker)
     m = await _mill()
     mill = m.mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
@@ -371,7 +377,27 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
             olive_kg=round(g["olive_kg"], 2), oil_kg=round(g["oil_kg"], 2),
             last_visit=_aware(g["last_visit"]), amount=round(g["amount"], 3) if is_admin else None,
         ))
+    # clients registered via "+ Nouveau client" who have no load yet
+    seen = {c.phone for c in out}
+    cflt: dict = {"phone": {"$nin": list(seen)}}
+    if q.strip():
+        cflt["$or"] = match["$or"]
+    async for c in db.clients.find(cflt, {"_id": 0}).sort("created_at", -1).limit(300):
+        out.append(ClientSummary(phone=c["phone"], client_name=c["client_name"], loads_count=0, olive_kg=0, oil_kg=0,
+                                 last_visit=_aware(c["created_at"]), amount=0 if is_admin else None))
     return out
+
+
+@router.post("/clients", response_model=ClientSummary)
+async def create_client(body: ClientCreate, user: dict = Depends(current_user)):
+    phone = re.sub(r"\s+", "", body.phone)
+    existing = await db.loads.find_one({"phone": phone}, {"_id": 0, "client_name": 1})
+    if existing or await db.clients.find_one({"phone": phone}):
+        raise HTTPException(409, "client_exists")
+    now = datetime.now(timezone.utc)
+    await db.clients.insert_one({"phone": phone, "client_name": body.client_name.strip(), "created_at": now})
+    return ClientSummary(phone=phone, client_name=body.client_name.strip(), loads_count=0, olive_kg=0, oil_kg=0,
+                         last_visit=now, amount=0 if user["role"] == "admin" else None)
 
 
 @router.put("/clients/{phone}", response_model=ClientUpdate)
@@ -380,7 +406,10 @@ async def update_client(phone: str, body: ClientUpdate, _: dict = Depends(requir
     res = await db.loads.update_many(
         {"phone": phone.strip()}, {"$set": {"client_name": body.client_name.strip(), "phone": new_phone}}
     )
-    if not res.matched_count:
+    cres = await db.clients.update_one(
+        {"phone": phone.strip()}, {"$set": {"client_name": body.client_name.strip(), "phone": new_phone}}
+    )
+    if not res.matched_count and not cres.matched_count:
         raise HTTPException(404, "client_not_found")
     return ClientUpdate(client_name=body.client_name.strip(), phone=new_phone)
 
@@ -388,7 +417,8 @@ async def update_client(phone: str, body: ClientUpdate, _: dict = Depends(requir
 @router.delete("/clients/{phone}", response_model=ClientDeleteResult)
 async def delete_client(phone: str, _: dict = Depends(require_admin)):
     ids = [d["id"] async for d in db.loads.find({"phone": phone.strip()}, {"_id": 0, "id": 1})]
-    if not ids:
+    cres = await db.clients.delete_one({"phone": phone.strip()})
+    if not ids and not cres.deleted_count:
         raise HTTPException(404, "client_not_found")
     await db.lab.delete_many({"load_id": {"$in": ids}})
     await db.sms_log.delete_many({"load_id": {"$in": ids}})
@@ -400,7 +430,11 @@ async def delete_client(phone: str, _: dict = Depends(require_admin)):
 async def client_history(phone: str, user: dict = Depends(current_user)):
     docs = await db.loads.find({"phone": phone.strip()}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     if not docs:
-        raise HTTPException(404, "client_not_found")
+        c = await db.clients.find_one({"phone": phone.strip()}, {"_id": 0})
+        if not c:
+            raise HTTPException(404, "client_not_found")
+        return ClientHistory(phone=c["phone"], client_name=c["client_name"], loads_count=0, olive_kg=0, oil_kg=0,
+                             avg_yield=None, amount=0 if user["role"] == "admin" else None, loads=[])
     labs = await _labs_for([d["id"] for d in docs])
     loads = [to_load(d, user, labs.get(d["id"])) for d in docs]
     valid = [d for d in docs if not d.get("cancelled")]

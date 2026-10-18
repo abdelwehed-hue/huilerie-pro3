@@ -38,6 +38,11 @@ async def create_user(body: UserCreate, _: dict = Depends(require_admin)):
 @router.patch("/users/{id}", response_model=User)
 async def update_user(id: str, body: UserUpdate, admin: dict = Depends(require_admin)):
     upd: dict = {}
+    if body.username is not None:
+        uname = body.username.strip().lower()
+        if await db.users.find_one({"username": uname, "id": {"$ne": id}}):
+            raise HTTPException(409, "username_taken")
+        upd["username"] = uname
     if body.full_name is not None:
         upd["full_name"] = body.full_name.strip()
     if body.role is not None:
@@ -55,6 +60,16 @@ async def update_user(id: str, body: UserUpdate, admin: dict = Depends(require_a
     if not doc:
         raise HTTPException(404, "not_found")
     return _user(doc)
+
+
+@router.delete("/users/{id}")
+async def delete_user(id: str, admin: dict = Depends(require_admin)):
+    if id == admin["id"]:
+        raise HTTPException(400, "cannot_delete_self")
+    res = await db.users.delete_one({"id": id})
+    if not res.deleted_count:
+        raise HTTPException(404, "not_found")
+    return {"ok": True}
 
 
 @router.get("/settings", response_model=AppSettings)

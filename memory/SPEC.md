@@ -65,3 +65,12 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - Loads: admin delete icon restored (DELETE /api/loads/{id}) alongside cancel.
 ## Client edit/delete (admin)
 - PUT /api/clients/{phone} {client_name, phone} renames across all loads. DELETE /api/clients/{phone} deletes all their loads + lab + sms_log.
+
+## Update — seasons, varieties, pressing status, reprint
+- Season (campaign) = 1 Oct → 30 Apr (May–Sep stays in the ending season). `lib/season.py`; GET /api/seasons, PUT /api/seasons/active {season:""=auto|"YYYY-YYYY"} (admin). Loads list (/loads?season=…, "all" bypasses) and /stats totals are scoped to the active season. Settings → "Campagne" tab.
+- Varieties: settings.app.varieties; GET/PUT /api/varieties. Load stores `variety`, `bags`, `notes`, `created_by_name`; all printed on the reception ticket (components/ReceptionTicket.tsx, also ReprintDialog).
+- Statuses: pending (Reçu) → pressing (En cours de pression) → done (Terminé, needs oil) → delivered (Livré). PATCH /api/loads/{id}/status. Intake can start as pending or pressing.
+- Search page: code / phone / name (`/loads?season=all&q=`), big QR scan button, status dropdown, "Réimprimer le reçu". Dashboard quick search routes 10-digit codes to ?code=, else ?q=.
+- New client: POST /api/clients (db.clients) → appears in intake client dropdown before any load.
+- Reports: `worker` filter on /reports/revenue|workers|pdf|xlsx and /loads?worker=; Reports page lists that worker's loads.
+- Users: PATCH /api/users/{id} supports username; DELETE /api/users/{id} (not self, loads kept).
