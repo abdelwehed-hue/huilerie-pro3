@@ -13,6 +13,7 @@ import {
   BarChart3,
   MessageSquareText,
   Ban,
+  Tv,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
@@ -30,6 +31,7 @@ const NAV = [
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
   { to: "/reports", key: "reports", icon: BarChart3, id: "nav-reports", color: "text-fuchsia-300", admin: true },
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
+  { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv", color: "text-orange-300", admin: true },
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
 

@@ -14,12 +14,15 @@ import Reports from "@/pages/Reports";
 import Certificate from "@/pages/Certificate";
 import SmsLog from "@/pages/SmsLog";
 import Cancellations from "@/pages/Cancellations";
+import TvScreen from "@/pages/TvScreen";
+import TvAdmin from "@/pages/TvAdmin";
 
 export default function App() {
   return (
     <I18nProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/tv" element={<TvScreen />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/intake" element={<Intake />} />
@@ -32,6 +35,7 @@ export default function App() {
           <Route path="/certificate/:id" element={<Certificate />} />
           <Route path="/sms" element={<SmsLog />} />
           <Route path="/cancellations" element={<Cancellations />} />
+          <Route path="/tv-admin" element={<TvAdmin />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

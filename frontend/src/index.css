@@ -150,3 +150,11 @@
 [dir="rtl"] body, [dir="rtl"] body * { letter-spacing: 0 !important; }
 [dir="rtl"] body { font-family: system-ui, "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif; }
 [dir="rtl"] .font-mono { font-family: var(--font-mono); }
+
+/* TV screen: new finished receipt pops in */
+@keyframes tv-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.tv-pop { animation: tv-pop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }

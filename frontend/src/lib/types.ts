@@ -279,3 +279,28 @@ export interface Certificate {
   load: Load | null;
   mill: MillInfo;
 }
+
+export interface TvItem {
+  id: string;
+  code: string | null;
+  finished_at: string;
+}
+
+export interface TvBoard {
+  today: string;
+  items: TvItem[];
+  server_time: string;
+}
+
+export interface TvAdminItem {
+  id: string;
+  code: string;
+  finished_at: string;
+  hidden: boolean;
+  removed: boolean;
+}
+
+export interface TvItemUpdate {
+  hidden?: boolean;
+  removed?: boolean;
+}

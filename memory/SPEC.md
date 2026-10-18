@@ -74,3 +74,8 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - New client: POST /api/clients (db.clients) → appears in intake client dropdown before any load.
 - Reports: `worker` filter on /reports/revenue|workers|pdf|xlsx and /loads?worker=; Reports page lists that worker's loads.
 - Users: PATCH /api/users/{id} supports username; DELETE /api/users/{id} (not self, loads kept).
+
+## Écran TV
+- Public page `/tv` (no login, fixed link) — shows only receipt codes + finish time of today's Terminé loads (oil entered today, not delivered/cancelled). No client names/phones.
+- Live: WebSocket `/api/tv/ws` (pushes on change, checked every 2 s); falls back to polling GET `/api/tv/board` every 3 s, retries WS every 15 s.
+- Admin-only control page `/tv-admin` (nav "Écran TV"): hide/show number, remove/restore from screen via PATCH `/api/tv/items/{id}`. State stored in separate `tv_state` collection — loads are never modified.

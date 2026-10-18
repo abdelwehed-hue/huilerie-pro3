@@ -303,3 +303,28 @@ class Certificate(BaseModel):
     analysis: LabAnalysis
     load: Optional[Load] = None
     mill: MillInfo
+
+
+class TvItem(BaseModel):
+    id: str
+    code: Optional[str] = None  # None when the number is hidden on the TV
+    finished_at: datetime
+
+
+class TvBoard(BaseModel):
+    today: str
+    items: list[TvItem]
+    server_time: datetime
+
+
+class TvAdminItem(BaseModel):
+    id: str
+    code: str
+    finished_at: datetime
+    hidden: bool
+    removed: bool
+
+
+class TvItemUpdate(BaseModel):
+    hidden: Optional[bool] = None
+    removed: Optional[bool] = None
