@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -21,12 +22,12 @@ function BiLabel({ k, both, className }: { k: Parameters<BothFn>[0]; both: BothF
 }
 
 /** Printable reception receipt — same layout for first print and reprints. */
-export default function ReceptionTicket({ load, children, testId = "intake-ticket" }: { load: Load; children?: React.ReactNode; testId?: string }) {
+export default function ReceptionTicket({ load, children, testId = "intake-ticket", printable = true }: { load: Load; children?: React.ReactNode; testId?: string; printable?: boolean }) {
   const { t, both } = useI18n();
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
   return (
-    <div className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm" data-testid={testId}>
+    <div className={(printable ? "print-area " : "no-print ") + "code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm"} data-testid={testId}>
       <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
         <div>
           <div className="font-heading text-lg font-bold text-stone-900" data-testid="ticket-mill">{m?.mill_name || t("app_name")}</div>
@@ -54,7 +55,7 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
         <div><dt><BiLabel k="phone" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" dir="ltr" data-testid="ticket-phone">{load.phone}</dd></div>
         <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
         {load.amount != null && (
-          <div><dt><BiLabel k="amount" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-violet-700" data-testid="ticket-amount">{fmtNum(load.amount, 3)} DT</dd></div>
+          <div className="no-print"><dt><BiLabel k="amount" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-violet-700" data-testid="ticket-amount">{fmtNum(load.amount, 3)} DT</dd></div>
         )}
         <div><dt><BiLabel k="variety" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-variety">{load.variety || "—"}</dd></div>
         {load.bags != null && (
@@ -77,7 +78,7 @@ export function ReprintDialog({ load, onClose }: { load: Load | null; onClose: (
       <DialogContent className="max-h-[92vh] overflow-auto sm:max-w-2xl" data-testid="reprint-dialog">
         <DialogHeader className="no-print"><DialogTitle>{t("reprint")}</DialogTitle></DialogHeader>
         {load && (
-          <ReceptionTicket load={load} testId="reprint-ticket">
+          <ReceptionTicket load={load} testId="reprint-ticket" printable={false}>
             <div className="no-print mt-6 flex justify-end">
               <Button onClick={() => window.print()} className="rounded-xl bg-amber-600 hover:bg-amber-700" data-testid="reprint-print-button">
                 <Printer className="size-4" /> {t("print")}
@@ -86,6 +87,7 @@ export function ReprintDialog({ load, onClose }: { load: Load | null; onClose: (
           </ReceptionTicket>
         )}
       </DialogContent>
+      {load && createPortal(<div className="print-sheet"><ReceptionTicket load={load} testId="reprint-print-sheet" /></div>, document.body)}
     </Dialog>
   );
 }

@@ -139,10 +139,12 @@
 }
 .code-reveal { animation: code-reveal 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+.print-sheet { display: none; }
 @media print {
+  .print-sheet { display: block; position: absolute; inset: 0; z-index: 9999; background: white; }
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
-  .print-area { position: absolute; inset: 0; border: none; box-shadow: none; }
+  .print-area { position: absolute; inset: 0; border: none; box-shadow: none; animation: none !important; opacity: 1 !important; transform: none !important; }
   .no-print { display: none !important; }
 }
 
