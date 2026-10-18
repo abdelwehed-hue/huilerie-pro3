@@ -71,6 +71,7 @@ export default function Certificate() {
               <div><dt className="text-stone-500">{t("oil_kg")}</dt><dd className="font-semibold">{fmtNum(c.load?.oil_kg)}</dd></div>
               <div><dt className="text-stone-500">{t("analysis_date")}</dt><dd className="font-semibold" dir="ltr">{fmtDate(a.created_at)}</dd></div>
               <div><dt className="text-stone-500">{t("analyst")}</dt><dd className="font-semibold">{a.created_by}</dd></div>
+              <div><dt className="text-stone-500">{t("oil_type")}</dt><dd className="font-semibold" data-testid="certificate-oil-type">{a.oil_type || "—"}</dd></div>
             </dl>
 
             <table className="mt-6 w-full text-sm">

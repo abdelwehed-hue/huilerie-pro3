@@ -37,6 +37,7 @@ export interface LabAnalysis {
   k270: number | null;
   oil_content_pct: number | null;
   classification: Grade;
+  oil_type: string | null;
   notes: string;
   created_at: string;
   created_by: string;
@@ -50,6 +51,7 @@ export interface LabCreate {
   k270: number | null;
   oil_content_pct: number | null;
   classification?: Grade | null;
+  oil_type?: string | null;
   notes: string;
 }
 

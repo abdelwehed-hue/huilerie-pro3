@@ -60,17 +60,22 @@ async def tv_board():
 
 @router.websocket("/tv/ws")
 async def tv_ws(ws: WebSocket):
-    """Pushes the board whenever it changes (checked every 2 s). Clients fall back to polling."""
+    """Pushes the board whenever it changes (checked every 2 s). Clients fall back to polling.
+
+    Each connection is closed after ~60 s (clients reconnect at once) so server reloads/shutdowns
+    never hang waiting on a long-lived socket.
+    """
     await ws.accept()
     last = None
     try:
-        while True:
+        for _ in range(30):
             b = await build_board()
             sig = json.dumps([[i.id, i.code] for i in b.items])
             if sig != last:
                 last = sig
                 await ws.send_text(b.model_dump_json())
             await asyncio.sleep(2)
+        await ws.close()
     except (WebSocketDisconnect, RuntimeError):
         return
 

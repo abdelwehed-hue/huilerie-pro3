@@ -29,13 +29,15 @@ function useLiveBoard() {
         retry = setTimeout(connect, 30000);
         return;
       }
-      ws.onopen = () => setWsOk(true);
+      let opened = false;
+      ws.onopen = () => { opened = true; setWsOk(true); };
       ws.onmessage = (e) => {
         try { setWsBoard(JSON.parse(e.data) as TvBoard); } catch { /* ignore malformed frame */ }
       };
       ws.onclose = () => {
         setWsOk(false);
-        if (!stopped) retry = setTimeout(connect, 15000);
+        // Server recycles healthy sockets every ~60 s: reconnect at once; otherwise poll and retry later.
+        if (!stopped) retry = setTimeout(connect, opened ? 1000 : 15000);
       };
       ws.onerror = () => ws?.close();
     };

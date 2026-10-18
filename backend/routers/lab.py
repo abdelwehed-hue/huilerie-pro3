@@ -43,6 +43,7 @@ async def create_lab(body: LabCreate, user: dict = Depends(current_user)):
         "id": str(uuid.uuid4()), "load_id": load["id"], "code": load["code"],
         "client_name": load["client_name"],
         "classification": body.classification or classify(body),
+        "oil_type": (body.oil_type or "").strip() or None,
         "created_at": datetime.now(timezone.utc), "created_by": user["username"],
     }
     await db.lab.insert_one(doc)

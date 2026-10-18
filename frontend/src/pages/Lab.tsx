@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiGet, apiPost } from "@/lib/api";
-import type { Grade, LabAnalysis, LabCreate, Load } from "@/lib/types";
+import type { Grade, LabAnalysis, LabCreate, Load, Varieties } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, GradeBadge, PageHeader } from "@/components/shared";
 
@@ -27,7 +27,7 @@ function classify(a: number, p: number | null, k232: number | null, k270: number
   return "lampante";
 }
 
-const EMPTY = { code: "", acidity: "", peroxide: "", k232: "", k270: "", oil: "", notes: "", grade: "auto" };
+const EMPTY = { code: "", acidity: "", peroxide: "", k232: "", k270: "", oil: "", notes: "", grade: "auto", oilType: "" };
 
 export default function Lab() {
   const { t, errMsg } = useI18n();
@@ -62,6 +62,9 @@ export default function Lab() {
   });
 
   const found = lookup.data && !lookup.isError ? lookup.data : null;
+  const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
+  const oilType = f.oilType || found?.variety || "";
+  const oilTypes = [...new Set([...(vq.isError ? [] : (vq.data?.varieties ?? [])), ...(oilType ? [oilType] : [])])];
   const GRADE_LABEL: Record<string, string> = { auto: t("auto"), extra_vierge: t("extra_vierge"), vierge: t("vierge"), lampante: t("lampante") };
 
   return (
@@ -75,7 +78,7 @@ export default function Lab() {
             if (acid == null || !code) return;
             m.mutate({
               code, acidity: acid, peroxide: num(f.peroxide), k232: num(f.k232), k270: num(f.k270),
-              oil_content_pct: num(f.oil), notes: f.notes,
+              oil_content_pct: num(f.oil), notes: f.notes, oil_type: oilType || null,
               classification: f.grade === "auto" ? null : (f.grade as Grade),
             });
           }}
@@ -136,6 +139,17 @@ export default function Lab() {
             </div>
           </div>
           <div className="space-y-2">
+            <Label>{t("oil_type")}</Label>
+            <Select value={oilType || null} onValueChange={(v) => set("oilType")((v as string) ?? "")}>
+              <SelectTrigger className="h-10 w-full rounded-xl bg-white" data-testid="lab-oil-type-select">
+                <SelectValue>{(v) => (v ? String(v) : <span className="text-stone-400">{t("choose_oil_type")}</span>)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {oilTypes.map((v) => <SelectItem key={v} value={v} data-testid={`lab-oil-type-option-${v}`}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="ln">{t("notes")}</Label>
             <Textarea id="ln" data-testid="lab-notes-input" value={f.notes} onChange={(e) => set("notes")(e.target.value)} className="rounded-xl bg-white" />
           </div>
@@ -161,13 +175,14 @@ export default function Lab() {
                 <TableHead className="text-end">K270</TableHead>
                 <TableHead className="text-end">%</TableHead>
                 <TableHead className="text-start">{t("classification")}</TableHead>
+                <TableHead className="text-start">{t("oil_type")}</TableHead>
                 <TableHead className="text-start">{t("date")}</TableHead>
                 <TableHead className="text-end">{t("certificate")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
               )}
               {rows.map((r) => (
                 <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
@@ -182,6 +197,7 @@ export default function Lab() {
                   <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
                   <TableCell><GradeBadge grade={r.classification} /></TableCell>
+                  <TableCell className="text-sm font-medium text-stone-800" data-testid={`lab-row-oil-type-${r.code}`}>{r.oil_type || "—"}</TableCell>
                   <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.created_at)}</TableCell>
                   <TableCell className="text-end">
                     <Link to={`/certificate/${r.id}`} data-testid={`lab-certificate-${r.code}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
