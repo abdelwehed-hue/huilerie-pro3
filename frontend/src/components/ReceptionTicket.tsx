@@ -54,9 +54,6 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
         <div><dt><BiLabel k="client" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-name">{load.client_name}</dd></div>
         <div><dt><BiLabel k="phone" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" dir="ltr" data-testid="ticket-phone">{load.phone}</dd></div>
         <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
-        {load.amount != null && (
-          <div className="no-print"><dt><BiLabel k="amount" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-violet-700" data-testid="ticket-amount">{fmtNum(load.amount, 3)} DT</dd></div>
-        )}
         <div><dt><BiLabel k="variety" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-variety">{load.variety || "—"}</dd></div>
         {load.bags != null && (
           <div><dt><BiLabel k="bags" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-bags">{load.bags}</dd></div>
