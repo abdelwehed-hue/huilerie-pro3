@@ -1,7 +1,11 @@
+import io
 import uuid
+import zipfile
 from datetime import datetime, timezone
 
+from bson import json_util
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 
 from lib.auth import hash_password, require_admin
 from lib.db import db
@@ -13,6 +17,25 @@ router = APIRouter(tags=["admin"])
 def _user(doc: dict) -> User:
     dt = doc["created_at"]
     return User(**{**doc, "created_at": dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)})
+
+
+@router.get("/admin/export.zip")
+async def export_database(_: dict = Depends(require_admin)):
+    """Admin-only full export: one Extended-JSON file per collection (mongoimport-compatible,
+    one document per line). Twilio secrets are redacted."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(await db.list_collection_names()):
+            lines = []
+            async for doc in db[name].find({}):
+                if name == "settings" and doc.get("key") == "twilio":
+                    doc = {k: ("***REDACTED***" if any(s in k.lower() for s in ("token", "secret", "password")) else v)
+                           for k, v in doc.items()}
+                lines.append(json_util.dumps(doc, json_options=json_util.RELAXED_JSON_OPTIONS))
+            zf.writestr(f"{name}.json", "\n".join(lines) + ("\n" if lines else ""))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="huilerie-export-{stamp}.zip"'})
 
 
 @router.get("/users", response_model=list[User])

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarRange, Plus, Sprout, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CalendarRange, Download, Plus, Sprout, X } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,6 +97,21 @@ export default function CampaignSettings() {
             <Plus className="size-4" /> {t("add_variety")}
           </Button>
         </form>
+      </div>
+
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-6 shadow-sm lg:col-span-2" data-testid="db-export-settings">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-sky-900">
+            <div className="grid size-10 place-items-center rounded-xl bg-sky-600 text-white"><Download className="size-5" /></div>
+            <div>
+              <h3 className="font-heading text-lg font-bold">{t("db_export")}</h3>
+              <p className="text-sm text-sky-900/70">{t("db_export_hint")}</p>
+            </div>
+          </div>
+          <a href="/api/admin/export.zip" download data-testid="db-export-button" className={cn(buttonVariants(), "h-11 rounded-xl bg-sky-600 hover:bg-sky-700")}>
+            <Download className="size-4" /> {t("db_export_btn")}
+          </a>
+        </div>
       </div>
     </div>
   );
