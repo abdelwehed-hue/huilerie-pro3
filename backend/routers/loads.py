@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
-from lib.season import active_season, season_filter, season_of
+from lib.season import active_season, next_load_code, season_filter, season_of
 from lib.sms import send_load_sms
 from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
 
@@ -40,7 +40,7 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
         status="cancelled" if doc.get("cancelled") else (
             "delivered" if doc.get("delivered") else (
                 "done" if oil is not None else ("pressing" if doc.get("pressing") else "pending"))),
-        day=doc["day"], season=season_of(doc["day"]),
+        day=doc["day"], season=doc.get("season_id") or season_of(doc["day"]),
         created_at=_aware(doc["created_at"]), created_by=doc["created_by"],
         created_by_name=doc.get("created_by_name"), bags=doc.get("bags"),
         variety=doc.get("variety"), notes=doc.get("notes"),
@@ -66,13 +66,10 @@ async def _labs_for(ids: list[str]) -> dict[str, dict]:
 @router.post("/loads", response_model=Load)
 async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
     now_local = datetime.now(_tz())
-    base = now_local.strftime("%y%m%d%H%M")
-    code, n = base, 1
-    while await db.loads.find_one({"code": code}):
-        n += 1
-        code = f"{base}-{n}"
+    season = await active_season()
+    code = await next_load_code(season)
     doc = {
-        "id": str(uuid.uuid4()), "code": code, "client_name": body.client_name.strip(),
+        "id": str(uuid.uuid4()), "code": code, "season_id": season, "client_name": body.client_name.strip(),
         "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
         "day": now_local.strftime("%Y-%m-%d"), "created_at": datetime.now(timezone.utc),
         "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
@@ -118,7 +115,7 @@ async def list_loads(q: str = "", status: str = "", season: str = "", worker: st
 
 @router.get("/loads/by-code/{code}", response_model=Load)
 async def get_by_code(code: str, user: dict = Depends(current_user)):
-    doc = await db.loads.find_one({"code": code.strip()}, {"_id": 0})
+    doc = await db.loads.find_one({"code": code.strip(), **(await season_filter())}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "code_not_found")
     labs = await _labs_for([doc["id"]])
@@ -197,7 +194,8 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
     start = datetime(y, mo, 1, tzinfo=tz)
     end = datetime(y + (mo == 12), 1 if mo == 12 else mo + 1, 1, tzinfo=tz)
     docs = await db.loads.find(
-        {"cancelled": True, "cancelled_at": {"$gte": start.astimezone(timezone.utc), "$lt": end.astimezone(timezone.utc)}},
+        {"cancelled": True, "cancelled_at": {"$gte": start.astimezone(timezone.utc), "$lt": end.astimezone(timezone.utc)},
+         **(await season_filter())},
         {"_id": 0},
     ).sort("cancelled_at", -1).to_list(1000)
     return [to_load(d, user) for d in docs]

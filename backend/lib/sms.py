@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import httpx
 
 from lib.db import db
+from lib.season import active_season
 from models.schemas import DEFAULT_SMS_ARRIVAL, DEFAULT_SMS_READY, DEFAULT_SMS_REMINDER
 
 log = logging.getLogger(__name__)
@@ -118,7 +119,7 @@ async def send_test(phone: str) -> dict:
     msg = f"{mill}: message de test / رسالة تجريبية"
     to = to_e164(phone)
     status, error = await _deliver(to, msg)
-    return await _log({"load_id": "", "code": "TEST", "client_name": "Test", "phone": phone, "to_number": to,
+    return await _log({"season_id": await active_season(), "load_id": "", "code": "TEST", "client_name": "Test", "phone": phone, "to_number": to,
                        "kind": "test", "message": msg, "status": status, "error": error})
 
 
@@ -144,6 +145,7 @@ async def send_load_sms(load: dict, kind: str) -> dict:
         status, error = "disabled", None
     return await _log({
         "load_id": load["id"], "code": load["code"], "client_name": load["client_name"],
+        "season_id": load.get("season_id") or await active_season(),
         "phone": load["phone"], "to_number": to, "kind": kind, "message": msg,
         "status": status, "error": error,
     })

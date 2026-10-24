@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
 import type { SeasonInfo, SeasonSet, Varieties } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
@@ -22,7 +22,18 @@ export default function CampaignSettings() {
     mutationFn: (b: SeasonSet) => apiPut<SeasonInfo>("/seasons/active", b),
     onSuccess: () => {
       toast.success(t("season_saved"));
-      ["seasons", "stats", "loads"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      qc.invalidateQueries();
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const [ns, setNs] = useState("");
+  const nsValid = /^\d{4}-\d{4}$/.test(ns) && Number(ns.slice(5)) === Number(ns.slice(0, 4)) + 1;
+  const createSeason = useMutation({
+    mutationFn: (b: SeasonSet) => apiPost<SeasonInfo>("/seasons", b),
+    onSuccess: () => {
+      toast.success(t("season_saved"));
+      setNs("");
+      qc.invalidateQueries({ queryKey: ["seasons"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -67,6 +78,18 @@ export default function CampaignSettings() {
             {(s?.available ?? []).map((x) => <SelectItem key={x} value={x} data-testid={`season-option-${x}`}>{x}</SelectItem>)}
           </SelectContent>
         </Select>
+        <p className="mt-3 text-xs text-amber-900/70" data-testid="season-code-hint">
+          {t("season_code_hint")} <span className="font-mono font-bold" dir="ltr">{s ? `${s.active.slice(2, 4)}${s.active.slice(7, 9)}100` : ""}</span>
+        </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (nsValid) createSeason.mutate({ season: ns }); }}
+          className="mt-4 flex gap-2"
+        >
+          <Input value={ns} onChange={(e) => setNs(e.target.value.trim())} placeholder="2025-2026" dir="ltr" maxLength={9} data-testid="season-new-input" className="h-11 rounded-xl bg-white font-mono" />
+          <Button type="submit" disabled={!nsValid || createSeason.isPending} data-testid="season-create-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
+            <Plus className="size-4" /> {t("season_create")}
+          </Button>
+        </form>
       </div>
 
       <div className="rounded-2xl border border-lime-200 bg-[#F2F8EE] p-6 shadow-sm" data-testid="varieties-settings">

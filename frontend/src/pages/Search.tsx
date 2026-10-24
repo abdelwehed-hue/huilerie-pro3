@@ -74,7 +74,7 @@ export default function SearchPage() {
   });
   const list = useQuery({
     queryKey: ["loads-search", term],
-    queryFn: () => apiGet<Load[]>(`/loads?season=all&q=${encodeURIComponent(term)}`),
+    queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(term)}`),
     enabled: !!term && !code,
   });
   const results = list.isError ? [] : (list.data ?? []);

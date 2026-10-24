@@ -15,6 +15,7 @@ load_dotenv(ROOT_DIR / '.env')
 from lib.db import client, ensure_indexes
 from lib.auth import seed_defaults
 from lib.reminders import reminder_loop
+from lib.season import migrate_season_ids
 from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router, campaign as campaign_router, tv as tv_router
 
 
@@ -22,6 +23,7 @@ from routers import auth as auth_router, loads as loads_router, lab as lab_route
 async def lifespan(app: FastAPI):
     app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_defaults()
+    await migrate_season_ids()
     app.state.reminder_task = asyncio.create_task(reminder_loop())
     yield
     app.state.reminder_task.cancel()

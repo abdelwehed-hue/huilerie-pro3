@@ -79,3 +79,10 @@ GET/POST /users, PATCH /users/{id} (admin; full_name/role/active/password), GET/
 - Public page `/tv` (no login, fixed link) — shows only receipt codes + finish time of today's Terminé loads (oil entered today, not delivered/cancelled). No client names/phones.
 - Live: WebSocket `/api/tv/ws` (pushes on change, checked every 2 s); falls back to polling GET `/api/tv/board` every 3 s, retries WS every 15 s.
 - Admin-only control page `/tv-admin` (nav "Écran TV"): hide/show number, remove/restore from screen via PATCH `/api/tv/items/{id}`. State stored in separate `tv_state` collection — loads are never modified.
+
+## Seasons v2 (season_id) + season codes
+- Every load stores permanent `season_id` = active season at creation (lib/season.py). Startup migration `migrate_season_ids` only ADDS missing season_id (loads by date; lab/sms_log from their load). Backups in /app/backups/.
+- New receipt codes: season prefix (2026-2027 → "2627") + per-season counter from 100 (db.counters `load_seq:<season>`): 2627100, 2627101… Old 10-digit codes unchanged.
+- Active season: Paramètres → Campagne (auto = by date, new season every 1 Oct; or pick/create e.g. 2025-2026 via POST /api/seasons) or header selector (admin; workers see badge). Changing it never moves data.
+- Filtered by active season: /loads (list, search q, by-code), /stats, /lab list + create lookup, cancellations, reports (revenue/workers/pdf/xlsx), sms log, client history & client totals. Carnet clients list is global (clients of other seasons appear with 0 totals).
+- Lab: POST /api/lab upserts — if the receipt already has an analysis, the latest one is updated (no duplicate). Lab page pre-fills the form with the existing analysis when the code is typed or clicked in the table.

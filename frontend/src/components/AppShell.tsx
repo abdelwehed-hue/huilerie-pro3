@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
+import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -111,6 +112,7 @@ export default function AppShell() {
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 md:px-8">
             <Brand />
             <div className="ms-auto flex items-center gap-4">
+              {user && <SeasonSwitcher isAdmin={isAdmin} />}
               <LangToggle />
               {user && (
                 <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">

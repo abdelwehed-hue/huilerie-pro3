@@ -39,11 +39,29 @@ export default function Lab() {
   const lookup = useQuery({
     queryKey: ["load-by-code", code],
     queryFn: () => apiGet<Load>(`/loads/by-code/${encodeURIComponent(code)}`),
-    enabled: code.length >= 10,
+    enabled: code.length >= 7,
     retry: false,
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
   const rows = list.isError ? [] : (list.data ?? []);
+  const found = lookup.data && !lookup.isError ? lookup.data : null;
+  // Existing analysis of this receipt (rows are newest first) -> prefill the form so it can be edited.
+  const existing = found ? rows.find((r) => r.load_id === found.id) : undefined;
+  const [prefillFor, setPrefillFor] = useState("");
+  const prefillKey = found && list.isSuccess ? `${found.id}:${existing?.id ?? "none"}` : "";
+  if (prefillKey !== prefillFor) {
+    setPrefillFor(prefillKey);
+    if (prefillKey) {
+      const s = (v: number | null | undefined) => (v == null ? "" : String(v));
+      const autoG = existing ? classify(existing.acidity, existing.peroxide ?? null, existing.k232 ?? null, existing.k270 ?? null) : null;
+      setF((cur) => ({
+        ...cur,
+        acidity: s(existing?.acidity), peroxide: s(existing?.peroxide), k232: s(existing?.k232), k270: s(existing?.k270),
+        oil: s(existing?.oil_content_pct), notes: existing?.notes ?? "", oilType: existing?.oil_type ?? "",
+        grade: existing && existing.classification !== autoG ? existing.classification : "auto",
+      }));
+    }
+  }
 
   const acid = num(f.acidity);
   const auto = acid != null ? classify(acid, num(f.peroxide), num(f.k232), num(f.k270)) : null;
@@ -61,7 +79,6 @@ export default function Lab() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  const found = lookup.data && !lookup.isError ? lookup.data : null;
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const oilType = f.oilType || found?.variety || "";
   const oilTypes = [...new Set([...(vq.isError ? [] : (vq.data?.varieties ?? [])), ...(oilType ? [oilType] : [])])];
@@ -94,6 +111,11 @@ export default function Lab() {
             {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
                 <CheckCircle2 className="size-4 text-green-600" /> {found.client_name} · {fmtNum(found.olive_kg)} {t("kg")}
+              </div>
+            )}
+            {found && existing && (
+              <div data-testid="lab-existing-analysis" className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-medium text-cyan-900">
+                {t("lab_existing")} · <span dir="ltr">{fmtDate(existing.created_at)}</span>
               </div>
             )}
             {lookup.isError && (
@@ -186,7 +208,11 @@ export default function Lab() {
               )}
               {rows.map((r) => (
                 <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
-                  <TableCell><CodeBadge code={r.code} /></TableCell>
+                  <TableCell>
+                    <button type="button" onClick={() => { setF({ ...EMPTY, code: r.code }); window.scrollTo({ top: 0, behavior: "smooth" }); }} data-testid={`lab-row-code-${r.code}`} title={t("lab_edit")} className="rounded-lg transition-transform duration-150 hover:scale-105">
+                      <CodeBadge code={r.code} />
+                    </button>
+                  </TableCell>
                   <TableCell className="font-medium">
                     {r.client_name}
                     {r.notes && <div className="max-w-48 truncate text-xs text-stone-500">{r.notes}</div>}

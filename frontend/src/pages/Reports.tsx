@@ -28,7 +28,7 @@ export default function Reports() {
   const userList = users.isError ? [] : (users.data ?? []);
   const wloads = useQuery({
     queryKey: ["loads", "by-worker", worker],
-    queryFn: () => apiGet<Load[]>(`/loads?season=all&worker=${encodeURIComponent(worker)}`),
+    queryFn: () => apiGet<Load[]>(`/loads?worker=${encodeURIComponent(worker)}`),
     enabled: isAdmin && !!worker,
   });
 

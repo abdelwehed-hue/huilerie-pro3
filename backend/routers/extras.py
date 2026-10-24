@@ -13,6 +13,7 @@ from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db
 from lib.reminders import run_reminders
+from lib.season import season_filter
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
 from models.schemas import (
     ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut, ClientUpdate, ClientDeleteResult, ClientCreate,
@@ -43,7 +44,7 @@ async def mill_info(_: dict = Depends(current_user)):
 # ---------- SMS ----------
 @router.get("/sms", response_model=list[SmsLog])
 async def list_sms(_: dict = Depends(current_user)):
-    docs = await db.sms_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    docs = await db.sms_log.find(await season_filter(), {"_id": 0}).sort("created_at", -1).to_list(300)
     return [SmsLog(**{**d, "created_at": _aware(d["created_at"])}) for d in docs]
 
 
@@ -116,7 +117,7 @@ def _range(period: str, start: str | None, end: str | None) -> tuple[str, str]:
 
 async def build_report(period: str, start: str | None, end: str | None, worker: str = "") -> RevenueReport:
     start, end = _range(period, start, end)
-    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}
+    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}, **(await season_filter())}
     if worker:
         flt["created_by"] = worker
     docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
@@ -142,7 +143,7 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
 async def build_worker_report(period: str, start: str | None, end: str | None, worker: str = "") -> WorkerReport:
     """Loads are credited to the worker who registered the arrival (created_by)."""
     start, end = _range(period, start, end)
-    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}}
+    flt: dict = {"day": {"$gte": start, "$lte": end}, "cancelled": {"$ne": True}, **(await season_filter())}
     if worker:
         flt["created_by"] = worker
     docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
@@ -353,7 +354,8 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
 # ---------- Clients ----------
 @router.get("/clients", response_model=list[ClientSummary])
 async def list_clients(q: str = "", user: dict = Depends(current_user)):
-    match: dict = {"cancelled": {"$ne": True}}
+    sflt = await season_filter()
+    match: dict = {"cancelled": {"$ne": True}, **sflt}
     if q.strip():
         rx = {"$regex": re.escape(q.strip()), "$options": "i"}
         match["$or"] = [{"phone": rx}, {"client_name": rx}]
@@ -377,6 +379,17 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
             olive_kg=round(g["olive_kg"], 2), oil_kg=round(g["oil_kg"], 2),
             last_visit=_aware(g["last_visit"]), amount=round(g["amount"], 3) if is_admin else None,
         ))
+    # carnet is global: clients known from other seasons appear with this season's totals = 0
+    seen = {c.phone for c in out}
+    omatch = {k: v for k, v in match.items() if k != "season_id"}
+    omatch["phone"] = {"$nin": list(seen)}
+    async for g in db.loads.aggregate([
+        {"$match": omatch}, {"$sort": {"created_at": -1}},
+        {"$group": {"_id": "$phone", "client_name": {"$first": "$client_name"}, "last_visit": {"$first": "$created_at"}}},
+        {"$sort": {"last_visit": -1}}, {"$limit": 300},
+    ]):
+        out.append(ClientSummary(phone=g["_id"], client_name=g["client_name"], loads_count=0, olive_kg=0, oil_kg=0,
+                                 last_visit=_aware(g["last_visit"]), amount=0 if is_admin else None))
     # clients registered via "+ Nouveau client" who have no load yet
     seen = {c.phone for c in out}
     cflt: dict = {"phone": {"$nin": list(seen)}}
@@ -428,9 +441,11 @@ async def delete_client(phone: str, _: dict = Depends(require_admin)):
 
 @router.get("/clients/{phone}", response_model=ClientHistory)
 async def client_history(phone: str, user: dict = Depends(current_user)):
-    docs = await db.loads.find({"phone": phone.strip()}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    docs = await db.loads.find({"phone": phone.strip(), **(await season_filter())}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     if not docs:
-        c = await db.clients.find_one({"phone": phone.strip()}, {"_id": 0})
+        # client known from another season (carnet is global) -> empty history for this season
+        c = await db.clients.find_one({"phone": phone.strip()}, {"_id": 0}) or await db.loads.find_one(
+            {"phone": phone.strip()}, {"_id": 0, "phone": 1, "client_name": 1}, sort=[("created_at", -1)])
         if not c:
             raise HTTPException(404, "client_not_found")
         return ClientHistory(phone=c["phone"], client_name=c["client_name"], loads_count=0, olive_kg=0, oil_kg=0,
