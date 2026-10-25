@@ -20,12 +20,26 @@ type JsonBody = unknown;
 
 async function request<T>(method: string, path: string, body?: JsonBody): Promise<T> {
   // Auth uses an httpOnly cookie issued by the Render backend.
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    credentials: "include",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      credentials: "include",
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("The server did not respond within 15 seconds. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // FastAPI reports request-validation failures as 422 with a {detail: [...]} body.
   if (!res.ok) {
