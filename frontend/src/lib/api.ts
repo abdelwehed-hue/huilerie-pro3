@@ -37,18 +37,26 @@ async function request<T>(method: string, path: string, body?: JsonBody): Promis
       throw new Error("The server did not respond within 15 seconds. Check your connection and try again.");
     }
     throw error;
+  }
+
+  try {
+    // Keep the timeout active while reading the response body too. Some browsers
+    // can receive headers but stall while consuming the body.
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => null);
+      throw new ApiError(res.status, errBody);
+    }
+
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("The server response timed out after 15 seconds. Refresh the page and try again.");
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }
-
-  // FastAPI reports request-validation failures as 422 with a {detail: [...]} body.
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => null);
-    throw new ApiError(res.status, errBody);
-  }
-
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }
 
 // The response type is yours to declare: nothing infers across the Python boundary, so a
