@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Droplets, LogIn } from "lucide-react";
@@ -31,6 +31,17 @@ export default function Login() {
     },
     onError: (e) => setError(errMsg(e)),
   });
+
+  // Safety net for Safari: never leave the sign-in button spinning indefinitely,
+  // even if a browser/network request fails to settle.
+  useEffect(() => {
+    if (!m.isPending) return;
+    const timer = window.setTimeout(() => {
+      setError("La connexion prend trop de temps. Vérifiez la connexion au serveur puis réessayez.");
+      m.reset();
+    }, 20000);
+    return () => window.clearTimeout(timer);
+  }, [m.isPending, m.reset]);
 
   if (me.data) return <Navigate to="/" replace />;
 
