@@ -16,15 +16,26 @@ async def login(body: LoginIn, response: Response):
     if not user.get("active"):
         raise HTTPException(403, "account_disabled")
     response.set_cookie(
-        COOKIE, make_token(user["id"]), httponly=True, samesite="lax",
-        max_age=TTL_DAYS * 86400, path="/",
+        COOKIE,
+        make_token(user["id"]),
+        httponly=True,
+        samesite="none",
+        secure=True,
+        max_age=TTL_DAYS * 86400,
+        path="/",
     )
     return _user(user)
 
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(COOKIE, path="/")
+    response.delete_cookie(
+        COOKIE,
+        path="/",
+        httponly=True,
+        samesite="none",
+        secure=True,
+    )
     return {"ok": True}
 
 
