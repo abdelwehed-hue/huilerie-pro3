@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Droplets, LogIn } from "lucide-react";
@@ -22,26 +22,20 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const loginTimer = useRef<number | null>(null);
 
   const m = useMutation({
     mutationFn: () => apiPost<User>("/auth/login", { username, password }),
     onSuccess: () => {
+      if (loginTimer.current !== null) window.clearTimeout(loginTimer.current);
       beginSession();
       navigate("/", { replace: true });
     },
-    onError: (e) => setError(errMsg(e)),
+    onError: (e) => {
+      if (loginTimer.current !== null) window.clearTimeout(loginTimer.current);
+      setError(errMsg(e));
+    },
   });
-
-  // Safety net for Safari: never leave the sign-in button spinning indefinitely,
-  // even if a browser/network request fails to settle.
-  useEffect(() => {
-    if (!m.isPending) return;
-    const timer = window.setTimeout(() => {
-      setError("La connexion prend trop de temps. Vérifiez la connexion au serveur puis réessayez.");
-      m.reset();
-    }, 20000);
-    return () => window.clearTimeout(timer);
-  }, [m.isPending, m.reset]);
 
   if (me.data) return <Navigate to="/" replace />;
 
@@ -70,6 +64,11 @@ export default function Login() {
             onSubmit={(e) => {
               e.preventDefault();
               setError("");
+              if (loginTimer.current !== null) window.clearTimeout(loginTimer.current);
+              loginTimer.current = window.setTimeout(() => {
+                setError("Délai dépassé : Safari ne reçoit pas de réponse du serveur. Vérifiez le service API Render.");
+                m.reset();
+              }, 20000);
               m.mutate();
             }}
             className="w-full max-w-sm space-y-6"
