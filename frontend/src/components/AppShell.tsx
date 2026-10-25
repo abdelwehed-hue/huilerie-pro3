@@ -117,7 +117,17 @@ export default function AppShell() {
   const me = useMe();
   const { t } = useI18n();
 
-  if (me.isError) return <Navigate to="/login" replace />;
+  if (me.isPending) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#F9F8F3]" role="status" aria-label="Vérification de la session">
+        <div className="text-center text-stone-600">
+          <Droplets className="mx-auto mb-3 size-8 text-lime-700" />
+          <p>Vérification de la session…</p>
+        </div>
+      </div>
+    );
+  }
+  if (me.isError || !me.data) return <Navigate to="/login" replace />;
   const user = me.data;
   const isAdmin = user?.role === "admin";
 
