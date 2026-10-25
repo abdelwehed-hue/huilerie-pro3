@@ -147,6 +147,7 @@ export interface MillInfo {
   mill_name: string;
   mill_address: string;
   mill_phone: string;
+  mill_logo: string;
 }
 
 export interface AppSettings extends MillInfo {

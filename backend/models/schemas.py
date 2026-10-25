@@ -164,6 +164,7 @@ class MillInfo(BaseModel):
     mill_name: str = ""
     mill_address: str = ""
     mill_phone: str = ""
+    mill_logo: str = Field(default="", max_length=700_000)  # data URL (image resized client-side)
 
 
 DEFAULT_SMS_ARRIVAL = (

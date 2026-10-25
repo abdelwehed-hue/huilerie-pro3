@@ -15,12 +15,22 @@ import {
   Ban,
   Tv,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { apiGet } from "@/lib/api";
+import type { MillInfo } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
+
+// Menu-only labels (page titles keep their own wording).
+const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
+  dashboard: "menu_dashboard",
+  search: "menu_search",
+  sms: "menu_sms",
+};
 
 const NAV = [
   { to: "/", key: "dashboard", icon: LayoutDashboard, id: "nav-dashboard", color: "text-lime-300" },
@@ -74,7 +84,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             }
           >
             <n.icon className="size-6 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
-            <span className="whitespace-nowrap">{t(n.key)}</span>
+            <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
           </NavLink>
         ))}
       </div>
@@ -84,13 +94,19 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
 
 function Brand() {
   const { t } = useI18n();
+  const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
+  const m = mill.isError ? undefined : mill.data;
   return (
     <div className="flex items-center gap-3" data-testid="header-brand">
-      <div className="grid size-12 place-items-center rounded-2xl bg-[#1F3A24] shadow-md shadow-green-950/20">
-        <Droplets className="size-6 text-amber-400" />
-      </div>
+      {m?.mill_logo ? (
+        <img src={m.mill_logo} alt="" data-testid="header-brand-logo" className="size-12 rounded-2xl bg-white object-contain shadow-md shadow-green-950/10" />
+      ) : (
+        <div className="grid size-12 place-items-center rounded-2xl bg-[#1F3A24] shadow-md shadow-green-950/20">
+          <Droplets className="size-6 text-amber-400" />
+        </div>
+      )}
       <div>
-        <div className="font-heading text-xl font-bold leading-tight text-stone-900">{t("app_name")}</div>
+        <div className="font-heading text-xl font-bold leading-tight text-stone-900" data-testid="header-brand-name">{m?.mill_name || t("app_name")}</div>
         <div className="hidden text-sm text-stone-500 sm:block">{t("app_tagline")}</div>
       </div>
     </div>

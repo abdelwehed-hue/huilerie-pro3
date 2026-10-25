@@ -33,7 +33,7 @@ def _aware(dt: datetime) -> datetime:
 async def _mill() -> MillInfo:
     s = await db.settings.find_one({"key": "app"}) or {}
     return MillInfo(mill_name=s.get("mill_name", ""), mill_address=s.get("mill_address", ""),
-                    mill_phone=s.get("mill_phone", ""))
+                    mill_phone=s.get("mill_phone", ""), mill_logo=s.get("mill_logo", ""))
 
 
 @router.get("/mill", response_model=MillInfo)

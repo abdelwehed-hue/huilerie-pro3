@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange } from "lucide-react";
+import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange, Upload, ImageIcon } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import CampaignSettings from "@/components/CampaignSettings";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,10 +30,29 @@ function PriceForm() {
     onSuccess: () => {
       toast.success(t("saved"));
       setEdit({});
+      setLogo(null);
       qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["mill"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
+  const [logo, setLogo] = useState<string | null>(null); // null = unchanged
+  const curLogo = logo ?? s.data?.mill_logo ?? "";
+  const pickLogo = (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 256 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      setLogo(c.toDataURL("image/png"));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
   const v = parseFloat(val("price_per_kg").replace(",", "."));
   const field = (k: keyof AppSettings, label: string, testId: string, extra = "") => (
     <div className="space-y-2">
@@ -46,7 +65,7 @@ function PriceForm() {
       onSubmit={(e) => {
         e.preventDefault();
         if (!isNaN(v) && v >= 0)
-          m.mutate({ ...s.data!, price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone") });
+          m.mutate({ ...s.data!, price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone"), mill_logo: curLogo });
       }}
       className="grid max-w-4xl gap-6 md:grid-cols-2"
     >
@@ -65,6 +84,23 @@ function PriceForm() {
         {field("mill_name", t("mill_name"), "admin-mill-name-input")}
         {field("mill_address", t("mill_address"), "admin-mill-address-input")}
         {field("mill_phone", t("mill_phone"), "admin-mill-phone-input")}
+        <div className="space-y-2">
+          <Label>{t("mill_logo")}</Label>
+          <div className="flex items-center gap-4">
+            <div className="grid size-16 place-items-center overflow-hidden rounded-2xl border border-teal-200 bg-white" data-testid="admin-mill-logo-preview">
+              {curLogo ? <img src={curLogo} alt="" className="size-full object-contain" /> : <ImageIcon className="size-6 text-stone-300" />}
+            </div>
+            <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer rounded-xl")}>
+              <Upload className="size-4" /> {t("mill_logo_pick")}
+              <input type="file" accept="image/*" className="hidden" data-testid="admin-mill-logo-input" onChange={(e) => { pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+            {curLogo && (
+              <Button type="button" variant="ghost" onClick={() => setLogo("")} data-testid="admin-mill-logo-remove" className="rounded-xl text-red-600 hover:bg-red-50">
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
       <div>
         <Button type="submit" disabled={isNaN(v) || m.isPending} data-testid="admin-price-save-button" className="h-11 rounded-xl bg-violet-700 px-8 hover:bg-violet-800">
