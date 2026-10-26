@@ -42,6 +42,15 @@ export default function Reports() {
     varietiesByPeriod.set(key, values);
   });
   const allVarieties = [...new Set(reportLoadList.map((l) => l.variety?.trim()).filter((v): v is string => !!v))];
+  const workerVarieties = new Map<string, string[]>();
+  reportLoadList.forEach((l) => {
+    const variety = l.variety?.trim();
+    if (!variety || !l.created_by_name) return;
+    const key = `${l.day}|${l.created_by_name}`;
+    const values = workerVarieties.get(key) ?? [];
+    if (!values.includes(variety)) values.push(variety);
+    workerVarieties.set(key, values);
+  });
 
   const wloads = useQuery({
     queryKey: ["loads", "by-worker", worker],
@@ -199,6 +208,7 @@ export default function Reports() {
             <TableRow>
               <TableHead className="text-start">{t("period")}</TableHead>
               <TableHead className="text-start">{t("worker_col")}</TableHead>
+              <TableHead className="text-start">Variétés</TableHead>
               <TableHead className="text-end">{t("loads")}</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-end">{t("oil_kg")}</TableHead>
@@ -207,12 +217,13 @@ export default function Reports() {
           </TableHeader>
           <TableBody>
             {(w?.rows ?? []).length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
             )}
             {w?.rows.map((row) => (
               <TableRow key={`${row.day}-${row.username}`} data-testid={`worker-row-${row.day}-${row.username}`}>
                 <TableCell dir="ltr" className="text-start font-mono text-sm">{row.day}</TableCell>
                 <TableCell className="text-start">{row.full_name}</TableCell>
+                <TableCell className="text-start">{(workerVarieties.get(`${row.day}|${row.full_name}`) ?? []).join(", ") || "—"}</TableCell>
                 <TableCell className="text-end">{row.loads}</TableCell>
                 <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
                 <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
