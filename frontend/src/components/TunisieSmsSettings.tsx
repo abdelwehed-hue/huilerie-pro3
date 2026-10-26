@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, Save } from "lucide-react";
+import { KeyRound, Save, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
 
 type Config = { account_id: string; api_key: string; sender: string; api_url: string; has_api_key: boolean };
 type FormConfig = { account_id: string; api_key: string; sender: string; api_url: string };
@@ -14,12 +14,18 @@ export default function TunisieSmsSettings() {
   const qc = useQueryClient();
   const cfg = useQuery({ queryKey: ["tunisie-sms"], queryFn: () => apiGet<Config>("/sms/tunisie") });
   const [edit, setEdit] = useState<Partial<FormConfig>>({});
+  const [testPhone, setTestPhone] = useState("");
   const c = cfg.data;
   const val = (k: keyof FormConfig) => edit[k] ?? (k === "api_key" ? "" : (c?.[k] ?? ""));
   const save = useMutation({
     mutationFn: (body: FormConfig) => apiPut<Config>("/sms/tunisie", body),
     onSuccess: () => { toast.success("Paramètres TunisieSMS enregistrés"); setEdit({}); qc.invalidateQueries({ queryKey: ["tunisie-sms"] }); },
     onError: () => toast.error("Impossible d’enregistrer les paramètres TunisieSMS"),
+  });
+  const testSms = useMutation({
+    mutationFn: () => apiPost<{ message: string }>("/sms/tunisie/test", { phone: testPhone.trim() }),
+    onSuccess: () => toast.success("Demande de SMS de test envoyée à TunisieSMS"),
+    onError: () => toast.error("Échec de l’envoi du SMS de test. Vérifiez les paramètres et l’API TunisieSMS."),
   });
   const field = (key: keyof FormConfig, label: string, secret = false) => (
     <div className="space-y-2" key={key}>
@@ -42,6 +48,15 @@ export default function TunisieSmsSettings() {
       {field("api_url", "URL API (selon votre compte)")}
       <div className="sm:col-span-2"><Button type="submit" disabled={save.isPending} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Save className="size-4" /> Enregistrer TunisieSMS</Button></div>
     </form>
-    <p className="text-xs text-stone-600">Ces champs enregistrent les paramètres uniquement. TunisieSMS n’est pas activé pour l’envoi automatique tant que l’intégration API n’est pas configurée et testée.</p>
+    <div className="grid gap-3 border-t border-amber-200 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="space-y-2"><Label htmlFor="tunisie-test-phone">Numéro de test</Label><Input id="tunisie-test-phone" dir="ltr" type="tel" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="+216..." className="h-10 rounded-xl bg-white font-mono text-start" /></div>
+      <Button type="button" disabled={!testPhone.trim() || testSms.isPending || save.isPending} onClick={() => {
+        if (edit.account_id !== undefined || edit.api_key !== undefined || edit.sender !== undefined || edit.api_url !== undefined) {
+          toast.error("Enregistrez d’abord les paramètres TunisieSMS."); return;
+        }
+        testSms.mutate();
+      }} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Send className="size-4" /> {testSms.isPending ? "Envoi..." : "Envoyer un SMS de test"}</Button>
+    </div>
+    <p className="text-xs text-stone-600">Twilio reste inchangé. Le SMS de test utilise les paramètres TunisieSMS enregistrés.</p>
   </section>;
 }
