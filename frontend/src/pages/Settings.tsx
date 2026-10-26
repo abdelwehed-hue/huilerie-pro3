@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange, Upload, ImageIcon } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import TwilioSettings from "@/components/TwilioSettings";
+import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -368,7 +369,7 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
-        <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><SmsSettings /></div></TabsContent>
+        <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><TunisieSmsSettings /><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
       </Tabs>
     </div>
