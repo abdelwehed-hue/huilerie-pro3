@@ -102,7 +102,7 @@ export default function Loads() {
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 11 : 10} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell>
+                <TableCell colSpan={isAdmin ? 10 : 9} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell>
               </TableRow>
             )}
             {rows.map((l) => (
@@ -113,7 +113,6 @@ export default function Loads() {
                 </TableCell>
                 <TableCell className="font-medium">{l.client_name}</TableCell>
                 <TableCell dir="ltr" className="text-start">{l.phone}</TableCell>
-                <TableCell className="text-start">{l.variety || "—"}</TableCell>
                 <TableCell className="text-start">{l.variety || "—"}</TableCell>
                 <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
                 <TableCell className="text-end font-semibold text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
