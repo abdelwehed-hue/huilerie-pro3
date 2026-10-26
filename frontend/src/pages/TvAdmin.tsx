@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Copy, Eye, EyeOff, MonitorPlay, MonitorX, RotateCcw, ShieldAlert } from "lucide-react";
+import { Copy, Eye, EyeOff, MonitorPlay, MonitorX, RotateCcw } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiGet, apiPatch } from "@/lib/api";
@@ -13,12 +13,10 @@ import { cn } from "@/lib/utils";
 export default function TvAdmin() {
   const { t, errMsg } = useI18n();
   const me = useMe();
-  const isAdmin = me.data?.role === "admin";
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["tv-admin"],
     queryFn: () => apiGet<TvAdminItem[]>("/tv/admin"),
-    enabled: isAdmin,
     refetchInterval: 5000,
   });
   const rows = q.isError ? [] : (q.data ?? []);
@@ -28,14 +26,6 @@ export default function TvAdmin() {
     onError: (e) => toast.error(errMsg(e)),
   });
   const link = `${window.location.origin}/tv`;
-
-  if (me.data && !isAdmin) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" data-testid="admin-only-notice">
-        <ShieldAlert /> {t("admin_only")}
-      </div>
-    );
-  }
 
   return (
     <div>
