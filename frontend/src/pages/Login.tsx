@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { apiPost } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
-import { beginSession } from "@/lib/session";
+import { beginSession, hasSessionStarted } from "@/lib/session";
 import { useMe } from "@/lib/useMe";
 import { LangToggle } from "@/components/AppShell";
 
@@ -37,7 +37,7 @@ export default function Login() {
     },
   });
 
-  if (me.data) return <Navigate to="/" replace />;
+  if (me.data && hasSessionStarted()) return <Navigate to="/" replace />;
 
   return (
     <div className="grid min-h-screen bg-[#F9F8F3] lg:grid-cols-[1.1fr_1fr]">
