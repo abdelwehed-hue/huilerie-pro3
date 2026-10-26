@@ -208,8 +208,8 @@ export default function Reports() {
             <TableRow>
               <TableHead className="text-start">{t("period")}</TableHead>
               <TableHead className="text-start">{t("worker_col")}</TableHead>
-              <TableHead className="text-start">Variétés</TableHead>
               <TableHead className="text-end">{t("loads")}</TableHead>
+              <TableHead className="text-start">Variétés</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-end">{t("oil_kg")}</TableHead>
               <TableHead className="text-end">{t("revenue")}</TableHead>
@@ -223,8 +223,8 @@ export default function Reports() {
               <TableRow key={`${row.day}-${row.username}`} data-testid={`worker-row-${row.day}-${row.username}`}>
                 <TableCell dir="ltr" className="text-start font-mono text-sm">{row.day}</TableCell>
                 <TableCell className="text-start">{row.full_name}</TableCell>
-                <TableCell className="text-start">{(workerVarieties.get(`${row.day}|${row.full_name}`) ?? []).join(", ") || "—"}</TableCell>
                 <TableCell className="text-end">{row.loads}</TableCell>
+                <TableCell className="text-start">{(workerVarieties.get(`${row.day}|${row.full_name}`) ?? []).join(", ") || "—"}</TableCell>
                 <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
                 <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
                 <TableCell className="text-end font-semibold text-teal-700">{fmtNum(row.revenue, 3)}</TableCell>
