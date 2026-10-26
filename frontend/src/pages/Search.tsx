@@ -85,13 +85,15 @@ export default function SearchPage() {
   return (
     <div>
       <PageHeader title={t("search")} sub={t("search_any_hint")} accent="bg-sky-500" />
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+      <div className="min-w-0">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           const v = input.trim();
           if (!v) return;
           setSelectedCode("");
-          setParams(/^\d{10}$/.test(v) ? { code: v } : { q: v });
+          setParams(/^\\d{10}$/.test(v) ? { code: v } : { q: v });
         }}
         className="mb-5 flex w-fit max-w-full flex-wrap items-center gap-1"
       >
@@ -128,9 +130,27 @@ export default function SearchPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+      {shown && (
+        <div className="space-y-5" data-testid="search-load-detail">
+          <LoadDetail load={shown} />
+          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
+            {shown.status !== "cancelled" && (
+              <Button onClick={() => setEditing(shown)} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
+                <Droplet className="size-4" />
+                {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
+              </Button>
+            )}
+            <Button onClick={() => setReprint(shown)} variant="outline" data-testid="search-reprint-button" className="h-11 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-50">
+              <Printer className="size-4" /> {t("reprint")}
+            </Button>
+          </div>
+        </div>
+      )}
+      </div>
+
       {!!term && results.length > 0 && (
-        <div className="order-2 min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm lg:order-1" data-testid="search-results">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" data-testid="search-results">
           <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">{t("results")} ({results.length})</div>
           <ul className="divide-y divide-stone-100">
             {results.map((l) => (
@@ -152,25 +172,9 @@ export default function SearchPage() {
           </ul>
         </div>
       )}
+      </div>
 
-      {shown && (
-        <div className="space-y-5">
-          <LoadDetail load={shown} />
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
-            {shown.status !== "cancelled" && (
-              <Button onClick={() => setEditing(shown)} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
-                <Droplet className="size-4" />
-                {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
-              </Button>
-            )}
-            <Button onClick={() => setReprint(shown)} variant="outline" data-testid="search-reprint-button" className="h-11 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-50">
-              <Printer className="size-4" /> {t("reprint")}
-            </Button>
-          </div>
-        </div>
-      )}
-      </div>\n      <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
+      <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
       <ReprintDialog load={reprint} onClose={() => setReprint(null)} />
       <QrScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />
     </div>
