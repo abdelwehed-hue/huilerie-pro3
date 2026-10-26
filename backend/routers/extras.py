@@ -348,7 +348,7 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
                       worker: str = "", _: dict = Depends(require_admin)):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable
@@ -438,8 +438,8 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
         canvas.restoreState()
 
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=16*mm,
-                            rightMargin=16*mm, topMargin=13*mm, bottomMargin=20*mm,
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=12*mm,
+                            rightMargin=12*mm, topMargin=12*mm, bottomMargin=18*mm,
                             title=f"Rapport des recettes - {mill}", author=mill)
     story = [
         Paragraph(ar(mill), title),
