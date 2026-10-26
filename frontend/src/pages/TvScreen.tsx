@@ -71,12 +71,41 @@ export default function TvScreen() {
   // Flash tiles that just appeared.
   const seen = useRef<Set<string> | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const audioContext = useRef<AudioContext | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const enableSound = async () => {
+    try {
+      const AudioContextClass = window.AudioContext;
+      const context = audioContext.current ?? new AudioContextClass();
+      audioContext.current = context;
+      await context.resume();
+      setSoundEnabled(true);
+    } catch {
+      setSoundEnabled(false);
+    }
+  };
+  const playNewItemSound = () => {
+    const context = audioContext.current;
+    if (!context || context.state !== "running") return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.22);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.23);
+  };
   const ids = (board?.items ?? []).map((i) => i.id).join(",");
   useEffect(() => {
     const cur = new Set(ids ? ids.split(",") : []);
     if (seen.current) {
       const added = [...cur].filter((x) => !seen.current!.has(x));
       if (added.length) {
+        if (soundEnabled) playNewItemSound();
         setFresh(new Set(added));
         const tm = setTimeout(() => setFresh(new Set()), 6000);
         seen.current = cur;
@@ -84,7 +113,7 @@ export default function TvScreen() {
       }
     }
     seen.current = cur;
-  }, [ids]);
+  }, [ids, soundEnabled]);
 
   const items = board?.items ?? [];
   return (
@@ -116,6 +145,16 @@ export default function TvScreen() {
       </header>
 
       <main className="relative px-[4vw] py-[4vh]">
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={enableSound}
+            className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+            data-testid="tv-sound-toggle"
+          >
+            {soundEnabled ? "🔊 Son activé" : "🔈 Activer le son"}
+          </button>
+        </div>
         {items.length === 0 ? (
           <div className="grid h-[65vh] place-items-center text-center" data-testid="tv-empty">
             <div>
