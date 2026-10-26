@@ -127,6 +127,43 @@ async def put_tunisie_sms(body: dict, _: dict = Depends(require_admin)):
     }
 
 
+@router.post("/sms/tunisie/test")
+async def tunisie_sms_test(body: dict, _: dict = Depends(require_admin)):
+    """Send a one-off test using the configured TunisieSMS endpoint and credentials."""
+    phone = re.sub(r"\\s+", "", str(body.get("phone", "")))
+    if not phone or not re.fullmatch(r"\\+?[0-9]{7,16}", phone):
+        raise HTTPException(400, "invalid_test_phone")
+
+    cfg = await db.settings.find_one({"key": "tunisie_sms"}) or {}
+    api_url = str(cfg.get("api_url", "")).strip()
+    account_id = str(cfg.get("account_id", "")).strip()
+    api_key = str(cfg.get("api_key", "")).strip()
+    sender = str(cfg.get("sender", "")).strip()
+    if not api_url or not account_id or not api_key or not sender:
+        raise HTTPException(400, "tunisie_sms_settings_incomplete")
+    if not api_url.startswith(("https://", "http://")):
+        raise HTTPException(400, "tunisie_sms_invalid_api_url")
+
+    # Generic JSON request; adapt the field names if your TunisieSMS account's API
+    # documentation specifies a different request format.
+    payload = {
+        "account_id": account_id,
+        "api_key": api_key,
+        "sender": sender,
+        "to": phone,
+        "message": "SMS de test - Huilerie Pro / TunisieSMS",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=False) as client:
+            response = await client.post(api_url, json=payload)
+    except httpx.HTTPError:
+        raise HTTPException(502, "tunisie_sms_api_unreachable")
+
+    if not response.is_success:
+        raise HTTPException(502, f"tunisie_sms_api_error_{response.status_code}")
+    return {"status": "submitted", "to_number": phone, "message": "La requête a été acceptée par l’API TunisieSMS."}
+
+
 @router.post("/sms/test", response_model=SmsTestResult)
 async def sms_test(body: SmsTestIn, _: dict = Depends(require_admin)):
     d = await send_test(body.phone)
