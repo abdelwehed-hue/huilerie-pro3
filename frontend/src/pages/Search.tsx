@@ -130,23 +130,6 @@ export default function SearchPage() {
         </div>
       )}
 
-      {shown && (
-        <div className="space-y-5" data-testid="search-load-detail">
-          <LoadDetail load={shown} />
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
-            {shown.status !== "cancelled" && (
-              <Button onClick={() => setEditing(shown)} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
-                <Droplet className="size-4" />
-                {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
-              </Button>
-            )}
-            <Button onClick={() => setReprint(shown)} variant="outline" data-testid="search-reprint-button" className="h-11 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-50">
-              <Printer className="size-4" /> {t("reprint")}
-            </Button>
-          </div>
-        </div>
-      )}
       </div>
 
       {!!term && results.length > 0 && (
@@ -173,6 +156,24 @@ export default function SearchPage() {
         </div>
       )}
       </div>
+
+      {shown && (
+        <div className="space-y-5" data-testid="search-load-detail">
+          <LoadDetail load={shown} />
+          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
+            {shown.status !== "cancelled" && (
+              <Button onClick={() => setEditing(shown)} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
+                <Droplet className="size-4" />
+                {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
+              </Button>
+            )}
+            <Button onClick={() => setReprint(shown)} variant="outline" data-testid="search-reprint-button" className="h-11 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-50">
+              <Printer className="size-4" /> {t("reprint")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
       <ReprintDialog load={reprint} onClose={() => setReprint(null)} />
