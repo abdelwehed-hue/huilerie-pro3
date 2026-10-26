@@ -152,6 +152,7 @@ export interface MillInfo {
 
 export interface AppSettings extends MillInfo {
   price_per_kg: number;
+  login_image: string;
   sms_enabled: boolean;
   sms_arrival_template: string;
   sms_ready_template: string;
