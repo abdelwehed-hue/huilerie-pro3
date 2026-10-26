@@ -93,7 +93,7 @@ export default function SearchPage() {
           setSelectedCode("");
           setParams(/^\d{10}$/.test(v) ? { code: v } : { q: v });
         }}
-        className="mb-5 flex max-w-3xl flex-wrap items-center gap-2"
+        className="mb-5 flex w-fit max-w-full flex-wrap items-center gap-1"
       >
         <button
           type="button"
@@ -104,7 +104,7 @@ export default function SearchPage() {
         >
           <ScanLine className="size-8" />
         </button>
-        <div className="relative min-w-60 flex-1">
+        <div className="relative w-[16ch] min-w-0 shrink-0">
           <SearchIcon className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-sky-500" />
           <Input
             data-testid="search-code-input"
