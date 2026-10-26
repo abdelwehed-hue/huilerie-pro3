@@ -286,7 +286,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         ) : (
           <div className="grid h-full min-h-72 place-items-center rounded-2xl border-2 border-dashed border-stone-200 bg-white/60 p-8 text-center">
             <div>
-              <div className="font-mono text-4xl font-bold tracking-wider text-stone-300" dir="ltr">YYMMDDHHMM</div>
+              <div className="font-mono text-4xl font-bold tracking-wider text-stone-300" dir="ltr">AAAANM</div>
               <p className="mt-3 text-sm text-stone-500">{t("arrival_sub")}</p>
             </div>
           </div>
