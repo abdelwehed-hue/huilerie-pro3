@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Droplets, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { beginSession, hasSessionStarted } from "@/lib/session";
@@ -19,6 +19,8 @@ export default function Login() {
   const { t, errMsg } = useI18n();
   const navigate = useNavigate();
   const me = useMe();
+  const loginImageQuery = useQuery({ queryKey: ["login-image"], queryFn: () => apiGet<{ login_image: string }>("/auth/login-image"), staleTime: 60_000 });
+  const heroImage = loginImageQuery.data?.login_image || HERO;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,7 +44,7 @@ export default function Login() {
   return (
     <div className="grid min-h-screen bg-[#F9F8F3] lg:grid-cols-[1.1fr_1fr]">
       <div className="relative hidden overflow-hidden lg:block">
-        <img src={HERO} alt="" className="absolute inset-0 size-full object-contain" />
+        <img src={heroImage} alt="" className="absolute inset-0 size-full object-contain" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1E291E] via-[#1E291E]/60 to-transparent" />
         <div className="absolute bottom-0 start-0 end-0 p-12 text-white">
           <div className="mb-6 flex gap-2">
