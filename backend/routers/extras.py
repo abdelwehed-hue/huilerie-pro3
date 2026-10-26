@@ -348,9 +348,10 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
                       worker: str = "", _: dict = Depends(require_admin)):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable
 
     _register_fonts()
     rep = await build_report(period, start, end, worker)
@@ -359,65 +360,114 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     mill = m.mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
 
-    title = ParagraphStyle("t", fontName="Amiri-Bold", fontSize=20, leading=26, alignment=TA_CENTER)
-    h2 = ParagraphStyle("h", fontName="Amiri-Bold", fontSize=13, leading=20, alignment=TA_CENTER)
-    normal = ParagraphStyle("n", fontName="Amiri", fontSize=10, leading=15, alignment=TA_CENTER)
+    green = colors.HexColor("#365314")
+    dark = colors.HexColor("#203326")
+    gold = colors.HexColor("#C5A05A")
+    pale = colors.HexColor("#F1F5EB")
+    ink = colors.HexColor("#263229")
+    muted = colors.HexColor("#68766A")
+    border = colors.HexColor("#DDE5D9")
+    white = colors.white
+
+    title = ParagraphStyle("PdfTitle", fontName="Amiri-Bold", fontSize=22, leading=28,
+                           alignment=TA_CENTER, textColor=dark)
+    subtitle = ParagraphStyle("PdfSub", fontName="Amiri", fontSize=9, leading=13,
+                              alignment=TA_CENTER, textColor=muted)
+    heading = ParagraphStyle("PdfHeading", fontName="Amiri-Bold", fontSize=13, leading=18,
+                             alignment=TA_CENTER, textColor=dark)
+    meta = ParagraphStyle("PdfMeta", fontName="Amiri", fontSize=9, leading=13,
+                          alignment=TA_CENTER, textColor=muted)
+    small = ParagraphStyle("PdfSmall", fontName="Amiri", fontSize=9, leading=13,
+                           alignment=TA_CENTER, textColor=muted)
 
     def table(data: list[list], total_rows: int) -> Table:
-        t = Table([[ar(str(c)) for c in row] for row in data], repeatRows=2)
-        t.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (-1, -1), "Amiri"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9.5),
-            ("BACKGROUND", (0, 0), (-1, 1), colors.HexColor("#3F6212")),
-            ("TEXTCOLOR", (0, 0), (-1, 1), colors.white),
+        t = Table([[ar(str(cell)) for cell in row] for row in data],
+                  repeatRows=2, hAlign="CENTER")
+        style = [
+            ("BACKGROUND", (0, 0), (-1, 0), dark),
+            ("BACKGROUND", (0, 1), (-1, 1), green),
+            ("TEXTCOLOR", (0, 0), (-1, 1), white),
             ("FONTNAME", (0, 0), (-1, 1), "Amiri-Bold"),
+            ("FONTNAME", (0, 2), (-1, -1), "Amiri"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("TEXTCOLOR", (0, 2), (-1, -1), ink),
             ("FONTNAME", (0, -total_rows), (-1, -1), "Amiri-Bold"),
-            ("BACKGROUND", (0, -total_rows), (-1, -1), colors.HexColor("#FAF5FF")),
-            ("ROWBACKGROUNDS", (0, 2), (-1, -total_rows - 1), [colors.white, colors.HexColor("#F2F8EE")]),
-            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E7E5E4")),
+            ("BACKGROUND", (0, -total_rows), (-1, -1), pale),
+            ("GRID", (0, 0), (-1, -1), 0.35, border),
+            ("LINEBELOW", (0, 1), (-1, 1), 1.2, gold),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ]))
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, 1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, 1), 8),
+            ("TOPPADDING", (0, 2), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 2), (-1, -1), 6),
+        ]
+        if len(data) > 3:
+            style.append(("ROWBACKGROUNDS", (0, 2), (-1, -total_rows - 1),
+                          [white, colors.HexColor("#F8FAF6")]))
+        t.setStyle(TableStyle(style))
         return t
 
-    tot_label = "TOTAL / المجموع"
+    total_label = "TOTAL / المجموع"
     data = [HEAD_FR, HEAD_AR] + [
-        [r.period if r.period != "TOTAL" else tot_label, r.loads, f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"]
+        [r.period if r.period != "TOTAL" else total_label, r.loads,
+         f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"]
         for r in rep.rows + [rep.total]
     ]
-    wdata = [WHEAD_FR, WHEAD_AR] + [
-        [r.day, r.full_name, r.loads, f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.rows
+    worker_data = [WHEAD_FR, WHEAD_AR] + [
+        [r.day, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
+         f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.rows
     ] + [
-        [tot_label, r.full_name, r.loads, f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.totals
+        [total_label, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
+         f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.totals
     ]
 
-    sub = " · ".join(x for x in [m.mill_address, m.mill_phone] if x)
-    story = [
-        Paragraph(ar(mill), title),
-        Paragraph(ar(sub), normal) if sub else Spacer(1, 1),
-        Spacer(1, 10),
-        Paragraph(t_fr, h2),
-        Paragraph(ar(t_ar), h2),
-        # Arabic segment pre-ordered visually (RTL) so the dates keep their digit order
-        Paragraph(f"Du {rep.start} au {rep.end} — {rep.end} {ar('إلى')} {rep.start} {ar('من')}", normal),
-        Spacer(1, 10),
-        table(data, 1),
-        Spacer(1, 22),
-        Paragraph("Recettes par ouvrier", h2),
-        Paragraph(ar("المداخيل حسب العامل"), h2),
-        Spacer(1, 6),
-    ]
-    if wrep.rows:
-        story.append(table(wdata, max(len(wrep.totals), 1)))
-    else:
-        story.append(Paragraph("—", normal))
+    contact = " • ".join(x for x in [m.mill_address, m.mill_phone] if x)
+    def draw_footer(canvas, doc):
+        canvas.saveState()
+        page_width, _ = doc.pagesize
+        canvas.setStrokeColor(border)
+        canvas.setLineWidth(0.6)
+        canvas.line(16 * mm, 13 * mm, page_width - 16 * mm, 13 * mm)
+        canvas.setFont("Amiri", 8)
+        canvas.setFillColor(muted)
+        canvas.drawString(16 * mm, 8 * mm, ar(mill))
+        canvas.drawRightString(page_width - 16 * mm, 8 * mm, str(doc.page))
+        canvas.restoreState()
 
     buf = io.BytesIO()
-    SimpleDocTemplate(buf, pagesize=A4, title="Rapport des recettes").build(story)
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=16*mm,
+                            rightMargin=16*mm, topMargin=13*mm, bottomMargin=20*mm,
+                            title=f"Rapport des recettes - {mill}", author=mill)
+    story = [
+        Paragraph(ar(mill), title),
+        Paragraph(ar(contact), subtitle) if contact else Spacer(1, 2),
+        Spacer(1, 5),
+        HRFlowable(width="18%", thickness=2, color=gold, hAlign="CENTER"),
+        Spacer(1, 10),
+        Paragraph(t_fr, heading),
+        Paragraph(ar(t_ar), heading),
+        Spacer(1, 4),
+        Paragraph(ar(f"Du {rep.start} au {rep.end}"), meta),
+        Spacer(1, 12),
+        table(data, 1),
+        Spacer(1, 18),
+        Paragraph("Recettes par ouvrier", heading),
+        Paragraph(ar("المداخيل حسب العامل"), heading),
+        Spacer(1, 8),
+    ]
+    if wrep.rows:
+        story.append(table(worker_data, max(len(wrep.totals), 1)))
+    else:
+        story.append(Paragraph("Aucune donnée pour cette période / لا توجد بيانات لهذه الفترة", small))
+
+    doc.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
-    name = f"recettes_{period}_{rep.start}_{rep.end}.pdf"
+    filename = f"recettes_{period}_{rep.start}_{rep.end}.pdf"
     return StreamingResponse(buf, media_type="application/pdf",
-                             headers={"Content-Disposition": f'attachment; filename="{name}"'})
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 # ---------- Clients ----------
