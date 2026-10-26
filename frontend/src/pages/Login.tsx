@@ -13,7 +13,7 @@ import { useMe } from "@/lib/useMe";
 import { LangToggle } from "@/components/AppShell";
 
 const HERO =
-  "https://images.unsplash.com/photo-1698775942613-3e9fc114b2a1?crop=entropy&cs=srgb&fm=jpg&q=80&w=1400";
+  "https://raw.githubusercontent.com/abdelwehed-hue/huilerie-pro3/main/IMG_6966.jpg";
 
 export default function Login() {
   const { t, errMsg } = useI18n();
