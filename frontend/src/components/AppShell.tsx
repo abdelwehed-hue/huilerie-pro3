@@ -22,7 +22,7 @@ import type { MillInfo } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
-import { endSession, hasSessionStarted } from "@/lib/session";
+import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 // Menu-only labels (page titles keep their own wording).
@@ -127,7 +127,7 @@ export default function AppShell() {
       </div>
     );
   }
-  if (me.isError || !me.data || !hasSessionStarted()) return <Navigate to="/login" replace />;
+  if (me.isError || !me.data) return <Navigate to="/login" replace />;
   const user = me.data;
   const isAdmin = user?.role === "admin";
 
