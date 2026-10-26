@@ -53,8 +53,8 @@ export default function Login() {
             <span className="h-2 w-4 rounded-full bg-sky-400" />
             <span className="h-2 w-3 rounded-full bg-violet-400" />
           </div>
-          <h2 className="font-heading text-5xl font-bold leading-tight">{t("app_name")}</h2>
-          <p className="mt-3 max-w-md text-lg text-white/80">{t("app_tagline")}</p>
+          <h2 className="font-heading text-5xl font-bold leading-tight text-black">{t("app_name")}</h2>
+          <p className="mt-3 max-w-md text-lg text-black">{t("app_tagline")}</p>
         </div>
       </div>
       <div className="flex flex-col p-6 md:p-12">
