@@ -129,6 +129,7 @@ export default function Clients() {
                     <TableRow>
                       <TableHead className="text-start">{t("code")}</TableHead>
                       <TableHead className="text-start">{t("date")}</TableHead>
+                      <TableHead className="text-start">Variétés d’olives</TableHead>
                       <TableHead className="text-end">{t("olive_kg")}</TableHead>
                       <TableHead className="text-end">{t("oil_kg")}</TableHead>
                       <TableHead className="text-end">{t("yield")}</TableHead>
@@ -142,6 +143,7 @@ export default function Clients() {
                       <TableRow key={l.id} data-testid={`client-load-${l.code}`}>
                         <TableCell><Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link></TableCell>
                         <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(l.created_at)}</TableCell>
+                        <TableCell className="text-start">{l.variety || "—"}</TableCell>
                         <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
                         <TableCell className="text-end font-semibold text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
                         <TableCell className="text-end text-sky-700">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</TableCell>
