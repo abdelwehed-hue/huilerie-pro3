@@ -90,6 +90,7 @@ export default function Loads() {
               <TableHead className="text-start">{t("client")}</TableHead>
               <TableHead className="text-start">{t("phone")}</TableHead>
               <TableHead className="text-start">Variétés d’olives</TableHead>
+              <TableHead className="text-start">Variétés d’olives</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-end">{t("oil_kg")}</TableHead>
               <TableHead className="text-end">{t("yield")}</TableHead>
@@ -113,6 +114,7 @@ export default function Loads() {
                 </TableCell>
                 <TableCell className="font-medium">{l.client_name}</TableCell>
                 <TableCell dir="ltr" className="text-start">{l.phone}</TableCell>
+                <TableCell className="text-start">{l.variety || "—"}</TableCell>
                 <TableCell className="text-start">{l.variety || "—"}</TableCell>
                 <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
                 <TableCell className="text-end font-semibold text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
