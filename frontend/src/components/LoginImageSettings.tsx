@@ -53,7 +53,7 @@ export default function LoginImageSettings() {
         data = canvas.toDataURL("image/jpeg", quality);
       }
       URL.revokeObjectURL(url);
-      setSelected(data.length <= 700000 ? data : "");
+      setSelected(data.length <= 700000 ? data : null);
       setProcessing(false);
       if (data.length > 700000) toast.error("Image trop volumineuse. Choisissez une image plus petite.");
     };
