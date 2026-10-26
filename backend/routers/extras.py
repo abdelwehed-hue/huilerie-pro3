@@ -95,6 +95,38 @@ async def delete_twilio(_: dict = Depends(require_admin)):
     return await _twilio_out()
 
 
+@router.get("/sms/tunisie")
+async def get_tunisie_sms(_: dict = Depends(require_admin)):
+    c = await db.settings.find_one({"key": "tunisie_sms"}) or {}
+    return {
+        "account_id": c.get("account_id", ""),
+        "api_key": "",
+        "has_api_key": bool(c.get("api_key")),
+        "sender": c.get("sender", ""),
+        "api_url": c.get("api_url", ""),
+    }
+
+
+@router.put("/sms/tunisie")
+async def put_tunisie_sms(body: dict, _: dict = Depends(require_admin)):
+    # Store credentials for later setup only; do not change the active Twilio sender.
+    old = await db.settings.find_one({"key": "tunisie_sms"}) or {}
+    api_key = str(body.get("api_key", "")).strip() or old.get("api_key", "")
+    await db.settings.update_one({"key": "tunisie_sms"}, {"$set": {
+        "account_id": str(body.get("account_id", "")).strip(),
+        "api_key": api_key,
+        "sender": str(body.get("sender", "")).strip(),
+        "api_url": str(body.get("api_url", "")).strip(),
+    }}, upsert=True)
+    return {
+        "account_id": str(body.get("account_id", "")).strip(),
+        "api_key": "",
+        "has_api_key": bool(api_key),
+        "sender": str(body.get("sender", "")).strip(),
+        "api_url": str(body.get("api_url", "")).strip(),
+    }
+
+
 @router.post("/sms/test", response_model=SmsTestResult)
 async def sms_test(body: SmsTestIn, _: dict = Depends(require_admin)):
     d = await send_test(body.phone)
