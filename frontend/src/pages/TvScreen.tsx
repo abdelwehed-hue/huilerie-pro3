@@ -109,7 +109,7 @@ export default function TvScreen() {
             {pad(now.getHours())}:{pad(now.getMinutes())}<span className="text-white/40">:{pad(now.getSeconds())}</span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-[clamp(0.75rem,1vw,1rem)] text-white/60 md:justify-end">
-            <span data-testid="tv-date">{ddmmyyyy(now.toISOString())}</span>
+            <span className="text-[clamp(0.9rem,1.2vw,1.15rem)]" data-testid="tv-date">{ddmmyyyy(now.toISOString())}</span>
             {live ? <Wifi className="size-4 text-lime-400" data-testid="tv-live-ws" /> : <WifiOff className="size-4 text-white/40" data-testid="tv-live-poll" />}
           </div>
         </div>
