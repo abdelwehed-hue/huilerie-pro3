@@ -93,7 +93,7 @@ export default function SearchPage() {
           setSelectedCode("");
           setParams(/^\d{10}$/.test(v) ? { code: v } : { q: v });
         }}
-        className="mb-8 flex max-w-3xl flex-wrap gap-3"
+        className="mb-5 flex max-w-3xl flex-wrap items-center gap-2"
       >
         <button
           type="button"
@@ -111,10 +111,12 @@ export default function SearchPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t("search_any_hint")}
-            className="h-14 rounded-2xl border-sky-200 bg-white ps-12 text-xl"
+            maxLength={10}
+            inputMode="numeric"
+            className="h-14 w-full rounded-2xl border-sky-200 bg-white ps-12 text-xl"
           />
         </div>
-        <Button type="submit" data-testid="search-code-submit" className="h-14 rounded-2xl bg-sky-600 px-8 text-base hover:bg-sky-700">
+        <Button type="submit" data-testid="search-code-submit" className="h-14 rounded-2xl bg-sky-600 px-5 text-base hover:bg-sky-700">
           {t("go")}
         </Button>
       </form>
@@ -126,8 +128,9 @@ export default function SearchPage() {
         </div>
       )}
 
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
       {!!term && results.length > 0 && (
-        <div className="max-w-4xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" data-testid="search-results">
+        <div className="order-2 min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm lg:order-1" data-testid="search-results">
           <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">{t("results")} ({results.length})</div>
           <ul className="divide-y divide-stone-100">
             {results.map((l) => (
@@ -167,7 +170,7 @@ export default function SearchPage() {
           </div>
         </div>
       )}
-      <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
+      </div>\n      <OilEntryDialog load={editing} onClose={() => setEditing(null)} />
       <ReprintDialog load={reprint} onClose={() => setReprint(null)} />
       <QrScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />
     </div>
