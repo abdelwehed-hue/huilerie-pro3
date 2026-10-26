@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from lib.db import db
-from lib.auth import require_admin
+from lib.auth import current_user
 from lib.dates import today_iso
 from models.schemas import TvAdminItem, TvBoard, TvItem, TvItemUpdate
 
@@ -81,7 +81,7 @@ async def tv_ws(ws: WebSocket):
 
 
 @router.get("/tv/admin", response_model=list[TvAdminItem])
-async def tv_admin(_: dict = Depends(require_admin)):
+async def tv_admin(_: dict = Depends(current_user)):
     return [
         TvAdminItem(id=l["id"], code=l["code"], finished_at=_aware(l["oil_ready_at"]),
                     hidden=bool(s.get("hidden")), removed=bool(s.get("removed")))
@@ -90,7 +90,7 @@ async def tv_admin(_: dict = Depends(require_admin)):
 
 
 @router.patch("/tv/items/{id}", response_model=TvAdminItem)
-async def tv_update(id: str, body: TvItemUpdate, _: dict = Depends(require_admin)):
+async def tv_update(id: str, body: TvItemUpdate, _: dict = Depends(current_user)):
     load = await db.loads.find_one({"id": id}, {"_id": 0, "id": 1, "code": 1, "oil_ready_at": 1})
     if not load or not load.get("oil_ready_at"):
         raise HTTPException(404, "not_found")
