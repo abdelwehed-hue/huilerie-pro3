@@ -106,6 +106,7 @@ export default function Dashboard() {
               <TableHead className="h-12 ps-4 text-start text-[15px] text-stone-700">{t("code")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("client")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("phone")}</TableHead>
+              <TableHead className="text-start text-[15px] text-stone-700">Variétés d’olives</TableHead>
               <TableHead className="text-end text-[15px] text-stone-700">{t("olive_kg")}</TableHead>
               <TableHead className="text-end text-[15px] text-stone-700">{t("oil_kg")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("status")}</TableHead>
@@ -113,13 +114,14 @@ export default function Dashboard() {
           </TableHeader>
           <TableBody>
             {today.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
             )}
             {today.map((l) => (
               <TableRow key={l.id} data-testid={`today-row-${l.code}`} className="text-[15px]">
                 <TableCell className="ps-4"><Link to={`/search?code=${l.code}`} className="font-mono font-bold text-stone-900 hover:text-lime-700" dir="ltr">{l.code}</Link></TableCell>
                 <TableCell className="text-stone-900">{l.client_name}</TableCell>
                 <TableCell className="font-mono text-stone-500" dir="ltr">{l.phone}</TableCell>
+                <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
                 <TableCell className="text-end">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
                 <TableCell className="text-end">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
                 <TableCell><StatusPill status={l.status} /></TableCell>
