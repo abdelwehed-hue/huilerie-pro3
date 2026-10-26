@@ -50,7 +50,7 @@ const fr = {
   recent_loads: "Derniers chargements",
   see_all: "Tout voir",
   register_arrival: "Enregistrer l'arrivée",
-  arrival_sub: "Le code est généré automatiquement : AAMMJJHHMM",
+  arrival_sub: "Le code est généré automatiquement : AAAANM",
   ticket: "Ticket de réception",
   print: "Imprimer",
   new_arrival: "Nouvelle arrivée",
