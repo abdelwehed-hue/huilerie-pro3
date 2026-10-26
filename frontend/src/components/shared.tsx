@@ -114,6 +114,7 @@ export function LoadDetail({ load }: { load: Load }) {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard tone="olive" testId="load-detail-olive-kg" label={t("olive_kg")} value={fmtNum(load.olive_kg)} unit={t("kg")} icon={<Sprout />} />
+        <StatCard tone="rose" testId="load-detail-variety" label="Variétés" value={load.variety || "—"} icon={<Sprout />} />
         <StatCard tone="gold" testId="load-detail-oil-kg" label={t("oil_kg")} value={fmtNum(load.oil_kg)} unit={load.oil_kg != null ? t("kg") : undefined} icon={<Droplet />} sub={load.oil_kg == null ? t("pending") : undefined} />
         <StatCard tone="sky" testId="load-detail-yield" label={t("yield")} value={load.yield_pct != null ? fmtNum(load.yield_pct, 2) : "—"} unit={load.yield_pct != null ? "%" : undefined} icon={<Percent />} />
         {load.amount != null ? (
