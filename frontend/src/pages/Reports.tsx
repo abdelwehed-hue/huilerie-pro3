@@ -90,10 +90,10 @@ export default function Reports() {
         accent="bg-violet-500"
         right={
           <div className="flex gap-2">
-            <a href={`/api/reports/revenue.xlsx?${qs}`} download data-testid="report-export-excel" className={cn(buttonVariants(), "rounded-xl bg-green-700 hover:bg-green-800")}>
+            <a href={`https://huilerie-pro3.onrender.com/api/reports/revenue.xlsx?${qs}`} download data-testid="report-export-excel" className={cn(buttonVariants(), "rounded-xl bg-green-700 hover:bg-green-800")}>
               <FileSpreadsheet className="size-4" /> {t("export_excel")}
             </a>
-            <a href={`/api/reports/revenue.pdf?${qs}`} download data-testid="report-export-pdf" className={cn(buttonVariants(), "rounded-xl bg-rose-600 hover:bg-rose-700")}>
+            <a href={`https://huilerie-pro3.onrender.com/api/reports/revenue.pdf?${qs}`} download data-testid="report-export-pdf" className={cn(buttonVariants(), "rounded-xl bg-rose-600 hover:bg-rose-700")}>
               <FileText className="size-4" /> {t("export_pdf")}
             </a>
           </div>
