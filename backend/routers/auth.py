@@ -8,6 +8,12 @@ from routers.admin import _user
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.get("/login-image")
+async def get_login_image():
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "login_image": 1}) or {}
+    return {"login_image": settings.get("login_image", "")}
+
+
 @router.post("/login", response_model=User)
 async def login(body: LoginIn, response: Response):
     user = await db.users.find_one({"username": body.username.strip().lower()}, {"_id": 0})
