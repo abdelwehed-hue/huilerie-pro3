@@ -57,6 +57,7 @@ export default function SearchPage() {
   const code = params.get("code") ?? "";
   const term = params.get("q") ?? "";
   const [input, setInput] = useState(code || term);
+  const [selectedCode, setSelectedCode] = useState(code);
   const [last, setLast] = useState(code + "|" + term);
   const [editing, setEditing] = useState<Load | null>(null);
   const [reprint, setReprint] = useState<Load | null>(null);
@@ -67,19 +68,19 @@ export default function SearchPage() {
   }
 
   const one = useQuery({
-    queryKey: ["load-by-code", code],
-    queryFn: () => apiGet<Load>(`/loads/by-code/${encodeURIComponent(code)}`),
-    enabled: !!code,
+    queryKey: ["load-by-code", selectedCode],
+    queryFn: () => apiGet<Load>(`/loads/by-code/${encodeURIComponent(selectedCode)}`),
+    enabled: !!selectedCode,
     retry: false,
   });
   const list = useQuery({
     queryKey: ["loads-search", term],
     queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(term)}`),
-    enabled: !!term && !code,
+    enabled: !!term,
   });
   const results = list.isError ? [] : (list.data ?? []);
-  const notFound = (one.isError && one.error instanceof ApiError && one.error.status === 404) || (!!term && !code && list.isSuccess && results.length === 0);
-  const shown = code ? (one.isError ? undefined : one.data) : results.length === 1 ? results[0] : undefined;
+  const notFound = (one.isError && one.error instanceof ApiError && one.error.status === 404) || (!!term && !selectedCode && list.isSuccess && results.length === 0);
+  const shown = selectedCode ? (one.isError ? undefined : one.data) : (!term && !code && results.length === 1 ? results[0] : undefined);
 
   return (
     <div>
@@ -89,6 +90,7 @@ export default function SearchPage() {
           e.preventDefault();
           const v = input.trim();
           if (!v) return;
+          setSelectedCode("");
           setParams(/^\d{10}$/.test(v) ? { code: v } : { q: v });
         }}
         className="mb-8 flex max-w-3xl flex-wrap gap-3"
@@ -124,7 +126,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {!code && results.length > 1 && (
+      {!!term && results.length > 0 && (
         <div className="max-w-4xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" data-testid="search-results">
           <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">{t("results")} ({results.length})</div>
           <ul className="divide-y divide-stone-100">
@@ -132,7 +134,7 @@ export default function SearchPage() {
               <li key={l.id}>
                 <button
                   type="button"
-                  onClick={() => setParams({ code: l.code })}
+                  onClick={() => setSelectedCode(l.code)}
                   data-testid={`search-result-${l.code}`}
                   className="flex w-full flex-wrap items-center gap-4 px-4 py-3 text-start transition-colors duration-150 hover:bg-sky-50"
                 >
