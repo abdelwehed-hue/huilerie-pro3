@@ -26,6 +26,23 @@ export default function Reports() {
   const isAdmin = me.data?.role === "admin";
   const users = useQuery({ queryKey: ["users"], queryFn: () => apiGet<User[]>("/users"), enabled: isAdmin });
   const userList = users.isError ? [] : (users.data ?? []);
+  const reportLoads = useQuery({
+    queryKey: ["report-load-varieties", start, end, period],
+    queryFn: () => apiGet<Load[]>("/loads"),
+    enabled: isAdmin,
+  });
+  const reportLoadList = (reportLoads.isError ? [] : (reportLoads.data ?? [])).filter((l) => (!rs || l.day >= rs) && (!re || l.day <= re));
+  const varietiesByPeriod = new Map<string, string[]>();
+  reportLoadList.forEach((l) => {
+    const key = period === "monthly" ? l.day.slice(0, 7) : l.day;
+    const variety = l.variety?.trim();
+    if (!variety) return;
+    const values = varietiesByPeriod.get(key) ?? [];
+    if (!values.includes(variety)) values.push(variety);
+    varietiesByPeriod.set(key, values);
+  });
+  const allVarieties = [...new Set(reportLoadList.map((l) => l.variety?.trim()).filter((v): v is string => !!v))];
+
   const wloads = useQuery({
     queryKey: ["loads", "by-worker", worker],
     queryFn: () => apiGet<Load[]>(`/loads?worker=${encodeURIComponent(worker)}`),
@@ -130,6 +147,7 @@ export default function Reports() {
               <TableRow>
                 <TableHead className="text-start">{t("period")}</TableHead>
                 <TableHead className="text-end">{t("loads")}</TableHead>
+                <TableHead className="text-start">Variétés</TableHead>
                 <TableHead className="text-end">{t("olive_kg")}</TableHead>
                 <TableHead className="text-end">{t("oil_kg")}</TableHead>
                 <TableHead className="text-end">{t("revenue")}</TableHead>
@@ -137,12 +155,13 @@ export default function Reports() {
             </TableHeader>
             <TableBody>
               {(r?.rows ?? []).length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="py-10 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
               )}
               {r?.rows.map((row) => (
                 <TableRow key={row.period} data-testid={`report-row-${row.period}`}>
                   <TableCell dir="ltr" className="text-start font-mono text-sm">{row.period}</TableCell>
                   <TableCell className="text-end">{row.loads}</TableCell>
+                  <TableCell className="text-start">{(varietiesByPeriod.get(row.period) ?? []).join(", ") || "—"}</TableCell>
                   <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
                   <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
                   <TableCell className="text-end font-semibold text-violet-700">{fmtNum(row.revenue, 3)}</TableCell>
@@ -152,6 +171,7 @@ export default function Reports() {
                 <TableRow className="bg-violet-50 font-bold">
                   <TableCell>{t("totals")}</TableCell>
                   <TableCell className="text-end">{r.total.loads}</TableCell>
+                  <TableCell className="text-start">{allVarieties.join(", ") || "—"}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.olive_kg)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.oil_kg)}</TableCell>
                   <TableCell className="text-end text-violet-800">{fmtNum(r.total.revenue, 3)}</TableCell>
