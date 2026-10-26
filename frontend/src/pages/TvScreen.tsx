@@ -92,7 +92,7 @@ export default function TvScreen() {
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/10 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-amber-500/10 blur-3xl" />
       <header className="relative grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
-        <div className="flex min-w-0 flex-col items-start gap-1 text-left md:justify-self-start" data-testid="tv-mill-info">
+        <div className="flex min-w-0 flex-col items-center gap-1 text-center md:justify-self-start" data-testid="tv-mill-info">
           <div className="font-heading text-[clamp(1.1rem,2vw,2rem)] font-bold leading-tight text-amber-300">{mill?.mill_name || ""}</div>
           {mill?.mill_address ? <div className="mt-1 text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_address}</div> : null}
           {mill?.mill_phone ? <div className="text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_phone}</div> : null}
