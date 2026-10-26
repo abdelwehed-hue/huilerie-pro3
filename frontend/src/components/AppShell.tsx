@@ -40,6 +40,7 @@ const NAV = [
   { to: "/lab", key: "lab", icon: FlaskConical, id: "nav-lab", color: "text-cyan-300" },
   { to: "/clients", key: "clients", icon: BookUser, id: "nav-clients", color: "text-teal-300" },
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
+  { to: "/tv", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
   { to: "/reports", key: "reports", icon: BarChart3, id: "nav-reports", color: "text-fuchsia-300", admin: true },
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv", color: "text-orange-300", admin: true },
