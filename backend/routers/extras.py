@@ -370,9 +370,9 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     white = colors.white
 
     title = ParagraphStyle("PdfTitle", fontName="Amiri-Bold", fontSize=22, leading=28,
-                           alignment=TA_CENTER, textColor=dark)
+                           alignment=0, textColor=dark)
     subtitle = ParagraphStyle("PdfSub", fontName="Amiri", fontSize=9, leading=13,
-                              alignment=TA_CENTER, textColor=muted)
+                              alignment=0, textColor=muted)
     heading = ParagraphStyle("PdfHeading", fontName="Amiri-Bold", fontSize=13, leading=18,
                              alignment=TA_CENTER, textColor=dark)
     meta = ParagraphStyle("PdfMeta", fontName="Amiri", fontSize=9, leading=13,
@@ -445,7 +445,7 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
         Paragraph(ar(mill), title),
         Paragraph(ar(contact), subtitle) if contact else Spacer(1, 2),
         Spacer(1, 5),
-        HRFlowable(width="18%", thickness=2, color=gold, hAlign="CENTER"),
+        HRFlowable(width="18%", thickness=2, color=gold, hAlign="LEFT"),
         Spacer(1, 10),
         Paragraph(t_fr, heading),
         Paragraph(ar(t_ar), heading),
