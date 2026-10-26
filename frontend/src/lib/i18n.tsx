@@ -561,7 +561,7 @@ const ar: Record<Key, string> = {
   season_code_hint: "أول كود للوصولات الجديدة في هذا الموسم:",
   season_hint: "كل موسم يبدأ من 1 أكتوبر إلى 30 أفريل. يبدأ موسم جديد تلقائياً في 1 أكتوبر.",
   season_saved: "تم حفظ الموسم",
-  varieties: "أصناف الزيتون",
+  varieties: "صنف الزيتون",
   add_variety: "إضافة",
   varieties_saved: "تم حفظ الأصناف",
   all_workers: "كل العمال",
