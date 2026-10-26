@@ -48,7 +48,7 @@ export default function TunisieSmsSettings() {
       {field("api_url", "URL API (selon votre compte)")}
       <div className="sm:col-span-2"><Button type="submit" disabled={save.isPending} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Save className="size-4" /> Enregistrer TunisieSMS</Button></div>
     </form>
-    <div className="grid gap-3 border-t border-amber-200 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+    <div className="grid max-w-2xl gap-3 border-t border-amber-200 pt-4 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
       <div className="space-y-2"><Label htmlFor="tunisie-test-phone">Numéro de test</Label><Input id="tunisie-test-phone" dir="ltr" type="tel" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="+216..." className="h-10 rounded-xl bg-white font-mono text-start" /></div>
       <Button type="button" disabled={!testPhone.trim() || testSms.isPending || save.isPending} onClick={() => {
         if (edit.account_id !== undefined || edit.api_key !== undefined || edit.sender !== undefined || edit.api_url !== undefined) {
