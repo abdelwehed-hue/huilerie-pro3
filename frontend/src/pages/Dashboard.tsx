@@ -106,7 +106,7 @@ export default function Dashboard() {
               <TableHead className="h-12 ps-4 text-start text-[15px] text-stone-700">{t("code")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("client")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("phone")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">Variétés d’olives</TableHead>
+              <TableHead className="text-start text-[15px] text-stone-700">{t("varieties")}</TableHead>
               <TableHead className="text-end text-[15px] text-stone-700">{t("olive_kg")}</TableHead>
               <TableHead className="text-end text-[15px] text-stone-700">{t("oil_kg")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("status")}</TableHead>
