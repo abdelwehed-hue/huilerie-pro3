@@ -89,7 +89,7 @@ export default function Loads() {
               <TableHead className="text-start">{t("code")}</TableHead>
               <TableHead className="text-start">{t("client")}</TableHead>
               <TableHead className="text-start">{t("phone")}</TableHead>
-              <TableHead className="text-start">Variétés d’olives</TableHead>
+              <TableHead className="text-start">{t("varieties")}</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-end">{t("oil_kg")}</TableHead>
               <TableHead className="text-end">{t("yield")}</TableHead>
