@@ -31,7 +31,7 @@ export default function Reports() {
     queryFn: () => apiGet<Load[]>("/loads"),
     enabled: isAdmin,
   });
-  const reportLoadList = (reportLoads.isError ? [] : (reportLoads.data ?? [])).filter((l) => (!rs || l.day >= rs) && (!re || l.day <= re));
+  const reportLoadList = (reportLoads.isError ? [] : (reportLoads.data ?? [])).filter((l) => (!start || l.day >= start) && (!end || l.day <= end));
   const varietiesByPeriod = new Map<string, string[]>();
   reportLoadList.forEach((l) => {
     const key = period === "monthly" ? l.day.slice(0, 7) : l.day;
