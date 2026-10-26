@@ -45,7 +45,7 @@ export default function Login() {
     <div className="grid min-h-screen bg-[#F9F8F3] lg:grid-cols-[1.1fr_1fr]">
       <div className="relative hidden overflow-hidden lg:block">
         <img src={heroImage} alt="" className="absolute inset-0 size-full object-contain" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1E291E] via-[#1E291E]/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1E291E]/20 via-transparent to-transparent" />
         <div className="absolute bottom-0 start-0 end-0 p-12 text-white">
           <div className="mb-6 flex gap-2">
             <span className="h-2 w-10 rounded-full bg-lime-400" />
