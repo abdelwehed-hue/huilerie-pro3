@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { TvBoard } from "@/lib/types";
+import type { AppSettings, TvBoard } from "@/lib/types";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const hhmm = (iso: string) => {
@@ -60,6 +60,8 @@ function useLiveBoard() {
 
 export default function TvScreen() {
   const { board, live } = useLiveBoard();
+  const settingsQuery = useQuery({ queryKey: ["tv-mill-settings"], queryFn: () => apiGet<AppSettings>("/settings") });
+  const mill = settingsQuery.data;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const i = setInterval(() => setNow(new Date()), 1000);
@@ -89,21 +91,26 @@ export default function TvScreen() {
     <div className="tv-screen min-h-screen overflow-hidden bg-[#0F1A10] text-white" data-testid="tv-screen">
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/10 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-amber-500/10 blur-3xl" />
-      <header className="relative flex items-center justify-between gap-6 border-b border-white/10 px-[4vw] py-[2.5vh]">
-        <div className="flex items-center gap-5">
-          <div className="grid size-[7vh] min-h-14 min-w-14 place-items-center rounded-2xl bg-amber-400 text-[#1B2A1C]"><Droplet className="size-[60%]" /></div>
+      <header className="relative grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
+        <div className="min-w-0 text-left md:justify-self-start" data-testid="tv-mill-info">
+          <div className="font-heading text-[clamp(1.1rem,2vw,2rem)] font-bold leading-tight text-amber-300">{mill?.mill_name || ""}</div>
+          {mill?.mill_address ? <div className="mt-1 text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_address}</div> : null}
+          {mill?.mill_phone ? <div className="text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_phone}</div> : null}
+        </div>
+        <div className="flex items-center justify-center gap-3 text-center md:justify-self-center">
+          <div className="grid size-[5vh] min-h-10 min-w-10 place-items-center rounded-xl bg-amber-400 text-[#1B2A1C]"><Droplet className="size-[55%]" /></div>
           <div>
-            <div className="font-heading text-[clamp(1.5rem,3vw,3rem)] font-bold leading-tight">Huile prête</div>
-            <div dir="rtl" className="text-[clamp(1.2rem,2.2vw,2.2rem)] font-bold leading-tight text-amber-300">الزيت جاهز</div>
+            <div className="font-heading text-[clamp(1.35rem,2.4vw,2.5rem)] font-bold leading-tight">Huile prête</div>
+            <div dir="rtl" className="text-[clamp(1.05rem,1.8vw,1.8rem)] font-bold leading-tight text-amber-300">الزيت جاهز</div>
           </div>
         </div>
-        <div className="text-end">
-          <div className="font-mono text-[clamp(2rem,5vw,5rem)] font-bold leading-none tracking-wider" data-testid="tv-clock">
+        <div className="text-left md:justify-self-end md:text-right">
+          <div className="font-mono text-[clamp(1.4rem,2.8vw,2.8rem)] font-bold leading-none tracking-wider" data-testid="tv-clock">
             {pad(now.getHours())}:{pad(now.getMinutes())}<span className="text-white/40">:{pad(now.getSeconds())}</span>
           </div>
-          <div className="mt-1 flex items-center justify-end gap-2 text-[clamp(0.9rem,1.3vw,1.4rem)] text-white/60">
+          <div className="mt-1 flex items-center gap-2 text-[clamp(0.75rem,1vw,1rem)] text-white/60 md:justify-end">
             <span data-testid="tv-date">{ddmmyyyy(now.toISOString())}</span>
-            {live ? <Wifi className="size-5 text-lime-400" data-testid="tv-live-ws" /> : <WifiOff className="size-5 text-white/40" data-testid="tv-live-poll" />}
+            {live ? <Wifi className="size-4 text-lime-400" data-testid="tv-live-ws" /> : <WifiOff className="size-4 text-white/40" data-testid="tv-live-poll" />}
           </div>
         </div>
       </header>
