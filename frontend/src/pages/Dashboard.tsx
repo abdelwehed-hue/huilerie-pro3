@@ -6,7 +6,7 @@ import { apiGet } from "@/lib/api";
 import type { Load, Stats } from "@/lib/types";
 import { fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
-import { StatusPill } from "@/components/shared";
+import { CodeBadge, StatusPill } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -19,7 +19,7 @@ function KpiCard({ label, value, icon, testId, tint }: { label: string; value: R
     <div data-testid={testId} className="flex min-h-40 flex-col justify-between rounded-3xl border border-stone-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="text-[15px] leading-snug text-stone-600">{label}</div>
-        <div className={`grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-5 ${tint}`}>{icon}</div>
+        <div className={`grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-5 [&_svg]:stroke-[2.5] ${tint}`}>{icon}</div>
       </div>
       <div className="mt-4 font-heading text-3xl font-bold tracking-tight text-stone-900" dir="ltr">{value}</div>
     </div>
@@ -87,11 +87,11 @@ export default function Dashboard() {
         </form>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="bg-stone-100 text-stone-700" />
-          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="bg-lime-50 text-lime-700" />
-          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="bg-amber-50 text-amber-600" />
+          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="bg-slate-100 text-slate-700" />
+          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="bg-lime-100 text-lime-800" />
+          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="bg-sky-100 text-sky-700" />
           {isAdmin ? (
-            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="bg-orange-50 text-orange-600" />
+            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="bg-orange-100 text-orange-700" />
           ) : (
             <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="bg-orange-50 text-orange-600" />
           )}
@@ -118,7 +118,7 @@ export default function Dashboard() {
             )}
             {today.map((l) => (
               <TableRow key={l.id} data-testid={`today-row-${l.code}`} className={l.status === "cancelled" ? "bg-red-50/40 text-[15px] opacity-70" : "text-[15px] transition-colors hover:bg-amber-50/40"}>
-                <TableCell className="ps-4"><Link to={`/search?code=${l.code}`} className="inline-flex rounded-lg bg-stone-100 px-2.5 py-1 font-mono font-bold text-stone-900 hover:bg-lime-100 hover:text-lime-800" dir="ltr">{l.code}</Link></TableCell>
+                <TableCell className="ps-4"><Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link></TableCell>
                 <TableCell className="text-stone-900">{l.client_name}</TableCell>
                 <TableCell className="font-mono text-stone-500" dir="ltr">{l.phone}</TableCell>
                 <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
