@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Droplets, Printer } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { apiGet } from "@/lib/api";
@@ -98,7 +99,12 @@ export default function Certificate() {
                 <span className="text-sm font-semibold text-stone-600">{t("classification")}:</span>
                 <span className="scale-125"><GradeBadge grade={a.classification} testId="certificate-grade" /></span>
               </div>
-              <div className="w-56 border-t border-dashed border-stone-400 pt-2 text-center text-xs text-stone-500">{t("signature")}</div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <QRCodeSVG value={`${window.location.origin}/certificate/${encodeURIComponent(id)}`} size={84} level="M" marginSize={1} />
+                <span className="text-[10px] text-stone-600">Scanner pour consulter l'analyse</span>
+                <span dir="rtl" className="text-[10px] text-stone-600">امسح لعرض التحليل</span>
+              </div>
+              <div className="w-40 border-t border-dashed border-stone-400 pt-2 text-center text-xs text-stone-500">{t("signature")}</div>
             </div>
             {a.notes && <p className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{t("notes")}: {a.notes}</p>}
           </div>
