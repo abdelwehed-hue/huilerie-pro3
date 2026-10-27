@@ -1,4 +1,5 @@
 """Invoice management tied to existing completed loads. Admin-only; no destructive load changes."""
+import math
 import re
 import uuid
 from datetime import datetime, timezone
@@ -14,6 +15,16 @@ router = APIRouter(tags=["invoices"])
 
 def _money(value):
     return round(float(value or 0), 3)
+
+
+def _number(value, error_code: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        raise HTTPException(422, error_code)
+    if not math.isfinite(number):
+        raise HTTPException(422, error_code)
+    return number
 
 
 def _public(doc):
@@ -61,8 +72,11 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
     if await db.invoices.find_one({"load_id": load_id}):
         raise HTTPException(409, "load_already_invoiced")
     settings = await db.settings.find_one({"key": "app"}, {"_id": 0}) or {}
-    price = _money(settings.get("price_per_kg", 0))
-    paid = _money(body.get("paid_amount", 0))
+    price = _number(settings.get("price_per_kg", 0), "price_invalid")
+    if price < 0:
+        raise HTTPException(422, "price_invalid")
+    price = _money(price)
+    paid = _money(_number(body.get("paid_amount", 0), "paid_amount_invalid"))
     if paid < 0:
         raise HTTPException(422, "paid_amount_invalid")
     total = _money(float(load["olive_kg"]) * price)
@@ -98,18 +112,12 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
         raise HTTPException(404, "invoice_not_found")
     allowed = {}
     if "price_per_kg" in body:
-        try:
-            price = float(body["price_per_kg"])
-        except (TypeError, ValueError):
-            raise HTTPException(422, "price_invalid")
+        price = _number(body["price_per_kg"], "price_invalid")
         if price < 0:
             raise HTTPException(422, "price_invalid")
         allowed["price_per_kg"] = _money(price)
     if "paid_amount" in body:
-        try:
-            paid = float(body["paid_amount"])
-        except (TypeError, ValueError):
-            raise HTTPException(422, "paid_amount_invalid")
+        paid = _number(body["paid_amount"], "paid_amount_invalid")
         if paid < 0:
             raise HTTPException(422, "paid_amount_invalid")
         allowed["paid_amount"] = _money(paid)
