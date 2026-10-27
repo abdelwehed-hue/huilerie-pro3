@@ -50,10 +50,6 @@ export default function TvAdmin() {
         }
       />
       <div className="mb-5 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 font-mono text-lg text-orange-900" dir="ltr" data-testid="tv-link">{link}</div>
-      <div className="mb-5 rounded-2xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm text-lime-950" data-testid="tv-sound-help">
-        <div className="font-semibold">🔈 Activer le son des nouveaux reçus</div>
-        <p className="mt-1">Ouvrez l’écran TV avec « Ouvrir l’écran TV », puis cliquez sur « Activer le son » sur l’écran qui s’ouvre. Le bip annoncera les nouveaux reçus terminés.</p>
-      </div>
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
         <Table data-testid="tv-admin-table">
           <TableHeader className="bg-stone-50">
