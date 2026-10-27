@@ -87,13 +87,13 @@ export default function Dashboard() {
         </form>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="bg-slate-100 text-slate-700" />
-          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="bg-lime-100 text-lime-800" />
-          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="bg-sky-100 text-sky-700" />
+          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="bg-rose-500 text-white" />
+          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="bg-lime-600 text-white" />
+          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="bg-amber-500 text-white" />
           {isAdmin ? (
-            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="bg-orange-100 text-orange-700" />
+            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="bg-violet-600 text-white" />
           ) : (
-            <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="bg-orange-50 text-orange-600" />
+            <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="bg-orange-500 text-white" />
           )}
         </div>
       </div>
