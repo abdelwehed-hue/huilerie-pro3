@@ -107,3 +107,50 @@ async def test_paid_amount_cannot_exceed_total(fake_db):
             {"username": "admin"},
         )
     assert exc.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_invoice_keeps_price_snapshot_when_settings_change(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0},
+        {"username": "admin"},
+    )
+
+    fake_db.settings.docs[0]["price_per_kg"] = 0.25
+
+    assert created["price_per_kg"] == 0.18
+    assert created["total"] == 18.0
+    assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
+
+
+@pytest.mark.asyncio
+async def test_cancelled_load_cannot_be_invoiced(fake_db):
+    fake_db.loads.docs[0]["cancelled"] = True
+
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.create_invoice(
+            {"load_id": "load-test-1", "paid_amount": 0},
+            {"username": "admin"},
+        )
+
+    assert exc.value.status_code == 400
+    assert not fake_db.invoices.docs
+
+
+@pytest.mark.asyncio
+async def test_non_finite_price_update_is_rejected_without_changing_invoice(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0},
+        {"username": "admin"},
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.update_invoice(
+            created["id"],
+            {"price_per_kg": float("nan"), "paid_amount": 0},
+            {"username": "admin"},
+        )
+
+    assert exc.value.status_code == 422
+    assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
+    assert len(fake_db.invoices.docs[0]["history"]) == 1
