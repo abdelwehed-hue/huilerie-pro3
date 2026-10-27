@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install isolated test dependencies
-        run: python -m pip install fastapi pymongo motor python-dotenv pyjwt passlib pytest pytest-asyncio
+        run: python -m pip install fastapi pymongo motor python-dotenv pyjwt passlib pytest pytest-asyncio pytest-xdist
       - name: Test invoice calculations without database access
         run: python -m pytest -o addopts= tests/test_invoices_unit.py
 
