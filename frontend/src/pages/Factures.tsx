@@ -47,7 +47,7 @@ export default function Factures() {
   const currentLoad = loads.find(l=>l.id===loadId);
   const money = (n:number)=>`${fmtNum(n,3)} DT`;
   const print = (invoice:Invoice)=>{setSelected(invoice);window.setTimeout(()=>window.print(),100);};
-  if (!admin) return <div className="rounded-xl border p-6">Accès réservé à l’administrateur.</div>;
+  if (!admin) return <div className="rounded-xl border p-6">{t("admin_only")}</div>;
   return <div>
     <div className="no-print"><PageHeader title={t("factures")} sub={t("invoice_sub")} accent="bg-emerald-600"/></div>
     <div className="no-print mb-5 grid gap-4 rounded-2xl border bg-white p-4 md:grid-cols-[2fr_1fr_1fr_auto]">
@@ -73,7 +73,7 @@ export default function Factures() {
       <div className="no-print mb-4 flex justify-end gap-2"><Button variant="outline" onClick={()=>setSelected(null)}>{t("invoice_close")}</Button><Button onClick={()=>window.print()}><Printer className="mr-2 size-4"/>{t("invoice_print_pdf")}</Button></div>
       <article className="mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
         <header className="flex items-start justify-between gap-4 border-b pb-5">{selected.mill_logo?<img src={selected.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/>:<div/>}<div className="text-right"><h1 className="text-2xl font-bold">{selected.mill_name||"Huilerie Oro Verde"}</h1><p>{selected.mill_address}</p><p>{selected.mill_phone}</p></div></header>
-        <h2 className="my-8 text-center text-3xl font-bold tracking-wide">FACTURE</h2>
+        <h2 className="my-8 text-center text-3xl font-bold tracking-wide">{t("invoice_title")}</h2>
         <div className="mb-6 grid grid-cols-2 gap-4"><div><p className="text-sm text-stone-500">{t("invoice_number")}</p><strong>{selected.number}</strong></div><div className="text-right"><p className="text-sm text-stone-500">{t("invoice_date")}</p><strong>{fmtDate(selected.created_at)}</strong></div></div>
         <section className="mb-6 rounded-lg bg-stone-50 p-4 print:bg-white"><p className="text-sm text-stone-500">{t("invoice_bill_to")}</p><h3 className="text-lg font-bold">{selected.client_name}</h3><p>{selected.phone}</p><p>{t("invoice_load_label")} : {selected.load_code}</p></section>
         <table className="w-full border-collapse text-sm"><thead><tr className="border-y"><th className="p-3 text-left">{t("invoice_service")}</th><th className="p-3 text-right">{t("invoice_quantity")}</th><th className="p-3 text-right">{t("invoice_price_per_kg")}</th><th className="p-3 text-right">{t("invoice_total")}</th></tr></thead><tbody><tr className="border-b"><td className="p-3">{t("invoice_service")}</td><td className="p-3 text-right">{fmtNum(selected.olive_kg)} kg</td><td className="p-3 text-right">{money(selected.price_per_kg)}</td><td className="p-3 text-right">{money(selected.total)}</td></tr></tbody></table>
