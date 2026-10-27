@@ -117,9 +117,9 @@ export default function TvScreen() {
 
   const items = board?.items ?? [];
   return (
-    <div className="tv-screen min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(217,165,45,0.22),transparent_42%),radial-gradient(ellipse_at_bottom_right,rgba(132,153,42,0.24),transparent_45%),linear-gradient(135deg,#142316_0%,#24351B_48%,#3A2A12_100%)] text-white" data-testid="tv-screen">
-      <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-400/20 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-amber-400/20 blur-3xl" />
+    <div className="tv-screen min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] text-white" data-testid="tv-screen">
+      <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/15 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-lime-700/15 blur-3xl" />
       <header className="relative grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
         <div className="flex min-w-0 flex-col items-center gap-1 text-center md:justify-self-start" data-testid="tv-mill-info">
           <div className="font-heading text-[clamp(1.1rem,2vw,2rem)] font-bold leading-tight text-amber-300">{mill?.mill_name || ""}</div>
