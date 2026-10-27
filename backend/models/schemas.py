@@ -215,6 +215,7 @@ class ReminderRunResult(BaseModel):
 class AppSettings(MillInfo):
     price_per_kg: float = Field(ge=0)
     login_image: str = Field(default="", max_length=700_000)
+    tv_image: str = Field(default="", max_length=700_000)
     sms_enabled: bool = True
     sms_arrival_template: str = Field(default=DEFAULT_SMS_ARRIVAL, max_length=600)
     sms_ready_template: str = Field(default=DEFAULT_SMS_READY, max_length=600)
