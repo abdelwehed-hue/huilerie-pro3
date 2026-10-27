@@ -29,7 +29,7 @@ jobs:
           node-version: "22"
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --legacy-peer-deps --package-lock=false
       - name: Build frontend
         working-directory: frontend
         run: npm run build
