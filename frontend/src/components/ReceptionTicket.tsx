@@ -27,10 +27,10 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
   return (
-    <div className={(printable ? "print-area " : "no-print ") + "receipt-ticket code-reveal bg-white p-3 text-sm"} data-testid={testId}>
-      <div className="flex items-start justify-between gap-2 border-b border-stone-200 pb-2">
+    <div className={(printable ? "print-area " : "no-print ") + "code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm"} data-testid={testId}>
+      <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
         <div>
-          <div className="font-heading text-base font-bold text-stone-900" data-testid="ticket-mill">{m?.mill_name || t("app_name")}</div>
+          <div className="font-heading text-lg font-bold text-stone-900" data-testid="ticket-mill">{m?.mill_name || t("app_name")}</div>
           {m?.mill_address && <div className="text-xs text-stone-500">{m.mill_address}</div>}
           {m?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{m.mill_phone}</div>}
         </div>
@@ -39,19 +39,21 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
           <div className="mt-1 text-xs text-stone-500" dir="ltr" data-testid="ticket-date">{fmtDate(load.created_at)}</div>
         </div>
       </div>
-      <div className="my-3 flex flex-col items-center justify-center gap-2 border-b border-stone-200 pb-3 text-center">
-        <BiLabel k="code" both={both} className="text-xs text-stone-500" />
-        <CodeBadge code={load.code} testId="intake-generated-code" big />
-        <BiLabel k="code_hint" both={both} className="text-xs text-stone-500" />
+      <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
+        <div>
+          <BiLabel k="code" both={both} className="mb-2 text-xs text-stone-500" />
+          <CodeBadge code={load.code} testId="intake-generated-code" big />
+          <BiLabel k="code_hint" both={both} className="mt-3 text-sm text-stone-500" />
+        </div>
         <div data-testid="intake-ticket-qr" className="flex flex-col items-center gap-1">
-          <QRCodeSVG value={`${window.location.origin}/search?code=${encodeURIComponent(load.code)}`} size={100} level="M" marginSize={1} />
+          <QRCodeSVG value={`${window.location.origin}/search?code=${encodeURIComponent(load.code)}`} size={112} level="M" marginSize={1} />
           <BiLabel k="scan_to_open" both={both} className="text-[10px] text-stone-500" />
         </div>
       </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 text-xs">
+      <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
         <div><dt><BiLabel k="client" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-name">{load.client_name}</dd></div>
         <div><dt><BiLabel k="phone" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" dir="ltr" data-testid="ticket-phone">{load.phone}</dd></div>
-        <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-lg font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
+        <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
         <div><dt><BiLabel k="variety" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-variety">{load.variety || "—"}</dd></div>
         {load.bags != null && (
           <div><dt><BiLabel k="bags" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-bags">{load.bags}</dd></div>
