@@ -117,7 +117,7 @@ export default function TvScreen() {
 
   const items = board?.items ?? [];
   return (
-    <div className="tv-screen min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] text-white" data-testid="tv-screen">
+    <div className="tv-screen min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/15 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-lime-700/15 blur-3xl" />
       <header className="relative grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
