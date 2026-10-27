@@ -28,9 +28,9 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
   const m = mill.isError ? undefined : mill.data;
   return (
     <div className={(printable ? "print-area " : "no-print ") + "code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm"} data-testid={testId}>
-      <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+      <div className="flex items-start justify-between gap-2 border-b border-stone-200 pb-2">
         <div>
-          <div className="font-heading text-lg font-bold text-stone-900" data-testid="ticket-mill">{m?.mill_name || t("app_name")}</div>
+          <div className="font-heading text-base font-bold text-stone-900" data-testid="ticket-mill">{m?.mill_name || t("app_name")}</div>
           {m?.mill_address && <div className="text-xs text-stone-500">{m.mill_address}</div>}
           {m?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{m.mill_phone}</div>}
         </div>
@@ -50,10 +50,10 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
           <BiLabel k="scan_to_open" both={both} className="text-[10px] text-stone-500" />
         </div>
       </div>
-      <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 text-xs">
         <div><dt><BiLabel k="client" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-name">{load.client_name}</dd></div>
         <div><dt><BiLabel k="phone" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" dir="ltr" data-testid="ticket-phone">{load.phone}</dd></div>
-        <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-2xl font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
+        <div><dt><BiLabel k="olive_kg" both={both} className="text-stone-500" /></dt><dd className="font-heading text-lg font-bold text-lime-800" data-testid="ticket-kg">{fmtNum(load.olive_kg)} kg</dd></div>
         <div><dt><BiLabel k="variety" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-variety">{load.variety || "—"}</dd></div>
         {load.bags != null && (
           <div><dt><BiLabel k="bags" both={both} className="text-stone-500" /></dt><dd className="font-semibold text-stone-900" data-testid="ticket-bags">{load.bags}</dd></div>
