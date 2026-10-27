@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiGet } from "@/lib/api";
-import type { LabAnalysis, Load, MillInfo } from "@/lib/types";
+import type { Load, MillInfo } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge } from "@/components/shared";
 
@@ -26,8 +26,6 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
   const { t, both } = useI18n();
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
-  const lab = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
-  const analysis = (lab.data ?? []).find((item) => item.load_id === load.id);
   return (
     <div className={(printable ? "print-area " : "no-print ") + "code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm"} data-testid={testId}>
       <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
@@ -50,13 +48,6 @@ export default function ReceptionTicket({ load, children, testId = "intake-ticke
         <div data-testid="intake-ticket-qr" className="flex flex-col items-center gap-1">
           <QRCodeSVG value={`${window.location.origin}/search?code=${encodeURIComponent(load.code)}`} size={112} level="M" marginSize={1} />
           <BiLabel k="scan_to_open" both={both} className="text-[10px] text-stone-500" />
-          {analysis && (
-            <div data-testid="intake-lab-qr" className="mt-2 flex flex-col items-center gap-1 border-t border-stone-200 pt-2">
-              <QRCodeSVG value={`${window.location.origin}/certificate/${encodeURIComponent(analysis.id)}`} size={96} level="M" marginSize={1} />
-              <span className="text-[10px] text-stone-600">Analyse du laboratoire</span>
-              <span dir="rtl" className="text-[10px] text-stone-600">تحليل المخبر</span>
-            </div>
-          )}
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
