@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { KeyRound, Plus, ShieldAlert, UserPlus, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange, Upload, ImageIcon } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import LoginImageSettings from "@/components/LoginImageSettings";
+import TvImageSettings from "@/components/TvImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
@@ -368,12 +369,14 @@ export default function SettingsPage() {
           <TabsTrigger value="sms" data-testid="settings-tab-sms"><MessageSquareText className="size-4" />{t("sms_settings")}</TabsTrigger>
           <TabsTrigger value="campaign" data-testid="settings-tab-campaign"><CalendarRange className="size-4" />{t("campaign")}</TabsTrigger>
           <TabsTrigger value="login-image" data-testid="settings-tab-login-image"><ImageIcon className="size-4" />Page Login</TabsTrigger>
+          <TabsTrigger value="tv-image" data-testid="settings-tab-tv-image"><ImageIcon className="size-4" />Page TV</TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><TunisieSmsSettings /><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
+        <TabsContent value="tv-image"><TvImageSettings /></TabsContent>
       </Tabs>
     </div>
   );
