@@ -141,10 +141,14 @@
 
 .print-sheet { display: none; }
 @media print {
-  .print-sheet { display: block; position: absolute; inset: 0; z-index: 9999; background: white; }
+  @page { size: 80mm 150mm; margin: 0; }
+  html, body { width: 80mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .print-sheet { display: block; position: absolute; top: 0; left: 0; width: 80mm; min-height: 150mm; z-index: 9999; background: white; }
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
-  .print-area { position: absolute; inset: 0; border: none; box-shadow: none; animation: none !important; opacity: 1 !important; transform: none !important; }
+  .print-area { position: absolute; top: 0; left: 0; width: 80mm !important; min-height: 150mm; box-sizing: border-box; margin: 0 !important; padding: 4mm !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; opacity: 1 !important; transform: none !important; overflow: hidden; }
+  .receipt-ticket { font-size: 10pt; line-height: 1.2; }
+  .receipt-ticket [data-testid="intake-ticket-qr"] svg { width: 27mm; height: 27mm; }
   .no-print { display: none !important; }
 }
 
