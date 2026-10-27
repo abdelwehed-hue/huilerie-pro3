@@ -16,12 +16,12 @@ import QrScanDialog from "@/components/QrScanDialog";
 
 function KpiCard({ label, value, icon, testId, tint }: { label: string; value: React.ReactNode; icon: React.ReactNode; testId: string; tint: string }) {
   return (
-    <div data-testid={testId} className="flex min-h-40 flex-col justify-between rounded-3xl border border-stone-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <div data-testid={testId} className={`flex min-h-40 flex-col justify-between rounded-3xl border p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md ${tint}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="text-[15px] leading-snug text-stone-600">{label}</div>
-        <div className={`grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-5 [&_svg]:stroke-[2.5] ${tint}`}>{icon}</div>
+        <div className="text-[15px] leading-snug font-semibold opacity-80">{label}</div>
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/90 shadow-sm [&_svg]:size-5 [&_svg]:stroke-[2.5]">{icon}</div>
       </div>
-      <div className="mt-4 font-heading text-3xl font-bold tracking-tight text-stone-900" dir="ltr">{value}</div>
+      <div className="mt-4 font-heading text-3xl font-bold tracking-tight" dir="ltr">{value}</div>
     </div>
   );
 }
@@ -87,13 +87,13 @@ export default function Dashboard() {
         </form>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="bg-rose-500 text-white" />
-          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="bg-lime-600 text-white" />
-          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="bg-amber-500 text-white" />
+          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="border-rose-200 bg-rose-50 text-rose-900 [&_svg]:text-rose-600" />
+          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="border-lime-200 bg-[#F2F8EE] text-[#1E3A14] [&_svg]:text-lime-700" />
+          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="border-yellow-200 bg-[#FEFCE8] text-[#713F12] [&_svg]:text-amber-600" />
           {isAdmin ? (
-            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="bg-violet-600 text-white" />
+            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="border-violet-200 bg-[#FAF5FF] text-[#581C87] [&_svg]:text-violet-600" />
           ) : (
-            <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="bg-orange-500 text-white" />
+            <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="border-orange-200 bg-orange-50 text-orange-900 [&_svg]:text-orange-600" />
           )}
         </div>
       </div>
