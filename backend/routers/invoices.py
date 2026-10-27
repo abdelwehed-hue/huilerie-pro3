@@ -96,7 +96,8 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
         "mill_phone": settings.get("mill_phone", ""), "mill_logo": settings.get("mill_logo", ""),
         "created_by": user.get("username", ""),
         "history": [{"at": now, "by": user.get("username", ""), "action": "created",
-                     "before": None, "after": {"price_per_kg": price, "paid_amount": paid, "total": total}}],
+                     "before": None, "after": {"price_per_kg": price, "paid_amount": paid,
+                                                  "total": total, "balance": _money(total - paid)}}],
     }
     try:
         await db.invoices.insert_one(doc)
