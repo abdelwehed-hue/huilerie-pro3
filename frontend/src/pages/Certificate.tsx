@@ -54,9 +54,16 @@ export default function Certificate() {
                   {c.mill.mill_phone && <div className="text-sm text-stone-600" dir="ltr">{c.mill.mill_phone}</div>}
                 </div>
               </div>
-              <div className="text-end">
-                <div className="text-xs uppercase tracking-wider text-stone-500">{t("code")}</div>
-                <CodeBadge code={a.code} testId="certificate-code" />
+              <div className="flex items-start gap-3">
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <QRCodeSVG value={`${window.location.origin}/certificate/${encodeURIComponent(id)}`} size={84} level="M" marginSize={1} />
+                  <span className="text-[10px] text-stone-600">Scanner pour consulter l'analyse</span>
+                  <span dir="rtl" className="text-[10px] text-stone-600">امسح لعرض التحليل</span>
+                </div>
+                <div className="text-end">
+                  <div className="text-xs uppercase tracking-wider text-stone-500">{t("code")}</div>
+                  <CodeBadge code={a.code} testId="certificate-code" />
+                </div>
               </div>
             </div>
 
@@ -99,11 +106,7 @@ export default function Certificate() {
                 <span className="text-sm font-semibold text-stone-600">{t("classification")}:</span>
                 <span className="scale-125"><GradeBadge grade={a.classification} testId="certificate-grade" /></span>
               </div>
-              <div className="flex flex-col items-center gap-1 text-center">
-                <QRCodeSVG value={`${window.location.origin}/certificate/${encodeURIComponent(id)}`} size={84} level="M" marginSize={1} />
-                <span className="text-[10px] text-stone-600">Scanner pour consulter l'analyse</span>
-                <span dir="rtl" className="text-[10px] text-stone-600">امسح لعرض التحليل</span>
-              </div>
+
               <div className="w-40 border-t border-dashed border-stone-400 pt-2 text-center text-xs text-stone-500">{t("signature")}</div>
             </div>
             {a.notes && <p className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{t("notes")}: {a.notes}</p>}
