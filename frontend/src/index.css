@@ -182,3 +182,28 @@
     padding: 8mm;
   }
 }
+
+
+/* Final overrides: the global receipt print rules must not shrink the certificate. */
+@media print {
+  html:has(.print-area[data-testid="certificate"]),
+  body:has(.print-area[data-testid="certificate"]) {
+    width: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body:has(.print-area[data-testid="certificate"]) .print-area[data-testid="certificate"] {
+    position: static !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+  body:has(.print-area[data-testid="certificate"]) .print-area[data-testid="certificate"] > div:last-child {
+    padding: 8mm !important;
+  }
+}
