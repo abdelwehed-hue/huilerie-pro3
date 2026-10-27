@@ -1,4 +1,5 @@
 """Invoice management tied to existing completed loads. Admin-only; no destructive load changes."""
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -26,7 +27,7 @@ def _public(doc):
 async def list_invoices(q: str = "", _: dict = Depends(require_admin)):
     flt = {}
     if q.strip():
-        term = q.strip()
+        term = re.escape(q.strip())
         flt["$or"] = [
             {"number": {"$regex": term, "$options": "i"}},
             {"client_name": {"$regex": term, "$options": "i"}},
