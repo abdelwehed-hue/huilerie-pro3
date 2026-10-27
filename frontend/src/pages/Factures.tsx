@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FileText, Printer, Search, Pencil, Plus } from "lucide-react";
@@ -15,12 +15,12 @@ type Invoice = {
   id: string; number: string; load_id: string; load_code: string; client_name: string; phone: string;
   olive_kg: number; price_per_kg: number; total: number; paid_amount: number; balance: number;
   day: string; created_at: string; mill_name: string; mill_address: string; mill_phone: string;
-  mill_logo: string; history?: Array<{at: string; by: string; action: string}>;
+  mill_logo: string; history?: Array<{at: string; by: string; action: string; before?: unknown; after?: unknown}>;
 };
 type EligibleLoad = {id: string; code: string; client_name: string; phone: string; olive_kg: number; day: string};
 
 export default function Factures() {
-  const { t, errMsg } = useI18n();
+  const { errMsg } = useI18n();
   const admin = useMe().data?.role === "admin";
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -45,7 +45,6 @@ export default function Factures() {
     onError:(e)=>toast.error(errMsg(e)),
   });
   const currentLoad = loads.find(l=>l.id===loadId);
-  const estimatedTotal = useMemo(()=>currentLoad ? currentLoad.olive_kg * Number(currentLoad ? 1 : 0) : 0,[currentLoad]);
   const money = (n:number)=>`${fmtNum(n,3)} DT`;
   const print = (invoice:Invoice)=>{setSelected(invoice);window.setTimeout(()=>window.print(),100);};
   if (!admin) return <div className="rounded-xl border p-6">Accès réservé à l’administrateur.</div>;
@@ -69,7 +68,7 @@ export default function Factures() {
       <tbody>{rows.map(i=><tr key={i.id} className="border-t"><td className="p-3 font-semibold">{i.number}</td><td className="p-3">{fmtDate(i.created_at)}</td><td className="p-3">{i.client_name}<div className="text-xs text-stone-500">{i.phone}</div></td><td className="p-3">{i.load_code}</td><td className="p-3">{money(i.total)}</td><td className="p-3">{money(i.paid_amount)}</td><td className="p-3">{money(i.balance)}</td><td className="p-3"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>setSelected(i)}><FileText className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>print(i)}><Printer className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>{setEditing(i);setEditPrice(String(i.price_per_kg));setEditPaid(String(i.paid_amount));}}><Pencil className="size-4"/></Button></div></td></tr>)}</tbody></table>
       {!rows.length&&<div className="p-8 text-center text-stone-500">Aucune facture</div>}
     </div>
-    {editing&&<div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl"><h2 className="text-lg font-bold">Modifier {editing.number}</h2><div className="space-y-2"><Label>Prix de trituration (DT/kg)</Label><Input type="number" min="0" step="0.001" value={editPrice} onChange={e=>setEditPrice(e.target.value)}/></div><div className="space-y-2"><Label>Montant payé (DT)</Label><Input type="number" min="0" step="0.001" value={editPaid} onChange={e=>setEditPaid(e.target.value)}/></div><p className="text-xs text-stone-500">Le total et le solde seront recalculés. L’historique conserve les valeurs avant/après modification.</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditing(null)}>Annuler</Button><Button disabled={update.isPending} onClick={()=>update.mutate()}>Enregistrer</Button></div></div></div>}
+    {editing&&<div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl"><h2 className="text-lg font-bold">Modifier {editing.number}</h2><div className="space-y-2"><Label>Prix de trituration (DT/kg)</Label><Input type="number" min="0" step="0.001" value={editPrice} onChange={e=>setEditPrice(e.target.value)}/></div><div className="space-y-2"><Label>Montant payé (DT)</Label><Input type="number" min="0" step="0.001" value={editPaid} onChange={e=>setEditPaid(e.target.value)}/></div><p className="text-xs text-stone-500">Le total et le solde seront recalculés. L’historique conserve les valeurs avant/après modification.</p>{editing.history?.length ? <div className="max-h-32 overflow-auto rounded-lg border p-2 text-xs"><strong>Historique</strong>{editing.history.map((h,n)=><div key={n} className="border-t py-1">{fmtDate(h.at)} — {h.by} — {h.action}</div>)}</div> : null}<div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditing(null)}>Annuler</Button><Button disabled={update.isPending} onClick={()=>update.mutate()}>Enregistrer</Button></div></div></div>}
     {selected&&<div className="invoice-print fixed inset-0 z-40 overflow-auto bg-white p-6 md:p-10">
       <div className="no-print mb-4 flex justify-end gap-2"><Button variant="outline" onClick={()=>setSelected(null)}>Fermer</Button><Button onClick={()=>window.print()}><Printer className="mr-2 size-4"/>Imprimer / PDF</Button></div>
       <article className="mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
