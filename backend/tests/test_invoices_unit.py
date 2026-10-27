@@ -154,3 +154,35 @@ async def test_non_finite_price_update_is_rejected_without_changing_invoice(fake
     assert exc.value.status_code == 422
     assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
     assert len(fake_db.invoices.docs[0]["history"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_update_rejects_payment_above_recalculated_total(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0},
+        {"username": "admin"},
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.update_invoice(
+            created["id"],
+            {"price_per_kg": 0.1, "paid_amount": 11},
+            {"username": "admin"},
+        )
+
+    assert exc.value.status_code == 422
+    assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
+    assert fake_db.invoices.docs[0]["paid_amount"] == 0
+    assert len(fake_db.invoices.docs[0]["history"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_negative_payment_is_rejected(fake_db):
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.create_invoice(
+            {"load_id": "load-test-1", "paid_amount": -1},
+            {"username": "admin"},
+        )
+
+    assert exc.value.status_code == 422
+    assert not fake_db.invoices.docs
