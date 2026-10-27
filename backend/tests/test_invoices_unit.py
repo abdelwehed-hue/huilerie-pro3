@@ -62,6 +62,7 @@ async def test_create_invoice_calculates_total_and_balance(fake_db):
     assert result["balance"] == 13.0
     assert result["load_code"] == "2627100"
     assert len(result["history"]) == 1
+    assert result["history"][0]["after"]["balance"] == 13.0
 
 
 @pytest.mark.asyncio
@@ -97,6 +98,8 @@ async def test_update_recalculates_balance_and_records_history(fake_db):
     assert updated["balance"] == 10.0
     assert len(updated["history"]) == 2
     assert updated["history"][-1]["action"] == "updated"
+    assert updated["history"][-1]["before"]["balance"] == 13.0
+    assert updated["history"][-1]["after"]["balance"] == 10.0
 
 
 @pytest.mark.asyncio
