@@ -39,7 +39,7 @@ INDEXES: dict[str, list[IndexModel]] = {
     "invoices": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("number", ASCENDING)], name="number", unique=True),
-        IndexModel([("load_id", ASCENDING)], name="load_id", unique=True),
+        IndexModel([("load_id", ASCENDING)], name="load_id", unique=True,\n                    partialFilterExpression={"load_id": {"$type": "string"}}),
         IndexModel([("created_at", DESCENDING)], name="created_desc"),
         IndexModel([("client_name", ASCENDING)], name="client_name"),
     ],
