@@ -117,13 +117,13 @@ export default function Dashboard() {
               <TableRow><TableCell colSpan={7} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
             )}
             {today.map((l) => (
-              <TableRow key={l.id} data-testid={`today-row-${l.code}`} className="text-[15px]">
-                <TableCell className="ps-4"><Link to={`/search?code=${l.code}`} className="font-mono font-bold text-stone-900 hover:text-lime-700" dir="ltr">{l.code}</Link></TableCell>
+              <TableRow key={l.id} data-testid={`today-row-${l.code}`} className={l.status === "cancelled" ? "bg-red-50/40 text-[15px] opacity-70" : "text-[15px] transition-colors hover:bg-amber-50/40"}>
+                <TableCell className="ps-4"><Link to={`/search?code=${l.code}`} className="inline-flex rounded-lg bg-stone-100 px-2.5 py-1 font-mono font-bold text-stone-900 hover:bg-lime-100 hover:text-lime-800" dir="ltr">{l.code}</Link></TableCell>
                 <TableCell className="text-stone-900">{l.client_name}</TableCell>
                 <TableCell className="font-mono text-stone-500" dir="ltr">{l.phone}</TableCell>
                 <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
-                <TableCell className="text-end">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
-                <TableCell className="text-end">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
+                <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
+                <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
                 <TableCell><StatusPill status={l.status} /></TableCell>
               </TableRow>
             ))}
