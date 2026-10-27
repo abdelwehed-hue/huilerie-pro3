@@ -184,24 +184,39 @@
 }
 
 
-/* Final overrides: the global receipt print rules must not shrink the certificate. */
+/* Certificate printing: isolate the certificate and explicitly restore visibility. */
 @media print {
+  @page { size: A4 portrait; margin: 10mm; }
   html:has(.print-area[data-testid="certificate"]),
   body:has(.print-area[data-testid="certificate"]) {
     width: auto !important;
+    height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    background: #fff !important;
+  }
+  body:has(.print-area[data-testid="certificate"]) * {
+    visibility: visible !important;
+  }
+  body:has(.print-area[data-testid="certificate"]) .no-print {
+    display: none !important;
   }
   body:has(.print-area[data-testid="certificate"]) .print-area[data-testid="certificate"] {
+    display: block !important;
     position: static !important;
     width: 100% !important;
+    height: auto !important;
     min-height: 0 !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
     box-sizing: border-box !important;
+    color: #1c1917 !important;
+    background: #fff !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
   body:has(.print-area[data-testid="certificate"]) .print-area[data-testid="certificate"] > div:last-child {
     padding: 8mm !important;
