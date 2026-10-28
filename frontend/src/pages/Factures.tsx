@@ -64,7 +64,7 @@ export default function Factures() {
     <div className="no-print mb-5 grid gap-4 rounded-2xl border bg-white p-4 md:grid-cols-[2fr_1fr_1fr_auto]">
       <div className="space-y-2"><Label>{t("invoice_load")}</Label>
         <Select value={loadId} onValueChange={setLoadId}>
-          <SelectTrigger className="h-12 rounded-xl border-2 border-emerald-500 bg-emerald-50 font-semibold text-emerald-950 shadow-sm transition-colors hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"><SelectValue placeholder={t("invoice_choose_load")}>{(v)=>{const l=loads.find(x=>x.id===v);return l? `${l.code} — ${l.client_name} (${fmtNum(l.olive_kg)} kg)`:String(v??t("invoice_choose_load"));}}</SelectValue></SelectTrigger>
+          <SelectTrigger className="h-16 min-h-16 rounded-xl border border-stone-200 bg-emerald-50/70 py-4 font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50 focus:ring-1 focus:ring-stone-300 focus:ring-offset-0"><SelectValue placeholder={t("invoice_choose_load")}>{(v)=>{const l=loads.find(x=>x.id===v);return l? `${l.code} — ${l.client_name} (${fmtNum(l.olive_kg)} kg)`:String(v??t("invoice_choose_load"));}}</SelectValue></SelectTrigger>
           <SelectContent>{loads.map(l=><SelectItem key={l.id} value={l.id}>{l.code} — {l.client_name} ({fmtNum(l.olive_kg)} kg)</SelectItem>)}</SelectContent>
         </Select>
       </div>
