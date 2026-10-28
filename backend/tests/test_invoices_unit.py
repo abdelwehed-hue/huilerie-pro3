@@ -224,3 +224,31 @@ async def test_update_with_no_editable_fields_is_rejected_without_history_change
     assert exc.value.status_code == 422
     assert exc.value.detail == "no_editable_fields"
     assert len(fake_db.invoices.docs[0]["history"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(fake_db, monkeypatch):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 5},
+        {"username": "admin"},
+    )
+    original_update_one = fake_db.invoices.update_one
+
+    async def simulate_concurrent_edit(query, update):
+        # Simulate another admin saving the invoice after this request read it.
+        fake_db.invoices.docs[0]["updated_at"] = "changed-by-another-edit"
+        return await original_update_one(query, update)
+
+    monkeypatch.setattr(fake_db.invoices, "update_one", simulate_concurrent_edit)
+
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.update_invoice(
+            created["id"],
+            {"price_per_kg": 0.2, "paid_amount": 5},
+            {"username": "admin"},
+        )
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == "invoice_changed_retry"
+    assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
+    assert len(fake_db.invoices.docs[0]["history"]) == 1
