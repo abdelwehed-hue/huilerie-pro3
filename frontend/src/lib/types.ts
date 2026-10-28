@@ -131,7 +131,7 @@ export interface Stats {
   today: string;
   season: string;
   loads_today: number;
-  non_terminated_today: number;
+  non_terminated: number;
   loads_total: number;
   pending: number;
   olive_kg_today: number;
