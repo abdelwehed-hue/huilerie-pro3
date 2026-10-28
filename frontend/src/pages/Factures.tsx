@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileText, Printer, Search, Pencil, Plus } from "lucide-react";
+import { FileText, Printer, Search, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useI18n, fmtNum, fmtDate } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
@@ -44,6 +44,11 @@ export default function Factures() {
     onSuccess:(invoice)=>{toast.success(t("invoice_updated"));setEditing(null);qc.invalidateQueries({queryKey:["invoices"]});setSelected(invoice);},
     onError:(e)=>toast.error(errMsg(e)),
   });
+  const remove = useMutation({
+    mutationFn:(invoiceId:string)=>apiDelete<{ok:boolean}>(`/invoices/${invoiceId}`),
+    onSuccess:(_,invoiceId)=>{toast.success(t("invoice_deleted"));qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["invoice-eligible-loads"]});setSelected(current=>current?.id===invoiceId?null:current);},
+    onError:(e)=>toast.error(errMsg(e)),
+  });
   const validAmount = (value: string) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0;
   const currentLoad = loads.find(l=>l.id===loadId);
   const money = (n:number)=>`${fmtNum(n,3)} DT`;
@@ -66,7 +71,7 @@ export default function Factures() {
     <div className="no-print mb-4 flex gap-2"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-3 size-4 text-stone-400"/><Input className="pl-9" placeholder={t("invoice_search_placeholder")} value={q} onChange={e=>setQ(e.target.value)}/></div></div>
     <div className="no-print overflow-x-auto rounded-2xl border bg-white">
       <table className="w-full text-sm"><thead className="bg-stone-50"><tr>{[t("invoice_number"),t("invoice_date"),t("invoice_client"),t("invoice_load_code"),t("invoice_total"),t("invoice_paid"),t("invoice_balance"),t("invoice_actions")].map(x=><th key={x} className="p-3 text-left">{x}</th>)}</tr></thead>
-      <tbody>{rows.map(i=><tr key={i.id} className="border-t"><td className="p-3 font-semibold">{i.number}</td><td className="p-3">{fmtDate(i.created_at)}</td><td className="p-3">{i.client_name}<div className="text-xs text-stone-500">{i.phone}</div></td><td className="p-3">{i.load_code}</td><td className="p-3">{money(i.total)}</td><td className="p-3">{money(i.paid_amount)}</td><td className="p-3">{money(i.balance)}</td><td className="p-3"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>setSelected(i)}><FileText className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>print(i)}><Printer className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>{setEditing(i);setEditPrice(String(i.price_per_kg));setEditPaid(String(i.paid_amount));}}><Pencil className="size-4"/></Button></div></td></tr>)}</tbody></table>
+      <tbody>{rows.map(i=><tr key={i.id} className="border-t"><td className="p-3 font-semibold">{i.number}</td><td className="p-3">{fmtDate(i.created_at)}</td><td className="p-3">{i.client_name}<div className="text-xs text-stone-500">{i.phone}</div></td><td className="p-3">{i.load_code}</td><td className="p-3">{money(i.total)}</td><td className="p-3">{money(i.paid_amount)}</td><td className="p-3">{money(i.balance)}</td><td className="p-3"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>setSelected(i)}><FileText className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>print(i)}><Printer className="size-4"/></Button><Button size="sm" variant="outline" onClick={()=>{setEditing(i);setEditPrice(String(i.price_per_kg));setEditPaid(String(i.paid_amount));}}><Pencil className="size-4"/></Button><Button size="sm" variant="outline" title={t("invoice_delete")} aria-label={t("invoice_delete")} disabled={remove.isPending} onClick={()=>{if(window.confirm(t("invoice_delete_confirm").replace("{number}",i.number)))remove.mutate(i.id);}}><Trash2 className="size-4"/></Button></div></td></tr>)}</tbody></table>
       {!rows.length&&<div className="p-8 text-center text-stone-500">{t("invoice_none")}</div>}
     </div>
     {editing&&<div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl"><h2 className="text-lg font-bold">{t("invoice_edit_title")} {editing.number}</h2><div className="space-y-2"><Label>{t("invoice_price")}</Label><Input type="number" min="0" step="0.001" value={editPrice} onChange={e=>setEditPrice(e.target.value)}/></div><div className="space-y-2"><Label>{t("invoice_edit_paid_label")}</Label><Input type="number" min="0" step="0.001" value={editPaid} onChange={e=>setEditPaid(e.target.value)}/></div><p className="text-xs text-stone-500">{t("invoice_recalculation_hint")}</p>{editing.history?.length ? <div className="max-h-32 overflow-auto rounded-lg border p-2 text-xs"><strong>{t("invoice_history")}</strong>{editing.history.map((h,n)=><div key={n} className="border-t py-2"><div>{fmtDate(h.at)} — {h.by} — {h.action}</div>{h.before && h.after ? <div className="mt-1 grid grid-cols-2 gap-2 text-stone-600"><div><span className="font-semibold">{t("invoice_before")}: </span>{t("invoice_price")} {money(Number((h.before as Record<string, unknown>).price_per_kg ?? 0))}; {t("invoice_paid_amount")} {money(Number((h.before as Record<string, unknown>).paid_amount ?? 0))}; {t("invoice_total")} {money(Number((h.before as Record<string, unknown>).total ?? 0))}; {t("invoice_balance")} {money(Number((h.before as Record<string, unknown>).balance ?? 0))}</div><div><span className="font-semibold">{t("invoice_after")}: </span>{t("invoice_price")} {money(Number((h.after as Record<string, unknown>).price_per_kg ?? 0))}; {t("invoice_paid_amount")} {money(Number((h.after as Record<string, unknown>).paid_amount ?? 0))}; {t("invoice_total")} {money(Number((h.after as Record<string, unknown>).total ?? 0))}; {t("invoice_balance")} {money(Number((h.after as Record<string, unknown>).balance ?? 0))}</div></div> : null}</div>)}</div> : null}<div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEditing(null)}>{t("cancel")}</Button><Button disabled={!validAmount(editPrice)||!validAmount(editPaid)||update.isPending} onClick={()=>update.mutate()}>{t("save")}</Button></div></div></div>}
