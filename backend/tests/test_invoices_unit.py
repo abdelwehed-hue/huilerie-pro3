@@ -63,7 +63,7 @@ async def test_create_invoice_calculates_total_and_balance(fake_db):
     assert result["paid_amount"] == 5.0
     assert result["balance"] == 13.0
     assert result["load_code"] == "2627100"
-    assert result["number"] == "2627100"
+    assert result["number"] == "FAC-2627100"
     assert len(result["history"]) == 1
     assert result["history"][0]["after"]["balance"] == 13.0
 
