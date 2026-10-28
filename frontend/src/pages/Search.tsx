@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search as SearchIcon, Droplet, Printer, ScanLine, UserRound } from "lucide-react";
+import { Search as SearchIcon, Droplet, Printer, ScanLine, UserRound, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,15 @@ export default function SearchPage() {
   const [editing, setEditing] = useState<Load | null>(null);
   const [reprint, setReprint] = useState<Load | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const qc = useQueryClient();
+  const pressingMutation = useMutation({
+    mutationFn: (load: Load) => apiPatch<Load>(`/loads/${load.id}/status`, { status: "pressing" }),
+    onSuccess: () => {
+      toast.success(t("status_updated"));
+      ["load-by-code", "loads", "loads-search", "stats", "client"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    },
+    onError: () => toast.error(t("status_updated")),
+  });
   if (code + "|" + term !== last) {
     setLast(code + "|" + term);
     setInput(code || term);
@@ -168,6 +177,9 @@ export default function SearchPage() {
                 {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
               </Button>
             )}
+            <Button onClick={() => pressingMutation.mutate(shown)} disabled={pressingMutation.isPending || shown.status === "pressing" || shown.oil_kg != null || shown.status === "cancelled"} data-testid="search-pressing-button" className="h-11 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:bg-green-200">
+              <Activity className="size-4" /> {t("pressing")}
+            </Button>
             <Button onClick={() => setReprint(shown)} variant="outline" data-testid="search-reprint-button" className="h-11 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-50">
               <Printer className="size-4" /> {t("reprint")}
             </Button>
