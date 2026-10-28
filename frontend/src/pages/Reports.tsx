@@ -64,6 +64,11 @@ export default function Reports() {
     enabled: isAdmin,
   });
   const r = rep.isError ? undefined : rep.data;
+  const invoicesQuery = useQuery({
+    queryKey: ["report-invoice-totals"],
+    queryFn: () => apiGet<Array<{ id: string; day?: string; total?: number; paid_amount?: number; balance?: number }>>("/invoices"),
+    enabled: isAdmin,
+  });
   const wrep = useQuery({
     queryKey: ["report-workers", qs],
     queryFn: () => apiGet<WorkerReport>(`/reports/workers?${qs}`),
@@ -72,6 +77,16 @@ export default function Reports() {
   const w = wrep.isError ? undefined : wrep.data;
   const rs = start || r?.start || "";
   const re = end || r?.end || "";
+  const reportInvoices = (invoicesQuery.isError ? [] : (invoicesQuery.data ?? []))
+    .filter((invoice) => (!rs || (invoice.day ?? "") >= rs) && (!re || (invoice.day ?? "") <= re));
+  const invoiceTotals = reportInvoices.reduce(
+    (totals, invoice) => ({
+      total: totals.total + Number(invoice.total ?? 0),
+      paid: totals.paid + Number(invoice.paid_amount ?? 0),
+      balance: totals.balance + Number(invoice.balance ?? 0),
+    }),
+    { total: 0, paid: 0, balance: 0 },
+  );
   const wl = (wloads.isError ? [] : (wloads.data ?? [])).filter((l) => (!rs || l.day >= rs) && (!re || l.day <= re));
 
   if (me.data && !isAdmin) {
@@ -184,6 +199,26 @@ export default function Reports() {
                   <TableCell className="text-end">{fmtNum(r.total.olive_kg)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.oil_kg)}</TableCell>
                   <TableCell className="text-end text-violet-800">{fmtNum(r.total.revenue, 3)}</TableCell>
+                </TableRow>
+              )}
+              {r && (
+                <TableRow className="bg-emerald-50" data-testid="report-invoice-financial-totals">
+                  <TableCell colSpan={6} className="py-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-stone-700">Total des factures</span>
+                        <span className="font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-stone-700">Montant payé</span>
+                        <span className="font-bold tabular-nums text-blue-800">{fmtNum(invoiceTotals.paid, 3)} {t("dt")}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-stone-700">Reste à payer</span>
+                        <span className="font-bold tabular-nums text-rose-700">{fmtNum(invoiceTotals.balance, 3)} {t("dt")}</span>
+                      </div>
+                    </div>
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
