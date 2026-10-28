@@ -118,7 +118,7 @@ export default function Loads() {
                 <TableCell className="text-end font-semibold text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
                 <TableCell className="text-end text-sky-700">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</TableCell>
                 <TableCell>{l.lab ? <GradeBadge grade={l.lab.classification} /> : <span className="text-xs text-stone-400">—</span>}</TableCell>
-                <TableCell><StatusPill status={l.status} /></TableCell>
+                <TableCell><StatusPill status={l.status} size="large" /></TableCell>
                 {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
                 <TableCell className="text-end">
                   <div className="flex items-center justify-end gap-1">
