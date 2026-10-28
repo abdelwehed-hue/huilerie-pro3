@@ -142,20 +142,18 @@ export default function Reports() {
           <Label htmlFor="re">{t("to")}</Label>
           <Input id="re" type="date" data-testid="report-end-input" value={end || r?.end || ""} onChange={(e) => setEnd(e.target.value)} className="h-9 rounded-xl bg-white" />
         </div>
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2" data-testid="report-invoice-totals-next-to-period">
-          <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-sm font-semibold text-stone-700">Total des factures</span>
-            <span className="whitespace-nowrap text-lg font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
+        <div className="flex flex-wrap items-stretch gap-2" data-testid="report-invoice-totals-next-to-period">
+          <div className="flex min-w-[132px] flex-col justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Total des factures</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
           </div>
-          <div className="h-7 w-px bg-emerald-200" />
-          <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-sm font-semibold text-stone-700">Montant payé</span>
-            <span className="whitespace-nowrap text-lg font-bold tabular-nums text-blue-800">{fmtNum(invoiceTotals.paid, 3)} {t("dt")}</span>
+          <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Montant payé</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-blue-800">{fmtNum(invoiceTotals.paid, 3)} {t("dt")}</span>
           </div>
-          <div className="h-7 w-px bg-emerald-200" />
-          <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-sm font-semibold text-stone-700">Reste à payer</span>
-            <span className="whitespace-nowrap text-lg font-bold tabular-nums text-rose-700">{fmtNum(invoiceTotals.balance, 3)} {t("dt")}</span>
+          <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Reste à payer</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-rose-700">{fmtNum(invoiceTotals.balance, 3)} {t("dt")}</span>
           </div>
         </div>
       </div>
