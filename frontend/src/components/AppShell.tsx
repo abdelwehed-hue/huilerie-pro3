@@ -120,6 +120,11 @@ function Brand() {
 export default function AppShell() {
   const me = useMe();
   const { t } = useI18n();
+  const todayLoads = useQuery({
+    queryKey: ["stats"],
+    queryFn: () => apiGet<Stats>("/stats"),
+    refetchInterval: 30_000,
+  });
 
   if (me.isPending) {
     return (
@@ -134,11 +139,6 @@ export default function AppShell() {
   if (me.isError || !me.data) return <Navigate to="/login" replace />;
   const user = me.data;
   const isAdmin = user?.role === "admin";
-  const todayLoads = useQuery({
-    queryKey: ["stats"],
-    queryFn: () => apiGet<Stats>("/stats"),
-    refetchInterval: 30_000,
-  });
 
   return (
     <div className="min-h-screen bg-[#F9F8F3]">
