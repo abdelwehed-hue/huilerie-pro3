@@ -147,15 +147,15 @@ export default function AppShell() {
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 md:px-8">
             <Brand />
             <div
-              data-testid="header-non-terminated-today"
-              title="حمولات اليوم التي لم تنتهِ من العصر"
+              data-testid="header-non-terminated"
+              title="كل الحمولات التي لم تنتهِ من العصر"
               className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 shadow-sm"
               aria-live="polite"
             >
               <Clock3 className="size-4 text-amber-700" />
-              <span className="hidden text-sm font-semibold sm:inline">Non terminé aujourd'hui</span>
+              <span className="hidden text-sm font-semibold sm:inline">Non terminé</span>
               <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-amber-600 px-2 py-0.5 text-sm font-bold text-white">
-                {todayLoads.data?.non_terminated_today ?? "—"}
+                {todayLoads.data?.non_terminated ?? "—"}
               </span>
             </div>
             <div className="ms-auto flex items-center gap-4">
