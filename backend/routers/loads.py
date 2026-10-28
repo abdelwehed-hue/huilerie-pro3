@@ -260,8 +260,12 @@ async def stats(user: dict = Depends(current_user)):
         daily.append(DailyPoint(day=day, olive_kg=round(a[0], 2), oil_kg=round(a[1], 2),
                                 revenue=round(a[2], 3) if is_admin else None))
     t = by_day.get(today, [0.0, 0.0, 0.0, 0.0])
+    non_terminated_today = sum(
+        1 for d in docs if d.get("day") == today and d.get("oil_kg") is None
+    )
     return Stats(
-        today=today, season=season, loads_today=int(t[3]), loads_total=len(docs),
+        today=today, season=season, loads_today=int(t[3]),
+        non_terminated_today=non_terminated_today, loads_total=len(docs),
         pending=sum(1 for d in docs if d.get("oil_kg") is None),
         olive_kg_today=round(t[0], 2), oil_kg_today=round(t[1], 2),
         olive_kg_total=round(o_t, 2), oil_kg_total=round(oil_t, 2),
