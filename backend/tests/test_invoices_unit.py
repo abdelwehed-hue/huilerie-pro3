@@ -192,6 +192,22 @@ async def test_negative_payment_is_rejected(fake_db):
 
 
 @pytest.mark.asyncio
+async def test_unchanged_invoice_edit_does_not_add_history(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 5},
+        {"username": "admin"},
+    )
+
+    updated = await invoice_routes.update_invoice(
+        created["id"], {"price_per_kg": 0.18, "paid_amount": 5}, {"username": "admin"}
+    )
+
+    assert updated["total"] == 18.0
+    assert updated["balance"] == 13.0
+    assert len(updated["history"]) == 1
+
+
+@pytest.mark.asyncio
 async def test_update_with_no_editable_fields_is_rejected_without_history_change(fake_db):
     created = await invoice_routes.create_invoice(
         {"load_id": "load-test-1", "paid_amount": 0},
