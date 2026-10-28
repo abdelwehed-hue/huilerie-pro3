@@ -35,17 +35,17 @@ export function CodeBadge({ code, testId, big }: { code: string; testId?: string
   );
 }
 
-export function StatusPill({ status }: { status: Load["status"] }) {
+export function StatusPill({ status, size = "default" }: { status: Load["status"]; size?: "default" | "large" }) {
   const { t } = useI18n();
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        size === "large" ? "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm ring-1 ring-inset ring-current/10" : "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
         status === "done" ? "bg-sky-100 text-sky-800" : status === "delivered" ? "bg-emerald-100 text-emerald-800" : status === "cancelled" ? "bg-red-100 text-red-700 line-through decoration-red-300" : status === "pressing" ? "bg-amber-100 text-amber-900" : "bg-orange-100 text-orange-800",
       )}
       data-testid={`status-pill-${status}`}
     >
-      <span className={cn("size-1.5 rounded-full", status === "done" ? "bg-sky-500" : status === "delivered" ? "bg-emerald-500" : status === "cancelled" ? "bg-red-500" : status === "pressing" ? "bg-amber-500 animate-ping" : "bg-orange-500 animate-pulse")} />
+      <span className={cn(size === "large" ? "size-2.5" : "size-1.5", "rounded-full", status === "done" ? "bg-sky-500" : status === "delivered" ? "bg-emerald-500" : status === "cancelled" ? "bg-red-500" : status === "pressing" ? "bg-amber-500 animate-ping" : "bg-orange-500 animate-pulse")} />
       {t(status)}
     </span>
   );
