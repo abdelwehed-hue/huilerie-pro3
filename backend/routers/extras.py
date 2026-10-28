@@ -270,6 +270,12 @@ async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str
 
     rep = await build_report(period, start, end, worker)
     wrep = await build_worker_report(period, start, end, worker)
+    invoice_docs = await db.invoices.find({"day": {"$gte": rep.start, "$lte": rep.end}}, {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1}).to_list(100000)
+    invoice_totals = {
+        "total": round(sum(float(i.get("total") or 0) for i in invoice_docs), 3),
+        "paid": round(sum(float(i.get("paid_amount") or 0) for i in invoice_docs), 3),
+        "balance": round(sum(float(i.get("balance") or 0) for i in invoice_docs), 3),
+    }
     mill = (await _mill()).mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
     wb = Workbook()
@@ -292,7 +298,19 @@ async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str
         ws.append([r.period if r.period != "TOTAL" else "TOTAL / المجموع", r.loads, r.olive_kg, r.oil_kg, r.revenue])
     for c in ws[ws.max_row]:
         c.font = Font(bold=True)
-    for col, w in zip("ABCDE", [20, 14, 16, 14, 18]):
+    invoice_summary = [
+        ["Total des factures", invoice_totals["total"]],
+        ["Montant payé", invoice_totals["paid"]],
+        ["Reste à payer", invoice_totals["balance"]],
+    ]
+    for label, amount in invoice_summary:
+        ws.append([label, "", "", "", amount])
+        row_num = ws.max_row
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=4)
+        for cell in ws[row_num]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill("solid", fgColor="D9D9D9")
+    for col, w in zip("ABCDE", [25, 14, 16, 14, 18]):
         ws.column_dimensions[col].width = w
 
     ws2 = wb.create_sheet("Ouvriers - العمال")
@@ -356,6 +374,12 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     _register_fonts()
     rep = await build_report(period, start, end, worker)
     wrep = await build_worker_report(period, start, end, worker)
+    invoice_docs = await db.invoices.find({"day": {"$gte": rep.start, "$lte": rep.end}}, {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1}).to_list(100000)
+    invoice_totals = {
+        "total": round(sum(float(i.get("total") or 0) for i in invoice_docs), 3),
+        "paid": round(sum(float(i.get("paid_amount") or 0) for i in invoice_docs), 3),
+        "balance": round(sum(float(i.get("balance") or 0) for i in invoice_docs), 3),
+    }
     m = await _mill()
     mill = m.mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
@@ -453,6 +477,24 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
         Paragraph(ar(f"Du {rep.start} au {rep.end}"), meta),
         Spacer(1, 12),
         table(data, 1),
+        Spacer(1, 5),
+        Table(
+            [[ar("Total des factures / مجموع الفواتير"), f"{invoice_totals['total']:,.3f} DT"],
+             [ar("Montant payé / المبلغ المدفوع"), f"{invoice_totals['paid']:,.3f} DT"],
+             [ar("Reste à payer / المبلغ المتبقي"), f"{invoice_totals['balance']:,.3f} DT"]],
+            colWidths=[120 * mm, 55 * mm], hAlign="CENTER",
+            style=TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#D9D9D9")),
+                ("TEXTCOLOR", (0, 0), (-1, -1), ink),
+                ("FONTNAME", (0, 0), (-1, -1), "Amiri-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.4, border),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]),
+        ),
         Spacer(1, 18),
         Paragraph("Recettes par ouvrier", heading),
         Paragraph(ar("المداخيل حسب العامل"), heading),
