@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FlaskConical, CheckCircle2, XCircle, Award } from "lucide-react";
+import { FlaskConical, CheckCircle2, XCircle, Award, ScanLine } from "lucide-react";
 import { Link } from "react-router-dom";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import type { Grade, LabAnalysis, LabCreate, Load, Varieties } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, GradeBadge, PageHeader } from "@/components/shared";
+import QrScanDialog from "@/components/QrScanDialog";
 
 const num = (s: string): number | null => {
   const v = parseFloat(s.replace(",", "."));
@@ -33,6 +34,7 @@ export default function Lab() {
   const { t, errMsg } = useI18n();
   const qc = useQueryClient();
   const [f, setF] = useState(EMPTY);
+  const [scanOpen, setScanOpen] = useState(false);
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
 
   const code = f.code.trim();
@@ -107,7 +109,13 @@ export default function Lab() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="lc">{t("code")}</Label>
-            <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onChange={(e) => set("code")(e.target.value)} placeholder="2503141035" className="h-11 rounded-xl bg-white font-mono text-lg tracking-wider" />
+            <div className="flex gap-2">
+              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onChange={(e) => set("code")(e.target.value)} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
+              <Button type="button" onClick={() => setScanOpen(true)} data-testid="lab-qr-scan-button" title={t("scan_qr")} aria-label={t("scan_qr")} className="h-11 shrink-0 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 px-3 text-white shadow-md hover:from-cyan-700 hover:to-teal-700">
+                <ScanLine className="size-5" />
+                <span className="hidden sm:inline">Scan QR Code</span>
+              </Button>
+            </div>
             {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
                 <CheckCircle2 className="size-4 text-green-600" /> {found.client_name} · {fmtNum(found.olive_kg)} {t("kg")}
@@ -236,6 +244,14 @@ export default function Lab() {
           </Table>
         </div>
       </div>
+      <QrScanDialog
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScan={(scannedCode) => {
+          setF((current) => ({ ...current, code: scannedCode }));
+          setScanOpen(false);
+        }}
+      />
     </div>
   );
 }

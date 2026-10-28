@@ -19,7 +19,7 @@ export function codeFromScan(text: string): string {
   return text.trim();
 }
 
-export default function QrScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function QrScanDialog({ open, onClose, onScan }: { open: boolean; onClose: () => void; onScan?: (code: string) => void }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,8 @@ export default function QrScanDialog({ open, onClose }: { open: boolean; onClose
             stopped = true;
             stop();
             onClose();
-            navigate(`/search?code=${encodeURIComponent(code)}`);
+            if (onScan) onScan(code);
+            else navigate(`/search?code=${encodeURIComponent(code)}`);
           },
           () => undefined,
         )
@@ -57,7 +58,7 @@ export default function QrScanDialog({ open, onClose }: { open: boolean; onClose
       cancelAnimationFrame(raf);
       stop();
     };
-  }, [open, navigate, onClose, t]);
+  }, [open, navigate, onClose, onScan, t]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
