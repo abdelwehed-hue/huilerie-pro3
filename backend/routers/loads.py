@@ -12,6 +12,7 @@ from lib.dates import today_iso
 from lib.db import db
 from lib.season import active_season, next_load_code, season_filter, season_of
 from lib.sms import send_load_sms
+from routers.invoices import create_invoice as create_load_invoice
 from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
 
 router = APIRouter(tags=["loads"])
@@ -138,6 +139,14 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         raise HTTPException(404, "not_found")
     if before and before.get("oil_kg") is None:
         await send_load_sms(doc, "ready")
+        # A load becomes "done" as soon as its oil weight is recorded; create its
+        # invoice immediately, using the existing invoice rules and current tariff.
+        try:
+            await create_load_invoice({"load_id": id, "paid_amount": 0}, user)
+        except HTTPException as exc:
+            # Keep completion idempotent if an invoice already exists (e.g. a retry).
+            if exc.status_code != 409:
+                raise
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
