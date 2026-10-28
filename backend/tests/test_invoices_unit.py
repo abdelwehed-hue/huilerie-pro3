@@ -25,6 +25,8 @@ class FakeCollection:
         for doc in self.docs:
             if all(doc.get(key) == value for key, value in query.items()):
                 doc.update(update.get("$set", {}))
+                for key, value in update.get("$push", {}).items():
+                    doc.setdefault(key, []).append(value)
                 return SimpleNamespace(modified_count=1)
         return SimpleNamespace(modified_count=0)
 
