@@ -124,7 +124,7 @@ export default function Dashboard() {
                 <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
                 <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
                 <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
-                <TableCell><StatusPill status={l.status} /></TableCell>
+                <TableCell><StatusPill status={l.status} size="large" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
