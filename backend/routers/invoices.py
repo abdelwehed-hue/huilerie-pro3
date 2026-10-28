@@ -139,9 +139,15 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
     # Do not create an audit event when the requested edit changes no invoice values.
     if all(before[key] == after[key] for key in before):
         return _public(doc)
-    history = list(doc.get("history", []))
-    history.append({"at": now, "by": user.get("username", ""), "action": "updated",
-                    "before": before, "after": after})
-    await db.invoices.update_one({"id": invoice_id}, {"$set": {**allowed, "updated_at": now, "history": history}})
+    audit_event = {"at": now, "by": user.get("username", ""), "action": "updated",
+                   "before": before, "after": after}
+    # Optimistic concurrency prevents simultaneous edits from overwriting each other's
+    # invoice values or audit history.
+    result = await db.invoices.update_one(
+        {"id": invoice_id, "updated_at": doc.get("updated_at")},
+        {"$set": {**allowed, "updated_at": now}, "$push": {"history": audit_event}},
+    )
+    if not result.modified_count:
+        raise HTTPException(409, "invoice_changed_retry")
     updated = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     return updated
