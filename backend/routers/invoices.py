@@ -46,6 +46,11 @@ async def list_invoices(q: str = "", _: dict = Depends(require_admin)):
             {"phone": {"$regex": term, "$options": "i"}},
         ]
     docs = await db.invoices.find(flt, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    load_ids = [doc.get("load_id") for doc in docs if doc.get("load_id")]
+    load_docs = await db.loads.find({"id": {"$in": load_ids}}, {"_id": 0, "id": 1, "status": 1}).to_list(1000)
+    load_statuses = {load["id"]: load.get("status", "done") for load in load_docs}
+    for doc in docs:
+        doc["load_status"] = load_statuses.get(doc.get("load_id"), "done")
     return docs
 
 
