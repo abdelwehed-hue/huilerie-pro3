@@ -142,6 +142,10 @@ export default function Reports() {
           <Label htmlFor="re">{t("to")}</Label>
           <Input id="re" type="date" data-testid="report-end-input" value={end || r?.end || ""} onChange={(e) => setEnd(e.target.value)} className="h-9 rounded-xl bg-white" />
         </div>
+        <div className="flex min-h-9 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2" data-testid="report-invoice-total-next-to-period">
+          <span className="whitespace-nowrap text-sm font-semibold text-stone-700">Total des factures</span>
+          <span className="whitespace-nowrap text-lg font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -204,11 +208,7 @@ export default function Reports() {
               {r && (
                 <TableRow className="bg-emerald-50" data-testid="report-invoice-financial-totals">
                   <TableCell colSpan={6} className="py-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-semibold text-stone-700">Total des factures</span>
-                        <span className="font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
-                      </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-semibold text-stone-700">Montant payé</span>
                         <span className="font-bold tabular-nums text-blue-800">{fmtNum(invoiceTotals.paid, 3)} {t("dt")}</span>
