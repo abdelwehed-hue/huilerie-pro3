@@ -85,7 +85,7 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
     now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()),
-        "number": str(load["code"]),
+        "number": f"FAC-{load['code']}",
         "load_id": load["id"], "load_code": load["code"],
         "client_name": load["client_name"], "phone": load.get("phone", ""),
         "olive_kg": float(load["olive_kg"]), "price_per_kg": price,
