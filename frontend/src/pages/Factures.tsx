@@ -69,9 +69,9 @@ export default function Factures() {
         </Select>
       </div>
       <div className="space-y-2"><Label>{t("invoice_paid_amount")}</Label><Input type="number" min="0" step="0.001" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
-      <div className="space-y-2"><Label>{t("invoice_status")}</Label>
+      <div className="space-y-2 md:min-w-[220px]"><Label>{t("invoice_status")}</Label>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("all")}</SelectItem>
             <SelectItem value="pending">{t("invoice_status_pending")}</SelectItem>
