@@ -108,6 +108,8 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
 
 @router.patch("/invoices/{invoice_id}")
 async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(require_admin)):
+    if not any(key in body for key in ("price_per_kg", "paid_amount")):
+        raise HTTPException(422, "no_editable_fields")
     doc = await db.invoices.find_one({"id": invoice_id})
     if not doc:
         raise HTTPException(404, "invoice_not_found")
