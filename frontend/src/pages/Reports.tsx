@@ -209,7 +209,7 @@ export default function Reports() {
                 <TableRow className="bg-violet-50 font-bold">
                   <TableCell>{t("totals")}</TableCell>
                   <TableCell className="text-end">{r.total.loads}</TableCell>
-                  <TableCell className="text-start">{allVarieties.join(", ") || "—"}</TableCell>
+                  <TableCell className="text-start"></TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.olive_kg)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.oil_kg)}</TableCell>
                   <TableCell className="text-end text-violet-800">{fmtNum(r.total.revenue, 3)}</TableCell>
