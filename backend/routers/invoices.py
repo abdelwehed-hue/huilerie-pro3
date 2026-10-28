@@ -136,6 +136,9 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
               "total": doc["total"], "balance": doc["balance"]}
     after = {"price_per_kg": allowed["price_per_kg"], "paid_amount": allowed["paid_amount"],
              "total": total, "balance": allowed["balance"]}
+    # Do not create an audit event when the requested edit changes no invoice values.
+    if all(before[key] == after[key] for key in before):
+        return _public(doc)
     history = list(doc.get("history", []))
     history.append({"at": now, "by": user.get("username", ""), "action": "updated",
                     "before": before, "after": after})
