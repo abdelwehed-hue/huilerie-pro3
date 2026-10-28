@@ -1,0 +1,54 @@
+name: Validate Factures branch
+
+on:
+  push:
+    branches:
+      - feature/factures-2026-10-27
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check Python syntax
+        run: python -m compileall -q backend
+
+  invoice-unit-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      JWT_SECRET: unit-test-only-secret
+      MONGO_URL: mongodb://127.0.0.1:27017
+      DB_NAME: invoices_unit_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated test dependencies
+        run: python -m pip install fastapi pymongo motor python-dotenv pyjwt passlib httpx pytest pytest-asyncio pytest-xdist
+      - name: Test invoice calculations without database access
+        run: python -m pytest -o addopts= tests/test_invoices_unit.py
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install --no-audit --no-fund --legacy-peer-deps --package-lock=false
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
