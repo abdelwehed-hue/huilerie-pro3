@@ -148,6 +148,7 @@ class Stats(BaseModel):
     today: str
     season: str = ""
     loads_today: int
+    non_terminated_today: int = 0
     loads_total: int
     pending: int
     olive_kg_today: float
