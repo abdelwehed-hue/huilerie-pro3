@@ -189,3 +189,20 @@ async def test_negative_payment_is_rejected(fake_db):
 
     assert exc.value.status_code == 422
     assert not fake_db.invoices.docs
+
+
+@pytest.mark.asyncio
+async def test_update_with_no_editable_fields_is_rejected_without_history_change(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0},
+        {"username": "admin"},
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await invoice_routes.update_invoice(
+            created["id"], {"unexpected_field": "ignored"}, {"username": "admin"}
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail == "no_editable_fields"
+    assert len(fake_db.invoices.docs[0]["history"]) == 1
