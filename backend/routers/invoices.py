@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import DuplicateKeyError
 
-from lib.auth import require_admin
+from lib.auth import current_user, require_admin
 from lib.db import db
 
 router = APIRouter(tags=["invoices"])
@@ -35,7 +35,7 @@ def _public(doc):
 
 
 @router.get("/invoices")
-async def list_invoices(q: str = "", _: dict = Depends(require_admin)):
+async def list_invoices(q: str = "", _: dict = Depends(current_user)):
     flt = {}
     if q.strip():
         term = re.escape(q.strip())
