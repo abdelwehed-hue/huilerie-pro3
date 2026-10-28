@@ -151,3 +151,11 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
         raise HTTPException(409, "invoice_changed_retry")
     updated = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     return updated
+
+
+@router.delete("/invoices/{invoice_id}")
+async def delete_invoice(invoice_id: str, _: dict = Depends(require_admin)):
+    result = await db.invoices.delete_one({"id": invoice_id})
+    if not result.deleted_count:
+        raise HTTPException(404, "invoice_not_found")
+    return {"ok": True}
