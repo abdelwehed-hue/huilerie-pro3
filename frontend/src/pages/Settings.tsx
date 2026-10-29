@@ -8,7 +8,6 @@ import TvImageSettings from "@/components/TvImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
-import MillInfoSettings from "@/components/MillInfoSettings";
 import VarietiesSettings from "@/components/VarietiesSettings";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -335,7 +334,7 @@ export default function SettingsPage() {
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><TunisieSmsSettings /><SmsSettings /></div></TabsContent>
-        <TabsContent value="campaign"><div className="space-y-6"><CampaignSettings /><MillInfoSettings /></div></TabsContent>
+        <TabsContent value="campaign"><CampaignSettings /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
         <TabsContent value="tv-image"><TvImageSettings /></TabsContent>
       </Tabs>

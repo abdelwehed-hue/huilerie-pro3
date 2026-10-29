@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import type { SeasonInfo, SeasonSet } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
+import MillInfoSettings from "@/components/MillInfoSettings";
 
 const AUTO = "__auto";
 
@@ -42,7 +43,7 @@ export default function CampaignSettings() {
   const label = (v: string) => (v === AUTO ? `${t("season_auto")}${s ? ` — ${s.current}` : ""}` : v);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
       <div className="rounded-2xl border border-amber-200 bg-[#FFFBEB] p-6 shadow-sm" data-testid="season-settings">
         <div className="mb-4 flex items-center gap-3 text-amber-900">
           <div className="grid size-10 place-items-center rounded-xl bg-amber-500 text-white"><CalendarRange className="size-5" /></div>
@@ -79,6 +80,8 @@ export default function CampaignSettings() {
           </Button>
         </form>
       </div>
+
+      <MillInfoSettings />
 
       <div className="rounded-2xl border border-sky-200 bg-sky-50 p-6 shadow-sm lg:col-span-2" data-testid="db-export-settings">
         <div className="flex flex-wrap items-center justify-between gap-4">
