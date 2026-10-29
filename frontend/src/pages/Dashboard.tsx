@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Droplets, PackagePlus, Scale, ScanLine, Coins, Clock, Layers } from "lucide-react";
+import { Droplets, PackagePlus, Scale, ScanLine, Coins, Clock, FileText, Layers } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Load, Stats } from "@/lib/types";
 import { fmtNum, useI18n } from "@/lib/i18n";
@@ -39,6 +39,8 @@ export default function Dashboard() {
   const loads = useQuery({ queryKey: ["loads", "", ""], queryFn: () => apiGet<Load[]>("/loads") });
   const s = stats.isError ? undefined : stats.data;
   const today = (loads.isError ? [] : (loads.data ?? [])).filter((l) => s && l.day === s.today);
+  const invoices = useQuery({ queryKey: ["invoices", "load-links"], queryFn: () => apiGet<Array<{ id: string; load_id: string; number: string }>>("/invoices") });
+  const invoiceByLoad = new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice]));
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -110,11 +112,12 @@ export default function Dashboard() {
               <TableHead className="text-end text-[15px] text-stone-700">{t("olive_kg")}</TableHead>
               <TableHead className="text-end text-[15px] text-stone-700">{t("oil_kg")}</TableHead>
               <TableHead className="text-start text-[15px] text-stone-700">{t("status")}</TableHead>
+              <TableHead className="text-start text-[15px] text-stone-700">Facture</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {today.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
             )}
             {today.map((l) => (
               <TableRow key={l.id} data-testid={`today-row-${l.code}`} className={l.status === "cancelled" ? "bg-red-50/40 text-[15px] opacity-70" : "text-[15px] transition-colors hover:bg-amber-50/40"}>
@@ -125,6 +128,7 @@ export default function Dashboard() {
                 <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
                 <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
                 <TableCell><StatusPill status={l.status} size="large" /></TableCell>
+                <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
               </TableRow>
             ))}
           </TableBody>
