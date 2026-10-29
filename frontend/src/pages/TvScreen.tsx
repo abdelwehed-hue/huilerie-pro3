@@ -4,6 +4,23 @@ import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { AppSettings, TvBoard } from "@/lib/types";
 
+type YouTubePlayer = { mute(): void; unMute(): void; playVideo(): void; destroy(): void };
+type YouTubeApi = {
+  Player: new (element: HTMLElement, options: {
+    videoId: string;
+    width: string;
+    height: string;
+    playerVars: Record<string, string | number>;
+    events: {
+      onReady: (event: { target: YouTubePlayer }) => void;
+      onError: (event: { data: number }) => void;
+    };
+  }) => YouTubePlayer;
+};
+declare global {
+  interface Window { YT?: YouTubeApi; onYouTubeIframeAPIReady?: () => void }
+}
+
 const youtubeId = (value: string) => {
   try {
     const u = new URL(value);
@@ -81,25 +98,32 @@ export default function TvScreen() {
   const seen = useRef<Set<string> | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const audioContext = useRef<AudioContext | null>(null);
-  const youtubeFrame = useRef<HTMLIFrameElement | null>(null);
+  const youtubeHost = useRef<HTMLDivElement | null>(null);
+  const youtubePlayer = useRef<YouTubePlayer | null>(null);
+  const soundGestureUnlocked = useRef(false);
+  const [youtubeReady, setYoutubeReady] = useState(false);
+  const [youtubeError, setYoutubeError] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const knownArrivals = useRef<Set<string> | null>(null);
   const [arrivalNotice, setArrivalNotice] = useState<{ id: string; code: string } | null>(null);
   const [arrivalQueue, setArrivalQueue] = useState<{ id: string; code: string }[]>([]);
-  const enableSound = async () => {
+  const enableSound = () => {
+    // A click on the TV itself unlocks audible playback in the TV browser.
+    soundGestureUnlocked.current = true;
     try {
-      const AudioContextClass = window.AudioContext;
-      const context = audioContext.current ?? new AudioContextClass();
+      const context = audioContext.current ?? new window.AudioContext();
       audioContext.current = context;
-      await context.resume();
-      youtubeFrame.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func: "unMute", args: [] }),
-        "https://www.youtube-nocookie.com",
-      );
-      setSoundEnabled(true);
-    } catch {
-      setSoundEnabled(false);
+      void context.resume();
+    } catch { /* YouTube audio does not depend on Web Audio. */ }
+    const player = youtubePlayer.current;
+    if (!player) {
+      setYoutubeError("Le lecteur YouTube n’est pas encore prêt. Réessayez dans quelques secondes.");
+      return;
     }
+    player.unMute();
+    player.playVideo();
+    setSoundEnabled(true);
+    setYoutubeError("");
   };
   const playNewItemSound = () => {
     const context = audioContext.current;
@@ -136,14 +160,82 @@ export default function TvScreen() {
   const arrivals = board?.arrivals ?? [];
   const videoId = youtubeId(mill?.tv_youtube_url ?? "");
   useEffect(() => {
-    const frame = youtubeFrame.current;
-    if (!frame?.contentWindow) return;
-    const command = board?.sound_enabled ? "unMute" : "mute";
-    frame.contentWindow.postMessage(
-      JSON.stringify({ event: "command", func: command, args: [] }),
-      "https://www.youtube-nocookie.com",
-    );
-  }, [board?.sound_enabled, videoId]);
+    if (!videoId || !youtubeHost.current) {
+      setYoutubeReady(false);
+      youtubePlayer.current = null;
+      return;
+    }
+    let cancelled = false;
+    let player: YouTubePlayer | null = null;
+    const mountPlayer = () => {
+      if (cancelled || !window.YT?.Player || !youtubeHost.current || player) return;
+      setYoutubeError("");
+      player = new window.YT.Player(youtubeHost.current, {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          autoplay: 1, controls: 0, loop: 1, playlist: videoId,
+          playsinline: 1, rel: 0, enablejsapi: 1, origin: window.location.origin,
+        },
+        events: {
+          onReady: ({ target }) => {
+            if (cancelled) return;
+            youtubePlayer.current = target;
+            setYoutubeReady(true);
+            target.mute();
+            target.playVideo();
+            if (soundGestureUnlocked.current) {
+              target.unMute();
+              setSoundEnabled(true);
+            }
+          },
+          onError: ({ data }) => setYoutubeError("Erreur du lecteur YouTube (" + data + "). Vérifiez le lien vidéo."),
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      mountPlayer();
+    } else {
+      const previousReady = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousReady?.();
+        mountPlayer();
+      };
+      let script = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener("load", mountPlayer, { once: true });
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      if (player) player.destroy();
+      if (youtubePlayer.current === player) youtubePlayer.current = null;
+      setYoutubeReady(false);
+    };
+  }, [videoId]);
+
+  // Apply worker/admin remote commands only after the TV browser has received
+  // its one-time local gesture. A remote click cannot bypass autoplay policy.
+  useEffect(() => {
+    const player = youtubePlayer.current;
+    if (!player || !youtubeReady) return;
+    if (board?.sound_enabled && soundGestureUnlocked.current) {
+      player.unMute();
+      player.playVideo();
+      setSoundEnabled(true);
+    } else if (!board?.sound_enabled) {
+      player.mute();
+      setSoundEnabled(false);
+    }
+  }, [board?.sound_enabled, youtubeReady]);
   useEffect(() => {
     const current = new Set(arrivals.map((a) => a.id));
     if (knownArrivals.current) {
@@ -169,9 +261,7 @@ export default function TvScreen() {
   return (
     <div className="tv-screen relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
       {mill?.tv_video_enabled !== false && videoId ? (
-        <iframe ref={youtubeFrame} title="Vidéo YouTube de la page TV" className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2"
-          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(videoId)}&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
-          allow="autoplay; encrypted-media; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" />
+        <div title="Vidéo YouTube de la page TV" className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2" data-testid="tv-youtube-player"><div ref={youtubeHost} className="h-full w-full" /></div>
       ) : null}
       <div className="pointer-events-none fixed inset-0 z-0 bg-black/45" />
       {arrivalNotice ? (
@@ -213,11 +303,14 @@ export default function TvScreen() {
           <button
             type="button"
             onClick={enableSound}
-            className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+            disabled={!youtubeReady}
+            className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
             data-testid="tv-sound-toggle"
           >
-            {soundEnabled ? "🔊 Son activé" : "🔈 Activer le son"}
+            {soundEnabled ? "🔊 Son activé" : youtubeReady ? "🔈 Activer le son" : "Chargement du lecteur…"}
           </button>
+        </div>
+        {youtubeError ? <div role="status" className="mb-3 text-center text-sm text-amber-200">{youtubeError}</div> : null}
         </div>
         {items.length === 0 ? (
           <div className="grid h-[65vh] place-items-center text-center" data-testid="tv-empty">
