@@ -20,8 +20,64 @@ type Invoice = {
 };
 type EligibleLoad = {id: string; code: string; client_name: string; phone: string; olive_kg: number; oil_kg: number; day: string};
 
+const frSmall = ["zéro","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize"];
+function frWordsUnder100(n: number): string {
+  if (n <= 16) return frSmall[n];
+  if (n < 20) return "dix-" + frSmall[n - 10];
+  if (n < 70) {
+    const tens = ["","","vingt","trente","quarante","cinquante","soixante"][Math.floor(n / 10)];
+    const unit = n % 10;
+    return tens + (unit === 0 ? "" : unit === 1 ? " et un" : "-" + frSmall[unit]);
+  }
+  if (n < 80) return "soixante-" + frWordsUnder100(n - 60);
+  return "quatre-vingt" + (n === 80 ? "s" : "-" + frWordsUnder100(n - 80));
+}
+function frWords(n: number): string {
+  if (n < 100) return frWordsUnder100(n);
+  if (n < 1000) {
+    const h = Math.floor(n / 100), r = n % 100;
+    return (h === 1 ? "cent" : frSmall[h] + " cent" + (r === 0 ? "s" : "")) + (r ? " " + frWords(r) : "");
+  }
+  if (n < 1_000_000) {
+    const k = Math.floor(n / 1000), r = n % 1000;
+    return (k === 1 ? "mille" : frWords(k) + " mille") + (r ? " " + frWords(r) : "");
+  }
+  const m = Math.floor(n / 1_000_000), r = n % 1_000_000;
+  return frWords(m) + " million" + (m > 1 ? "s" : "") + (r ? " " + frWords(r) : "");
+}
+const arSmall = ["صفر","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة","عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر","ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
+function arWords(n: number): string {
+  if (n < 20) return arSmall[n];
+  if (n < 100) {
+    const tens = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"][Math.floor(n / 10)];
+    return n % 10 ? arSmall[n % 10] + " و" + tens : tens;
+  }
+  if (n < 1000) {
+    const hundreds = ["","مائة","مائتان","ثلاثمائة","أربعمائة","خمسمائة","ستمائة","سبعمائة","ثمانمائة","تسعمائة"];
+    return hundreds[Math.floor(n / 100)] + (n % 100 ? " و" + arWords(n % 100) : "");
+  }
+  if (n < 1_000_000) {
+    const k = Math.floor(n / 1000), r = n % 1000;
+    const part = k === 1 ? "ألف" : k === 2 ? "ألفان" : arWords(k) + " آلاف";
+    return part + (r ? " و" + arWords(r) : "");
+  }
+  const m = Math.floor(n / 1_000_000), r = n % 1_000_000;
+  const part = m === 1 ? "مليون" : m === 2 ? "مليونان" : arWords(m) + " ملايين";
+  return part + (r ? " و" + arWords(r) : "");
+}
+function amountInWords(amount: number, lang: "fr" | "ar"): string {
+  const totalMillimes = Math.max(0, Math.round((Number(amount) || 0) * 1000));
+  const dinars = Math.floor(totalMillimes / 1000), millimes = totalMillimes % 1000;
+  if (lang === "ar") {
+    const main = dinars === 0 ? "صفر دينار تونسي" : arWords(dinars) + (dinars === 1 ? " دينار تونسي" : dinars === 2 ? " ديناران تونسيان" : " دينارًا تونسيًا");
+    return main + (millimes ? " و" + arWords(millimes) + " مليم" : "");
+  }
+  const main = frWords(dinars) + (dinars > 1 ? " dinars tunisiens" : " dinar tunisien");
+  return main + (millimes ? " et " + frWords(millimes) + " millime" + (millimes > 1 ? "s" : "") : "");
+}
+
 export default function Factures() {
-  const { errMsg, t } = useI18n();
+  const { errMsg, t, lang } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedInvoiceId = searchParams.get("invoice_id");
   const admin = useMe().data?.role === "admin";
@@ -107,7 +163,7 @@ export default function Factures() {
         <div className="mb-6 text-center"><strong>{selected.number}</strong></div>
         <section className="mb-6 rounded-lg bg-stone-50 p-4 print:bg-white"><p className="text-sm text-stone-500">{t("invoice_bill_to")}</p><h3 className="text-lg font-bold">{selected.client_name}</h3><p>{selected.phone}</p><p>{t("invoice_load_label")} : {selected.load_code}</p></section>
         <table className="w-full border-collapse text-sm"><thead><tr className="border-y"><th className="p-3 text-left">{t("invoice_service")}</th><th className="p-3 text-right">{t("invoice_quantity")}</th><th className="p-3 text-right">{t("invoice_price_per_kg")}</th><th className="p-3 text-right">Total de la Facture</th></tr></thead><tbody><tr className="border-b"><td className="p-3">{t("invoice_service")}</td><td className="p-3 text-right">{fmtNum(selected.oil_kg)} kg</td><td className="p-3 text-right">{money(selected.price_per_kg)}</td><td className="p-3 text-right">{money(selected.total)}</td></tr></tbody></table>
-        <div className="ml-auto mt-8 max-w-xs space-y-3"><div className="flex justify-between gap-4"><strong>Total de la Facture</strong><strong>{money(selected.total)}</strong></div><div className="flex justify-between gap-4"><strong>Montant payé (DT)</strong><strong>{money(selected.paid_amount)}</strong></div><div className="flex justify-between gap-4 border-t pt-3 text-lg"><strong>Solde restant</strong><strong>{money(selected.balance)}</strong></div></div>
+        <div className="ml-auto mt-8 max-w-xs space-y-3"><div className="flex justify-between gap-4"><strong>Total de la Facture</strong><strong>{money(selected.total)}</strong></div><div className="flex justify-between gap-4"><strong>Montant payé (DT)</strong><strong>{money(selected.paid_amount)}</strong></div><div className="flex justify-between gap-4 border-t pt-3 text-lg"><strong>Solde restant</strong><strong>{money(selected.balance)}</strong></div><p className="text-right text-sm italic text-stone-600" dir={lang === "ar" ? "rtl" : "ltr"}>{amountInWords(selected.balance, lang)}</p></div>
         <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{t("invoice_thanks")}</footer>
       </article>
     </div>}
