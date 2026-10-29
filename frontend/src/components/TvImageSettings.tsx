@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ImageIcon, Trash2, Upload } from "lucide-react";
+import { ImageIcon, Trash2, Upload, Youtube } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { apiGet, apiPut } from "@/lib/api";
@@ -16,6 +16,28 @@ export default function TvImageSettings() {
   const [selected, setSelected] = useState<string | null>(null);
   const current = selected ?? settings.data?.tv_image ?? "";
   const [processing, setProcessing] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [receiptDuration, setReceiptDuration] = useState(8);
+  useEffect(() => {
+    if (settings.data) {
+      setYoutubeUrl(settings.data.tv_youtube_url ?? "");
+      setVideoEnabled(settings.data.tv_video_enabled ?? true);
+      setReceiptDuration(settings.data.tv_receipt_duration ?? 8);
+    }
+  }, [settings.data]);
+  const saveVideo = useMutation({
+    mutationFn: () => apiPut<AppSettings>("/settings", {
+      ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_enabled: videoEnabled,
+      tv_receipt_duration: receiptDuration,
+    }),
+    onSuccess: () => {
+      toast.success(t("saved"));
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["tv-mill-settings"] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
 
   const save = useMutation({
     mutationFn: (image: string) => apiPut<AppSettings>("/settings", { ...settings.data!, tv_image: image }),
@@ -75,6 +97,20 @@ export default function TvImageSettings() {
         </div>
       </div>
       <div className="space-y-3">
+        <div className="rounded-xl border border-red-200 bg-white p-4 space-y-3">
+          <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo YouTube en arrière-plan</div>
+          <Label htmlFor="tv-youtube-url">Lien YouTube</Label>
+          <input id="tv-youtube-url" type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-lg border px-3 py-2 text-sm" />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={videoEnabled} onChange={(e) => setVideoEnabled(e.target.checked)} /> Activer la vidéo sur l’écran TV</label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="tv-receipt-duration">Durée d’affichage du numéro (secondes)</Label>
+            <input id="tv-receipt-duration" type="number" min={3} max={30} value={receiptDuration} onChange={(e) => setReceiptDuration(Math.max(3, Math.min(30, Number(e.target.value) || 8)))} className="w-24 rounded-lg border px-3 py-2" />
+          </div>
+          <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-red-600 hover:bg-red-700">
+            {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres vidéo"}
+          </Button>
+          <p className="text-xs text-stone-500">La vidéo démarre automatiquement en mode muet et boucle si YouTube l’autorise. Le numéro du nouveau reçu s’affiche par-dessus pendant la durée choisie.</p>
+        </div>
         <Label>Image actuelle / aperçu</Label>
         <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-[#142A1B] p-2" data-testid="tv-image-preview">
           {current ? <img src={current} alt="Aperçu du fond de la page TV" className="max-h-80 w-full object-contain" /> : <div className="py-10 text-sm text-white/75">Aucune image personnalisée. Le fond vert actuel sera conservé.</div>}
