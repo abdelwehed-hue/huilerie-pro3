@@ -141,13 +141,17 @@ export default function TvScreen() {
     knownArrivals.current = current;
   }, [arrivals.map((a) => a.id).join(",")]);
   useEffect(() => {
-    if (arrivalNotice || arrivalQueue.length === 0) return;
-    const next = arrivalQueue[0];
-    setArrivalNotice(next);
-    setArrivalQueue((queue) => queue.slice(1));
-    const timer = window.setTimeout(() => setArrivalNotice((old) => old?.id === next.id ? null : old), Math.max(3, Math.min(30, mill?.tv_receipt_duration ?? 8)) * 1000);
+    if (!arrivalNotice && arrivalQueue.length > 0) {
+      setArrivalNotice(arrivalQueue[0]);
+      setArrivalQueue((queue) => queue.slice(1));
+    }
+  }, [arrivalQueue, arrivalNotice]);
+  useEffect(() => {
+    if (!arrivalNotice) return;
+    const activeId = arrivalNotice.id;
+    const timer = window.setTimeout(() => setArrivalNotice((old) => old?.id === activeId ? null : old), Math.max(3, Math.min(30, mill?.tv_receipt_duration ?? 8)) * 1000);
     return () => window.clearTimeout(timer);
-  }, [arrivalQueue, arrivalNotice, mill?.tv_receipt_duration]);
+  }, [arrivalNotice, mill?.tv_receipt_duration]);
   return (
     <div className="tv-screen relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
       {mill?.tv_video_enabled !== false && videoId ? (
