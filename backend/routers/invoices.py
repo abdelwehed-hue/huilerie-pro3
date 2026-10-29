@@ -94,7 +94,8 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
     paid = _money(_number(body.get("paid_amount", 0), "paid_amount_invalid"))
     if paid < 0:
         raise HTTPException(422, "paid_amount_invalid")
-    oil_kg = float(load["oil_kg"])\n    total = _money(oil_kg * price)
+    oil_kg = float(load["oil_kg"])
+    total = _money(oil_kg * price)
     if paid > total:
         raise HTTPException(422, "paid_amount_exceeds_total")
     now = datetime.now(timezone.utc)
