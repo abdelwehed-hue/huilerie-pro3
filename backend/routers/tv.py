@@ -10,10 +10,7 @@ import os
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
-from bson import ObjectId
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
-from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from lib.db import db
 from lib.auth import current_user, require_admin
@@ -21,65 +18,6 @@ from lib.dates import today_iso
 from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate
 
 router = APIRouter()
-
-TV_VIDEO_MAX_BYTES = 100 * 1024 * 1024
-TV_VIDEO_TYPES = {"video/mp4", "video/webm"}
-tv_video_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="tv_videos")
-
-
-@router.post("/tv/video")
-async def upload_tv_video(file: UploadFile = File(...), _: dict = Depends(require_admin)):
-    """Store an admin-uploaded TV video in MongoDB GridFS (never in settings BSON)."""
-    content_type = (file.content_type or "").lower()
-    if content_type not in TV_VIDEO_TYPES:
-        raise HTTPException(415, "video_format_not_supported")
-    old_settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "tv_video_file_id": 1}) or {}
-    stream = tv_video_bucket.open_upload_stream(file.filename or "tv-video", metadata={"content_type": content_type})
-    total = 0
-    try:
-        while chunk := await file.read(1024 * 1024):
-            total += len(chunk)
-            if total > TV_VIDEO_MAX_BYTES:
-                await stream.abort()
-                raise HTTPException(413, "video_too_large_max_100mb")
-            await stream.write(chunk)
-        await stream.close()
-    except Exception:
-        try:
-            await stream.abort()
-        except Exception:
-            pass
-        raise
-    await db.settings.update_one({"key": "app"}, {"$set": {"tv_video_file_id": str(stream._id), "tv_video_source": "upload"}}, upsert=True)
-    old_id = old_settings.get("tv_video_file_id")
-    if old_id and old_id != str(stream._id):
-        try:
-            await tv_video_bucket.delete(ObjectId(old_id))
-        except Exception:
-            pass
-    return {"ok": True, "file_id": str(stream._id), "size": total}
-
-
-@router.get("/tv/video")
-async def get_tv_video():
-    """Public, read-only stream for the dedicated TV display."""
-    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "tv_video_file_id": 1}) or {}
-    file_id = settings.get("tv_video_file_id")
-    if not file_id:
-        raise HTTPException(404, "tv_video_not_found")
-    try:
-        stream = await tv_video_bucket.open_download_stream(ObjectId(file_id))
-    except Exception:
-        raise HTTPException(404, "tv_video_not_found")
-    content_type = (stream.metadata or {}).get("content_type", "video/mp4")
-    async def chunks():
-        while chunk := await stream.readchunk():
-            yield chunk
-    return StreamingResponse(chunks(), media_type=content_type, headers={"Content-Length": str(stream.length), "Cache-Control": "no-store"})
-
-
-
-
 
 def _today_start_utc() -> datetime:
     zone = ZoneInfo(os.environ.get("APP_TZ", "UTC"))
