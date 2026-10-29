@@ -99,6 +99,7 @@ export default function TvScreen() {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const audioContext = useRef<AudioContext | null>(null);
   const youtubeHost = useRef<HTMLDivElement | null>(null);
+  const directVideo = useRef<HTMLVideoElement | null>(null);
   const youtubePlayer = useRef<YouTubePlayer | null>(null);
   const soundGestureUnlocked = useRef(false);
   const [youtubeReady, setYoutubeReady] = useState(false);
@@ -116,14 +117,21 @@ export default function TvScreen() {
       void context.resume();
     } catch { /* YouTube audio does not depend on Web Audio. */ }
     const player = youtubePlayer.current;
-    if (!player) {
-      setYoutubeError("Le lecteur YouTube n’est pas encore prêt. Réessayez dans quelques secondes.");
+    if (player) {
+      player.unMute();
+      player.playVideo();
+      setSoundEnabled(true);
+      setYoutubeError("");
       return;
     }
-    player.unMute();
-    player.playVideo();
-    setSoundEnabled(true);
-    setYoutubeError("");
+    if (directVideo.current) {
+      directVideo.current.muted = false;
+      void directVideo.current.play();
+      setSoundEnabled(true);
+      setYoutubeError("");
+      return;
+    }
+    setYoutubeError("Le lecteur vidéo n’est pas encore prêt. Réessayez dans quelques secondes.");
   };
   const playNewItemSound = () => {
     const context = audioContext.current;
@@ -230,14 +238,22 @@ export default function TvScreen() {
   // its one-time local gesture. A remote click cannot bypass autoplay policy.
   useEffect(() => {
     const player = youtubePlayer.current;
-    if (!player || !youtubeReady) return;
-    if (board?.sound_enabled && soundGestureUnlocked.current) {
-      player.unMute();
-      player.playVideo();
-      setSoundEnabled(true);
-    } else if (!board?.sound_enabled) {
-      player.mute();
-      setSoundEnabled(false);
+    if (player && youtubeReady) {
+      if (board?.sound_enabled && soundGestureUnlocked.current) {
+        player.unMute();
+        player.playVideo();
+        setSoundEnabled(true);
+      } else if (!board?.sound_enabled) {
+        player.mute();
+        setSoundEnabled(false);
+      }
+      return;
+    }
+    if (directVideo.current) {
+      const audible = Boolean(board?.sound_enabled && soundGestureUnlocked.current);
+      directVideo.current.muted = !audible;
+      if (audible) void directVideo.current.play();
+      setSoundEnabled(audible);
     }
   }, [board?.sound_enabled, youtubeReady]);
   useEffect(() => {
@@ -278,7 +294,7 @@ export default function TvScreen() {
           data-testid="tv-video-player"
         >
           {videoId ? <div ref={youtubeHost} className="h-full w-full" data-testid="tv-youtube-player" /> : (
-            <video src={directVideoUrl} autoPlay muted loop playsInline className="h-full w-full object-cover" data-testid="tv-direct-video" />
+            <video ref={directVideo} src={directVideoUrl} autoPlay muted loop playsInline className="h-full w-full object-cover" data-testid="tv-direct-video" />
           )}
         </div>
       ) : null}
@@ -290,6 +306,11 @@ export default function TvScreen() {
             <div dir="ltr" className="font-mono text-[clamp(4rem,12vw,11rem)] font-black leading-none tracking-widest text-amber-300">{arrivalNotice.code}</div>
           </div>
         </div>
+      ) : null}
+      {displayMode === "fullscreen" && (videoId || directVideoUrl) ? (
+        <button type="button" onClick={enableSound} disabled={!youtubeReady && !directVideoUrl} className="fixed right-5 top-5 z-20 rounded-lg border border-white/30 bg-black/50 px-4 py-2 text-sm font-semibold text-white" data-testid="tv-sound-toggle-fullscreen">
+          {soundEnabled ? "🔊 Son activé" : "🔈 Activer le son"}
+        </button>
       ) : null}
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/15 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-lime-700/15 blur-3xl" />
@@ -322,11 +343,11 @@ export default function TvScreen() {
           <button
             type="button"
             onClick={enableSound}
-            disabled={!youtubeReady}
+            disabled={!youtubeReady && !directVideoUrl}
             className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
             data-testid="tv-sound-toggle"
           >
-            {soundEnabled ? "🔊 Son activé" : youtubeReady ? "🔈 Activer le son" : "Chargement du lecteur…"}
+            {soundEnabled ? "🔊 Son activé" : youtubeReady || directVideoUrl ? "🔈 Activer le son" : "Aucune vidéo configurée"}
           </button>
         </div>
         {youtubeError ? <div role="status" className="mb-3 text-center text-sm text-amber-200">{youtubeError}</div> : null}
