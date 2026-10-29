@@ -330,6 +330,7 @@ class TvBoard(BaseModel):
     today: str
     items: list[TvItem]
     arrivals: list[TvArrival] = Field(default_factory=list)
+    sound_enabled: bool = False
     server_time: datetime
 
 
