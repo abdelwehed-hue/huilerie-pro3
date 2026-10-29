@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from lib.db import db
 from lib.auth import current_user
 from lib.dates import today_iso
-from models.schemas import TvAdminItem, TvBoard, TvItem, TvItemUpdate
+from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate
 
 router = APIRouter()
 
@@ -50,7 +50,16 @@ async def build_board() -> TvBoard:
         TvItem(id=l["id"], code=None if s.get("hidden") else l["code"], finished_at=_aware(l["oil_ready_at"]))
         for l, s in await _finished_today() if not s.get("removed")
     ]
-    return TvBoard(today=today_iso(), items=items, server_time=datetime.now(timezone.utc))
+    day_start = _today_start_utc()
+    arrivals_docs = await db.loads.find(
+        {"created_at": {"$gte": day_start}, "cancelled": {"$ne": True}},
+        {"_id": 0, "id": 1, "code": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(100).to_list(100)
+    arrivals = [
+        TvArrival(id=l["id"], code=l["code"], created_at=_aware(l["created_at"]))
+        for l in arrivals_docs
+    ]
+    return TvBoard(today=today_iso(), items=items, arrivals=arrivals, server_time=datetime.now(timezone.utc))
 
 
 @router.get("/tv/board", response_model=TvBoard)
@@ -70,7 +79,7 @@ async def tv_ws(ws: WebSocket):
     try:
         for _ in range(30):
             b = await build_board()
-            sig = json.dumps([[i.id, i.code] for i in b.items])
+            sig = json.dumps({"items": [[i.id, i.code] for i in b.items], "arrivals": [[i.id, i.code] for i in b.arrivals]})
             if sig != last:
                 last = sig
                 await ws.send_text(b.model_dump_json())
