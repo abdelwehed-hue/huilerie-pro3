@@ -19,7 +19,6 @@ from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate
 
 router = APIRouter()
 
-
 def _today_start_utc() -> datetime:
     zone = ZoneInfo(os.environ.get("APP_TZ", "UTC"))
     d = datetime.strptime(today_iso(), "%Y-%m-%d").date()

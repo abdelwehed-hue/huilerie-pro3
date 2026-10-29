@@ -156,6 +156,8 @@ export interface AppSettings extends MillInfo {
   login_image: string;
   tv_image: string;
   tv_youtube_url: string;
+  tv_video_source: "youtube" | "direct";
+  tv_display_mode: "background" | "split" | "fullscreen";
   tv_video_enabled: boolean;
   tv_receipt_duration: number;
   sms_enabled: boolean;

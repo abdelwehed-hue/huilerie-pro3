@@ -217,7 +217,9 @@ class AppSettings(MillInfo):
     price_per_kg: float = Field(ge=0)
     login_image: str = Field(default="", max_length=700_000)
     tv_image: str = Field(default="", max_length=700_000)
-    tv_youtube_url: str = Field(default="", max_length=500)
+    tv_youtube_url: str = Field(default="", max_length=2000)
+    tv_video_source: Literal["youtube", "direct"] = "youtube"
+    tv_display_mode: Literal["background", "split", "fullscreen"] = "background"
     tv_video_enabled: bool = True
     tv_receipt_duration: int = Field(default=8, ge=3, le=30)
     sms_enabled: bool = True
