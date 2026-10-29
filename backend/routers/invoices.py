@@ -46,6 +46,21 @@ async def list_invoices(q: str = "", _: dict = Depends(current_user)):
             {"phone": {"$regex": term, "$options": "i"}},
         ]
     docs = await db.invoices.find(flt, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Correct legacy invoices once: the billed quantity is the extracted/pressed oil,
+    # not the incoming olive weight. Preserve recorded payments.
+    for doc in docs:
+        if doc.get("oil_kg") is None:
+            load = await db.loads.find_one({"id": doc.get("load_id")}, {"_id": 0, "oil_kg": 1})
+            if load and load.get("oil_kg") is not None:
+                oil_kg = float(load["oil_kg"])
+                total = _money(oil_kg * float(doc.get("price_per_kg", 0)))
+                paid = _money(doc.get("paid_amount", 0))
+                balance = _money(max(0, total - paid))
+                await db.invoices.update_one(
+                    {"id": doc["id"], "oil_kg": {"$exists": False}},
+                    {"$set": {"oil_kg": oil_kg, "total": total, "balance": balance}},
+                )
+                doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
     return docs
 
 
@@ -57,7 +72,7 @@ async def eligible_loads(_: dict = Depends(require_admin)):
         "cancelled": {"$ne": True},
         "id": {"$nin": billed},
     }, {"_id": 0, "id": 1, "code": 1, "client_name": 1, "phone": 1,
-        "olive_kg": 1, "day": 1, "season_id": 1, "variety": 1}).sort("created_at", -1).to_list(1000)
+        "olive_kg": 1, "oil_kg": 1, "day": 1, "season_id": 1, "variety": 1}).sort("created_at", -1).to_list(1000)
     return docs
 
 
@@ -79,7 +94,8 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
     paid = _money(_number(body.get("paid_amount", 0), "paid_amount_invalid"))
     if paid < 0:
         raise HTTPException(422, "paid_amount_invalid")
-    total = _money(float(load["olive_kg"]) * price)
+    oil_kg = float(load["oil_kg"])
+    total = _money(oil_kg * price)
     if paid > total:
         raise HTTPException(422, "paid_amount_exceeds_total")
     now = datetime.now(timezone.utc)
@@ -88,7 +104,7 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
         "number": f"FAC-{load['code']}",
         "load_id": load["id"], "load_code": load["code"],
         "client_name": load["client_name"], "phone": load.get("phone", ""),
-        "olive_kg": float(load["olive_kg"]), "price_per_kg": price,
+        "olive_kg": float(load["olive_kg"]), "oil_kg": oil_kg, "price_per_kg": price,
         "total": total, "paid_amount": paid, "balance": _money(total - paid),
         "payments": ([{"at": now, "by": user.get("username", ""), "amount": paid}] if paid > 0 else []),
         "day": load.get("day", now.strftime("%Y-%m-%d")),
@@ -133,7 +149,14 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
             raise HTTPException(422, "paid_amount_invalid")
         old_paid = paid_value
     price = allowed.get("price_per_kg", float(doc["price_per_kg"]))
-    total = _money(float(doc["olive_kg"]) * price)
+    oil_kg = doc.get("oil_kg")
+    if oil_kg is None:
+        load = await db.loads.find_one({"id": doc.get("load_id")}, {"_id": 0, "oil_kg": 1})
+        if not load or load.get("oil_kg") is None:
+            raise HTTPException(409, "invoice_oil_weight_missing")
+        oil_kg = float(load["oil_kg"])
+        allowed["oil_kg"] = oil_kg
+    total = _money(float(oil_kg) * price)
     paid = _money(old_paid + payment_amount) if "payment_amount" in body else old_paid
     if paid > total:
         raise HTTPException(422, "paid_amount_exceeds_total")
