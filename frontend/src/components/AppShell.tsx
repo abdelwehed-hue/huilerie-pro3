@@ -58,7 +58,7 @@ export function LangToggle({ className }: { className?: string }) {
       type="button"
       data-testid={`lang-option-${other}`}
       onClick={() => setLang(other)}
-      className={cn("inline-flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 font-semibold text-stone-800 shadow-sm transition-colors duration-200 hover:bg-stone-50", className)}
+      className={cn("inline-flex h-9 items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 font-semibold text-stone-800 shadow-sm transition-colors duration-200 hover:bg-stone-50", className)}
     >
       <Languages className="size-4 text-stone-600" />
       <span lang={other}>{other === "ar" ? "العربية" : "Français"}</span>
@@ -71,7 +71,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   return (
     <nav
       data-testid="bottom-nav"
-      className="no-print fixed inset-x-0 bottom-0 z-40 bg-[#1E2B20] shadow-[0_-10px_30px_rgba(20,35,22,0.25)]"
+      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/70 bg-[#F9F8F3]/85 shadow-[0_-8px_24px_rgba(20,35,22,0.10)] backdrop-blur-md"
     >
       <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
@@ -83,7 +83,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             className={({ isActive }) =>
               cn(
                 "group flex min-w-[5.25rem] flex-1 flex-col items-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
-                isActive ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/5 hover:text-white",
+                isActive ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#566356] hover:bg-stone-200/60 hover:text-stone-900",
               )
             }
           >
@@ -101,16 +101,16 @@ function Brand() {
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
   return (
-    <div className="flex items-center gap-3" data-testid="header-brand">
+    <div className="flex items-center gap-2" data-testid="header-brand">
       {m?.mill_logo ? (
-        <img src={m.mill_logo} alt="" data-testid="header-brand-logo" className="size-12 rounded-2xl bg-white object-contain shadow-md shadow-green-950/10" />
+        <img src={m.mill_logo} alt="" data-testid="header-brand-logo" className="size-10 rounded-xl bg-white object-contain shadow-md shadow-green-950/10" />
       ) : (
-        <div className="grid size-12 place-items-center rounded-2xl bg-[#1F3A24] shadow-md shadow-green-950/20">
-          <Droplets className="size-6 text-amber-400" />
+        <div className="grid size-10 place-items-center rounded-xl bg-[#1F3A24] shadow-md shadow-green-950/20">
+          <Droplets className="size-5 text-amber-400" />
         </div>
       )}
       <div>
-        <div className="font-heading text-xl font-bold leading-tight text-stone-900" data-testid="header-brand-name">{m?.mill_name || t("app_name")}</div>
+        <div className="font-heading text-lg font-bold leading-tight text-stone-900" data-testid="header-brand-name">{m?.mill_name || t("app_name")}</div>
         <div className="hidden text-sm text-stone-500 sm:block">{t("app_tagline")}</div>
       </div>
     </div>
@@ -144,12 +144,12 @@ export default function AppShell() {
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
         <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 md:px-8">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <Brand />
             <div
               data-testid="header-non-terminated"
               title="كل الحمولات التي لم تنتهِ من العصر"
-              className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 shadow-sm"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-950 shadow-sm"
               aria-live="polite"
             >
               <Clock3 className="size-4 text-amber-700" />
@@ -158,7 +158,7 @@ export default function AppShell() {
                 {todayLoads.data?.non_terminated ?? "—"}
               </span>
             </div>
-            <div className="ms-auto flex items-center gap-4">
+            <div className="ms-auto flex items-center gap-3">
               {user && <SeasonSwitcher isAdmin={isAdmin} />}
               <LangToggle />
               {user && (
@@ -167,8 +167,8 @@ export default function AppShell() {
                   <div className="text-sm text-stone-500">{isAdmin ? t("admin") : t("worker")} · <span dir="ltr">@{user.username}</span></div>
                 </div>
               )}
-              <Button variant="ghost" size="icon" onClick={() => endSession()} data-testid="logout-button" title={t("logout")} className="rounded-xl text-stone-600 hover:bg-stone-200/60">
-                <LogOut className="size-5 rtl:rotate-180" />
+              <Button variant="ghost" size="icon" onClick={() => endSession()} data-testid="logout-button" title={t("logout")} className="h-9 w-9 rounded-xl text-stone-600 hover:bg-stone-200/60">
+                <LogOut className="size-4 rtl:rotate-180" />
               </Button>
             </div>
           </div>
