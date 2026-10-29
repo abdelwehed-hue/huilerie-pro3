@@ -69,10 +69,10 @@ function amountInWords(amount: number, lang: "fr" | "ar"): string {
   const totalMillimes = Math.max(0, Math.round((Number(amount) || 0) * 1000));
   const dinars = Math.floor(totalMillimes / 1000), millimes = totalMillimes % 1000;
   if (lang === "ar") {
-    const main = dinars === 0 ? "صفر دينار تونسي" : arWords(dinars) + (dinars === 1 ? " دينار تونسي" : dinars === 2 ? " ديناران تونسيان" : " دينارًا تونسيًا");
+    const main = dinars === 0 ? "صفر دينار" : arWords(dinars) + (dinars === 1 ? " دينار" : dinars === 2 ? " ديناران" : " دينارًا");
     return main + (millimes ? " و" + arWords(millimes) + " مليم" : "");
   }
-  const main = frWords(dinars) + (dinars > 1 ? " dinars tunisiens" : " dinar tunisien");
+  const main = frWords(dinars) + (dinars > 1 ? " dinars" : " dinar");
   return main + (millimes ? " et " + frWords(millimes) + " millime" + (millimes > 1 ? "s" : "") : "");
 }
 
