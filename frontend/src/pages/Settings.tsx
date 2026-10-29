@@ -365,22 +365,22 @@ export default function SettingsPage() {
       <Tabs defaultValue="users">
         <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-3 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-300 data-[state=active]:bg-sky-50 data-[state=active]:text-sky-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-sky-100 text-sky-700"><Users className="size-5 stroke-[2.2]" /></span><span>{t("users")}</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-sky-100 text-sky-700"><Users className="size-3 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
           <TabsTrigger value="tariff" data-testid="settings-tab-tariff" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 data-[state=active]:border-violet-300 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Coins className="size-5 stroke-[2.2]" /></span><span>{t("tariff")}</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Coins className="size-3 stroke-[2.2]" /></span><span>{t("tariff")}</span>
           </TabsTrigger>
           <TabsTrigger value="sms" data-testid="settings-tab-sms" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-pink-300 hover:bg-pink-50 data-[state=active]:border-pink-300 data-[state=active]:bg-pink-50 data-[state=active]:text-pink-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-pink-100 text-pink-700"><MessageSquareText className="size-5 stroke-[2.2]" /></span><span>{t("sms_settings")}</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-pink-100 text-pink-700"><MessageSquareText className="size-3 stroke-[2.2]" /></span><span>{t("sms_settings")}</span>
           </TabsTrigger>
           <TabsTrigger value="campaign" data-testid="settings-tab-campaign" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-amber-300 hover:bg-amber-50 data-[state=active]:border-amber-300 data-[state=active]:bg-amber-50 data-[state=active]:text-amber-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-700"><CalendarRange className="size-5 stroke-[2.2]" /></span><span>{t("campaign")}</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-700"><CalendarRange className="size-3 stroke-[2.2]" /></span><span>{t("campaign")}</span>
           </TabsTrigger>
           <TabsTrigger value="login-image" data-testid="settings-tab-login-image" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 data-[state=active]:border-emerald-300 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><LogIn className="size-5 stroke-[2.2]" /></span><span>Page Login</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><LogIn className="size-3 stroke-[2.2]" /></span><span>Page Login</span>
           </TabsTrigger>
           <TabsTrigger value="tv-image" data-testid="settings-tab-tv-image" className="flex h-auto min-h-24 flex-col gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-4 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-orange-300 hover:bg-orange-50 data-[state=active]:border-orange-300 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-900 data-[state=active]:shadow-md">
-            <span className="grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-700"><Tv className="size-5 stroke-[2.2]" /></span><span>Page TV</span>
+            <span className="grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-700"><Tv className="size-3 stroke-[2.2]" /></span><span>Page TV</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
