@@ -73,7 +73,7 @@ export default function Factures() {
 <div className="space-y-2"><Label>{t("invoice_load")}</Label>
         <Select value={loadId} onValueChange={setLoadId}>
           <SelectTrigger className="h-16 min-h-16 rounded-xl border border-stone-200 bg-emerald-50/70 py-4 font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50 focus:ring-1 focus:ring-stone-300 focus:ring-offset-0"><SelectValue placeholder={t("invoice_choose_load")}>{(v)=>{const l=loads.find(x=>x.id===v);return l? `${l.code} — ${l.client_name} (${fmtNum(l.oil_kg)} kg huile)`:String(v??t("invoice_choose_load"));}}</SelectValue></SelectTrigger>
-          <SelectContent>{loads.map(l=><SelectItem key={l.id} value={l.id}>{l.code} — {l.client_name} ({fmtNum(l.olive_kg)} kg)</SelectItem>)}</SelectContent>
+          <SelectContent>{loads.map(l=><SelectItem key={l.id} value={l.id}>{l.code} — {l.client_name} ({fmtNum(l.oil_kg)} kg huile)</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="space-y-2"><Label>{t("invoice_paid_amount")}</Label><Input type="number" min="0" step="0.001" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
