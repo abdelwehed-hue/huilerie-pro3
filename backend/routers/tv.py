@@ -59,7 +59,29 @@ async def build_board() -> TvBoard:
         TvArrival(id=l["id"], code=l["code"], created_at=_aware(l["created_at"]))
         for l in arrivals_docs
     ]
-    return TvBoard(today=today_iso(), items=items, arrivals=arrivals, server_time=datetime.now(timezone.utc))
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "tv_sound_enabled": 1}) or {}
+    return TvBoard(
+        today=today_iso(), items=items, arrivals=arrivals,
+        sound_enabled=bool(settings.get("tv_sound_enabled", False)),
+        server_time=datetime.now(timezone.utc),
+    )
+
+
+@router.get("/tv/control")
+async def get_tv_control(_: dict = Depends(current_user)):
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "tv_sound_enabled": 1}) or {}
+    return {"sound_enabled": bool(settings.get("tv_sound_enabled", False))}
+
+
+@router.put("/tv/control")
+async def set_tv_control(body: dict, _: dict = Depends(current_user)):
+    enabled = body.get("sound_enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(400, "invalid_sound_setting")
+    await db.settings.update_one(
+        {"key": "app"}, {"$set": {"tv_sound_enabled": enabled}}, upsert=True
+    )
+    return {"sound_enabled": enabled}
 
 
 @router.get("/tv/board", response_model=TvBoard)
@@ -79,7 +101,7 @@ async def tv_ws(ws: WebSocket):
     try:
         for _ in range(30):
             b = await build_board()
-            sig = json.dumps({"items": [[i.id, i.code] for i in b.items], "arrivals": [[i.id, i.code] for i in b.arrivals]})
+            sig = json.dumps({"items": [[i.id, i.code] for i in b.items], "arrivals": [[i.id, i.code] for i in b.arrivals], "sound_enabled": b.sound_enabled})
             if sig != last:
                 last = sig
                 await ws.send_text(b.model_dump_json())
