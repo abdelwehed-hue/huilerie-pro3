@@ -42,9 +42,9 @@ function PriceForm() {
     onError: (e) => toast.error(errMsg(e)),
   });
   return (
-    <div className="space-y-6">
-      <form onSubmit={(e) => { e.preventDefault(); if (!isNaN(v) && v >= 0 && s.data) m.mutate(v); }} className="max-w-4xl">
-        <div className="max-w-xl space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+      <form onSubmit={(e) => { e.preventDefault(); if (!isNaN(v) && v >= 0 && s.data) m.mutate(v); }} className="w-full">
+        <div className="w-full space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6">
           <div className="flex items-center gap-3 text-violet-900">
             <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
             <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
