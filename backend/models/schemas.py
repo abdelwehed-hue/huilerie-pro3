@@ -218,9 +218,8 @@ class AppSettings(MillInfo):
     login_image: str = Field(default="", max_length=700_000)
     tv_image: str = Field(default="", max_length=700_000)
     tv_youtube_url: str = Field(default="", max_length=500)
-    tv_video_source: Literal["preset", "youtube", "upload"] = "preset"
+    tv_video_source: Literal["youtube", "direct"] = "youtube"
     tv_display_mode: Literal["background", "split", "fullscreen"] = "background"
-    tv_video_file_id: str = Field(default="", max_length=100)
     tv_video_enabled: bool = True
     tv_receipt_duration: int = Field(default=8, ge=3, le=30)
     sms_enabled: bool = True
