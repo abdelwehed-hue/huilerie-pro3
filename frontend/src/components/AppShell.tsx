@@ -16,10 +16,12 @@ import {
   Tv,
   ReceiptText,
   Clock3,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/api";
 import type { MillInfo, Stats } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -120,6 +122,16 @@ function Brand() {
 export default function AppShell() {
   const me = useMe();
   const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const tvControl = useQuery({
+    queryKey: ["tv-control"],
+    queryFn: () => apiGet<{ sound_enabled: boolean }>("/tv/control"),
+    refetchInterval: 5_000,
+  });
+  const tvSoundMutation = useMutation({
+    mutationFn: (sound_enabled: boolean) => apiPut<{ sound_enabled: boolean }>("/tv/control", { sound_enabled }),
+    onSuccess: (data) => queryClient.setQueryData(["tv-control"], data),
+  });
   const todayLoads = useQuery({
     queryKey: ["stats"],
     queryFn: () => apiGet<Stats>("/stats"),
@@ -160,6 +172,22 @@ export default function AppShell() {
             </div>
             <div className="ms-auto flex items-center gap-3">
               {user && <SeasonSwitcher isAdmin={isAdmin} />}
+              {user && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={tvSoundMutation.isPending || tvControl.isPending}
+                  onClick={() => tvSoundMutation.mutate(!(tvControl.data?.sound_enabled ?? false))}
+                  title={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
+                  aria-label={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
+                  data-testid="tv-remote-sound-toggle"
+                  className={cn("h-9 gap-1.5 rounded-xl px-2.5", tvControl.data?.sound_enabled ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-white text-stone-600")}
+                >
+                  {tvControl.data?.sound_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                  <span className="hidden text-xs font-semibold sm:inline">{tvControl.data?.sound_enabled ? "Son TV activé" : "Activer le son TV"}</span>
+                </Button>
+              )}
               <LangToggle />
               {user && (
                 <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">
