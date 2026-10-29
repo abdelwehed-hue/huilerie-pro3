@@ -90,6 +90,7 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
         "client_name": load["client_name"], "phone": load.get("phone", ""),
         "olive_kg": float(load["olive_kg"]), "price_per_kg": price,
         "total": total, "paid_amount": paid, "balance": _money(total - paid),
+        "payments": ([{"at": now, "by": user.get("username", ""), "amount": paid}] if paid > 0 else []),
         "day": load.get("day", now.strftime("%Y-%m-%d")),
         "created_at": now, "updated_at": now,
         "mill_name": settings.get("mill_name", ""), "mill_address": settings.get("mill_address", ""),
@@ -108,7 +109,7 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
 
 @router.patch("/invoices/{invoice_id}")
 async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(require_admin)):
-    if not any(key in body for key in ("price_per_kg", "paid_amount")):
+    if not any(key in body for key in ("price_per_kg", "payment_amount", "paid_amount")):
         raise HTTPException(422, "no_editable_fields")
     doc = await db.invoices.find_one({"id": invoice_id})
     if not doc:
@@ -119,18 +120,30 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
         if price < 0:
             raise HTTPException(422, "price_invalid")
         allowed["price_per_kg"] = _money(price)
-    if "paid_amount" in body:
-        paid = _number(body["paid_amount"], "paid_amount_invalid")
-        if paid < 0:
+    old_paid = _money(doc.get("paid_amount", 0))
+    payment_amount = 0.0
+    if "payment_amount" in body:
+        payment_amount = _money(_number(body["payment_amount"], "paid_amount_invalid"))
+        if payment_amount < 0:
             raise HTTPException(422, "paid_amount_invalid")
-        allowed["paid_amount"] = _money(paid)
+    # Keep compatibility with older clients that still send paid_amount as a replacement value.
+    if "paid_amount" in body:
+        paid_value = _money(_number(body["paid_amount"], "paid_amount_invalid"))
+        if paid_value < 0:
+            raise HTTPException(422, "paid_amount_invalid")
+        old_paid = paid_value
     price = allowed.get("price_per_kg", float(doc["price_per_kg"]))
-    paid = allowed.get("paid_amount", float(doc["paid_amount"]))
     total = _money(float(doc["olive_kg"]) * price)
+    paid = _money(old_paid + payment_amount) if "payment_amount" in body else old_paid
     if paid > total:
         raise HTTPException(422, "paid_amount_exceeds_total")
+    allowed["paid_amount"] = paid
     allowed["total"] = total
     allowed["balance"] = _money(total - paid)
+    new_payments = list(doc.get("payments") or [])
+    if payment_amount > 0:
+        new_payments.append({"at": datetime.now(timezone.utc), "by": user.get("username", ""), "amount": payment_amount})
+        allowed["payments"] = new_payments
     now = datetime.now(timezone.utc)
     before = {"price_per_kg": doc["price_per_kg"], "paid_amount": doc["paid_amount"],
               "total": doc["total"], "balance": doc["balance"]}
