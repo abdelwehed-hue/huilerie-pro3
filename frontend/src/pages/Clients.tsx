@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BookUser, Droplet, Layers, Pencil, Percent, Phone, Sprout, Trash2, Wallet } from "lucide-react";
+import { BookUser, Droplet, FileText, Layers, Pencil, Percent, Phone, Sprout, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,6 +32,8 @@ export default function Clients() {
   });
   const rows = list.isError ? [] : (list.data ?? []);
   const h = hist.isError ? null : hist.data;
+  const invoices = useQuery({ queryKey: ["invoices", "load-links"], queryFn: () => apiGet<Array<{ id: string; load_id: string; number: string }>>("/invoices") });
+  const invoiceByLoad = new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice]));
   const isAdmin = useMe().data?.role === "admin";
   const qc = useQueryClient();
   const [editing, setEditing] = useState<ClientUpdate | null>(null);
@@ -135,6 +137,7 @@ export default function Clients() {
                       <TableHead className="text-end">{t("yield")}</TableHead>
                       <TableHead className="text-start">{t("lab")}</TableHead>
                       <TableHead className="text-start">{t("status")}</TableHead>
+                      <TableHead className="text-start">Facture</TableHead>
                       {h.amount != null && <TableHead className="text-end">{t("amount")}</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -156,6 +159,7 @@ export default function Clients() {
                           ) : <span className="text-xs text-stone-400">—</span>}
                         </TableCell>
                         <TableCell><StatusPill status={l.status} /></TableCell>
+                        <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
                         {h.amount != null && <TableCell className="text-end text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
                       </TableRow>
                     ))}
