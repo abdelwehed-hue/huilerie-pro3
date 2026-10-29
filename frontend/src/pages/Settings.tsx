@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, ShieldAlert, UserPlus, Users, Coins, Building2, MessageSquareText, Pencil, Trash2, CalendarRange, Upload, ImageIcon, LogIn, Tv } from "lucide-react";
+import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, Tv } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import LoginImageSettings from "@/components/LoginImageSettings";
 import TvImageSettings from "@/components/TvImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
+import MillInfoSettings from "@/components/MillInfoSettings";
+import VarietiesSettings from "@/components/VarietiesSettings";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,91 +28,38 @@ function PriceForm() {
   const { t, errMsg } = useI18n();
   const qc = useQueryClient();
   const s = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
-  const [edit, setEdit] = useState<Partial<Record<keyof AppSettings, string>>>({});
-  const val = (k: keyof AppSettings) => edit[k] ?? (s.data ? String(s.data[k] ?? "") : "");
+  const [price, setPrice] = useState<string | null>(null);
+  const current = price ?? (s.data ? String(s.data.price_per_kg) : "");
+  const v = parseFloat(current.replace(",", "."));
   const m = useMutation({
-    mutationFn: (b: AppSettings) => apiPut<AppSettings>("/settings", b),
+    mutationFn: (price_per_kg: number) => apiPut<AppSettings>("/settings", { ...s.data!, price_per_kg }),
     onSuccess: () => {
       toast.success(t("saved"));
-      setEdit({});
-      setLogo(null);
+      setPrice(null);
       qc.invalidateQueries({ queryKey: ["settings"] });
       qc.invalidateQueries({ queryKey: ["mill"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
-  const [logo, setLogo] = useState<string | null>(null); // null = unchanged
-  const curLogo = logo ?? s.data?.mill_logo ?? "";
-  const pickLogo = (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const k = Math.min(1, 256 / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
-      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-      setLogo(c.toDataURL("image/png"));
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  };
-  const v = parseFloat(val("price_per_kg").replace(",", "."));
-  const field = (k: keyof AppSettings, label: string, testId: string, extra = "") => (
-    <div className="space-y-2">
-      <Label htmlFor={k}>{label}</Label>
-      <Input id={k} data-testid={testId} value={val(k)} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} className={cn("h-11 rounded-xl bg-white", extra)} />
-    </div>
-  );
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!isNaN(v) && v >= 0)
-          m.mutate({ ...s.data!, price_per_kg: v, mill_name: val("mill_name"), mill_address: val("mill_address"), mill_phone: val("mill_phone"), mill_logo: curLogo });
-      }}
-      className="grid max-w-4xl gap-6 md:grid-cols-2"
-    >
-      <div className="space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6">
-        <div className="flex items-center gap-3 text-violet-900">
-          <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
-          <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
-        </div>
-        {field("price_per_kg", t("price_per_kg"), "admin-price-per-kg-input", "text-lg font-semibold")}
-      </div>
-      <div className="space-y-4 rounded-2xl border border-teal-200 bg-teal-50/60 p-6">
-        <div className="flex items-center gap-3 text-teal-900">
-          <div className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white"><Building2 className="size-5" /></div>
-          <h2 className="font-heading text-xl font-bold">{t("mill_info")}</h2>
-        </div>
-        {field("mill_name", t("mill_name"), "admin-mill-name-input")}
-        {field("mill_address", t("mill_address"), "admin-mill-address-input")}
-        {field("mill_phone", t("mill_phone"), "admin-mill-phone-input")}
-        <div className="space-y-2">
-          <Label>{t("mill_logo")}</Label>
-          <div className="flex items-center gap-4">
-            <div className="grid size-16 place-items-center overflow-hidden rounded-2xl border border-teal-200 bg-white" data-testid="admin-mill-logo-preview">
-              {curLogo ? <img src={curLogo} alt="" className="size-full object-contain" /> : <ImageIcon className="size-6 text-stone-300" />}
-            </div>
-            <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer rounded-xl")}>
-              <Upload className="size-4" /> {t("mill_logo_pick")}
-              <input type="file" accept="image/*" className="hidden" data-testid="admin-mill-logo-input" onChange={(e) => { pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
-            </label>
-            {curLogo && (
-              <Button type="button" variant="ghost" onClick={() => setLogo("")} data-testid="admin-mill-logo-remove" className="rounded-xl text-red-600 hover:bg-red-50">
-                <Trash2 className="size-4" />
-              </Button>
-            )}
+    <div className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); if (!isNaN(v) && v >= 0 && s.data) m.mutate(v); }} className="max-w-4xl">
+        <div className="max-w-xl space-y-4 rounded-2xl border border-violet-200 bg-[#FAF5FF] p-6">
+          <div className="flex items-center gap-3 text-violet-900">
+            <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><Coins className="size-5" /></div>
+            <h2 className="font-heading text-xl font-bold">{t("tariff")}</h2>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="price_per_kg">{t("price_per_kg")}</Label>
+            <Input id="price_per_kg" data-testid="admin-price-per-kg-input" value={current} onChange={(e) => setPrice(e.target.value)} className="h-11 rounded-xl bg-white text-lg font-semibold" />
+          </div>
+          <Button type="submit" disabled={isNaN(v) || v < 0 || m.isPending || !s.data} data-testid="admin-price-save-button" className="h-11 rounded-xl bg-violet-700 px-8 hover:bg-violet-800">
+            {t("save")}
+          </Button>
         </div>
-      </div>
-      <div>
-        <Button type="submit" disabled={isNaN(v) || m.isPending} data-testid="admin-price-save-button" className="h-11 rounded-xl bg-violet-700 px-8 hover:bg-violet-800">
-          {t("save")}
-        </Button>
-      </div>
-    </form>
+      </form>
+      <VarietiesSettings />
+    </div>
   );
 }
 
@@ -386,7 +335,7 @@ export default function SettingsPage() {
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><TunisieSmsSettings /><SmsSettings /></div></TabsContent>
-        <TabsContent value="campaign"><CampaignSettings /></TabsContent>
+        <TabsContent value="campaign"><div className="space-y-6"><CampaignSettings /><MillInfoSettings /></div></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
         <TabsContent value="tv-image"><TvImageSettings /></TabsContent>
       </Tabs>
