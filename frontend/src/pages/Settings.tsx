@@ -23,18 +23,33 @@ import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
+function formatTariffPrice(value: string): string {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return "";
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number.toFixed(3).replace(".", ",") : value;
+}
+
+function parseTariffPrice(value: string): number {
+  const normalized = value.trim().replace(",", ".");
+  return normalized === "" ? Number.NaN : Number(normalized);
+}
+
 function PriceForm() {
   const { t, errMsg } = useI18n();
   const qc = useQueryClient();
   const s = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
   const [price, setPrice] = useState<string | null>(null);
-  const current = price ?? (s.data ? String(s.data.price_per_kg) : "");
-  const v = parseFloat(current.replace(",", "."));
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const rawPrice = price ?? (s.data ? String(s.data.price_per_kg) : "");
+  const current = isEditingPrice ? rawPrice : formatTariffPrice(rawPrice);
+  const v = parseTariffPrice(current);
   const m = useMutation({
     mutationFn: (price_per_kg: number) => apiPut<AppSettings>("/settings", { ...s.data!, price_per_kg }),
     onSuccess: () => {
       toast.success(t("saved"));
       setPrice(null);
+      setIsEditingPrice(false);
       qc.invalidateQueries({ queryKey: ["settings"] });
       qc.invalidateQueries({ queryKey: ["mill"] });
     },
@@ -50,7 +65,16 @@ function PriceForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="price_per_kg">{t("price_per_kg")}</Label>
-            <Input id="price_per_kg" data-testid="admin-price-per-kg-input" value={current} onChange={(e) => setPrice(e.target.value)} className="h-11 rounded-xl bg-white text-lg font-semibold" />
+            <Input
+              id="price_per_kg"
+              data-testid="admin-price-per-kg-input"
+              inputMode="decimal"
+              value={current}
+              onFocus={() => { setPrice(current); setIsEditingPrice(true); }}
+              onChange={(e) => setPrice(e.target.value)}
+              onBlur={() => setIsEditingPrice(false)}
+              className="h-11 rounded-xl bg-white text-lg font-semibold"
+            />
           </div>
           <Button type="submit" disabled={isNaN(v) || v < 0 || m.isPending || !s.data} data-testid="admin-price-save-button" className="h-11 rounded-xl bg-violet-700 px-8 hover:bg-violet-800">
             {t("save")}
