@@ -92,6 +92,10 @@ export default function TvScreen() {
       const context = audioContext.current ?? new AudioContextClass();
       audioContext.current = context;
       await context.resume();
+      youtubeFrame.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func: "unMute", args: [] }),
+        "https://www.youtube-nocookie.com",
+      );
       setSoundEnabled(true);
     } catch {
       setSoundEnabled(false);
