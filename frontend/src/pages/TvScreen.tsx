@@ -311,7 +311,6 @@ export default function TvScreen() {
           </button>
         </div>
         {youtubeError ? <div role="status" className="mb-3 text-center text-sm text-amber-200">{youtubeError}</div> : null}
-        </div>
         {items.length === 0 ? (
           <div className="grid h-[65vh] place-items-center text-center" data-testid="tv-empty">
             <div>
