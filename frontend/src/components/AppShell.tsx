@@ -73,7 +73,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
       data-testid="bottom-nav"
       className="no-print fixed inset-x-0 bottom-0 z-40 bg-[#1E2B20] shadow-[0_-10px_30px_rgba(20,35,22,0.25)]"
     >
-      <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-2.5 [scrollbar-width:none]">
+      <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
           <NavLink
             key={n.to}
@@ -82,12 +82,12 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             data-testid={n.id}
             className={({ isActive }) =>
               cn(
-                "group flex min-w-[5.5rem] flex-1 flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-2.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
+                "group flex min-w-[5.25rem] flex-1 flex-col items-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
                 isActive ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/5 hover:text-white",
               )
             }
           >
-            <n.icon className="size-6 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
+            <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
             <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
           </NavLink>
         ))}
