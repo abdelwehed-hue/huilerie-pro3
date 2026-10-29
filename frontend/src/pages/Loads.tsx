@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Ban, Droplet, PackageCheck, Trash2 } from "lucide-react";
+import { Ban, Droplet, FileText, PackageCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,8 @@ export default function Loads() {
     queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(q)}&status=${st}`),
   });
   const rows = loads.isError ? [] : (loads.data ?? []);
+  const invoices = useQuery({ queryKey: ["invoices", "load-links"], queryFn: () => apiGet<Array<{ id: string; load_id: string; number: string }>>("/invoices") });
+  const invoiceByLoad = new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice]));
 
   const del = useMutation({
     mutationFn: (id: string) => apiDelete(`/loads/${id}`),
@@ -95,6 +97,7 @@ export default function Loads() {
               <TableHead className="text-end">{t("yield")}</TableHead>
               <TableHead className="text-start">{t("lab")}</TableHead>
               <TableHead className="text-start">{t("status")}</TableHead>
+              <TableHead className="text-start">Facture</TableHead>
               {isAdmin && <TableHead className="text-end">{t("amount")}</TableHead>}
               <TableHead className="text-end">{t("actions")}</TableHead>
             </TableRow>
@@ -102,7 +105,7 @@ export default function Loads() {
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 10 : 9} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell>
+                <TableCell colSpan={isAdmin ? 11 : 10} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell>
               </TableRow>
             )}
             {rows.map((l) => (
@@ -119,6 +122,7 @@ export default function Loads() {
                 <TableCell className="text-end text-sky-700">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</TableCell>
                 <TableCell>{l.lab ? <GradeBadge grade={l.lab.classification} /> : <span className="text-xs text-stone-400">—</span>}</TableCell>
                 <TableCell><StatusPill status={l.status} size="large" /></TableCell>
+                <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
                 {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
                 <TableCell className="text-end">
                   <div className="flex items-center justify-end gap-1">
