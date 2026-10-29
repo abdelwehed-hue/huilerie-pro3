@@ -4,6 +4,15 @@ import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { AppSettings, TvBoard } from "@/lib/types";
 
+const youtubeId = (value: string) => {
+  try {
+    const u = new URL(value);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("/")[0];
+    if (u.hostname.includes("youtube.com")) return u.searchParams.get("v") || u.pathname.split("/").filter(Boolean).pop() || "";
+  } catch { /* invalid URL */ }
+  return "";
+};
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const hhmm = (iso: string) => {
   const d = new Date(iso);
@@ -73,6 +82,8 @@ export default function TvScreen() {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const audioContext = useRef<AudioContext | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const knownArrivals = useRef<Set<string> | null>(null);
+  const [arrivalNotice, setArrivalNotice] = useState<{ id: string; code: string } | null>(null);
   const enableSound = async () => {
     try {
       const AudioContextClass = window.AudioContext;
@@ -116,11 +127,41 @@ export default function TvScreen() {
   }, [ids, soundEnabled]);
 
   const items = board?.items ?? [];
+  const arrivals = board?.arrivals ?? [];
+  const videoId = youtubeId(mill?.tv_youtube_url ?? "");
+  useEffect(() => {
+    const current = new Set(arrivals.map((a) => a.id));
+    if (knownArrivals.current) {
+      const added = arrivals.filter((a) => !knownArrivals.current!.has(a.id));
+      if (added.length) {
+        const newest = added[0];
+        setArrivalNotice({ id: newest.id, code: newest.code });
+        const timer = window.setTimeout(() => setArrivalNotice((old) => old?.id === newest.id ? null : old), Math.max(3, Math.min(30, mill?.tv_receipt_duration ?? 8)) * 1000);
+        knownArrivals.current = current;
+        return () => window.clearTimeout(timer);
+      }
+    }
+    knownArrivals.current = current;
+  }, [arrivals.map((a) => a.id).join(","), mill?.tv_receipt_duration]);
   return (
-    <div className="tv-screen min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
+    <div className="tv-screen relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
+      {mill?.tv_video_enabled !== false && videoId ? (
+        <iframe title="Vidéo YouTube de la page TV" className="pointer-events-none fixed inset-0 z-0 h-full w-full"
+          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(videoId)}&playsinline=1&rel=0`}
+          allow="autoplay; encrypted-media; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" />
+      ) : null}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-black/45" />
+      {arrivalNotice ? (
+        <div key={arrivalNotice.id} className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-black/35 px-4" data-testid="tv-new-arrival-notice">
+          <div className="rounded-[2rem] border-4 border-amber-300 bg-[#142A1B]/95 px-12 py-10 text-center shadow-2xl">
+            <div className="mb-4 text-[clamp(1.5rem,3vw,3rem)] font-bold text-white">Nouveau reçu · وصل جديد</div>
+            <div dir="ltr" className="font-mono text-[clamp(4rem,12vw,11rem)] font-black leading-none tracking-widest text-amber-300">{arrivalNotice.code}</div>
+          </div>
+        </div>
+      ) : null}
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/15 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-lime-700/15 blur-3xl" />
-      <header className="relative grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
+      <header className="relative z-10 grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
         <div className="flex min-w-0 flex-col items-center gap-1 text-center md:justify-self-start" data-testid="tv-mill-info">
           <div className="font-heading text-[clamp(1.1rem,2vw,2rem)] font-bold leading-tight text-amber-300">{mill?.mill_name || ""}</div>
           {mill?.mill_address ? <div className="mt-1 text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_address}</div> : null}
@@ -144,7 +185,7 @@ export default function TvScreen() {
         </div>
       </header>
 
-      <main className="relative px-[4vw] py-[4vh]">
+      <main className="relative z-10 px-[4vw] py-[4vh]">
         <div className="mb-4 flex justify-end">
           <button
             type="button"
