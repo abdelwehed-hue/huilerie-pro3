@@ -17,19 +17,23 @@ export default function TvImageSettings() {
   const current = selected ?? settings.data?.tv_image ?? "";
   const [processing, setProcessing] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [videoSource, setVideoSource] = useState<"youtube" | "direct">("youtube");
+  const [displayMode, setDisplayMode] = useState<"background" | "split" | "fullscreen">("background");
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [receiptDuration, setReceiptDuration] = useState(8);
   useEffect(() => {
     if (settings.data) {
       setYoutubeUrl(settings.data.tv_youtube_url ?? "");
+      setVideoSource(settings.data.tv_video_source ?? "youtube");
+      setDisplayMode(settings.data.tv_display_mode ?? "background");
       setVideoEnabled(settings.data.tv_video_enabled ?? true);
       setReceiptDuration(settings.data.tv_receipt_duration ?? 8);
     }
   }, [settings.data]);
   const saveVideo = useMutation({
     mutationFn: () => apiPut<AppSettings>("/settings", {
-      ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_enabled: videoEnabled,
-      tv_receipt_duration: receiptDuration,
+      ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_source: videoSource,
+      tv_display_mode: displayMode, tv_video_enabled: videoEnabled, tv_receipt_duration: receiptDuration,
     }),
     onSuccess: () => {
       toast.success(t("saved"));
@@ -98,9 +102,26 @@ export default function TvImageSettings() {
       </div>
       <div className="space-y-3">
         <div className="rounded-xl border border-red-200 bg-white p-4 space-y-3">
-          <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo YouTube en arrière-plan</div>
-          <Label htmlFor="tv-youtube-url">Lien YouTube</Label>
-          <input id="tv-youtube-url" type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full rounded-lg border px-3 py-2 text-sm" />
+          <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo sur l’écran TV</div>
+          <Label htmlFor="tv-youtube-url">Lien de la vidéo (laisser vide pour le moment)</Label>
+          <input id="tv-youtube-url" type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder={videoSource === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://exemple.com/video.mp4"} className="w-full rounded-lg border px-3 py-2 text-sm" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="tv-video-source">Source de la vidéo</Label>
+              <select id="tv-video-source" value={videoSource} onChange={(e) => setVideoSource(e.target.value as "youtube" | "direct")} className="w-full rounded-lg border bg-white px-3 py-2 text-sm">
+                <option value="youtube">Lien YouTube</option>
+                <option value="direct">Lien direct MP4 / WebM (hébergé ailleurs)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="tv-display-mode">Mode d’affichage</Label>
+              <select id="tv-display-mode" value={displayMode} onChange={(e) => setDisplayMode(e.target.value as "background" | "split" | "fullscreen")} className="w-full rounded-lg border bg-white px-3 py-2 text-sm">
+                <option value="background">Vidéo en arrière-plan + reçus</option>
+                <option value="split">Vidéo à gauche + reçus à droite</option>
+                <option value="fullscreen">Vidéo plein écran + nouveau reçu temporaire</option>
+              </select>
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={videoEnabled} onChange={(e) => setVideoEnabled(e.target.checked)} /> Activer la vidéo sur l’écran TV</label>
           <div className="flex items-center gap-3">
             <Label htmlFor="tv-receipt-duration">Durée d’affichage du numéro (secondes)</Label>
@@ -109,7 +130,7 @@ export default function TvImageSettings() {
           <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-red-600 hover:bg-red-700">
             {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres vidéo"}
           </Button>
-          <p className="text-xs text-stone-500">La vidéo démarre automatiquement en mode muet et boucle si YouTube l’autorise. Le numéro du nouveau reçu s’affiche par-dessus pendant la durée choisie.</p>
+          <p className="text-xs text-stone-500">Le lien reste vide tant que vous ne l’avez pas renseigné. YouTube ou une URL directe MP4/WebM hébergée sur un autre service sont acceptés. Aucun fichier vidéo n’est envoyé ni stocké dans MongoDB.</p>
         </div>
         <Label>Image actuelle / aperçu</Label>
         <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-[#142A1B] p-2" data-testid="tv-image-preview">
