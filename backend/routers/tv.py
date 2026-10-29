@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from lib.db import db
-from lib.auth import current_user, require_admin
+from lib.auth import current_user
 from lib.dates import today_iso
 from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate
 
