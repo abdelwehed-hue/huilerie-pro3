@@ -158,7 +158,11 @@ export default function TvScreen() {
 
   const items = board?.items ?? [];
   const arrivals = board?.arrivals ?? [];
-  const videoId = youtubeId(mill?.tv_youtube_url ?? "");
+  const videoUrl = mill?.tv_youtube_url?.trim() ?? "";
+  const videoSource = mill?.tv_video_source ?? "youtube";
+  const displayMode = mill?.tv_display_mode ?? "background";
+  const videoId = videoSource === "youtube" ? youtubeId(videoUrl) : "";
+  const directVideoUrl = videoSource === "direct" ? videoUrl : "";
   useEffect(() => {
     if (!videoId || !youtubeHost.current) {
       setYoutubeReady(false);
@@ -260,10 +264,25 @@ export default function TvScreen() {
   }, [arrivalNotice, mill?.tv_receipt_duration]);
   return (
     <div className="tv-screen relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
-      {mill?.tv_video_enabled !== false && videoId ? (
-        <div title="Vidéo YouTube de la page TV" className="pointer-events-none fixed left-1/2 top-1/2 z-0 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2" data-testid="tv-youtube-player"><div ref={youtubeHost} className="h-full w-full" /></div>
+      {mill?.tv_video_enabled !== false && (videoId || directVideoUrl) ? (
+        <div
+          title="Vidéo de la page TV"
+          className={
+            "pointer-events-none fixed z-0 overflow-hidden " +
+            (displayMode === "split"
+              ? "inset-y-0 left-0 h-screen w-1/2"
+              : displayMode === "fullscreen"
+                ? "inset-0 h-screen w-screen"
+                : "left-1/2 top-1/2 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2")
+          }
+          data-testid="tv-video-player"
+        >
+          {videoId ? <div ref={youtubeHost} className="h-full w-full" data-testid="tv-youtube-player" /> : (
+            <video src={directVideoUrl} autoPlay muted loop playsInline className="h-full w-full object-cover" data-testid="tv-direct-video" />
+          )}
+        </div>
       ) : null}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-black/45" />
+      <div className={"pointer-events-none fixed z-0 bg-black/45 " + (displayMode === "split" ? "inset-y-0 left-0 w-1/2" : "inset-0")} />
       {arrivalNotice ? (
         <div key={arrivalNotice.id} className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-black/35 px-4" data-testid="tv-new-arrival-notice">
           <div className="rounded-[2rem] border-4 border-amber-300 bg-[#142A1B]/95 px-12 py-10 text-center shadow-2xl">
@@ -274,7 +293,7 @@ export default function TvScreen() {
       ) : null}
       <div className="pointer-events-none fixed -start-40 -top-40 size-[36rem] rounded-full bg-lime-500/15 blur-3xl" />
       <div className="pointer-events-none fixed -bottom-40 -end-40 size-[36rem] rounded-full bg-lime-700/15 blur-3xl" />
-      <header className="relative z-10 grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[4vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
+      {displayMode !== "fullscreen" ? <header style={displayMode === "split" ? { marginLeft: "50%", width: "50%" } : undefined} className="relative z-10 grid grid-cols-1 items-center gap-4 border-b border-white/10 px-[2vw] py-[2vh] md:grid-cols-[1fr_auto_1fr]">
         <div className="flex min-w-0 flex-col items-center gap-1 text-center md:justify-self-start" data-testid="tv-mill-info">
           <div className="font-heading text-[clamp(1.1rem,2vw,2rem)] font-bold leading-tight text-amber-300">{mill?.mill_name || ""}</div>
           {mill?.mill_address ? <div className="mt-1 text-[clamp(0.8rem,1.1vw,1.15rem)] leading-snug text-white/75">{mill.mill_address}</div> : null}
@@ -296,9 +315,9 @@ export default function TvScreen() {
             {live ? <Wifi className="size-4 text-lime-400" data-testid="tv-live-ws" /> : <WifiOff className="size-4 text-white/40" data-testid="tv-live-poll" />}
           </div>
         </div>
-      </header>
+      </header> : null}
 
-      <main className="relative z-10 px-[4vw] py-[4vh]">
+      {displayMode !== "fullscreen" ? <main style={displayMode === "split" ? { marginLeft: "50%", width: "50%" } : undefined} className="relative z-10 px-[2vw] py-[3vh]">
         <div className="mb-4 flex justify-end">
           <button
             type="button"
@@ -344,7 +363,7 @@ export default function TvScreen() {
             ))}
           </div>
         )}
-      </main>
+      </main> : null}
     </div>
   );
 }
