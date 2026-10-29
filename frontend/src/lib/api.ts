@@ -18,28 +18,28 @@ export class ApiError extends Error {
 
 type JsonBody = unknown;
 
-async function request<T>(method: string, path: string, body?: JsonBody): Promise<T> {
+async function request<T>(method: string, path: string, body?: JsonBody, externalSignal?: AbortSignal): Promise<T> {
   // Auth uses an httpOnly cookie issued by the Render backend.
+  // React Query may cancel an obsolete request when the last observer unmounts;
+  // forward that cancellation to fetch instead of leaving a stale request in flight.
   const controller = new AbortController();
+  const abortFromExternal = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) {
+    controller.abort(externalSignal.reason);
+  } else {
+    externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
+  }
   const timeoutId = setTimeout(() => controller.abort(), 15000);
-  let res: Response;
 
   try {
-    res = await fetch(`${BASE}${path}`, {
+    const res = await fetch(`${BASE}${path}`, {
       method,
       credentials: "include",
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
-  } catch (error) {
-    if (controller.signal.aborted) {
-      throw new Error("The server did not respond within 15 seconds. Check your connection and try again.");
-    }
-    throw error;
-  }
 
-  try {
     // Keep the timeout active while reading the response body too. Some browsers
     // can receive headers but stall while consuming the body.
     if (!res.ok) {
@@ -50,12 +50,15 @@ async function request<T>(method: string, path: string, body?: JsonBody): Promis
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   } catch (error) {
+    // Cancellation by React Query is not a server timeout and must stay a cancellation.
+    if (externalSignal?.aborted) throw error;
     if (controller.signal.aborted) {
-      throw new Error("The server response timed out after 15 seconds. Refresh the page and try again.");
+      throw new Error("Session/API request timed out after 15 seconds. Check your connection and try again.");
     }
     throw error;
   } finally {
     clearTimeout(timeoutId);
+    externalSignal?.removeEventListener("abort", abortFromExternal);
   }
 }
 
