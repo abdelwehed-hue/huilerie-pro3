@@ -217,6 +217,9 @@ class AppSettings(MillInfo):
     price_per_kg: float = Field(ge=0)
     login_image: str = Field(default="", max_length=700_000)
     tv_image: str = Field(default="", max_length=700_000)
+    tv_youtube_url: str = Field(default="", max_length=500)
+    tv_video_enabled: bool = True
+    tv_receipt_duration: int = Field(default=8, ge=3, le=30)
     sms_enabled: bool = True
     sms_arrival_template: str = Field(default=DEFAULT_SMS_ARRIVAL, max_length=600)
     sms_ready_template: str = Field(default=DEFAULT_SMS_READY, max_length=600)
@@ -317,9 +320,16 @@ class TvItem(BaseModel):
     finished_at: datetime
 
 
+class TvArrival(BaseModel):
+    id: str
+    code: str
+    created_at: datetime
+
+
 class TvBoard(BaseModel):
     today: str
     items: list[TvItem]
+    arrivals: list[TvArrival] = Field(default_factory=list)
     server_time: datetime
 
 

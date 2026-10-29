@@ -155,6 +155,9 @@ export interface AppSettings extends MillInfo {
   price_per_kg: number;
   login_image: string;
   tv_image: string;
+  tv_youtube_url: string;
+  tv_video_enabled: boolean;
+  tv_receipt_duration: number;
   sms_enabled: boolean;
   sms_arrival_template: string;
   sms_ready_template: string;
@@ -292,9 +295,12 @@ export interface TvItem {
   finished_at: string;
 }
 
+export interface TvArrival { id: string; code: string; created_at: string; }
+
 export interface TvBoard {
   today: string;
   items: TvItem[];
+  arrivals: TvArrival[];
   server_time: string;
 }
 
