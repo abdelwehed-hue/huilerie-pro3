@@ -301,6 +301,7 @@ export interface TvBoard {
   today: string;
   items: TvItem[];
   arrivals: TvArrival[];
+  sound_enabled: boolean;
   server_time: string;
 }
 
