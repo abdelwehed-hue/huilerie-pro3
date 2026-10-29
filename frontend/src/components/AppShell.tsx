@@ -71,7 +71,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   return (
     <nav
       data-testid="bottom-nav"
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/70 bg-[#F9F8F3]/85 shadow-[0_-8px_24px_rgba(20,35,22,0.10)] backdrop-blur-md"
+      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-md"
     >
       <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
@@ -83,7 +83,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
             className={({ isActive }) =>
               cn(
                 "group flex min-w-[5.25rem] flex-1 flex-col items-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
-                isActive ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#566356] hover:bg-stone-200/60 hover:text-stone-900",
+                isActive ? "border-[#CFE3C4] bg-[#2C4A30]/95 text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/10 hover:text-white",
               )
             }
           >
