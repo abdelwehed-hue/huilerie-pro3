@@ -101,6 +101,23 @@ def _payment_events(invoice):
     return []
 
 
+
+def _cancellation_event(load):
+    """Cancellation is informational only; it never creates a debit or refund."""
+    if not load.get("cancelled") or not load.get("cancelled_at"):
+        return None
+    cancel_date = _dt(load.get("cancelled_at"))
+    if not cancel_date:
+        return None
+    return {
+        "id": "cancel:" + str(load.get("id", "")), "date": cancel_date.isoformat(),
+        "kind": "cancellation", "label": "Annulation " + str(load.get("code", "")),
+        "debit": 0.0, "credit": 0.0, "load_code": load.get("code", ""),
+        "season": _season_for_event(cancel_date), "informational": True,
+        "reason": load.get("cancel_reason", ""),
+    }
+
+
 @router.get("/client-accounts/search")
 async def search_client_accounts(q: str = Query(min_length=2, max_length=120), _: dict = Depends(require_admin)):
     term = re.escape(q.strip())
@@ -213,16 +230,9 @@ async def client_account_statement(
                 "legacy_aggregate": payment.get("legacy", False),
             })
     for load in loads:
-        if load.get("cancelled") and load.get("cancelled_at"):
-            cancel_date = _dt(load.get("cancelled_at"))
-            if cancel_date:
-                ledger.append({
-                    "id": "cancel:" + str(load.get("id", "")), "date": cancel_date.isoformat(),
-                    "kind": "cancellation", "label": "Annulation " + str(load.get("code", "")),
-                    "debit": 0.0, "credit": 0.0, "load_code": load.get("code", ""),
-                    "season": _season_for_event(cancel_date), "informational": True,
-                    "reason": load.get("cancel_reason", ""),
-                })
+        cancellation = _cancellation_event(load)
+        if cancellation:
+            ledger.append(cancellation)
 
     ledger.sort(key=lambda event: (event["date"], event["id"]))
     if first is not None:
