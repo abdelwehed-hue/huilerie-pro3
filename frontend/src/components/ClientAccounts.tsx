@@ -117,7 +117,7 @@ export default function ClientAccounts() {
           <Input value={query} onChange={(e) => {setQuery(e.target.value);setClient(null);}} placeholder={labels.search} className="pl-10"/>
           {query.trim().length >= 2 && !client && <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-white shadow-lg">
             {searchQuery.isFetching ? <p className="p-3 text-sm text-stone-500">…</p> :
-              (searchQuery.data ?? []).map((hit) => <button key={hit.phone} type="button" onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);}} className="block w-full border-b px-3 py-3 text-left hover:bg-emerald-50">
+              (searchQuery.data ?? []).map((hit) => <button key={hit.phone} type="button" onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);setSeason("all");setCustom(false);setStart("");setEnd("");}} className="block w-full border-b px-3 py-3 text-left hover:bg-emerald-50">
                 <strong className="block">{hit.client_name || "—"}</strong><span className="text-sm text-stone-500">{hit.phone}{hit.codes.length ? ` · ${hit.codes.slice(0,3).join(", ")}` : ""}</span>
               </button>)}
             {!searchQuery.isFetching && !searchQuery.data?.length && <p className="p-3 text-sm text-stone-500">{labels.noClient}</p>}
