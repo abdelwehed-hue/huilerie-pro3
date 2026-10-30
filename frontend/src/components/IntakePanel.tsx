@@ -156,8 +156,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                 <span className="text-stone-400" aria-hidden="true">▾</span>
               </button>
               {clientDropdownOpen && (
-                <div className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-lime-200 bg-white shadow-xl shadow-lime-900/10">
-                  <div className="sticky top-0 border-b border-stone-100 bg-white p-2">
+                <div className="absolute inset-x-0 top-full z-50 mt-1 flex flex-col gap-1">
+                  <div className="rounded-xl border border-lime-200 bg-white p-2 shadow-lg shadow-lime-900/10">
                     <Input
                       autoFocus
                       value={clientSearch}
@@ -169,7 +169,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                       className="h-10 rounded-lg"
                     />
                   </div>
-                  <div role="listbox" aria-label={t("client")} className="max-h-64 overflow-y-auto p-1">
+                  <div role="listbox" aria-label={t("client")} className="max-h-64 overflow-y-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10">
                     {filteredClients.length > 0 ? filteredClients.map((c) => (
                       <button
                         type="button"
