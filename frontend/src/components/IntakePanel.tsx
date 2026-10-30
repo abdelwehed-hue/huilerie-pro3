@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { History, Printer, Plus, Sprout, UserPlus, UserRound } from "lucide-react";
+import { History, Printer, Plus, Sprout, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,7 +60,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [clientSearch, setClientSearch] = useState("");
   const allClients = useQuery({ queryKey: ["clients", "__all"], queryFn: () => apiGet<ClientSummary[]>("/clients") });
   const clientList = allClients.isError ? [] : [...(allClients.data ?? [])].sort((a, b) => a.client_name.localeCompare(b.client_name));
-  const filteredClients = clientList.filter((c) => `${c.client_name} ${c.phone}`.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
+  const filteredClients = clientList.filter((c) => c.phone.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const varietyList = vq.isError ? [] : (vq.data?.varieties ?? []);
   const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
@@ -68,16 +68,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [kg, setKg] = useState("");
-  const [showSug, setShowSug] = useState(false);
   const [created, setCreated] = useState<Load | null>(null);
 
-  const term = name.trim();
-  const sug = useQuery({
-    queryKey: ["clients", term],
-    queryFn: () => apiGet<ClientSummary[]>(`/clients?q=${encodeURIComponent(term)}`),
-    enabled: showSug,
-  });
-  const suggestions = sug.isError ? [] : (sug.data ?? []).slice(0, 8);
 
   const pick = (c: ClientSummary) => {
     setName(c.client_name);
@@ -157,19 +149,10 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               </button>
               {clientDropdownOpen && (
                 <div className="absolute inset-x-0 top-full z-50 mt-1 flex flex-col gap-1">
-                  <div className="rounded-xl border border-lime-200 bg-white p-2 shadow-lg shadow-lime-900/10">
-                    <Input
-                      autoFocus
-                      value={clientSearch}
-                      onChange={(e) => setClientSearch(e.target.value)}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      placeholder="Rechercher par nom ou téléphone..."
-                      aria-label="Rechercher un client par nom ou téléphone"
-                      data-testid="intake-client-search-input"
-                      className="h-10 rounded-lg"
-                    />
-                  </div>
-                  <div role="listbox" aria-label={t("client")} className="max-h-64 overflow-y-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10">
+                  <div role="listbox" aria-label={t("client")} className="max-h-72 overflow-y-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10">
+                    <div className="sticky top-0 z-10 border-b border-lime-100 bg-white p-2">
+                      <Input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par téléphone..." aria-label="Rechercher un client par téléphone" data-testid="intake-client-search-input" className="h-10 rounded-lg" />
+                    </div>
                     {filteredClients.length > 0 ? filteredClients.map((c) => (
                       <button
                         type="button"
@@ -203,36 +186,10 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             autoComplete="off"
             data-testid="intake-client-name-input"
             value={name}
-            onChange={(e) => { setName(e.target.value); setShowSug(true); }}
-            onFocus={() => setShowSug(true)}
-            onBlur={() => setTimeout(() => setShowSug(false), 150)}
+            onChange={(e) => setName(e.target.value)}
             className="h-11 rounded-xl bg-white"
           />
-          {showSug && suggestions.length > 0 && (
-            <ul
-              data-testid="intake-client-suggestions"
-              className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10"
-            >
-              {suggestions.map((c) => (
-                <li key={c.phone}>
-                  <button
-                    type="button"
-                    data-testid={`intake-client-suggestion-${c.phone}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => pick(c)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start transition-colors duration-150 hover:bg-lime-50"
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-teal-100 text-teal-700"><UserRound className="size-4" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-stone-900">{c.client_name}</span>
-                      <span className="block text-xs text-stone-500" dir="ltr">{c.phone}</span>
-                    </span>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{c.loads_count}×</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+
         </div>
         <div className="space-y-2">
           <Label htmlFor="ph">{t("phone")}</Label>
