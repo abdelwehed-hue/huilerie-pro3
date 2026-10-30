@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpenCheck, FileSpreadsheet, Printer, Search, X } from "lucide-react";
+import { BookOpenCheck, FileSpreadsheet, Printer, Search, UserRound, X } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export default function ClientAccounts() {
   const ar = lang === "ar";
   const [mode, setMode] = useState<"global" | "statement" | null>(null);
   const [query, setQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [client, setClient] = useState<ClientHit | null>(null);
   const [season, setSeason] = useState("all");
   const [custom, setCustom] = useState(false);
@@ -92,9 +93,9 @@ export default function ClientAccounts() {
     });
   }, [data]);
   const chooseMode = (next: "global" | "statement") => {
-    setMode(next); setClient(null); setQuery(""); setSeason("all"); setCustom(false); setStart(""); setEnd("");
+    setMode(next); setClient(null); setQuery(""); setShowSuggestions(false); setSeason("all"); setCustom(false); setStart(""); setEnd("");
   };
-  const clear = () => { setMode(null); setClient(null); setQuery(""); };
+  const clear = () => { setMode(null); setClient(null); setQuery(""); setShowSuggestions(false); };
   const canPrint = Boolean(data && (!custom || (start && end)));
   return <section className="mb-6 space-y-4">
     <div className="grid gap-3 sm:grid-cols-2">
@@ -115,14 +116,18 @@ export default function ClientAccounts() {
       <div className="client-account-no-print grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"/>
-          <Input value={query} onChange={(e) => {setQuery(e.target.value);setClient(null);}} placeholder={labels.search} className="pl-10"/>
-          {!client && <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-white shadow-lg">
-            {searchQuery.isFetching ? <p className="p-3 text-sm text-stone-500">…</p> :
-              (searchQuery.data ?? []).map((hit) => <button key={hit.phone} type="button" onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);setSeason("all");setCustom(false);setStart("");setEnd("");}} className="block w-full border-b px-3 py-3 text-left hover:bg-emerald-50">
-                <strong className="block">{hit.client_name || "—"}</strong><span className="text-sm text-stone-500">{hit.phone}{hit.codes.length ? ` · ${hit.codes.slice(0,3).join(", ")}` : ""}</span>
-              </button>)}
-            {!searchQuery.isFetching && !searchQuery.data?.length && <p className="p-3 text-sm text-stone-500">{labels.noClient}</p>}
-          </div>}
+          <Input value={query} onChange={(e) => {setQuery(e.target.value);setClient(null);setShowSuggestions(true);}} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} placeholder={labels.search} className="pl-10"/>
+          {!client && showSuggestions && <ul className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-xl border border-emerald-200 bg-white p-1 shadow-xl">
+            {searchQuery.isFetching ? <li className="p-3 text-sm text-stone-500">…</li> :
+              (searchQuery.data ?? []).map((hit) => <li key={hit.phone}>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);setShowSuggestions(false);setSeason("all");setCustom(false);setStart("");setEnd("");}} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start transition-colors hover:bg-emerald-50">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><UserRound className="size-4"/></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate font-medium text-stone-900">{hit.client_name || "—"}</span><span className="block text-xs text-stone-500" dir="ltr">{hit.phone}</span></span>
+                  {hit.codes.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{hit.codes.length}×</span>}
+                </button>
+              </li>)}
+            {!searchQuery.isFetching && !searchQuery.data?.length && <li className="p-3 text-sm text-stone-500">{labels.noClient}</li>}
+          </ul>}
         </div>
         <div className="flex gap-2">
           <select aria-label={labels.season} value={custom ? "__custom" : season} onChange={(e) => {setCustom(e.target.value === "__custom");if(e.target.value !== "__custom")setSeason(e.target.value);}} className="h-10 min-w-0 flex-1 rounded-md border border-stone-200 bg-white px-3 text-sm">
@@ -229,8 +234,8 @@ export default function ClientAccounts() {
       .client-account-print .global-invoice-table col:nth-child(7) { width: 16% !important; }
       .client-account-print .global-invoice-table col:nth-child(8) { width: 16% !important; }
       .client-account-print tr { break-inside: avoid; }
-      .client-account-print .print-mill-name { font-size: 11pt !important; line-height: 1.25 !important; }
-      .client-account-print .print-client-name { font-size: 9.5pt !important; line-height: 1.25 !important; }
+      .client-account-print .print-mill-name { font-size: 9.5pt !important; line-height: 1.2 !important; }
+      .client-account-print .print-client-name { font-size: 8pt !important; line-height: 1.2 !important; }
     }`}</style>
   </section>;
 }
