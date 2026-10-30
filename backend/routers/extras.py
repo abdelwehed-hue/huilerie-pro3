@@ -203,8 +203,14 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
         a[2] += d.get("oil_kg") or 0.0
         load_ids.append(d["id"])
 
-    if load_ids:
-        invoice_query = {"load_id": {"$in": load_ids}}
+    # Include invoices for eligible loads from earlier dates too: a payment
+    # received today belongs to today's cash revenue even if its load is older.
+    payment_load_filter = {"cancelled": {"$ne": True}, **(await season_filter())}
+    if worker:
+        payment_load_filter["created_by"] = worker
+    payment_load_ids = await db.loads.distinct("id", payment_load_filter)
+    if payment_load_ids:
+        invoice_query = {"load_id": {"$in": payment_load_ids}}
         projection = {"_id": 0, "payments": 1, "paid_amount": 1, "created_at": 1}
         async for invoice in db.invoices.find(invoice_query, projection):
             payments = invoice.get("payments") or []
