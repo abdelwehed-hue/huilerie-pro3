@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ImageIcon, Trash2, Upload, Youtube } from "lucide-react";
+import { Trash2, Upload, Youtube } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { apiGet, apiPut } from "@/lib/api";
