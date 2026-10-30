@@ -190,14 +190,27 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
     if worker:
         flt["created_by"] = worker
     docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
+    # Revenue in this report must match actual issued invoices, not a
+    # theoretical olive-weight tariff calculation. Keep load counts and
+    # weight totals based on non-cancelled loads, then attach invoice totals.
     agg: dict[str, list[float]] = {}
+    load_period: dict[str, str] = {}
+    load_ids: list[str] = []
     for d in docs:
         key = d["day"] if period == "daily" else d["day"][:7]
         a = agg.setdefault(key, [0, 0.0, 0.0, 0.0])
         a[0] += 1
         a[1] += d["olive_kg"]
         a[2] += d.get("oil_kg") or 0.0
-        a[3] += d["olive_kg"] * d.get("price_per_kg", 0)
+        load_period[d["id"]] = key
+        load_ids.append(d["id"])
+
+    if load_ids:
+        invoice_query = {"load_id": {"$in": load_ids}}
+        async for invoice in db.invoices.find(invoice_query, {"_id": 0, "load_id": 1, "total": 1}):
+            key = load_period.get(invoice.get("load_id"))
+            if key is not None:
+                agg[key][3] += float(invoice.get("total") or 0.0)
     rows = [
         ReportRow(period=k, loads=int(v[0]), olive_kg=round(v[1], 2), oil_kg=round(v[2], 2), revenue=round(v[3], 3))
         for k, v in sorted(agg.items())
