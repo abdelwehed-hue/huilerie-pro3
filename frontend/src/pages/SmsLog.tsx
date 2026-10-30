@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquareText, Radio, TriangleAlert } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { MessageSquareText, Radio, TriangleAlert, Trash2 } from "lucide-react";
+import { apiDelete, apiGet } from "@/lib/api";
 import type { SmsLog as Sms, SmsStatus } from "@/lib/types";
 import { fmtDate, useI18n } from "@/lib/i18n";
 import { CodeBadge, PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
+import { useMe } from "@/lib/useMe";
 
 const STATUS_STYLE: Record<Sms["status"], string> = {
   sent: "bg-green-100 text-green-800",
@@ -22,11 +24,27 @@ const KIND_STYLE: Record<Sms["kind"], string> = {
 
 export default function SmsLog() {
   const { t } = useI18n();
+  const me = useMe();
+  const isAdmin = me.data?.role === "admin";
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["sms"], queryFn: () => apiGet<Sms[]>("/sms") });
   const st = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
   const rows = q.isError ? [] : (q.data ?? []);
   const status = st.isError ? undefined : st.data;
   const live = status?.mode === "live";
+
+  const handleDelete = async (sms: Sms) => {
+    if (!window.confirm(`Supprimer définitivement le SMS de ${sms.client_name} ( ${sms.code} ) ?`)) return;
+    setDeletingId(sms.id);
+    try {
+      await apiDelete<{ deleted: boolean }>(`/sms/${encodeURIComponent(sms.id)}`);
+      await q.refetch();
+    } catch {
+      window.alert("Impossible de supprimer ce SMS. Veuillez réessayer.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div>
@@ -54,7 +72,20 @@ export default function SmsLog() {
               <CodeBadge code={s.code} />
               <span className="font-medium text-stone-900">{s.client_name}</span>
               <span className="text-sm text-stone-500" dir="ltr">{s.to_number ?? s.phone}</span>
-              <span className="ms-auto text-xs text-stone-400" dir="ltr">{fmtDate(s.created_at)}</span>
+              <span className="text-xs text-stone-400" dir="ltr">{fmtDate(s.created_at)}</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  data-testid={`sms-delete-${s.id}`}
+                  aria-label={`Supprimer le SMS ${s.code}`}
+                  title="Supprimer ce SMS"
+                  disabled={deletingId === s.id}
+                  onClick={() => void handleDelete(s)}
+                  className="ms-auto inline-flex size-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              )}
             </div>
             <div className="whitespace-pre-line rounded-xl bg-pink-50/60 p-3 text-sm text-stone-800">{s.message}</div>
             <div className="mt-2 flex items-center justify-between gap-2">

@@ -53,6 +53,14 @@ async def list_sms(_: dict = Depends(current_user)):
     return [SmsLog(**{**d, "created_at": _aware(d["created_at"])}) for d in docs]
 
 
+@router.delete("/sms/{sms_id}")
+async def delete_sms(sms_id: str, _: dict = Depends(require_admin)):
+    result = await db.sms_log.delete_one({"id": sms_id, **(await season_filter())})
+    if not result.deleted_count:
+        raise HTTPException(404, "sms_not_found")
+    return {"deleted": True, "id": sms_id}
+
+
 @router.get("/sms/status", response_model=SmsStatus)
 async def sms_status(_: dict = Depends(current_user)):
     s = await db.settings.find_one({"key": "app"}) or {}
