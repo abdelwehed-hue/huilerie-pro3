@@ -190,11 +190,10 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
     if worker:
         flt["created_by"] = worker
     docs = await db.loads.find(flt, {"_id": 0}).to_list(100000)
-    # Revenue in this report must match actual issued invoices, not a
-    # theoretical olive-weight tariff calculation. Keep load counts and
-    # weight totals based on non-cancelled loads, then attach invoice totals.
+    # Operational quantities follow the load date. Revenue follows cash
+    # actually received: sum every payment event (including partial payments)
+    # on the date it was recorded, never the invoice's full billed total.
     agg: dict[str, list[float]] = {}
-    load_period: dict[str, str] = {}
     load_ids: list[str] = []
     for d in docs:
         key = d["day"] if period == "daily" else d["day"][:7]
@@ -202,15 +201,51 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
         a[0] += 1
         a[1] += d["olive_kg"]
         a[2] += d.get("oil_kg") or 0.0
-        load_period[d["id"]] = key
         load_ids.append(d["id"])
 
-    if load_ids:
-        invoice_query = {"load_id": {"$in": load_ids}}
-        async for invoice in db.invoices.find(invoice_query, {"_id": 0, "load_id": 1, "total": 1}):
-            key = load_period.get(invoice.get("load_id"))
-            if key is not None:
-                agg[key][3] += float(invoice.get("total") or 0.0)
+    # Include invoices for eligible loads from earlier dates too: a payment
+    # received today belongs to today's cash revenue even if its load is older.
+    payment_load_filter = {"cancelled": {"$ne": True}, **(await season_filter())}
+    if worker:
+        payment_load_filter["created_by"] = worker
+    payment_load_ids = await db.loads.distinct("id", payment_load_filter)
+    if payment_load_ids:
+        invoice_query = {"load_id": {"$in": payment_load_ids}}
+        projection = {"_id": 0, "payments": 1, "paid_amount": 1, "created_at": 1}
+        async for invoice in db.invoices.find(invoice_query, projection):
+            payments = invoice.get("payments") or []
+            if payments:
+                for payment in payments:
+                    amount = float(payment.get("amount") or 0.0)
+                    at = payment.get("at")
+                    if amount <= 0 or at is None:
+                        continue
+                    if isinstance(at, str):
+                        try:
+                            at = datetime.fromisoformat(at.replace("Z", "+00:00"))
+                        except ValueError:
+                            continue
+                    if isinstance(at, datetime):
+                        day = _aware(at).strftime("%Y-%m-%d")
+                        if start <= day <= end:
+                            key = day if period == "daily" else day[:7]
+                            agg.setdefault(key, [0, 0.0, 0.0, 0.0])[3] += amount
+            else:
+                # Legacy compatibility: invoices created before payment events
+                # were stored use paid_amount and their creation date.
+                amount = float(invoice.get("paid_amount") or 0.0)
+                at = invoice.get("created_at")
+                if amount > 0 and at is not None:
+                    if isinstance(at, str):
+                        try:
+                            at = datetime.fromisoformat(at.replace("Z", "+00:00"))
+                        except ValueError:
+                            at = None
+                    if isinstance(at, datetime):
+                        day = _aware(at).strftime("%Y-%m-%d")
+                        if start <= day <= end:
+                            key = day if period == "daily" else day[:7]
+                            agg.setdefault(key, [0, 0.0, 0.0, 0.0])[3] += amount
     rows = [
         ReportRow(period=k, loads=int(v[0]), olive_kg=round(v[1], 2), oil_kg=round(v[2], 2), revenue=round(v[3], 3))
         for k, v in sorted(agg.items())
