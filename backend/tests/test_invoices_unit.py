@@ -86,7 +86,7 @@ async def test_duplicate_invoice_for_same_load_is_rejected(fake_db):
 @pytest.mark.asyncio
 async def test_update_recalculates_balance_and_records_history(fake_db):
     created = await invoice_routes.create_invoice(
-        {"load_id": "load-test-1", "paid_amount": 5},
+        {"load_id": "load-test-1", "paid_amount": 0.5},
         {"username": "admin"},
     )
 
@@ -197,7 +197,7 @@ async def test_negative_payment_is_rejected(fake_db):
 @pytest.mark.asyncio
 async def test_unchanged_invoice_edit_does_not_add_history(fake_db):
     created = await invoice_routes.create_invoice(
-        {"load_id": "load-test-1", "paid_amount": 5},
+        {"load_id": "load-test-1", "paid_amount": 0.5},
         {"username": "admin"},
     )
 
@@ -230,7 +230,7 @@ async def test_update_with_no_editable_fields_is_rejected_without_history_change
 @pytest.mark.asyncio
 async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(fake_db, monkeypatch):
     created = await invoice_routes.create_invoice(
-        {"load_id": "load-test-1", "paid_amount": 5},
+        {"load_id": "load-test-1", "paid_amount": 0.5},
         {"username": "admin"},
     )
     original_update_one = fake_db.invoices.update_one
@@ -245,7 +245,7 @@ async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(f
     with pytest.raises(HTTPException) as exc:
         await invoice_routes.update_invoice(
             created["id"],
-            {"price_per_kg": 0.2, "paid_amount": 5},
+            {"price_per_kg": 0.2, "paid_amount": 0.5},
             {"username": "admin"},
         )
 
