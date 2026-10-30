@@ -55,17 +55,17 @@ def fake_db(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_invoice_calculates_total_and_balance(fake_db):
     result = await invoice_routes.create_invoice(
-        {"load_id": "load-test-1", "paid_amount": 5},
+        {"load_id": "load-test-1", "paid_amount": 0.5},
         {"username": "admin"},
     )
 
-    assert result["total"] == 18.0
-    assert result["paid_amount"] == 5.0
-    assert result["balance"] == 13.0
+    assert result["total"] == 2.7
+    assert result["paid_amount"] == 0.5
+    assert result["balance"] == 2.2
     assert result["load_code"] == "2627100"
     assert result["number"] == "FAC-2627100"
     assert len(result["history"]) == 1
-    assert result["history"][0]["after"]["balance"] == 13.0
+    assert result["history"][0]["after"]["balance"] == 2.2
 
 
 @pytest.mark.asyncio
@@ -92,24 +92,24 @@ async def test_update_recalculates_balance_and_records_history(fake_db):
 
     updated = await invoice_routes.update_invoice(
         created["id"],
-        {"price_per_kg": 0.2, "paid_amount": 10},
+        {"price_per_kg": 0.2, "paid_amount": 1.0},
         {"username": "admin"},
     )
 
-    assert updated["total"] == 20.0
-    assert updated["paid_amount"] == 10.0
-    assert updated["balance"] == 10.0
+    assert updated["total"] == 3.0
+    assert updated["paid_amount"] == 1.0
+    assert updated["balance"] == 2.0
     assert len(updated["history"]) == 2
     assert updated["history"][-1]["action"] == "updated"
-    assert updated["history"][-1]["before"]["balance"] == 13.0
-    assert updated["history"][-1]["after"]["balance"] == 10.0
+    assert updated["history"][-1]["before"]["balance"] == 2.2
+    assert updated["history"][-1]["after"]["balance"] == 2.0
 
 
 @pytest.mark.asyncio
 async def test_paid_amount_cannot_exceed_total(fake_db):
     with pytest.raises(HTTPException) as exc:
         await invoice_routes.create_invoice(
-            {"load_id": "load-test-1", "paid_amount": 18.01},
+            {"load_id": "load-test-1", "paid_amount": 2.71},
             {"username": "admin"},
         )
     assert exc.value.status_code == 422
@@ -125,7 +125,7 @@ async def test_invoice_keeps_price_snapshot_when_settings_change(fake_db):
     fake_db.settings.docs[0]["price_per_kg"] = 0.25
 
     assert created["price_per_kg"] == 0.18
-    assert created["total"] == 18.0
+    assert created["total"] == 2.7
     assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
 
 
@@ -202,11 +202,11 @@ async def test_unchanged_invoice_edit_does_not_add_history(fake_db):
     )
 
     updated = await invoice_routes.update_invoice(
-        created["id"], {"price_per_kg": 0.18, "paid_amount": 5}, {"username": "admin"}
+        created["id"], {"price_per_kg": 0.18, "paid_amount": 0.5}, {"username": "admin"}
     )
 
-    assert updated["total"] == 18.0
-    assert updated["balance"] == 13.0
+    assert updated["total"] == 2.7
+    assert updated["balance"] == 2.2
     assert len(updated["history"]) == 1
 
 
