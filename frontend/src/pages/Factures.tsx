@@ -136,7 +136,7 @@ export default function Factures() {
   const print = (invoice:Invoice)=>{setSelected(invoice);window.setTimeout(()=>window.print(),100);};
   return <div>
     <div className="no-print"><PageHeader title={t("factures")} sub={t("invoice_sub")} accent="bg-emerald-600"/></div>
-    <ClientAccounts />
+    {admin && <ClientAccounts />}
     <div className="no-print mb-5 grid gap-4 rounded-2xl border bg-white p-4 md:grid-cols-[2fr_1fr_1fr_auto]">
       {admin && <>
 <div className="space-y-2"><Label>{t("invoice_load")}</Label>
