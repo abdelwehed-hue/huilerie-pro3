@@ -149,14 +149,14 @@ export default function ClientAccounts() {
             <div className="flex min-w-0 items-start gap-3">
               {data.mill.mill_logo && <img src={data.mill.mill_logo} alt="Logo" className="max-h-16 max-w-24 object-contain"/>}
               <div className="text-left">
-                <h2 className="text-xl font-bold">{data.mill.mill_name || "Huilerie Oro Verde"}</h2>
+                <h2 className="print-mill-name text-xl font-bold">{data.mill.mill_name || "Huilerie Oro Verde"}</h2>
                 <p className="text-sm text-stone-500">{data.mill.mill_address}</p>
                 <p className="text-sm text-stone-500">{data.mill.mill_phone}</p>
               </div>
             </div>
             <div className="shrink-0 text-right text-sm">
               <h3 className="text-lg font-bold">{mode === "global" ? labels.global : labels.statement}</h3>
-              <p className="font-semibold">{data.client.client_name} · {data.client.phone}</p>
+              <p className="print-client-name font-semibold">{data.client.client_name} · {data.client.phone}</p>
               <p className="text-xs text-stone-500">{labels.documentDate}: {new Date().toLocaleDateString("fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" })}</p>
               <p className="text-xs text-stone-500">{custom ? `${start} — ${end}` : season === "all" ? labels.all : season}</p>
             </div>
@@ -229,6 +229,8 @@ export default function ClientAccounts() {
       .client-account-print .global-invoice-table col:nth-child(7) { width: 16% !important; }
       .client-account-print .global-invoice-table col:nth-child(8) { width: 16% !important; }
       .client-account-print tr { break-inside: avoid; }
+      .client-account-print .print-mill-name { font-size: 11pt !important; line-height: 1.25 !important; }
+      .client-account-print .print-client-name { font-size: 9.5pt !important; line-height: 1.25 !important; }
     }`}</style>
   </section>;
 }
