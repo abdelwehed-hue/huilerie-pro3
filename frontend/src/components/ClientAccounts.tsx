@@ -228,7 +228,6 @@ export default function ClientAccounts() {
           </table></div>
           {!balanceRows.length && <p className="py-6 text-center text-stone-500">{labels.noRows}</p>}
         </>}
-        <footer className="border-t pt-3 text-center text-xs text-stone-500">{data.mill.mill_name || "Huilerie Oro Verde"}</footer>
       </div>}
     </div>}
     <style>{`.global-invoice-print-only { display: none; }
