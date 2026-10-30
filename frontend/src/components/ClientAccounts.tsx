@@ -227,6 +227,7 @@ export default function ClientAccounts() {
       .client-account-print .global-invoice-table col:nth-child(5) { display: none !important; width: 0 !important; }
       .client-account-print .global-invoice-table col:nth-child(6) { width: 15% !important; }
       .client-account-print .global-invoice-table col:nth-child(7) { width: 16% !important; }
+      .client-account-print .global-invoice-table col:nth-child(8) { width: 16% !important; }
       .client-account-print tr { break-inside: avoid; }
     }`}</style>
   </section>;
