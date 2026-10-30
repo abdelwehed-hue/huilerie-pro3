@@ -186,6 +186,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             autoComplete="off"
             data-testid="intake-client-name-input"
             value={name}
+            onChange={(e) => setName(e.target.value)}
             className="h-11 rounded-xl bg-white"
           />
 
