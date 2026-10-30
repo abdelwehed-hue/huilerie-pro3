@@ -165,16 +165,16 @@ export default function Reports() {
         <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <div className="h-72" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={r?.rows ?? []}>
+      <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="report-revenue-chart">
+          <div className="h-72 w-full min-w-0" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <BarChart data={r?.rows ?? []} margin={{ top: 8, right: 12, left: 0, bottom: 28 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
-                <XAxis dataKey="period" fontSize={11} stroke="#78716C" />
+                <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
                 <YAxis fontSize={11} stroke="#78716C" />
                 <Tooltip formatter={(v: number) => [`${fmtNum(v, 3)} ${t("dt")}`, t("revenue")]} />
-                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
           </div>
