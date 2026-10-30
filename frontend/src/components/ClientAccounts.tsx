@@ -67,9 +67,9 @@ export default function ClientAccounts() {
     cancellation: "Annulation chargement", customHint: "Choisissez les dates de début et de fin",
   };
   const searchQuery = useQuery({
-    queryKey: ["client-account-search", query],
-    queryFn: () => apiGet<ClientHit[]>(`/client-accounts/search?q=${encodeURIComponent(query.trim())}`),
-    enabled: query.trim().length >= 2,
+    queryKey: ["client-account-search", query.trim()],
+    queryFn: () => apiGet<ClientHit[]>(`/client-accounts/search${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`),
+    enabled: Boolean(mode),
   });
   const accountUrl = useMemo(() => {
     if (!client) return "";
@@ -116,7 +116,7 @@ export default function ClientAccounts() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"/>
           <Input value={query} onChange={(e) => {setQuery(e.target.value);setClient(null);}} placeholder={labels.search} className="pl-10"/>
-          {query.trim().length >= 2 && !client && <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-white shadow-lg">
+          {!client && <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border bg-white shadow-lg">
             {searchQuery.isFetching ? <p className="p-3 text-sm text-stone-500">…</p> :
               (searchQuery.data ?? []).map((hit) => <button key={hit.phone} type="button" onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);setSeason("all");setCustom(false);setStart("");setEnd("");}} className="block w-full border-b px-3 py-3 text-left hover:bg-emerald-50">
                 <strong className="block">{hit.client_name || "—"}</strong><span className="text-sm text-stone-500">{hit.phone}{hit.codes.length ? ` · ${hit.codes.slice(0,3).join(", ")}` : ""}</span>
