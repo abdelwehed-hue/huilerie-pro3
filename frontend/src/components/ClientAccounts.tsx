@@ -181,7 +181,6 @@ export default function ClientAccounts() {
             <colgroup><col style={{width:"15%"}}/><col style={{width:"33%"}}/><col style={{width:"17%"}}/><col style={{width:"17%"}}/><col style={{width:"18%"}}/></colgroup>
             <thead><tr className="bg-stone-100 print:bg-stone-100">{[labels.date,labels.operation,labels.debit,labels.credit,labels.balance].map(x=><th key={x} className="border p-2 text-start print:p-1">{x}</th>)}</tr></thead>
             <tbody>
-              <tr className="border-b bg-stone-50"><td className="p-2 print:p-1">—</td><td className="p-2 font-semibold print:p-1">{labels.opening}</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">—</td><td className="p-2 font-semibold print:p-1">{cash(data.statement.opening_balance)}</td></tr>
               {balanceRows.map((row)=><tr key={row.id} className="border-b">
                 <td className="break-words p-2 print:p-1">{fmtDate(row.date)}</td><td className="break-words p-2 print:p-1">{row.label}{row.legacy_aggregate ? <small className="block text-amber-700">{labels.legacy}</small> : null}{row.informational && row.reason ? <small className="block">{row.reason}</small> : null}</td>
                 <td className="whitespace-nowrap p-2 print:p-1">{row.debit ? cash(row.debit) : "—"}</td><td className="whitespace-nowrap p-2 print:p-1">{row.credit ? cash(row.credit) : "—"}</td><td className="whitespace-nowrap p-2 font-semibold print:p-1">{row.informational ? "—" : cash(row.running)}</td>
@@ -197,8 +196,7 @@ export default function ClientAccounts() {
         <footer className="border-t pt-3 text-center text-xs text-stone-500">{data.mill.mill_name || "Huilerie Oro Verde"}</footer>
       </div>}
     </div>}
-    <style>{`@page { size: landscape; margin: 9mm; }
-    @media print {
+    <style>{`@media print {
       body * { visibility: hidden !important; }
       .client-account-print, .client-account-print * { visibility: visible !important; }
       .client-account-print { position: absolute !important; inset: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
