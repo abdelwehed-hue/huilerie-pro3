@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FileSpreadsheet, FileText, ShieldAlert, Wallet, Layers, Sprout, Droplet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +65,7 @@ export default function Reports() {
   const r = rep.isError ? undefined : rep.data;
   // Keep chart values explicitly numeric so every daily revenue is plotted consistently.
   const chartRows = (r?.rows ?? []).map((row) => ({ ...row, revenue: Number(row.revenue) || 0 }));
+  const chartMaxRevenue = Math.max(0, ...chartRows.map((row) => row.revenue));
   const invoicesQuery = useQuery({
     queryKey: ["report-invoice-totals"],
     queryFn: () => apiGet<Array<{ id: string; day?: string; total?: number; paid_amount?: number; balance?: number }>>("/invoices"),
@@ -169,16 +169,29 @@ export default function Reports() {
 
       <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="report-revenue-chart">
-          <div className="h-72 w-full min-w-0" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={chartRows} margin={{ top: 8, right: 12, left: 0, bottom: 28 }} barCategoryGap="22%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
-                <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
-                <YAxis fontSize={11} stroke="#78716C" />
-                <Tooltip formatter={(v: number) => [`${fmtNum(v, 3)} ${t("dt")}`, t("revenue")]} />
-                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="w-full overflow-x-auto" dir="ltr">
+            <div className="relative flex h-[220px] min-w-max items-end gap-3 border-b border-stone-300 px-3">
+              <div className="pointer-events-none absolute inset-x-3 top-0 border-t border-dashed border-stone-200" />
+              <div className="pointer-events-none absolute inset-x-3 top-1/4 border-t border-dashed border-stone-200" />
+              <div className="pointer-events-none absolute inset-x-3 top-1/2 border-t border-dashed border-stone-200" />
+              <div className="pointer-events-none absolute inset-x-3 top-3/4 border-t border-dashed border-stone-200" />
+              {chartRows.map((row) => (
+                <div key={row.period} className="relative z-10 flex h-full w-9 shrink-0 flex-col items-center justify-end" data-testid={`report-chart-column-${row.period}`}>
+                  <div
+                    className="w-6 rounded-t-md bg-violet-600"
+                    style={{ height: chartMaxRevenue > 0 ? `${(row.revenue / chartMaxRevenue) * 100}%` : "0%" }}
+                    title={`${row.period}: ${fmtNum(row.revenue, 3)} ${t("dt")}`}
+                    aria-label={`${row.period}: ${fmtNum(row.revenue, 3)} ${t("dt")}`}
+                    data-testid={`report-chart-bar-${row.period}`}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex min-w-max gap-3 px-3 pt-2">
+              {chartRows.map((row) => (
+                <div key={row.period} className="w-9 shrink-0 text-center text-[10px] text-stone-600">{row.period}</div>
+              ))}
+            </div>
           </div>
         </div>
         <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
