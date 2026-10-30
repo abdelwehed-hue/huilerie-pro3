@@ -5,7 +5,6 @@ import { apiGet } from "@/lib/api";
 import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ClientHit = { phone: string; client_name: string; codes: string[] };
 type LoadRow = {
@@ -35,6 +34,8 @@ export default function ClientAccounts() {
   const ar = lang === "ar";
   const [mode, setMode] = useState<"global" | "statement" | null>(null);
   const [client, setClient] = useState<ClientHit | null>(null);
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const [season, setSeason] = useState("all");
   const [custom, setCustom] = useState(false);
   const [start, setStart] = useState("");
@@ -71,6 +72,8 @@ export default function ClientAccounts() {
     queryFn: () => apiGet<ClientHit[]>("/client-accounts/search"),
     enabled: Boolean(mode),
   });
+  const clientList = searchQuery.data ?? [];
+  const filteredClients = clientList.filter((hit) => hit.phone.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
   const accountUrl = useMemo(() => {
     if (!client) return "";
     const params = new URLSearchParams();
@@ -114,37 +117,65 @@ export default function ClientAccounts() {
       </div>
       <div className="client-account-no-print grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
         <div>
-          <Select
-            value={client?.phone ?? ""}
-            onValueChange={(value) => {
-              const selected = (searchQuery.data ?? []).find((hit) => hit.phone === value);
-              if (selected) {
-                setClient(selected);
-                setSeason("all");
-                setCustom(false);
-                setStart("");
-                setEnd("");
-              }
-            }}
-          >
-            <SelectTrigger className="h-11 w-full rounded-xl bg-white" aria-label={labels.select}>
-              <SelectValue placeholder={labels.select}>
-                {(value) => {
-                  const selected = (searchQuery.data ?? []).find((hit) => hit.phone === value);
-                  return selected ? `${selected.client_name} · ${selected.phone}` : <span className="text-stone-400">{labels.select}</span>;
-                }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {searchQuery.isFetching && <div className="p-3 text-sm text-stone-500">{ar ? "جارٍ تحميل الحرفاء…" : "Chargement des clients…"}</div>}
-              {(searchQuery.data ?? []).map((hit) => (
-                <SelectItem key={hit.phone} value={hit.phone}>
-                  {hit.client_name || "—"} <span className="text-stone-400" dir="ltr">· {hit.phone}</span>
-                </SelectItem>
-              ))}
-              {!searchQuery.isFetching && !searchQuery.data?.length && <div className="p-3 text-sm text-stone-500">{labels.noClient}</div>}
-            </SelectContent>
-          </Select>
+          <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setClientDropdownOpen(false); }}>
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={clientDropdownOpen}
+              aria-label={labels.select}
+              onClick={() => { setClientDropdownOpen((open) => !open); setClientSearch(""); }}
+              className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 text-left text-sm shadow-xs outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-200"
+              data-testid="client-account-client-select"
+            >
+              <span className={client ? "truncate text-stone-900" : "truncate text-stone-400"}>
+                {client ? `${client.client_name} · ${client.phone}` : labels.select}
+              </span>
+              <span className="text-stone-400" aria-hidden="true">▾</span>
+            </button>
+            {clientDropdownOpen && (
+              <div className="absolute inset-x-0 top-full z-50 mt-1">
+                <div role="listbox" aria-label={labels.select} className="max-h-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-1 shadow-xl">
+                  <div className="sticky top-0 z-10 border-b border-stone-100 bg-white p-2">
+                    <Input
+                      autoFocus
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder={ar ? "ابحث برقم الهاتف..." : "Rechercher par téléphone..."}
+                      aria-label={ar ? "البحث برقم الهاتف" : "Rechercher par téléphone"}
+                      data-testid="client-account-client-search-input"
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                  {searchQuery.isFetching && <div className="p-3 text-sm text-stone-500">{ar ? "جارٍ تحميل الحرفاء…" : "Chargement des clients…"}</div>}
+                  {filteredClients.length > 0 ? filteredClients.map((hit) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={client?.phone === hit.phone}
+                      key={hit.phone}
+                      onClick={() => {
+                        setClient(hit);
+                        setSeason("all");
+                        setCustom(false);
+                        setStart("");
+                        setEnd("");
+                        setClientDropdownOpen(false);
+                        setClientSearch("");
+                      }}
+                      data-testid={`client-account-client-option-${hit.phone}`}
+                      className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none"
+                    >
+                      <span className="min-w-0 truncate font-medium text-stone-900">{hit.client_name || "—"}</span>
+                      <span className="shrink-0 text-xs text-stone-400" dir="ltr">{hit.phone}</span>
+                    </button>
+                  )) : (
+                    !searchQuery.isFetching && <p className="px-3 py-4 text-center text-sm text-stone-500">{labels.noClient}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           {searchQuery.isError && <p className="mt-1 text-xs text-rose-600">{ar ? "تعذر تحميل قائمة الحرفاء." : "Impossible de charger la liste des clients."}</p>}
         </div>
         <div className="flex gap-2">
