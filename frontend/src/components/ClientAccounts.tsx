@@ -186,13 +186,13 @@ export default function ClientAccounts() {
                 <td className="whitespace-nowrap p-2 print:p-1">{row.debit ? cash(row.debit) : "—"}</td><td className="whitespace-nowrap p-2 print:p-1">{row.credit ? cash(row.credit) : "—"}</td><td className="whitespace-nowrap p-2 font-semibold print:p-1">{row.informational ? "—" : cash(row.running)}</td>
               </tr>)}
               <tr className="border-t-2 bg-stone-100 font-bold"><td colSpan={2} className="p-2 print:p-1">{labels.opening}</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">{cash(data.statement.opening_balance)}</td></tr>
-              <tr className="bg-stone-50 font-semibold"><td colSpan={5} className="p-2 print:p-2">
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="flex flex-wrap items-center justify-center gap-x-2"><span>{labels.debits}:</span><strong>{cash(data.statement.debit_total)}</strong></div>
-                  <div className="flex flex-wrap items-center justify-center gap-x-2"><span>{labels.credits}:</span><strong>{cash(data.statement.credit_total)}</strong></div>
-                  <div className="flex flex-wrap items-center justify-center gap-x-2"><span>{labels.balance}:</span><strong>{cash(data.statement.final_balance)}</strong></div>
-                </div>
-              </td></tr>
+              <tr className="border-t-2 bg-stone-50 font-bold">
+                <td className="whitespace-nowrap p-2 print:p-1">Total Final</td>
+                <td className="p-2 print:p-1"></td>
+                <td className="whitespace-nowrap p-2 print:p-1">{cash(data.statement.debit_total)}</td>
+                <td className="whitespace-nowrap p-2 print:p-1">{cash(data.statement.credit_total)}</td>
+                <td className="whitespace-nowrap p-2 print:p-1">{cash(data.statement.final_balance)}</td>
+              </tr>
             </tbody>
           </table></div>
           {!balanceRows.length && <p className="py-6 text-center text-stone-500">{labels.noRows}</p>}
