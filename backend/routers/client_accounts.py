@@ -86,10 +86,10 @@ def _payment_events(invoice):
         if amount > 0 and at:
             parsed.append({"amount": amount, "at": at, "by": item.get("by", "")})
     itemized = round(sum(p["amount"] for p in parsed), 3)
-    if parsed and itemized <= paid + 0.005:
+    if parsed and itemized <= paid:
         events = [{"amount": p["amount"], "at": p["at"], "by": p["by"], "legacy": False} for p in parsed]
         remainder = _money(max(0, paid - itemized))
-        if remainder > 0.005:
+        if remainder > 0.0005:
             fallback_at = _dt(invoice.get("created_at")) or _dt(invoice.get("day"))
             if fallback_at:
                 events.append({"amount": remainder, "at": fallback_at, "by": "", "legacy": True})
