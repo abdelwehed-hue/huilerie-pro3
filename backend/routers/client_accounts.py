@@ -119,34 +119,75 @@ def _cancellation_event(load):
 
 
 @router.get("/client-accounts/search")
-async def search_client_accounts(q: str = Query(min_length=2, max_length=120), _: dict = Depends(require_admin)):
-    term = re.escape(q.strip())
-    rx = {"$regex": term, "$options": "i"}
+async def search_client_accounts(q: str = Query(default="", max_length=120), _: dict = Depends(require_admin)):
+    """Return every known client when q is empty, or search by name, phone, or receipt code."""
+    term = q.strip()
     matches = {}
-    async for load in db.loads.find({"$or": [{"phone": rx}, {"client_name": rx}, {"code": rx}]},
-                                    {"_id": 0, "phone": 1, "client_name": 1, "code": 1, "created_at": 1}).sort("created_at", -1).limit(500):
-        phone = str(load.get("phone") or "").strip()
-        if phone:
-            entry = matches.setdefault(phone, {"phone": phone, "client_name": load.get("client_name", ""), "codes": set()})
-            if load.get("code"):
-                entry["codes"].add(str(load["code"]))
-            if not entry["client_name"]:
-                entry["client_name"] = load.get("client_name", "")
-    async for invoice in db.invoices.find({"$or": [{"phone": rx}, {"client_name": rx}, {"load_code": rx}]},
-                                          {"_id": 0, "phone": 1, "client_name": 1, "load_code": 1}).limit(300):
-        phone = str(invoice.get("phone") or "").strip()
-        if phone:
-            entry = matches.setdefault(phone, {"phone": phone, "client_name": invoice.get("client_name", ""), "codes": set()})
-            if invoice.get("load_code"):
-                entry["codes"].add(str(invoice["load_code"]))
-    async for client in db.clients.find({"$or": [{"phone": rx}, {"client_name": rx}]},
-                                        {"_id": 0, "phone": 1, "client_name": 1}).limit(200):
-        phone = str(client.get("phone") or "").strip()
-        if phone:
-            matches.setdefault(phone, {"phone": phone, "client_name": client.get("client_name", ""), "codes": set()})
-    return [{"phone": item["phone"], "client_name": item["client_name"],
-             "codes": sorted(item["codes"])} for item in list(matches.values())[:50]]
 
+    def add_client(phone_value, name_value="", code_value=None):
+        phone = str(phone_value or "").strip()
+        if not phone:
+            return
+        entry = matches.setdefault(phone, {"phone": phone, "client_name": str(name_value or ""), "codes": set()})
+        if name_value and not entry["client_name"]:
+            entry["client_name"] = str(name_value)
+        if code_value:
+            entry["codes"].add(str(code_value))
+
+    if term:
+        rx = {"$regex": re.escape(term), "$options": "i"}
+        async for load in db.loads.find(
+            {"$or": [{"phone": rx}, {"client_name": rx}, {"code": rx}]},
+            {"_id": 0, "phone": 1, "client_name": 1, "code": 1},
+        ).sort("created_at", -1):
+            add_client(load.get("phone"), load.get("client_name"), load.get("code"))
+
+        async for invoice in db.invoices.find(
+            {"$or": [{"phone": rx}, {"client_name": rx}, {"load_code": rx}]},
+            {"_id": 0, "phone": 1, "client_name": 1, "load_code": 1},
+        ):
+            add_client(invoice.get("phone"), invoice.get("client_name"), invoice.get("load_code"))
+
+        async for client in db.clients.find(
+            {"$or": [{"phone": rx}, {"client_name": rx}]},
+            {"_id": 0, "phone": 1, "client_name": 1},
+        ).sort("created_at", -1):
+            add_client(client.get("phone"), client.get("client_name"))
+    else:
+        # Build the complete directory from loads across all seasons.
+        async for group in db.loads.aggregate([
+            {"$match": {"phone": {"$exists": True, "$nin": ["", None]}}},
+            {"$sort": {"created_at": -1}},
+            {"$group": {
+                "_id": "$phone",
+                "client_name": {"$first": "$client_name"},
+                "codes": {"$addToSet": "$code"},
+            }},
+            {"$sort": {"client_name": 1, "_id": 1}},
+        ]):
+            add_client(group.get("_id"), group.get("client_name"))
+            matches[str(group["_id"]).strip()]["codes"].update(
+                str(code) for code in group.get("codes", []) if code
+            )
+
+        # Include manually registered clients, including those without any load yet.
+        async for client in db.clients.find(
+            {"phone": {"$exists": True, "$nin": ["", None]}},
+            {"_id": 0, "phone": 1, "client_name": 1},
+        ).sort("created_at", -1):
+            add_client(client.get("phone"), client.get("client_name"))
+
+        # Preserve clients that exist only in legacy invoice records.
+        async for invoice in db.invoices.find(
+            {"phone": {"$exists": True, "$nin": ["", None]}},
+            {"_id": 0, "phone": 1, "client_name": 1, "load_code": 1},
+        ):
+            add_client(invoice.get("phone"), invoice.get("client_name"), invoice.get("load_code"))
+
+    return [
+        {"phone": item["phone"], "client_name": item["client_name"], "codes": sorted(item["codes"])}
+        for item in sorted(matches.values(), key=lambda item: (item["client_name"].casefold(), item["phone"]))
+    ]
 
 @router.get("/client-accounts/{phone}")
 async def client_account_statement(
