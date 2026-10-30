@@ -746,6 +746,10 @@ export function useI18n(): I18nCtx {
 export const fmtNum = (n: number | null | undefined, digits = 1) =>
   n == null ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: digits });
 
+// Tunisian dinar display: three millimes digits and a comma decimal separator.
+export const fmtMoney = (n: number | null | undefined) =>
+  n == null || !Number.isFinite(Number(n)) ? "—" : new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(Number(n));
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("fr-FR", {
