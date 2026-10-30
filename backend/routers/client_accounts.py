@@ -161,14 +161,13 @@ async def client_account_statement(
         raise HTTPException(422, "phone_required")
     first, after_last = _period(season, start, end)
     loads = await db.loads.find({"phone": phone}, {"_id": 0}).sort("day", 1).to_list(10000)
-    if not loads:
-        client = await db.clients.find_one({"phone": phone}, {"_id": 0})
-        if not client:
-            raise HTTPException(404, "client_not_found")
+    client = await db.clients.find_one({"phone": phone}, {"_id": 0}) if not loads else None
     load_by_id = {item.get("id"): item for item in loads if item.get("id")}
     load_ids = list(load_by_id)
     invoice_filter = {"$or": [{"phone": phone}, {"load_id": {"$in": load_ids}}]} if load_ids else {"phone": phone}
     invoices = await db.invoices.find(invoice_filter, {"_id": 0}).sort("created_at", 1).to_list(10000)
+    if not loads and not client and not invoices:
+        raise HTTPException(404, "client_not_found")
     for invoice in invoices:
         load = load_by_id.get(invoice.get("load_id"))
         if load:
