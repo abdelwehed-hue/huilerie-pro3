@@ -75,7 +75,6 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
     setName(c.client_name);
     setPhone(c.phone);
     setPicked(c.phone);
-    setShowSug(false);
     setClientDropdownOpen(false);
     setClientSearch("");
   };
