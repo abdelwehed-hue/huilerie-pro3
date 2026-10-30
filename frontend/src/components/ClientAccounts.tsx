@@ -169,14 +169,20 @@ export default function ClientAccounts() {
               <td className="p-2">{row.day}</td><td className="p-2 font-semibold">{row.code}</td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
               <td className="p-2">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
-            </tr>)}</tbody>
+            </tr>)}
+              <tr className="border-t-2 bg-stone-50 font-bold">
+                <td className="whitespace-nowrap p-2">Total Final</td>
+                <td className="p-2"></td>
+                <td className="p-2"></td>
+                <td className="p-2"></td>
+                <td className="p-2"></td>
+                <td className="whitespace-nowrap p-2">{cash(data.global_invoice.total)}</td>
+                <td className="whitespace-nowrap p-2">{cash(data.global_invoice.paid)}</td>
+                <td className="whitespace-nowrap p-2">{cash(data.global_invoice.balance)}</td>
+              </tr>
+            </tbody>
           </table></div>
           {!data.global_invoice.loads.length && <p className="py-6 text-center text-stone-500">{labels.noRows}</p>}
-          <div className="ml-auto grid max-w-md grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-stone-50 p-4 text-sm">
-            <span>{labels.total}</span><strong className="text-right">{cash(data.global_invoice.total)}</strong>
-            <span>{labels.paid}</span><strong className="text-right text-emerald-700">{cash(data.global_invoice.paid)}</strong>
-            <span>{labels.remaining}</span><strong className="text-right text-rose-700">{cash(data.global_invoice.balance)}</strong>
-          </div>
           <p className="text-xs text-stone-500">{labels.cancelledNote}</p>
         </> : <>
           <div className="overflow-x-auto print:overflow-visible"><table className="w-full min-w-0 table-fixed border-collapse text-sm print:text-[8.5pt]">
