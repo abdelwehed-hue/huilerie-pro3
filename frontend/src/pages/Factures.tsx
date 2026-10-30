@@ -11,6 +11,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useI18n, fmtMoney, fmtNum, fmtDate } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
+import ClientAccounts from "@/components/ClientAccounts";
 
 function formatTariffPrice(value: string | number): string {
   const normalized = String(value).trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
@@ -135,6 +136,7 @@ export default function Factures() {
   const print = (invoice:Invoice)=>{setSelected(invoice);window.setTimeout(()=>window.print(),100);};
   return <div>
     <div className="no-print"><PageHeader title={t("factures")} sub={t("invoice_sub")} accent="bg-emerald-600"/></div>
+    {admin && <ClientAccounts />}
     <div className="no-print mb-5 grid gap-4 rounded-2xl border bg-white p-4 md:grid-cols-[2fr_1fr_1fr_auto]">
       {admin && <>
 <div className="space-y-2"><Label>{t("invoice_load")}</Label>
@@ -178,6 +180,6 @@ export default function Factures() {
         <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{t("invoice_thanks")}</footer>
       </article>
     </div>}
-    <style>{`@media print { body * { visibility: hidden !important; } .invoice-print, .invoice-print * { visibility: visible !important; } .invoice-print { position: absolute !important; inset: 0 !important; overflow: visible !important; padding: 0 !important; } .invoice-print article { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 12mm !important; } .no-print { display: none !important; } }`}</style>
+    <style>{`@media print { body * { visibility: hidden !important; } .invoice-print, .invoice-print * { visibility: visible !important; } .client-account-print, .client-account-print * { visibility: visible !important; } .invoice-print { position: absolute !important; inset: 0 !important; overflow: visible !important; padding: 0 !important; } .invoice-print article { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 12mm !important; } .no-print { display: none !important; } }`}</style>
   </div>;
 }
