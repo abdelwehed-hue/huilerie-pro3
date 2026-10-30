@@ -92,7 +92,7 @@ export default function CampaignSettings() {
               <p className="text-sm text-sky-900/70">{t("db_export_hint")}</p>
             </div>
           </div>
-          <a href="/api/admin/export.zip" download data-testid="db-export-button" className={cn(buttonVariants(), "h-11 rounded-xl bg-sky-600 hover:bg-sky-700")}>
+          <a href="https://huilerie-pro3.onrender.com/api/admin/export.zip" download data-testid="db-export-button" className={cn(buttonVariants(), "h-11 rounded-xl bg-sky-600 hover:bg-sky-700")}>
             <Download className="size-4" /> {t("db_export_btn")}
           </a>
         </div>
