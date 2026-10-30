@@ -200,7 +200,7 @@ async def client_account_statement(
                 "id": "invoice:" + str(invoice.get("id", invoice.get("number", ""))),
                 "date": inv_date.isoformat(), "kind": "invoice", "label": "Facture " + str(invoice.get("number", "")),
                 "debit": _money(invoice.get("total")), "credit": 0.0,
-                "load_code": invoice.get("load_code", ""), "season": str(load.get("season_id") or _season_for_event(inv_date, load.get("day", invoice.get("day", "")))),
+                "load_code": invoice.get("load_code", ""), "season": _season_for_event(inv_date, load.get("day", invoice.get("day", ""))),
                 "informational": False,
             })
         for index, payment in enumerate(_payment_events(invoice)):
