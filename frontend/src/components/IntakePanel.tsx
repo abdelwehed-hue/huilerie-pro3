@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { History, Printer, Plus, Sprout, UserPlus, UserRound } from "lucide-react";
+import { History, Printer, Plus, Search, Sprout, UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiGet, apiPost } from "@/lib/api";
 import type { ClientCreate, ClientHistory, ClientSummary, Load, LoadCreate, SmsStatus, Varieties } from "@/lib/types";
 import { fmtNum, useI18n } from "@/lib/i18n";
@@ -56,8 +57,17 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [notes, setNotes] = useState("");
   const [initStatus, setInitStatus] = useState<"pending" | "pressing">("pending");
   const [newOpen, setNewOpen] = useState(false);
+  const [clientSelectOpen, setClientSelectOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const allClients = useQuery({ queryKey: ["clients", "__all"], queryFn: () => apiGet<ClientSummary[]>("/clients") });
   const clientList = allClients.isError ? [] : [...(allClients.data ?? [])].sort((a, b) => a.client_name.localeCompare(b.client_name));
+  const normalizedClientSearch = clientSearch.trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const clientSearchDigits = clientSearch.replace(/\D/g, "");
+  const filteredClients = !normalizedClientSearch ? clientList : clientList.filter((c) => {
+    const normalizedName = c.client_name.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizedPhone = c.phone.replace(/\D/g, "");
+    return normalizedName.includes(normalizedClientSearch) || (clientSearchDigits.length > 0 && normalizedPhone.includes(clientSearchDigits));
+  });
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const varietyList = vq.isError ? [] : (vq.data?.varieties ?? []);
   const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
@@ -136,21 +146,62 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         <div className="space-y-2">
           <Label>{t("client")}</Label>
           <div className="flex gap-2">
-            <Select
-              value={picked && clientList.some((c) => c.phone === picked) ? picked : null}
-              onValueChange={(v) => { const c = clientList.find((x) => x.phone === (v as string)); if (c) pick(c); }}
-            >
-              <SelectTrigger className="h-11 flex-1 rounded-xl bg-white" data-testid="intake-client-select">
-                <SelectValue>{(v) => (v ? (clientList.find((c) => c.phone === v)?.client_name ?? String(v)) : <span className="text-stone-400">{t("choose_client")}</span>)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {clientList.map((c) => (
-                  <SelectItem key={c.phone} value={c.phone} data-testid={`intake-client-option-${c.phone}`}>
-                    {c.client_name} <span className="text-stone-400" dir="ltr">· {c.phone}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
+              <PopoverTrigger
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={clientSelectOpen}
+                data-testid="intake-client-select"
+                className="flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 text-start text-sm shadow-sm outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-lime-600"
+              >
+                <span className="min-w-0 truncate">
+                  {picked ? (
+                    <>{clientList.find((c) => c.phone === picked)?.client_name ?? name} <span className="text-stone-400" dir="ltr">· {phone}</span></>
+                  ) : <span className="text-stone-400">{t("choose_client")}</span>}
+                </span>
+                <Search className="size-4 shrink-0 text-stone-400" />
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[min(90vw,420px)] p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    autoFocus
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    placeholder="Rechercher par nom ou téléphone / البحث بالاسم أو الهاتف"
+                    aria-label="Rechercher un client par nom ou téléphone"
+                    data-testid="intake-client-search-input"
+                    className="h-10 rounded-lg ps-9"
+                  />
+                </div>
+                <div role="listbox" aria-label={t("client")} className="mt-2 max-h-64 overflow-y-auto">
+                  {allClients.isLoading ? (
+                    <p className="p-3 text-center text-sm text-stone-500">Chargement des clients…</p>
+                  ) : allClients.isError ? (
+                    <p className="p-3 text-center text-sm text-red-600">Impossible de charger les clients.</p>
+                  ) : filteredClients.length === 0 ? (
+                    <p className="p-3 text-center text-sm text-stone-500">Aucun client trouvé / لم يتم العثور على حريف</p>
+                  ) : filteredClients.map((c) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={picked === c.phone}
+                      key={c.phone}
+                      data-testid={`intake-client-option-${c.phone}`}
+                      onClick={() => { pick(c); setClientSearch(""); setClientSelectOpen(false); }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition-colors hover:bg-lime-50 focus-visible:bg-lime-50 focus-visible:outline-none"
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-teal-100 text-teal-700"><UserRound className="size-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-stone-900">{c.client_name}</span>
+                        <span className="block text-xs text-stone-500" dir="ltr">{c.phone}</span>
+                      </span>
+                      {picked === c.phone && <span className="text-xs font-semibold text-lime-700">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button type="button" onClick={() => setNewOpen(true)} data-testid="intake-new-client-button" className="h-11 rounded-xl bg-teal-600 hover:bg-teal-700">
               <UserPlus className="size-4" /> {t("new_client")}
             </Button>
