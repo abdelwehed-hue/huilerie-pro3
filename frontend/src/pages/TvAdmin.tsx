@@ -9,6 +9,7 @@ import { fmtDate, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
+import TvImageSettings from "@/components/TvImageSettings";
 
 export default function TvAdmin() {
   const { t, errMsg } = useI18n();
@@ -97,6 +98,9 @@ export default function TvAdmin() {
             ))}
           </TableBody>
         </Table>
+      </div>
+      <div className="mt-6" data-testid="tv-screen-settings">
+        <TvImageSettings />
       </div>
     </div>
   );

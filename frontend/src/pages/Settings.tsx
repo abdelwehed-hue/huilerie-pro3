@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, Tv } from "lucide-react";
+import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import LoginImageSettings from "@/components/LoginImageSettings";
-import TvImageSettings from "@/components/TvImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
@@ -335,7 +334,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title={t("settings")} accent="bg-violet-500" />
       <Tabs defaultValue="users">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-6">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-sky-100 text-sky-700"><Users className="size-4 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
@@ -351,16 +350,12 @@ export default function SettingsPage() {
           <TabsTrigger value="login-image" data-testid="settings-tab-login-image" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-200 data-[state=active]:text-emerald-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-emerald-100 text-emerald-700"><LogIn className="size-4 stroke-[2.2]" /></span><span>Page Login</span>
           </TabsTrigger>
-          <TabsTrigger value="tv-image" data-testid="settings-tab-tv-image" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-orange-300 hover:bg-orange-50 data-[state=active]:border-orange-600 data-[state=active]:bg-orange-200 data-[state=active]:text-orange-950 data-[state=active]:shadow-md">
-            <span className="grid size-7 place-items-center rounded-lg bg-orange-100 text-orange-700"><Tv className="size-4 stroke-[2.2]" /></span><span>Page TV</span>
-          </TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><TwilioSettings /><TunisieSmsSettings /><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
-        <TabsContent value="tv-image"><TvImageSettings /></TabsContent>
       </Tabs>
     </div>
   );
