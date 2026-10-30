@@ -93,13 +93,6 @@ export default function TvImageSettings() {
 
   return (
     <div className="max-w-4xl space-y-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-6">
-      <div className="flex items-center gap-3 text-violet-900">
-        <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><ImageIcon className="size-5" /></div>
-        <div>
-          <h2 className="font-heading text-xl font-bold">Page TV</h2>
-          <p className="text-sm text-violet-800">Choisissez l’image de fond affichée sur l’écran TV.</p>
-        </div>
-      </div>
       <div className="space-y-3">
         <div className="rounded-xl border border-red-200 bg-white p-4 space-y-3">
           <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo sur l’écran TV</div>
