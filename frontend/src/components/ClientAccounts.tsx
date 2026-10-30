@@ -5,7 +5,6 @@ import { apiGet } from "@/lib/api";
 import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ClientHit = { phone: string; client_name: string; codes: string[] };
 type LoadRow = {
