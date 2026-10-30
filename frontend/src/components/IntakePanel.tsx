@@ -56,8 +56,11 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [notes, setNotes] = useState("");
   const [initStatus, setInitStatus] = useState<"pending" | "pressing">("pending");
   const [newOpen, setNewOpen] = useState(false);
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
   const allClients = useQuery({ queryKey: ["clients", "__all"], queryFn: () => apiGet<ClientSummary[]>("/clients") });
   const clientList = allClients.isError ? [] : [...(allClients.data ?? [])].sort((a, b) => a.client_name.localeCompare(b.client_name));
+  const filteredClients = clientList.filter((c) => `${c.client_name} ${c.phone}`.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const varietyList = vq.isError ? [] : (vq.data?.varieties ?? []);
   const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
@@ -81,6 +84,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
     setPhone(c.phone);
     setPicked(c.phone);
     setShowSug(false);
+    setClientDropdownOpen(false);
+    setClientSearch("");
   };
 
   const [picked, setPicked] = useState<string | null>(null);
@@ -136,21 +141,55 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         <div className="space-y-2">
           <Label>{t("client")}</Label>
           <div className="flex gap-2">
-            <Select
-              value={picked && clientList.some((c) => c.phone === picked) ? picked : null}
-              onValueChange={(v) => { const c = clientList.find((x) => x.phone === (v as string)); if (c) pick(c); }}
-            >
-              <SelectTrigger className="h-11 flex-1 rounded-xl bg-white" data-testid="intake-client-select">
-                <SelectValue>{(v) => (v ? (clientList.find((c) => c.phone === v)?.client_name ?? String(v)) : <span className="text-stone-400">{t("choose_client")}</span>)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {clientList.map((c) => (
-                  <SelectItem key={c.phone} value={c.phone} data-testid={`intake-client-option-${c.phone}`}>
-                    {c.client_name} <span className="text-stone-400" dir="ltr">· {c.phone}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative min-w-0 flex-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setClientDropdownOpen(false); }}>
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={clientDropdownOpen}
+                onClick={() => { setClientDropdownOpen((open) => !open); setClientSearch(""); }}
+                className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-input bg-white px-3 text-sm text-left shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                data-testid="intake-client-select"
+              >
+                <span className={picked && clientList.some((c) => c.phone === picked) ? "truncate text-stone-900" : "truncate text-stone-400"}>
+                  {picked ? (clientList.find((c) => c.phone === picked)?.client_name ?? t("choose_client")) : t("choose_client")}
+                </span>
+                <span className="text-stone-400" aria-hidden="true">▾</span>
+              </button>
+              {clientDropdownOpen && (
+                <div className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-lime-200 bg-white shadow-xl shadow-lime-900/10">
+                  <div className="sticky top-0 border-b border-stone-100 bg-white p-2">
+                    <Input
+                      autoFocus
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Rechercher par nom ou téléphone..."
+                      aria-label="Rechercher un client par nom ou téléphone"
+                      data-testid="intake-client-search-input"
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                  <div role="listbox" aria-label={t("client")} className="max-h-64 overflow-y-auto p-1">
+                    {filteredClients.length > 0 ? filteredClients.map((c) => (
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={picked === c.phone}
+                        key={c.phone}
+                        onClick={() => pick(c)}
+                        data-testid={`intake-client-option-${c.phone}`}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-lime-50 focus:bg-lime-50 focus:outline-none"
+                      >
+                        <span className="min-w-0 truncate font-medium text-stone-900">{c.client_name}</span>
+                        <span className="shrink-0 text-xs text-stone-400" dir="ltr">{c.phone}</span>
+                      </button>
+                    )) : (
+                      <p className="px-3 py-4 text-center text-sm text-stone-500">Aucun client trouvé</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <Button type="button" onClick={() => setNewOpen(true)} data-testid="intake-new-client-button" className="h-11 rounded-xl bg-teal-600 hover:bg-teal-700">
               <UserPlus className="size-4" /> {t("new_client")}
             </Button>
