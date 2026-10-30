@@ -10,7 +10,7 @@ import { apiDelete, apiGet } from "@/lib/api";
 import type { ClientDeleteResult, ClientHistory, ClientSummary, ClientUpdate } from "@/lib/types";
 import { useMe } from "@/lib/useMe";
 import EditClientDialog from "@/components/EditClientDialog";
-import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
+import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, GradeBadge, PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +122,7 @@ export default function Clients() {
                 <StatCard tone="olive" testId="client-history-olive" label={t("olive_kg")} value={fmtNum(h.olive_kg)} unit={t("kg")} icon={<Sprout />} />
                 <StatCard tone="gold" testId="client-history-oil" label={t("oil_kg")} value={fmtNum(h.oil_kg)} unit={t("kg")} icon={<Droplet />} />
                 <StatCard tone="sky" label={t("avg_yield")} value={h.avg_yield != null ? fmtNum(h.avg_yield, 2) : "—"} unit="%" icon={<Percent />} />
-                {h.amount != null && <StatCard tone="violet" testId="client-history-amount" label={t("amount")} value={fmtNum(h.amount, 3)} unit={t("dt")} icon={<Wallet />} />}
+                {h.amount != null && <StatCard tone="violet" testId="client-history-amount" label={t("amount")} value={fmtMoney(h.amount)} unit={t("dt")} icon={<Wallet />} />}
               </div>
               <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{t("history")}</div>
@@ -160,7 +160,7 @@ export default function Clients() {
                         </TableCell>
                         <TableCell><StatusPill status={l.status} /></TableCell>
                         <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
-                        {h.amount != null && <TableCell className="text-end text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
+                        {h.amount != null && <TableCell className="text-end text-violet-700">{fmtMoney(l.amount)}</TableCell>}
                       </TableRow>
                     ))}
                   </TableBody>

@@ -26,6 +26,11 @@ router = APIRouter(tags=["extras"])
 FONTS = Path(__file__).resolve().parent.parent / "fonts"
 
 
+def _tn_money(value: float | int | None) -> str:
+    """Format Tunisian dinars as grouped dinars, comma, and three millimes digits."""
+    return f"{float(value or 0):,.3f}".replace(",", "\u202f").replace(".", ",")
+
+
 def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
@@ -346,6 +351,8 @@ async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str
         ws.append([r.period if r.period != "TOTAL" else "TOTAL / المجموع", r.loads, r.olive_kg, r.oil_kg, r.revenue])
     for c in ws[ws.max_row]:
         c.font = Font(bold=True)
+    for row in ws.iter_rows(min_row=6, min_col=5, max_col=5):
+        row[0].number_format = "#,##0.000"
     for col, w in zip("ABCDE", [20, 14, 16, 14, 18]):
         ws.column_dimensions[col].width = w
 
@@ -372,6 +379,9 @@ async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str
         ws2.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=5)
         for cell in ws2[row_num]:
             cell.font = Font(bold=True)
+    for row in ws2.iter_rows(min_row=5, min_col=6, max_col=6):
+        if isinstance(row[0].value, (int, float)):
+            row[0].number_format = "#,##0.000"
     for col, w in zip("ABCDEF", [20, 22, 14, 16, 14, 25]):
         ws2.column_dimensions[col].width = w
 
@@ -485,15 +495,15 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     total_label = "TOTAL / المجموع"
     data = [HEAD_FR, HEAD_AR] + [
         [r.period if r.period != "TOTAL" else total_label, r.loads,
-         f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"]
+         f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", _tn_money(r.revenue)]
         for r in rep.rows + [rep.total]
     ]
     worker_data = [WHEAD_FR, WHEAD_AR] + [
         [r.day, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
-         f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.rows
+         f"{r.oil_kg:,.1f}", _tn_money(r.revenue)] for r in wrep.rows
     ] + [
         [total_label, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
-         f"{r.oil_kg:,.1f}", f"{r.revenue:,.3f}"] for r in wrep.totals
+         f"{r.oil_kg:,.1f}", _tn_money(r.revenue)] for r in wrep.totals
     ]
 
     contact = " • ".join(x for x in [m.mill_address, m.mill_phone] if x)
@@ -538,9 +548,9 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     story.extend([
         Spacer(1, 12),
         Table(
-            [[ar("Total des factures / مجموع الفواتير"), f"{invoice_totals['total']:,.3f} DT"],
-             [ar("Montant payé / المبلغ المدفوع"), f"{invoice_totals['paid']:,.3f} DT"],
-             [ar("Reste à payer / المبلغ المتبقي"), f"{invoice_totals['balance']:,.3f} DT"]],
+            [[ar("Total des factures / مجموع الفواتير"), f"{_tn_money(invoice_totals['total'])} DT"],
+             [ar("Montant payé / المبلغ المدفوع"), f"{_tn_money(invoice_totals['paid'])} DT"],
+             [ar("Reste à payer / المبلغ المتبقي"), f"{_tn_money(invoice_totals['balance'])} DT"]],
             colWidths=[120 * mm, 55 * mm], hAlign="CENTER",
             style=TableStyle([
                 ("TEXTCOLOR", (0, 0), (-1, -1), ink),

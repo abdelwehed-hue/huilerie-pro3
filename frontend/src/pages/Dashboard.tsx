@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Droplets, PackagePlus, Scale, ScanLine, Coins, Clock, FileText, Layers } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Load, Stats } from "@/lib/types";
-import { fmtNum, useI18n } from "@/lib/i18n";
+import { fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { CodeBadge, StatusPill } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export default function Dashboard() {
           <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="border-lime-200 bg-[#F2F8EE] text-[#1E3A14] [&_svg]:text-lime-700" />
           <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="border-yellow-200 bg-[#FEFCE8] text-[#713F12] [&_svg]:text-amber-600" />
           {isAdmin ? (
-            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtNum(s?.revenue_today, 3)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="border-violet-200 bg-[#FAF5FF] text-[#581C87] [&_svg]:text-violet-600" />
+            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtMoney(s?.revenue_today)} <span className="text-2xl">{t("dt")}</span></>} icon={<Coins />} tint="border-violet-200 bg-[#FAF5FF] text-[#581C87] [&_svg]:text-violet-600" />
           ) : (
             <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="border-orange-200 bg-orange-50 text-orange-900 [&_svg]:text-orange-600" />
           )}

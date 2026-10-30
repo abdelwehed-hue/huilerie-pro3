@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Grade, Load } from "@/lib/types";
-import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
+import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Droplet, FlaskConical, Phone, Sprout, Wallet, Percent } from "lucide-react";
@@ -118,7 +118,7 @@ export function LoadDetail({ load }: { load: Load }) {
         <StatCard tone="gold" testId="load-detail-oil-kg" label={t("oil_kg")} value={fmtNum(load.oil_kg)} unit={load.oil_kg != null ? t("kg") : undefined} icon={<Droplet />} sub={load.oil_kg == null ? t("pending") : undefined} />
         <StatCard tone="sky" testId="load-detail-yield" label={t("yield")} value={load.yield_pct != null ? fmtNum(load.yield_pct, 2) : "—"} unit={load.yield_pct != null ? "%" : undefined} icon={<Percent />} />
         {load.amount != null ? (
-          <StatCard tone="violet" testId="load-detail-amount" label={t("amount")} value={fmtNum(load.amount, 3)} unit={t("dt")} icon={<Wallet />} sub={`${load.price_per_kg} ${t("dt")} / ${t("kg")}`} />
+          <StatCard tone="violet" testId="load-detail-amount" label={t("amount")} value={fmtMoney(load.amount)} unit={t("dt")} icon={<Wallet />} sub={`${fmtMoney(load.price_per_kg)} ${t("dt")} / ${t("kg")}`} />
         ) : (
           <StatCard
             tone="emerald"

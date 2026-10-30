@@ -24,10 +24,10 @@ import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 function formatTariffPrice(value: string): string {
-  const normalized = value.trim().replace(",", ".");
+  const normalized = value.trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
   if (!normalized) return "";
   const number = Number(normalized);
-  return Number.isFinite(number) ? number.toFixed(3).replace(".", ",") : value;
+  return Number.isFinite(number) ? new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number) : value;
 }
 
 function parseTariffPrice(value: string): number {

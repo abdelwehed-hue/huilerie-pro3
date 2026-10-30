@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import type { Load } from "@/lib/types";
-import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
+import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { CodeBadge, GradeBadge, PageHeader, StatusPill } from "@/components/shared";
 import OilEntryDialog from "@/components/OilEntryDialog";
@@ -80,7 +80,7 @@ export default function Loads() {
         <div className="ms-auto flex flex-wrap gap-2 text-sm">
           <span className="rounded-full bg-lime-100 px-3 py-1.5 font-semibold text-lime-900" data-testid="loads-total-olive">{t("olives")}: {fmtNum(totalOlive)} {t("kg")}</span>
           <span className="rounded-full bg-yellow-100 px-3 py-1.5 font-semibold text-yellow-900" data-testid="loads-total-oil">{t("oil")}: {fmtNum(totalOil)} {t("kg")}</span>
-          {isAdmin && <span className="rounded-full bg-violet-100 px-3 py-1.5 font-semibold text-violet-900" data-testid="loads-total-amount">{t("revenue")}: {fmtNum(totalAmount, 3)} {t("dt")}</span>}
+          {isAdmin && <span className="rounded-full bg-violet-100 px-3 py-1.5 font-semibold text-violet-900" data-testid="loads-total-amount">{t("revenue")}: {fmtMoney(totalAmount)} {t("dt")}</span>}
         </div>
       </div>
 
@@ -123,7 +123,7 @@ export default function Loads() {
                 <TableCell>{l.lab ? <GradeBadge grade={l.lab.classification} /> : <span className="text-xs text-stone-400">—</span>}</TableCell>
                 <TableCell><StatusPill status={l.status} size="large" /></TableCell>
                 <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
-                {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtNum(l.amount, 3)}</TableCell>}
+                {isAdmin && <TableCell className="text-end font-semibold text-violet-700">{fmtMoney(l.amount)}</TableCell>}
                 <TableCell className="text-end">
                   <div className="flex items-center justify-end gap-1">
                   {l.status === "cancelled" ? (

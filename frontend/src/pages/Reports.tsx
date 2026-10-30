@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiGet } from "@/lib/api";
 import type { Load, RevenueReport, User, WorkerReport } from "@/lib/types";
-import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
+import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { cn } from "@/lib/utils";
@@ -147,21 +147,21 @@ export default function Reports() {
         <div className="flex flex-wrap items-stretch gap-2" data-testid="report-invoice-totals-next-to-period">
           <div className="flex min-w-[132px] flex-col justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
             <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Total des factures</span>
-            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-emerald-800">{fmtNum(invoiceTotals.total, 3)} {t("dt")}</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-emerald-800">{fmtMoney(invoiceTotals.total)} {t("dt")}</span>
           </div>
           <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
             <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Montant payé</span>
-            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-blue-800">{fmtNum(invoiceTotals.paid, 3)} {t("dt")}</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-blue-800">{fmtMoney(invoiceTotals.paid)} {t("dt")}</span>
           </div>
           <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
             <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Reste à payer</span>
-            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-rose-700">{fmtNum(invoiceTotals.balance, 3)} {t("dt")}</span>
+            <span className="whitespace-nowrap text-sm font-bold tabular-nums text-rose-700">{fmtMoney(invoiceTotals.balance)} {t("dt")}</span>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard tone="violet" testId="report-total-revenue" label={t("revenue")} value={fmtNum(r?.total.revenue, 3)} unit={t("dt")} icon={<Wallet />} />
+        <StatCard tone="violet" testId="report-total-revenue" label={t("revenue")} value={fmtMoney(r?.total.revenue)} unit={t("dt")} icon={<Wallet />} />
         <StatCard tone="rose" label={t("loads")} value={r?.total.loads ?? "—"} icon={<Layers />} />
         <StatCard tone="olive" label={t("olive_kg")} value={fmtNum(r?.total.olive_kg)} unit={t("kg")} icon={<Sprout />} />
         <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
@@ -180,7 +180,7 @@ export default function Reports() {
               <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
               <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
               <YAxis fontSize={11} stroke="#78716C" />
-              <Tooltip formatter={(value: number) => [`${fmtNum(value, 3)} ${t("dt")}`, t("revenue")]} />
+              <Tooltip formatter={(value: number) => [`${fmtMoney(value)} ${t("dt")}`, t("revenue")]} />
               <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
             </BarChart>
           </div>
@@ -208,7 +208,7 @@ export default function Reports() {
                   <TableCell className="text-start">{(varietiesByPeriod.get(row.period) ?? []).join(", ") || "—"}</TableCell>
                   <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
                   <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
-                  <TableCell className="text-end font-semibold text-violet-700">{fmtNum(row.revenue, 3)}</TableCell>
+                  <TableCell className="text-end font-semibold text-violet-700">{fmtMoney(row.revenue)}</TableCell>
                 </TableRow>
               ))}
               {r && r.rows.length > 0 && (
@@ -218,7 +218,7 @@ export default function Reports() {
                   <TableCell className="text-start"></TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.olive_kg)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.total.oil_kg)}</TableCell>
-                  <TableCell className="text-end text-violet-800">{fmtNum(r.total.revenue, 3)}</TableCell>
+                  <TableCell className="text-end text-violet-800">{fmtMoney(r.total.revenue)}</TableCell>
                 </TableRow>
               )}
 
@@ -234,7 +234,7 @@ export default function Reports() {
             <div key={tot.username} className="rounded-xl border border-teal-100 bg-teal-50/50 p-4" data-testid={`worker-total-${tot.username}`}>
               <div className="text-sm font-semibold text-stone-800">{tot.full_name}</div>
               <div className="text-xs text-stone-500" dir="ltr">@{tot.username}</div>
-              <div className="mt-2 text-2xl font-bold text-teal-800">{fmtNum(tot.revenue, 3)} <span className="text-sm font-medium">{t("dt")}</span></div>
+              <div className="mt-2 text-2xl font-bold text-teal-800">{fmtMoney(tot.revenue)} <span className="text-sm font-medium">{t("dt")}</span></div>
               <div className="text-xs text-stone-600">{tot.loads} {t("loads")} · {fmtNum(tot.olive_kg)} {t("kg")}</div>
             </div>
           ))}
@@ -263,7 +263,7 @@ export default function Reports() {
                 <TableCell className="text-start">{(workerVarieties.get(`${row.day}|${row.full_name}`) ?? []).join(", ") || "—"}</TableCell>
                 <TableCell className="text-end text-lime-800">{fmtNum(row.olive_kg)}</TableCell>
                 <TableCell className="text-end text-amber-700">{fmtNum(row.oil_kg)}</TableCell>
-                <TableCell className="text-end font-semibold text-teal-700">{fmtNum(row.revenue, 3)}</TableCell>
+                <TableCell className="text-end font-semibold text-teal-700">{fmtMoney(row.revenue)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
