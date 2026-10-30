@@ -149,7 +149,7 @@ export default function ClientAccounts() {
             <div className="flex min-w-0 items-start gap-3">
               {data.mill.mill_logo && <img src={data.mill.mill_logo} alt="Logo" className="max-h-16 max-w-24 object-contain"/>}
               <div className="text-left">
-                {(() => { const millTitle = (data.mill.mill_name || "Huilerie Oro Verde").replace(/oro\s*verde|oroverde/ig, "").trim(); return millTitle ? <h2 className="text-xl font-bold">{millTitle}</h2> : null; })()}
+                <h2 className="text-xl font-bold">{data.mill.mill_name || "Huilerie Oro Verde"}</h2>
                 <p className="text-sm text-stone-500">{data.mill.mill_address}</p>
                 <p className="text-sm text-stone-500">{data.mill.mill_phone}</p>
               </div>
