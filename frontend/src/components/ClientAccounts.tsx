@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpenCheck, FileSpreadsheet, Printer, Search, UserRound, X } from "lucide-react";
+import { BookOpenCheck, FileSpreadsheet, Printer, X } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { fmtDate, fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ClientHit = { phone: string; client_name: string; codes: string[] };
 type LoadRow = {
@@ -33,8 +34,6 @@ export default function ClientAccounts() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const [mode, setMode] = useState<"global" | "statement" | null>(null);
-  const [query, setQuery] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [client, setClient] = useState<ClientHit | null>(null);
   const [season, setSeason] = useState("all");
   const [custom, setCustom] = useState(false);
@@ -68,8 +67,8 @@ export default function ClientAccounts() {
     cancellation: "Annulation chargement", customHint: "Choisissez les dates de début et de fin",
   };
   const searchQuery = useQuery({
-    queryKey: ["client-account-search", query.trim()],
-    queryFn: () => apiGet<ClientHit[]>(`/client-accounts/search${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`),
+    queryKey: ["client-account-search"],
+    queryFn: () => apiGet<ClientHit[]>("/client-accounts/search"),
     enabled: Boolean(mode),
   });
   const accountUrl = useMemo(() => {
@@ -93,9 +92,9 @@ export default function ClientAccounts() {
     });
   }, [data]);
   const chooseMode = (next: "global" | "statement") => {
-    setMode(next); setClient(null); setQuery(""); setShowSuggestions(false); setSeason("all"); setCustom(false); setStart(""); setEnd("");
+    setMode(next); setClient(null); setSeason("all"); setCustom(false); setStart(""); setEnd("");
   };
-  const clear = () => { setMode(null); setClient(null); setQuery(""); setShowSuggestions(false); };
+  const clear = () => { setMode(null); setClient(null); };
   const canPrint = Boolean(data && (!custom || (start && end)));
   return <section className="mb-6 space-y-4">
     <div className="grid gap-3 sm:grid-cols-2">
@@ -114,20 +113,39 @@ export default function ClientAccounts() {
         <Button variant="outline" size="sm" onClick={clear}><X className="mr-1 size-4"/>{labels.close}</Button>
       </div>
       <div className="client-account-no-print grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"/>
-          <Input value={query} onChange={(e) => {setQuery(e.target.value);setClient(null);setShowSuggestions(true);}} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} placeholder={labels.search} className="pl-10"/>
-          {!client && showSuggestions && <ul className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-xl border border-emerald-200 bg-white p-1 shadow-xl">
-            {searchQuery.isFetching ? <li className="p-3 text-sm text-stone-500">…</li> :
-              (searchQuery.data ?? []).map((hit) => <li key={hit.phone}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => {setClient(hit);setQuery(`${hit.client_name} — ${hit.phone}`);setShowSuggestions(false);setSeason("all");setCustom(false);setStart("");setEnd("");}} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start transition-colors hover:bg-emerald-50">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><UserRound className="size-4"/></span>
-                  <span className="min-w-0 flex-1"><span className="block truncate font-medium text-stone-900">{hit.client_name || "—"}</span><span className="block text-xs text-stone-500" dir="ltr">{hit.phone}</span></span>
-                  {hit.codes.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{hit.codes.length}×</span>}
-                </button>
-              </li>)}
-            {!searchQuery.isFetching && !searchQuery.data?.length && <li className="p-3 text-sm text-stone-500">{labels.noClient}</li>}
-          </ul>}
+        <div>
+          <Select
+            value={client?.phone ?? ""}
+            onValueChange={(value) => {
+              const selected = (searchQuery.data ?? []).find((hit) => hit.phone === value);
+              if (selected) {
+                setClient(selected);
+                setSeason("all");
+                setCustom(false);
+                setStart("");
+                setEnd("");
+              }
+            }}
+          >
+            <SelectTrigger className="h-11 w-full rounded-xl bg-white" aria-label={labels.select}>
+              <SelectValue placeholder={labels.select}>
+                {(value) => {
+                  const selected = (searchQuery.data ?? []).find((hit) => hit.phone === value);
+                  return selected ? `${selected.client_name} · ${selected.phone}` : <span className="text-stone-400">{labels.select}</span>;
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-80">
+              {searchQuery.isFetching && <div className="p-3 text-sm text-stone-500">{ar ? "جارٍ تحميل الحرفاء…" : "Chargement des clients…"}</div>}
+              {(searchQuery.data ?? []).map((hit) => (
+                <SelectItem key={hit.phone} value={hit.phone}>
+                  {hit.client_name || "—"} <span className="text-stone-400" dir="ltr">· {hit.phone}</span>
+                </SelectItem>
+              ))}
+              {!searchQuery.isFetching && !searchQuery.data?.length && <div className="p-3 text-sm text-stone-500">{labels.noClient}</div>}
+            </SelectContent>
+          </Select>
+          {searchQuery.isError && <p className="mt-1 text-xs text-rose-600">{ar ? "تعذر تحميل قائمة الحرفاء." : "Impossible de charger la liste des clients."}</p>}
         </div>
         <div className="flex gap-2">
           <select aria-label={labels.season} value={custom ? "__custom" : season} onChange={(e) => {setCustom(e.target.value === "__custom");if(e.target.value !== "__custom")setSeason(e.target.value);}} className="h-10 min-w-0 flex-1 rounded-md border border-stone-200 bg-white px-3 text-sm">
