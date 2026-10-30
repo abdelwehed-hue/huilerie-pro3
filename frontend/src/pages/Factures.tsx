@@ -137,17 +137,9 @@ export default function Factures() {
   return <div>
     <div className="no-print"><PageHeader title={t("factures")} sub={t("invoice_sub")} accent="bg-emerald-600"/></div>
     {admin && <ClientAccounts />}
-    <div className="no-print mb-5 grid gap-4 rounded-2xl border bg-white p-4 md:grid-cols-[2fr_1fr_1fr_auto]">
-      {admin && <>
-<div className="space-y-2"><Label>{t("invoice_load")}</Label>
-        <Select value={loadId} onValueChange={setLoadId}>
-          <SelectTrigger className="h-16 min-h-16 rounded-xl border border-stone-200 bg-emerald-50/70 py-4 font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50 focus:ring-1 focus:ring-stone-300 focus:ring-offset-0"><SelectValue placeholder={t("invoice_choose_load")}>{(v)=>{const l=loads.find(x=>x.id===v);return l? `${l.code} — ${l.client_name} (${fmtNum(l.oil_kg)} kg huile)`:String(v??t("invoice_choose_load"));}}</SelectValue></SelectTrigger>
-          <SelectContent>{loads.map(l=><SelectItem key={l.id} value={l.id}>{l.code} — {l.client_name} ({fmtNum(l.oil_kg)} kg huile)</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2"><Label>{t("invoice_paid_amount")}</Label><Input type="text" inputMode="decimal" value={paid} onChange={e=>setPaid(e.target.value)} onBlur={()=>setPaid(formatTariffPrice(paid))}/></div>
-      </>}
-      <div className="space-y-2 md:min-w-[220px]"><Label>{t("invoice_status")}</Label>
+    <div className="no-print mb-5 flex justify-start rounded-2xl border bg-white p-4">
+      <div className="w-full max-w-sm space-y-2">
+        <Label>{t("invoice_status")}</Label>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -158,8 +150,6 @@ export default function Factures() {
           </SelectContent>
         </Select>
       </div>
-      {admin && <div className="flex items-end"><Button disabled={!loadId||!validAmount(paid)||create.isPending} onClick={()=>create.mutate()}><Plus className="mr-2 size-4"/>{t("invoice_create")}</Button></div>}
-      {admin && currentLoad && <div className="text-sm text-stone-600 md:col-span-4">{t("invoice_weight")} — Huile (kg) pressée : {fmtNum(currentLoad.oil_kg)} kg. {t("invoice_price_snapshot")}</div>}
     </div>
     <div className="no-print mb-4 flex gap-2"><div className="relative w-full max-w-2xl flex-1 rounded-2xl bg-white shadow-md ring-1 ring-stone-200 transition-shadow focus-within:shadow-lg focus-within:ring-2 focus-within:ring-emerald-400"><Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-stone-500"/><Input className="h-14 rounded-2xl border-0 bg-transparent pl-12 pr-4 text-base shadow-none placeholder:text-stone-400 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder={t("invoice_search_placeholder")} value={q} onChange={e=>setQ(e.target.value)}/></div></div>
     <div className="no-print overflow-x-auto rounded-2xl border bg-white">
