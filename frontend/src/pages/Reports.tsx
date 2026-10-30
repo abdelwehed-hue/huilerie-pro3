@@ -176,7 +176,7 @@ export default function Reports() {
                 <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
                 <YAxis fontSize={11} stroke="#78716C" />
                 <Tooltip formatter={(v: number) => [`${fmtNum(v, 3)} ${t("dt")}`, t("revenue")]} />
-                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} minPointSize={4} isAnimationActive={false} />
+                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
