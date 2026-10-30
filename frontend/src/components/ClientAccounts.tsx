@@ -27,6 +27,7 @@ type AccountData = {
 };
 
 const cash = (n: number) => `${fmtMoney(n)} DT`;
+const fmtDateOnly = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" });
 
 export default function ClientAccounts() {
   const { lang } = useI18n();
@@ -48,7 +49,7 @@ export default function ClientAccounts() {
     invoice: "رقم الفاتورة", total: "الإجمالي", paid: "المدفوع", remaining: "المتبقي",
     cancelled: "ملغاة", noInvoice: "لا توجد فاتورة", cancelledNote: "الإلغاء بحد ذاته لا ينشئ حركة مالية",
     opening: "الرصيد الافتتاحي", debits: "مجموع المدين", credits: "مجموع الدائن",
-    balance: "الرصيد النهائي", operation: "العملية", debit: "مدين", credit: "دائن",
+    balance: "الرصيد النهائي", operation: "العملية", debit: "مدين", credit: "دائن", documentDate: "التاريخ",
     noRows: "لا توجد بيانات في الفترة المحددة", legacy: "دفعة قديمة (إجمالي محفوظ دون تفاصيل)",
     cancellation: "إلغاء حمولة", customHint: "اختر تاريخ البداية والنهاية",
   } : {
@@ -61,7 +62,7 @@ export default function ClientAccounts() {
     invoice: "N° facture", total: "Total", paid: "Payé", remaining: "Reste",
     cancelled: "Annulée", noInvoice: "Sans facture", cancelledNote: "L’annulation seule ne crée pas d’écriture financière",
     opening: "Solde initial", debits: "Total débit", credits: "Total crédit",
-    balance: "Solde final", operation: "Opération", debit: "Débit", credit: "Crédit",
+    balance: "Solde final", operation: "Opération", debit: "Débit", credit: "Crédit", documentDate: "Date",
     noRows: "Aucune donnée pour cette période", legacy: "Paiement historique (montant global sans détail)",
     cancellation: "Annulation chargement", customHint: "Choisissez les dates de début et de fin",
   };
@@ -148,7 +149,7 @@ export default function ClientAccounts() {
             <div className="flex min-w-0 items-start gap-3">
               {data.mill.mill_logo && <img src={data.mill.mill_logo} alt="Logo" className="max-h-16 max-w-24 object-contain"/>}
               <div className="text-left">
-                <h2 className="text-xl font-bold">{data.mill.mill_name || "Huilerie Oro Verde"}</h2>
+                {(() => { const millTitle = (data.mill.mill_name || "Huilerie Oro Verde").replace(/oro\s*verde|oroverde/ig, "").trim(); return millTitle ? <h2 className="text-xl font-bold">{millTitle}</h2> : null; })()}
                 <p className="text-sm text-stone-500">{data.mill.mill_address}</p>
                 <p className="text-sm text-stone-500">{data.mill.mill_phone}</p>
               </div>
@@ -156,6 +157,7 @@ export default function ClientAccounts() {
             <div className="shrink-0 text-right text-sm">
               <h3 className="text-lg font-bold">{mode === "global" ? labels.global : labels.statement}</h3>
               <p className="font-semibold">{data.client.client_name} · {data.client.phone}</p>
+              <p className="text-xs text-stone-500">{labels.documentDate}: {new Date().toLocaleDateString("fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" })}</p>
               <p className="text-xs text-stone-500">{custom ? `${start} — ${end}` : season === "all" ? labels.all : season}</p>
             </div>
           </div>
@@ -182,7 +184,7 @@ export default function ClientAccounts() {
             <thead><tr className="bg-stone-100 print:bg-stone-100">{[labels.date,labels.operation,labels.debit,labels.credit,labels.balance].map(x=><th key={x} className="border p-2 text-start print:p-1">{x}</th>)}</tr></thead>
             <tbody>
               {balanceRows.map((row)=><tr key={row.id} className="border-b">
-                <td className="break-words p-2 print:p-1">{fmtDate(row.date)}</td><td className="break-words p-2 print:p-1">{row.label}{row.legacy_aggregate ? <small className="block text-amber-700">{labels.legacy}</small> : null}{row.informational && row.reason ? <small className="block">{row.reason}</small> : null}</td>
+                <td className="break-words p-2 print:p-1">{fmtDateOnly(row.date)}</td><td className="break-words p-2 print:p-1">{row.label}{row.legacy_aggregate ? <small className="block text-amber-700">{labels.legacy}</small> : null}{row.informational && row.reason ? <small className="block">{row.reason}</small> : null}</td>
                 <td className="whitespace-nowrap p-2 print:p-1">{row.debit ? cash(row.debit) : "—"}</td><td className="whitespace-nowrap p-2 print:p-1">{row.credit ? cash(row.credit) : "—"}</td><td className="whitespace-nowrap p-2 font-semibold print:p-1">{row.informational ? "—" : cash(row.running)}</td>
               </tr>)}
               <tr className="border-t-2 bg-stone-100 font-bold"><td colSpan={2} className="p-2 print:p-1">{labels.opening}</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">{cash(data.statement.opening_balance)}</td></tr>
