@@ -64,6 +64,8 @@ export default function Reports() {
     enabled: isAdmin,
   });
   const r = rep.isError ? undefined : rep.data;
+  // Keep chart values explicitly numeric so every daily revenue is plotted consistently.
+  const chartRows = (r?.rows ?? []).map((row) => ({ ...row, revenue: Number(row.revenue) || 0 }));
   const invoicesQuery = useQuery({
     queryKey: ["report-invoice-totals"],
     queryFn: () => apiGet<Array<{ id: string; day?: string; total?: number; paid_amount?: number; balance?: number }>>("/invoices"),
@@ -169,12 +171,12 @@ export default function Reports() {
         <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="report-revenue-chart">
           <div className="h-72 w-full min-w-0" dir="ltr">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={r?.rows ?? []} margin={{ top: 8, right: 12, left: 0, bottom: 28 }}>
+              <BarChart data={chartRows} margin={{ top: 8, right: 12, left: 0, bottom: 28 }} barCategoryGap="22%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
                 <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
                 <YAxis fontSize={11} stroke="#78716C" />
                 <Tooltip formatter={(v: number) => [`${fmtNum(v, 3)} ${t("dt")}`, t("revenue")]} />
-                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} minPointSize={4} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
