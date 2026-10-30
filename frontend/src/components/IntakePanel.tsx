@@ -147,21 +147,19 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           <Label>{t("client")}</Label>
           <div className="flex gap-2">
             <Popover open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
-              <PopoverTrigger>
-                <button
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded={clientSelectOpen}
-                  data-testid="intake-client-select"
-                  className="flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 text-start text-sm shadow-sm outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-lime-600"
-                >
-                  <span className="min-w-0 truncate">
-                    {picked ? (
-                      <>{clientList.find((c) => c.phone === picked)?.client_name ?? name} <span className="text-stone-400" dir="ltr">· {phone}</span></>
-                    ) : <span className="text-stone-400">{t("choose_client")}</span>}
-                  </span>
-                  <Search className="size-4 shrink-0 text-stone-400" />
-                </button>
+              <PopoverTrigger
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={clientSelectOpen}
+                data-testid="intake-client-select"
+                className="flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 text-start text-sm shadow-sm outline-none transition-colors hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-lime-600"
+              >
+                <span className="min-w-0 truncate">
+                  {picked ? (
+                    <>{clientList.find((c) => c.phone === picked)?.client_name ?? name} <span className="text-stone-400" dir="ltr">· {phone}</span></>
+                  ) : <span className="text-stone-400">{t("choose_client")}</span>}
+                </span>
+                <Search className="size-4 shrink-0 text-stone-400" />
               </PopoverTrigger>
               <PopoverContent align="start" className="w-[min(90vw,420px)] p-2">
                 <div className="relative">
