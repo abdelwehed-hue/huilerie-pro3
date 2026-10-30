@@ -163,10 +163,10 @@ export default function ClientAccounts() {
           </div>
         </header>
         {mode === "global" ? <>
-          <div className="overflow-x-auto"><table className="global-invoice-table w-full min-w-[720px] border-collapse text-sm"><colgroup>{["12%","15%","13%","13%","16%","15%","16%","0%"].map((w,i)=><col key={i} style={{width:w}}/>)}</colgroup>
+          <div className="overflow-x-auto"><table className="global-invoice-table w-full min-w-[720px] border-collapse text-sm"><colgroup>{Array.from({length:8},(_,i)=><col key={i}/>)}</colgroup>
             <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map((x,i)=><th key={x} className={`border p-2 text-start ${i === 4 ? "global-invoice-hide-on-print" : ""}`}>{i === 1 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.invoice}</span></> : x}</th>)}</tr></thead>
             <tbody>{data.global_invoice.loads.map((row)=> <tr key={row.code} className="border-b">
-              <td className="p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
+              <td className="p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
               <td className="p-2 global-invoice-hide-on-print">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
             </tr>)}
