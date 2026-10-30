@@ -163,11 +163,11 @@ export default function ClientAccounts() {
           </div>
         </header>
         {mode === "global" ? <>
-          <div className="overflow-x-auto"><table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map(x=><th key={x} className="border p-2 text-start">{x}</th>)}</tr></thead>
+          <div className="overflow-x-auto"><table className="global-invoice-table w-full min-w-[720px] border-collapse text-sm"><colgroup>{Array.from({length:8},(_,i)=><col key={i}/>)}</colgroup>
+            <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map((x,i)=><th key={x} className={`border p-2 text-start ${i === 4 ? "global-invoice-hide-on-print" : ""}`}>{i === 1 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.invoice}</span></> : x}</th>)}</tr></thead>
             <tbody>{data.global_invoice.loads.map((row)=> <tr key={row.code} className="border-b">
-              <td className="p-2">{row.day}</td><td className="p-2 font-semibold">{row.code}</td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
-              <td className="p-2">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
+              <td className="p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
+              <td className="p-2 global-invoice-hide-on-print">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
             </tr>)}
               <tr className="border-t-2 bg-stone-50 font-bold">
@@ -175,7 +175,7 @@ export default function ClientAccounts() {
                 <td className="p-2"></td>
                 <td className="p-2"></td>
                 <td className="p-2"></td>
-                <td className="p-2"></td>
+                <td className="p-2 global-invoice-hide-on-print"></td>
                 <td className="whitespace-nowrap p-2">{cash(data.global_invoice.total)}</td>
                 <td className="whitespace-nowrap p-2">{cash(data.global_invoice.paid)}</td>
                 <td className="whitespace-nowrap p-2">{cash(data.global_invoice.balance)}</td>
@@ -208,13 +208,26 @@ export default function ClientAccounts() {
         <footer className="border-t pt-3 text-center text-xs text-stone-500">{data.mill.mill_name || "Huilerie Oro Verde"}</footer>
       </div>}
     </div>}
-    <style>{`@media print {
+    <style>{`.global-invoice-print-only { display: none; }
+    @media print {
       body * { visibility: hidden !important; }
       .client-account-print, .client-account-print * { visibility: visible !important; }
       .client-account-print { position: absolute !important; inset: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
       .client-account-no-print { display: none !important; }
-      .client-account-print table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8.5pt !important; }
-      .client-account-print th, .client-account-print td { overflow-wrap: anywhere !important; }
+      .client-account-print table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8pt !important; }
+      .client-account-print th, .client-account-print td { overflow-wrap: anywhere !important; padding: 3px 4px !important; }
+      .global-invoice-print-only { display: inline !important; }
+      .global-invoice-hide-on-print { display: none !important; }
+      .global-invoice-screen-only { display: none !important; }
+      .client-account-print .global-invoice-table { min-width: 0 !important; }
+      .client-account-print .global-invoice-table col:nth-child(1) { width: 12% !important; }
+      .client-account-print .global-invoice-table col:nth-child(2) { width: 15% !important; }
+      .client-account-print .global-invoice-table col:nth-child(3) { width: 13% !important; }
+      .client-account-print .global-invoice-table col:nth-child(4) { width: 13% !important; }
+      .client-account-print .global-invoice-table col:nth-child(5) { display: none !important; width: 0 !important; }
+      .client-account-print .global-invoice-table col:nth-child(6) { width: 15% !important; }
+      .client-account-print .global-invoice-table col:nth-child(7) { width: 16% !important; }
+      .client-account-print .global-invoice-table col:nth-child(8) { width: 16% !important; }
       .client-account-print tr { break-inside: avoid; }
     }`}</style>
   </section>;
