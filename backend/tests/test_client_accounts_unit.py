@@ -78,3 +78,44 @@ def test_custom_period_requires_both_dates_and_valid_order():
     first, after_last = accounts._period("all", "2026-10-01", "2026-10-31")
     assert first.isoformat() == "2026-10-01"
     assert after_last.isoformat() == "2026-11-01"
+
+
+
+def test_multiple_invoices_keep_each_partial_payment_once():
+    invoices = [
+        {
+            "paid_amount": 10.0,
+            "created_at": datetime(2026, 10, 1, tzinfo=timezone.utc),
+            "payments": [{"amount": 10.0, "at": datetime(2026, 10, 2, tzinfo=timezone.utc)}],
+        },
+        {
+            "paid_amount": 20.0,
+            "created_at": datetime(2026, 10, 3, tzinfo=timezone.utc),
+            "payments": [
+                {"amount": 5.0, "at": datetime(2026, 10, 4, tzinfo=timezone.utc)},
+                {"amount": 15.0, "at": datetime(2026, 10, 6, tzinfo=timezone.utc)},
+            ],
+        },
+    ]
+    credits = [event["amount"] for invoice in invoices for event in accounts._payment_events(invoice)]
+    assert sorted(credits) == [5.0, 10.0, 15.0]
+    assert sum(credits) == 30.0
+
+
+def test_cancelled_load_is_informational_and_never_a_refund():
+    event = accounts._cancellation_event({
+        "id": "load-cancelled",
+        "code": "2627107",
+        "cancelled": True,
+        "cancelled_at": datetime(2026, 10, 7, tzinfo=timezone.utc),
+        "cancel_reason": "Erreur de saisie",
+    })
+    assert event is not None
+    assert event["informational"] is True
+    assert event["debit"] == 0.0
+    assert event["credit"] == 0.0
+    assert event["reason"] == "Erreur de saisie"
+
+
+def test_non_cancelled_load_has_no_cancellation_event():
+    assert accounts._cancellation_event({"cancelled": False}) is None
