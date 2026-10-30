@@ -61,11 +61,11 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [clientSearch, setClientSearch] = useState("");
   const allClients = useQuery({ queryKey: ["clients", "__all"], queryFn: () => apiGet<ClientSummary[]>("/clients") });
   const clientList = allClients.isError ? [] : [...(allClients.data ?? [])].sort((a, b) => a.client_name.localeCompare(b.client_name));
-  const normalizedClientSearch = clientSearch.trim().toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
-  const clientSearchDigits = clientSearch.replace(/\\D/g, "");
+  const normalizedClientSearch = clientSearch.trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const clientSearchDigits = clientSearch.replace(/\D/g, "");
   const filteredClients = !normalizedClientSearch ? clientList : clientList.filter((c) => {
-    const normalizedName = c.client_name.toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
-    const normalizedPhone = c.phone.replace(/\\D/g, "");
+    const normalizedName = c.client_name.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizedPhone = c.phone.replace(/\D/g, "");
     return normalizedName.includes(normalizedClientSearch) || (clientSearchDigits.length > 0 && normalizedPhone.includes(clientSearchDigits));
   });
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
