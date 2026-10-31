@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { AppSettings, TvBoard } from "@/lib/types";
+import type { TvBoard, TvDisplaySettings } from "@/lib/types";
 
 type YouTubePlayer = { mute(): void; unMute(): void; playVideo(): void; destroy(): void };
 type YouTubeApi = {
@@ -86,7 +86,7 @@ function useLiveBoard() {
 
 export default function TvScreen() {
   const { board, live } = useLiveBoard();
-  const settingsQuery = useQuery({ queryKey: ["tv-mill-settings"], queryFn: () => apiGet<AppSettings>("/settings") });
+  const settingsQuery = useQuery({ queryKey: ["tv-mill-settings"], queryFn: () => apiGet<TvDisplaySettings>("/tv/display-settings") });
   const mill = settingsQuery.data;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
