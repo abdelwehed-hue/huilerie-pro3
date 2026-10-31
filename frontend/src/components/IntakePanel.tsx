@@ -242,6 +242,10 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           {t("register_arrival")}
         </Button>
 
+      </form>
+      <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
+
+      <div className="space-y-6">
         {histPhone && h && (
           <div data-testid="intake-client-history" className="rounded-xl border border-teal-200 bg-white p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -273,11 +277,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             )}
           </div>
         )}
-      </form>
-      <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
-
-      <div>
-        {created ? (
+        {created && (
           <ReceptionTicket load={created}>
             <div className="no-print mt-8 flex gap-3">
               <Button onClick={() => window.print()} variant="outline" className="rounded-xl" data-testid="intake-print-button">
@@ -288,13 +288,6 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               </Button>
             </div>
           </ReceptionTicket>
-        ) : (
-          <div className="grid h-full min-h-72 place-items-center rounded-2xl border-2 border-dashed border-stone-200 bg-white/60 p-8 text-center">
-            <div>
-              <div className="font-mono text-4xl font-bold tracking-wider text-stone-300" dir="ltr">AAAANM</div>
-              <p className="mt-3 text-sm text-stone-500">{t("arrival_sub")}</p>
-            </div>
-          </div>
         )}
       </div>
     </div>
