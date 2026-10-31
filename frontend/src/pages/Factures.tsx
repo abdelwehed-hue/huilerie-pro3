@@ -186,6 +186,6 @@ export default function Factures() {
         <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{t("invoice_thanks")}</footer>
       </article>
     </div>}
-    <style>{`@media print { body * { visibility: hidden !important; } .invoice-print, .invoice-print * { visibility: visible !important; } .client-account-print, .client-account-print * { visibility: visible !important; } .invoice-print { position: absolute !important; inset: 0 !important; overflow: visible !important; padding: 0 !important; } .invoice-print article { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 12mm !important; } .no-print { display: none !important; } }`}</style>
+    <style>{`@media print { body * { visibility: hidden !important; } .invoice-print, .invoice-print * { visibility: visible !important; } .client-account-print, .client-account-print * { visibility: visible !important; } .invoice-print { position: absolute !important; inset: 0 !important; overflow: visible !important; padding: 0 !important; } .invoice-print article { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 12mm !important; } .no-print { display: none !important; } .invoice-print table { font-size: 9pt !important; } }`}</style>
   </div>;
 }
