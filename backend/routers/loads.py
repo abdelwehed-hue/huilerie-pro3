@@ -125,18 +125,32 @@ async def get_by_code(code: str, user: dict = Depends(current_user)):
 
 @router.patch("/loads/{id}/oil", response_model=Load)
 async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
-    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1})
-    if before and before.get("cancelled"):
+    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1})
+    if not before:
+        raise HTTPException(404, "not_found")
+    if before.get("cancelled"):
         raise HTTPException(409, "load_cancelled")
-    upd: dict = {"oil_kg": body.oil_kg, "oil_by": user["username"]}
-    if before and before.get("oil_kg") is None:
-        upd["oil_ready_at"] = datetime.now(timezone.utc)
+    if before.get("delivered"):
+        raise HTTPException(409, "load_already_delivered")
+    if before.get("oil_kg") is not None:
+        raise HTTPException(409, "oil_already_entered")
+    upd: dict = {"oil_kg": body.oil_kg, "oil_by": user["username"],
+                 "oil_ready_at": datetime.now(timezone.utc)}
+    # Only the first oil entry is accepted; completed loads are immutable.
     doc = await db.loads.find_one_and_update(
-        {"id": id}, {"$set": upd},
+        {"id": id, "oil_kg": None, "cancelled": {"$ne": True}, "delivered": {"$ne": True}},
+        {"$set": upd},
         projection={"_id": 0}, return_document=True,
     )
     if not doc:
-        raise HTTPException(404, "not_found")
+        current = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1})
+        if not current:
+            raise HTTPException(404, "not_found")
+        if current.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        if current.get("delivered"):
+            raise HTTPException(409, "load_already_delivered")
+        raise HTTPException(409, "oil_already_entered")
     if before and before.get("oil_kg") is None:
         await send_load_sms(doc, "ready")
         # A load becomes "done" as soon as its oil weight is recorded; create its
