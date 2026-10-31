@@ -162,9 +162,18 @@ export default function Factures() {
       <div className="no-print mb-4 flex justify-end gap-2"><Button variant="outline" onClick={()=>{setSelected(null);setSearchParams({}, {replace:true});}}>{t("invoice_close")}</Button><Button onClick={()=>window.print()}><Printer className="mr-2 size-4"/>{t("invoice_print_pdf")}</Button></div>
       <article className="mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
         <header className="flex items-start justify-between gap-5 border-b pb-5"><div className="flex shrink-0 items-start">{selected.mill_logo?<img src={selected.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/>:null}</div><div className="text-left"><h1 className="text-2xl font-bold">{selected.mill_name||"Huilerie Oro Verde"}</h1><p>{selected.mill_address}</p><p>{selected.mill_phone}</p></div><div className="ml-auto shrink-0 text-right"><p className="text-sm text-stone-500">{t("invoice_date")}</p><strong>{fmtDate(selected.created_at)}</strong></div></header>
-        <h2 className="my-5 text-center text-3xl font-bold tracking-wide">{t("invoice_title")}</h2>
-        <div className="mb-6 text-center"><strong>{selected.number}</strong></div>
-        <section className="mb-6 rounded-lg bg-stone-50 p-4 print:bg-white"><p className="text-sm text-stone-500">{t("invoice_bill_to")}</p><h3 className="text-lg font-bold">{selected.client_name}</h3><p>{selected.phone}</p><p>{t("invoice_load_label")} : {selected.load_code}</p></section>
+        <section className="my-5 mb-6 flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1 text-left">
+            <h2 className="text-3xl font-bold tracking-wide">{t("invoice_title")}</h2>
+            <p className="mt-2"><strong>{selected.number}</strong></p>
+          </div>
+          <div className="min-w-0 flex-1 rounded-lg bg-stone-50 p-4 text-right print:bg-white">
+            <p className="text-sm text-stone-500">{t("invoice_bill_to")}</p>
+            <h3 className="text-lg font-bold">{selected.client_name}</h3>
+            <p>{selected.phone}</p>
+            <p>{t("invoice_load_label")} : {selected.load_code}</p>
+          </div>
+        </section>
         <table className="w-full border-collapse text-sm"><thead><tr className="border-y"><th className="p-3 text-left">{t("invoice_service")}</th><th className="p-3 text-right">{t("invoice_quantity")}</th><th className="p-3 text-right">{t("invoice_price_per_kg")}</th><th className="p-3 text-right">Total de la Facture</th></tr></thead><tbody><tr className="border-b"><td className="p-3">{t("invoice_service")}</td><td className="p-3 text-right">{fmtNum(selected.oil_kg)} kg</td><td className="p-3 text-right">{money(selected.price_per_kg)}</td><td className="p-3 text-right">{money(selected.total)}</td></tr></tbody></table>
         <div className="ml-auto mt-8 max-w-xs space-y-3"><div className="flex justify-between gap-4"><strong>Total de la Facture</strong><strong>{money(selected.total)}</strong></div><div className="flex justify-between gap-4"><strong>Montant payé (DT)</strong><strong>{money(selected.paid_amount)}</strong></div><div className="flex justify-between gap-4 border-t pt-3 text-lg"><strong>Solde restant</strong><strong>{money(selected.balance)}</strong></div><p className="text-right text-sm italic text-stone-600" dir={lang === "ar" ? "rtl" : "ltr"}>{amountInWords(selected.balance, lang)}</p></div>
         <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{t("invoice_thanks")}</footer>
