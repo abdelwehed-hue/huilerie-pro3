@@ -41,7 +41,6 @@ async def export_database(_: dict = Depends(require_admin)):
 async def export_database_pdf(_: dict = Depends(require_admin)):
     """Admin-only human-readable PDF export. Sensitive credentials are redacted."""
     import json
-    import re
     from html import escape as html_escape
     from pathlib import Path
 
@@ -64,7 +63,10 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
     if bold_font not in pdfmetrics.getRegisteredFontNames():
         pdfmetrics.registerFont(TTFont(bold_font, str(font_dir / "Amiri-Bold.ttf")))
 
-    arabic_pattern = re.compile(r"[\\u0600-\\u06FF]")
+    def shape(value: str) -> str:
+        has_arabic = any(0x0600 <= ord(char) <= 0x06FF for char in value)
+        return get_display(arabic_reshaper.reshape(value)) if has_arabic else value
+
     sensitive_parts = ("password", "token", "secret", "api_key", "private_key", "credential")
 
     def shape(value: str) -> str:
@@ -137,7 +139,7 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
                 rendered = display_value(value)
                 rows.append([
                     Paragraph(shape(html_escape(str(key))), key_style),
-                    Paragraph(shape(html_escape(rendered).replace("\\n", "<br/>")), cell_style),
+                    Paragraph(shape(html_escape(rendered).replace("\n", "<br/>")), cell_style),
                 ])
             table = Table(rows, colWidths=[42 * mm, 142 * mm], repeatRows=1, splitByRow=1, hAlign="LEFT")
             table.setStyle(TableStyle([
