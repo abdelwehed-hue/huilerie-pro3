@@ -1,6 +1,7 @@
 // Typed fetch layer over the FastAPI backend.
 // Use the deployed Render API directly when the frontend is hosted on Emergent.
-const BASE = "https://huilerie-pro3.onrender.com/api";
+export const API_ORIGIN = "https://huilerie-pro3.onrender.com";
+const BASE = `${API_ORIGIN}/api`;
 
 // Fields are declared, not constructor parameter properties: tsconfig sets
 // erasableSyntaxOnly, which rejects `constructor(readonly status: number)`.
