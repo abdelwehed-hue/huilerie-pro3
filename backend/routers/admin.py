@@ -96,7 +96,7 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
 
     title_style = ParagraphStyle("dbTitle", fontName=bold_font, fontSize=18, leading=24, alignment=TA_CENTER, spaceAfter=8)
     subtitle_style = ParagraphStyle("dbSub", fontName=regular_font, fontSize=9, leading=13, alignment=TA_CENTER, textColor=colors.HexColor("#57534E"))
-    section_style = ParagraphStyle("dbSection", fontName=bold_font, fontSize=14, leading=19, textColor=colors.HexColor("#365314"), spaceBefore=10, spaceAfter=5)
+    section_style = ParagraphStyle("dbSection", fontName=bold_font, fontSize=14, leading=19, textColor=colors.HexColor("#2563A6"), spaceBefore=10, spaceAfter=5)
     doc_style = ParagraphStyle("dbDoc", fontName=bold_font, fontSize=10, leading=14, textColor=colors.HexColor("#44403C"), spaceBefore=5, spaceAfter=3)
     cell_style = ParagraphStyle("dbCell", fontName=regular_font, fontSize=7.5, leading=10, wordWrap="CJK")
     key_style = ParagraphStyle("dbKey", fontName=bold_font, fontSize=7.5, leading=10, wordWrap="CJK")
@@ -140,10 +140,10 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
                 ])
             table = Table(rows, colWidths=[42 * mm, 142 * mm], repeatRows=1, splitByRow=1, hAlign="LEFT")
             table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3F6212")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#DCEEFF")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#174A70")),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6D3D1")),
-                ("BACKGROUND", (0, 1), (0, -1), colors.HexColor("#F5F5F4")),
+                ("BACKGROUND", (0, 1), (0, -1), colors.HexColor("#EFF6FF")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
