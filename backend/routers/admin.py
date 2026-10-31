@@ -69,9 +69,6 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
 
     sensitive_parts = ("password", "token", "secret", "api_key", "private_key", "credential")
 
-    def shape(value: str) -> str:
-        return get_display(arabic_reshaper.reshape(value)) if arabic_pattern.search(value) else value
-
     def redact(value):
         if isinstance(value, dict):
             clean = {}
