@@ -353,7 +353,7 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
-        <TabsContent value="sms"><div className="space-y-6"><div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2"><div className="lg:col-start-2"><TwilioSettings /></div><div className="lg:col-start-1"><TunisieSmsSettings /></div></div><SmsSettings /></div></TabsContent>
+        <TabsContent value="sms"><div className="space-y-6"><div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2"><div className="min-w-0 sm:col-start-2"><TwilioSettings /></div><div className="min-w-0 sm:col-start-1"><TunisieSmsSettings /></div></div><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
       </Tabs>
