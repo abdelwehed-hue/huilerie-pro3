@@ -8,6 +8,7 @@ import {
   PlusCircle,
   Search,
   Settings,
+  Moon,
   Droplets,
   Languages,
   BookUser,
@@ -29,6 +30,7 @@ import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/lib/theme";
 
 // Menu-only labels (page titles keep their own wording).
 const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
@@ -49,6 +51,7 @@ const NAV = [
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
+  { to: "/appearance", key: "appearance", icon: Moon, id: "nav-appearance", color: "text-indigo-300" },
 
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
@@ -211,6 +214,7 @@ export default function AppShell() {
   const isAdmin = user?.role === "admin";
 
   return (
+    <ThemeProvider userId={user.id}>
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
         <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
@@ -265,5 +269,6 @@ export default function AppShell() {
       </div>
       <BottomNav isAdmin={isAdmin} />
     </div>
+    </ThemeProvider>
   );
 }
