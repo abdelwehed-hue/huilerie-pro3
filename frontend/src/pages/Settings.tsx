@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, FileArchive, FileText } from "lucide-react";
+import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import LoginImageSettings from "@/components/LoginImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { API_ORIGIN, apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AppSettings, Role, User, UserCreate, UserUpdate } from "@/lib/types";
 import { fmtDate, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -241,19 +241,10 @@ function UsersPanel() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <a href={`${API_ORIGIN}/api/admin/export.zip`} download data-testid="admin-database-export-zip" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl border-stone-300")}>
-            <FileArchive className="size-4" /> {t("db_export_btn")}
-          </a>
-          <a href={`${API_ORIGIN}/api/admin/export.pdf`} download data-testid="admin-database-export-pdf" className={cn(buttonVariants(), "rounded-xl bg-rose-600 hover:bg-rose-700")}>
-            <FileText className="size-4" /> {t("db_export_pdf_btn")}
-          </a>
-        </div>
         <Button onClick={() => setCreating(true)} data-testid="admin-user-create-button" className="rounded-xl bg-lime-700 hover:bg-lime-800">
           <UserPlus className="size-4" /> {t("new_user")}
         </Button>
       </div>
-      <p className="mb-4 text-xs text-stone-500">{t("db_export_hint")}</p>
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
         <Table data-testid="users-table">
           <TableHeader className="bg-stone-50">

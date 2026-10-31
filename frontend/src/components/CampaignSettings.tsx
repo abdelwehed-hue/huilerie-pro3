@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarRange, Download, Plus } from "lucide-react";
+import { CalendarRange, Download, FileArchive, FileText, Plus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { API_ORIGIN, apiGet, apiPost, apiPut } from "@/lib/api";
 import type { SeasonInfo, SeasonSet } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import MillInfoSettings from "@/components/MillInfoSettings";
@@ -92,9 +92,14 @@ export default function CampaignSettings() {
               <p className="text-sm text-sky-900/70">{t("db_export_hint")}</p>
             </div>
           </div>
-          <a href="https://huilerie-pro3.onrender.com/api/admin/export.zip" download data-testid="db-export-button" className={cn(buttonVariants(), "h-11 rounded-xl bg-sky-600 hover:bg-sky-700")}>
-            <Download className="size-4" /> {t("db_export_btn")}
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href={`${API_ORIGIN}/api/admin/export.zip`} download data-testid="admin-database-export-zip" className={cn(buttonVariants({ variant: "outline" }), "h-11 rounded-xl border-sky-300 bg-white text-sky-800 hover:bg-sky-100")}>
+              <FileArchive className="size-4" /> {t("db_export_btn")}
+            </a>
+            <a href={`${API_ORIGIN}/api/admin/export.pdf`} download data-testid="admin-database-export-pdf" className={cn(buttonVariants(), "h-11 rounded-xl bg-rose-600 hover:bg-rose-700")}>
+              <FileText className="size-4" /> {t("db_export_pdf_btn")}
+            </a>
+          </div>
         </div>
       </div>
     </div>
