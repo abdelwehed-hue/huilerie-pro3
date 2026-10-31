@@ -265,7 +265,6 @@ export default function ClientAccounts() {
                 <td className="break-words p-2 print:p-1">{fmtDateOnly(row.date)}</td><td className="break-words p-2 print:p-1">{row.label}{row.legacy_aggregate ? <small className="block text-amber-700">{labels.legacy}</small> : null}{row.informational && row.reason ? <small className="block">{row.reason}</small> : null}</td>
                 <td className="whitespace-nowrap p-2 print:p-1">{row.debit ? cash(row.debit) : "—"}</td><td className="whitespace-nowrap p-2 print:p-1">{row.credit ? cash(row.credit) : "—"}</td><td className="whitespace-nowrap p-2 font-semibold print:p-1">{row.informational ? "—" : cash(row.running)}</td>
               </tr>)}
-              <tr className="border-t-2 bg-stone-100 font-bold"><td colSpan={2} className="p-2 print:p-1">{labels.opening}</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">—</td><td className="p-2 print:p-1">{cash(data.statement.opening_balance)}</td></tr>
               <tr className="border-t-2 bg-stone-50 font-bold">
                 <td className="whitespace-nowrap p-2 print:p-1">Total Final</td>
                 <td className="p-2 print:p-1"></td>
