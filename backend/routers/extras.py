@@ -436,10 +436,7 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.graphics.shapes import Drawing
-    from reportlab.graphics.charts.lineplots import LinePlot
-    from reportlab.graphics.charts.axes import XCategoryAxis, YValueAxis
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.shapes import Drawing, Line, String, Rect, Circle
     from reportlab.platypus import (
         Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable, KeepTogether
     )
@@ -545,66 +542,60 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
         return max(1, ceil(max(float(value or 0), 1) / 4))
 
     def chart_drawing(values, labels, chart_kind, fill):
+        # Draw charts with ReportLab primitives instead of chart widgets.
+        # This avoids unsupported widget attributes across ReportLab versions.
         drawing = Drawing(250, 132)
-        clean_values = [float(v or 0) for v in values]
+        clean_values = [max(0.0, float(v or 0)) for v in values]
+        clean_labels = [str(label) for label in labels]
         if not clean_values:
-            clean_values = [0]
-            labels = ["—"]
-        max_value = max(clean_values + [1])
+            clean_values, clean_labels = [0.0], ["—"]
+        if len(clean_labels) != len(clean_values):
+            clean_labels = [str(i + 1) for i in range(len(clean_values))]
+
+        left, right, bottom, top = 30, 238, 29, 111
+        plot_width, plot_height = right - left, top - bottom
+        max_value = max(clean_values + [1.0])
+        axis_max = max(1.0, max_value * 1.15)
+
+        for tick in range(5):
+            y = bottom + (plot_height * tick / 4)
+            value = axis_max * tick / 4
+            drawing.add(Line(left, y, right, y, strokeColor=border, strokeWidth=0.45))
+            drawing.add(String(
+                left - 4, y - 2, f"{value:.0f}",
+                fontName="Helvetica", fontSize=5.5,
+                textAnchor="end", fillColor=muted,
+            ))
+
+        count = len(clean_values)
+        slot = plot_width / count
+        points = []
+        for index, value in enumerate(clean_values):
+            x = left + slot * (index + 0.5)
+            y = bottom + (value / axis_max) * plot_height
+            points.append((x, y))
+            label = clean_labels[index][:8]
+            drawing.add(String(
+                x, 12, label, fontName="Helvetica", fontSize=5.2,
+                textAnchor="middle", fillColor=ink,
+            ))
+
         if chart_kind == "line":
-            chart = LinePlot()
-            chart.x = 29
-            chart.y = 30
-            chart.width = 207
-            chart.height = 88
-            chart.data = [[(i, value) for i, value in enumerate(clean_values)]]
-            chart.lines[0].strokeColor = fill
-            chart.lines[0].strokeWidth = 2
-            chart.lines[0].symbol = "FilledCircle"
-            chart.lines[0].symbolSize = 3
-            x_axis = XCategoryAxis()
-            x_axis.categoryNames = labels
-            x_axis.labels.fontName = "Helvetica"
-            x_axis.labels.fontSize = 5
-            x_axis.labels.angle = 35
-            x_axis.labels.boxAnchor = "ne"
-            x_axis.visibleTicks = 1
-            chart.xValueAxis = x_axis
-            y_axis = YValueAxis()
-            y_axis.valueMin = 0
-            y_axis.valueMax = max_value * 1.15
-            y_axis.valueStep = axis_step(max_value * 1.15)
-            y_axis.labels.fontName = "Helvetica"
-            y_axis.labels.fontSize = 5
-            y_axis.strokeColor = border
-            y_axis.gridStrokeColor = border
-            chart.yValueAxis = y_axis
+            for index in range(len(points) - 1):
+                x1, y1 = points[index]
+                x2, y2 = points[index + 1]
+                drawing.add(Line(x1, y1, x2, y2, strokeColor=fill, strokeWidth=2))
+            for x, y in points:
+                drawing.add(Circle(x, y, 2.2, fillColor=fill, strokeColor=fill))
         else:
-            chart = VerticalBarChart()
-            chart.x = 29
-            chart.y = 30
-            chart.width = 207
-            chart.height = 88
-            chart.data = [clean_values]
-            chart.categoryAxis.categoryNames = labels
-            chart.categoryAxis.labels.fontName = "Helvetica"
-            chart.categoryAxis.labels.fontSize = 5
-            chart.categoryAxis.labels.angle = 35
-            chart.categoryAxis.labels.boxAnchor = "ne"
-            chart.categoryAxis.visibleTicks = 1
-            chart.categoryAxis.strokeColor = border
-            chart.valueAxis.valueMin = 0
-            chart.valueAxis.valueMax = max_value * 1.15
-            chart.valueAxis.valueStep = axis_step(max_value * 1.15)
-            chart.valueAxis.labels.fontName = "Helvetica"
-            chart.valueAxis.labels.fontSize = 5
-            chart.valueAxis.strokeColor = border
-            chart.valueAxis.gridStrokeColor = border
-            chart.bars[0].fillColor = fill
-            chart.bars[0].strokeColor = fill
-            chart.barWidth = min(13, max(3, 150 / len(clean_values)))
-            chart.groupSpacing = 3
-        drawing.add(chart)
+            bar_width = min(13.0, max(3.0, slot * 0.58))
+            for (x, y), value in zip(points, clean_values):
+                height = max(0.8, y - bottom)
+                drawing.add(Rect(
+                    x - bar_width / 2, bottom, bar_width, height,
+                    fillColor=fill, strokeColor=fill, strokeWidth=0.3,
+                ))
+        drawing.add(Line(left, bottom, right, bottom, strokeColor=muted, strokeWidth=0.6))
         return drawing
 
     def make_report_table(headers, rows, widths, total_rows=1):
