@@ -226,7 +226,7 @@ export default function ClientAccounts() {
           <div className="overflow-x-auto"><table className="global-invoice-table w-full min-w-[720px] border-collapse text-sm"><colgroup>{Array.from({length:8},(_,i)=><col key={i}/>)}</colgroup>
             <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map((x,i)=><th key={x} className={`border p-2 text-start ${i === 4 ? "global-invoice-hide-on-print" : ""}`}>{i === 1 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.invoice}</span></> : x}</th>)}</tr></thead>
             <tbody>{data.global_invoice.loads.map((row)=> <tr key={row.code} className="border-b">
-              <td className="p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
+              <td className="whitespace-nowrap p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
               <td className="p-2 global-invoice-hide-on-print">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
             </tr>)}
@@ -279,10 +279,10 @@ export default function ClientAccounts() {
       .global-invoice-hide-on-print { display: none !important; }
       .global-invoice-screen-only { display: none !important; }
       .client-account-print .global-invoice-table { min-width: 0 !important; }
-      .client-account-print .global-invoice-table col:nth-child(1) { width: 12% !important; }
-      .client-account-print .global-invoice-table col:nth-child(2) { width: 15% !important; }
-      .client-account-print .global-invoice-table col:nth-child(3) { width: 13% !important; }
-      .client-account-print .global-invoice-table col:nth-child(4) { width: 13% !important; }
+      .client-account-print .global-invoice-table col:nth-child(1) { width: 15% !important; }
+      .client-account-print .global-invoice-table col:nth-child(2) { width: 14% !important; }
+      .client-account-print .global-invoice-table col:nth-child(3) { width: 12% !important; }
+      .client-account-print .global-invoice-table col:nth-child(4) { width: 12% !important; }
       .client-account-print .global-invoice-table col:nth-child(5) { display: none !important; width: 0 !important; }
       .client-account-print .global-invoice-table col:nth-child(6) { width: 15% !important; }
       .client-account-print .global-invoice-table col:nth-child(7) { width: 16% !important; }
