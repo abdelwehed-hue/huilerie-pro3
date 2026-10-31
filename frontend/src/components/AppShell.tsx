@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, NavLink, Outlet } from "react-router-dom";
 import {
   FlaskConical,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { apiGet, apiPut } from "@/lib/api";
+import { API_ORIGIN, apiGet, apiPut } from "@/lib/api";
 import type { MillInfo, Stats } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -137,6 +138,62 @@ export default function AppShell() {
     queryFn: () => apiGet<Stats>("/stats"),
     refetchInterval: 30_000,
   });
+
+  // Keep every authenticated device in sync, regardless of the page it is viewing.
+  useEffect(() => {
+    if (!me.data) return;
+
+    let disposed = false;
+    let reconnectTimer: number | undefined;
+    let heartbeatTimer: number | undefined;
+    let retryDelay = 1_000;
+    let socket: WebSocket | undefined;
+
+    const connect = () => {
+      if (disposed) return;
+      const wsOrigin = API_ORIGIN.replace(/^http/, "ws");
+      socket = new WebSocket(`${wsOrigin}/api/realtime`);
+
+      socket.onopen = () => {
+        retryDelay = 1_000;
+        // Re-sync after initial connection and every reconnect.
+        void queryClient.invalidateQueries();
+        heartbeatTimer = window.setInterval(() => {
+          if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
+        }, 25_000);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(String(event.data)) as { type?: string };
+          if (message.type === "data_changed") {
+            void queryClient.invalidateQueries();
+          }
+        } catch {
+          // Ignore malformed or non-event messages.
+        }
+      };
+
+      socket.onclose = () => {
+        if (heartbeatTimer !== undefined) window.clearInterval(heartbeatTimer);
+        heartbeatTimer = undefined;
+        if (!disposed) {
+          reconnectTimer = window.setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 30_000);
+        }
+      };
+
+      socket.onerror = () => socket?.close();
+    };
+
+    connect();
+    return () => {
+      disposed = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      if (heartbeatTimer !== undefined) window.clearInterval(heartbeatTimer);
+      socket?.close();
+    };
+  }, [me.data, queryClient]);
 
   if (me.isPending) {
     return (
