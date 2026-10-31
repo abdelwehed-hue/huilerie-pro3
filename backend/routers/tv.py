@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from lib.db import db
 from lib.auth import current_user
 from lib.dates import today_iso
-from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate
+from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate, TvMediaSettings
 
 router = APIRouter()
 
@@ -64,6 +64,22 @@ async def build_board() -> TvBoard:
         sound_enabled=bool(settings.get("tv_sound_enabled", False)),
         server_time=datetime.now(timezone.utc),
     )
+
+
+@router.get("/tv/media-settings", response_model=TvMediaSettings)
+async def get_tv_media_settings(_: dict = Depends(current_user)):
+    fields = {name: 1 for name in TvMediaSettings.model_fields}
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, **fields}) or {}
+    return TvMediaSettings(**settings)
+
+
+@router.put("/tv/media-settings", response_model=TvMediaSettings)
+async def put_tv_media_settings(body: TvMediaSettings, _: dict = Depends(current_user)):
+    # Dedicated TV-only update: workers can change screen media without gaining access
+    # to pricing, login, SMS, or other administrative settings.
+    values = body.model_dump()
+    await db.settings.update_one({"key": "app"}, {"$set": values}, upsert=True)
+    return body
 
 
 @router.get("/tv/control")
