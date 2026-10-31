@@ -285,7 +285,7 @@ export default function ClientAccounts() {
       .client-account-print, .client-account-print * { visibility: visible !important; }
       .client-account-print { position: absolute !important; inset: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
       .client-account-no-print { display: none !important; }
-      .client-account-print table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8pt !important; }
+      .client-account-print table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 7.5pt !important; } .client-account-print th, .client-account-print td { font-size: 7.5pt !important; }
       .client-account-print th, .client-account-print td { overflow-wrap: anywhere !important; padding: 3px 4px !important; }
       .global-invoice-print-only { display: inline !important; }
       .global-invoice-hide-on-print { display: none !important; }
