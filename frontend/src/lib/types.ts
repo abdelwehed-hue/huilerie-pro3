@@ -175,6 +175,12 @@ export interface TvMediaSettings {
   tv_receipt_duration: number;
 }
 
+export interface TvDisplaySettings extends TvMediaSettings {
+  mill_name: string;
+  mill_address: string;
+  mill_phone: string;
+}
+
 // Mirrors DEFAULT_SMS_REMINDER in backend/models/schemas.py
 export const DEFAULT_SMS_REMINDER =
   "{mill}: {name}, rappel: votre huile ({oil_kg} kg, code {code}) vous attend.\n{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} كغ، الكود {code}) في انتظارك.";
