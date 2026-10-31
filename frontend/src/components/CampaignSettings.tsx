@@ -93,7 +93,7 @@ export default function CampaignSettings() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <a href={`${API_ORIGIN}/api/admin/export.zip`} download data-testid="admin-database-export-zip" className={cn(buttonVariants({ variant: "outline" }), "h-11 rounded-xl border-sky-300 bg-white text-sky-800 hover:bg-sky-100")}>
+            <a href={`${API_ORIGIN}/api/admin/export.zip`} download data-testid="admin-database-export-zip" className={cn(buttonVariants(), "h-11 rounded-xl border-sky-600 bg-sky-600 text-white hover:border-sky-700 hover:bg-sky-700")}>
               <FileArchive className="size-4" /> {t("db_export_btn")}
             </a>
             <a href={`${API_ORIGIN}/api/admin/export.pdf`} download data-testid="admin-database-export-pdf" className={cn(buttonVariants(), "h-11 rounded-xl bg-rose-600 hover:bg-rose-700")}>
