@@ -165,7 +165,7 @@
 /* Application theme overrides: keep the existing green navigation and status colors. */
 html.dark body { background-color: #1c1917; color: #fafaf9; }
 html.dark .bg-white { background-color: #292524 !important; }
-html.dark .bg-\\[\\#F9F8F3\\], html.dark .bg-\\[\\#F9F8F3\\]\\/85 { background-color: #1c1917 !important; }
+html.dark .bg-\[\#F9F8F3\], html.dark .bg-\[\#F9F8F3\]\/85 { background-color: #1c1917 !important; }
 html.dark .bg-stone-50 { background-color: #292524 !important; }
 html.dark .bg-stone-100 { background-color: #34302e !important; }
 html.dark .bg-stone-200 { background-color: #44403c !important; }
@@ -181,4 +181,4 @@ html.dark .shadow-sm, html.dark .shadow-md { --tw-shadow-color: rgb(0 0 0 / 25%)
 html.dark .bg-indigo-50 { background-color: #312e4b !important; }
 html.dark .text-indigo-950 { color: #e0e7ff !important; }
 html.dark .text-indigo-700 { color: #c7d2fe !important; }
-html.dark .hover\\:bg-stone-50:hover { background-color: #34302e !important; }
+html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
