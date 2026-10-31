@@ -228,6 +228,15 @@ class AppSettings(MillInfo):
     sms_reminder_template: str = Field(default=DEFAULT_SMS_REMINDER, max_length=600)
 
 
+class TvMediaSettings(BaseModel):
+    tv_image: str = Field(default="", max_length=700_000)
+    tv_youtube_url: str = Field(default="", max_length=2000)
+    tv_video_source: Literal["youtube", "direct"] = "youtube"
+    tv_display_mode: Literal["background", "split", "fullscreen"] = "background"
+    tv_video_enabled: bool = True
+    tv_receipt_duration: int = Field(default=8, ge=3, le=30)
+
+
 class SmsStatus(BaseModel):
     mode: Literal["simulated", "live"]
     enabled: bool
