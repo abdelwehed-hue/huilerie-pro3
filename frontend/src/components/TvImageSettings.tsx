@@ -44,7 +44,7 @@ export default function TvImageSettings() {
   });
 
   const save = useMutation({
-    mutationFn: (image: string) => apiPut<AppSettings>("/settings", { ...settings.data!, tv_image: image }),
+    mutationFn: (image: string) => apiPut<TvMediaSettings>("/tv/media-settings", { ...settings.data!, tv_image: image }),
     onSuccess: () => {
       toast.success(t("saved"));
       setSelected(null);
