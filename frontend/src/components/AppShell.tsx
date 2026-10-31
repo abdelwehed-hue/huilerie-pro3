@@ -8,7 +8,6 @@ import {
   PlusCircle,
   Search,
   Settings,
-  Moon,
   Droplets,
   Languages,
   BookUser,
@@ -33,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/lib/theme";
 
 // Menu-only labels (page titles keep their own wording).
-const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms" | "appearance">> = {
+const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
   dashboard: "menu_dashboard",
   search: "menu_search",
   sms: "menu_sms",
@@ -51,7 +50,6 @@ const NAV = [
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
-  { to: "/appearance", key: "appearance", icon: Moon, id: "nav-appearance", color: "text-indigo-300" },
 
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
