@@ -163,6 +163,11 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                         role="option"
                         aria-selected={picked === c.phone}
                         key={c.phone}
+                        onPointerDown={(e) => {
+                          // Commit the selection before mobile blur closes the dropdown.
+                          e.preventDefault();
+                          pick(c);
+                        }}
                         onClick={() => pick(c)}
                         data-testid={`intake-client-option-${c.phone}`}
                         className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-lime-50 focus:bg-lime-50 focus:outline-none"
