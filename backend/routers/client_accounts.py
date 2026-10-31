@@ -241,7 +241,7 @@ async def client_account_statement(
         global_loads.append({
             "day": load.get("day", ""), "code": load.get("code", ""),
             "client_name": load.get("client_name", ""), "olive_kg": _money(load.get("olive_kg")),
-            "oil_kg": _money(load.get("oil_kg")), "invoice_number": invoice.get("number") if invoice else None,
+            "oil_kg": _money(load.get("oil_kg")), "variety": load.get("variety") or "", "invoice_number": invoice.get("number") if invoice else None,
             "total": total, "paid": paid, "balance": balance, "cancelled": cancelled,
             "cancel_reason": load.get("cancel_reason", ""), "cancelled_at": _iso(load.get("cancelled_at")),
             "has_invoice": bool(invoice),
