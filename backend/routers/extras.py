@@ -430,17 +430,27 @@ def ar(text: str) -> str:
 @router.get("/reports/revenue.pdf")
 async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str | None = None,
                       worker: str = "", _: dict = Depends(require_admin)):
+    from math import ceil
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics.charts.lineplots import LinePlot
+    from reportlab.graphics.charts.axes import XCategoryAxis, YValueAxis
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.platypus import (
+        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+    )
 
     _register_fonts()
     rep = await build_report(period, start, end, worker)
     wrep = await build_worker_report(period, start, end, worker)
-    invoice_docs = await db.invoices.find({"day": {"$gte": rep.start, "$lte": rep.end}}, {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1}).to_list(100000)
+    invoice_docs = await db.invoices.find(
+        {"day": {"$gte": rep.start, "$lte": rep.end}},
+        {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1},
+    ).to_list(100000)
     invoice_totals = {
         "total": round(sum(float(i.get("total") or 0) for i in invoice_docs), 3),
         "paid": round(sum(float(i.get("paid_amount") or 0) for i in invoice_docs), 3),
@@ -450,134 +460,317 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     mill = m.mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
 
-    green = colors.HexColor("#365314")
-    dark = colors.HexColor("#203326")
-    gold = colors.HexColor("#C5A05A")
-    pale = colors.HexColor("#F1F5EB")
-    ink = colors.HexColor("#263229")
-    muted = colors.HexColor("#68766A")
-    border = colors.HexColor("#DDE5D9")
+    # Visual identity inspired by the supplied reference: blue, gold, green and
+    # cool grey. This changes presentation only; report data and calculations stay intact.
+    navy = colors.HexColor("#24577D")
+    blue = colors.HexColor("#3978C8")
+    light_blue = colors.HexColor("#DCEBFA")
+    pale_blue = colors.HexColor("#EFF6FC")
+    gold = colors.HexColor("#D6A000")
+    pale_gold = colors.HexColor("#FFF3CC")
+    green = colors.HexColor("#9BCB83")
+    pale_green = colors.HexColor("#EEF7E9")
+    ink = colors.HexColor("#263746")
+    muted = colors.HexColor("#64748B")
+    border = colors.HexColor("#C9D5E1")
     white = colors.white
+    orange = colors.HexColor("#E9823B")
+    slate = colors.HexColor("#8A98A8")
 
-    title = ParagraphStyle("PdfTitle", fontName="Amiri-Bold", fontSize=22, leading=28,
-                           alignment=0, textColor=dark)
-    subtitle = ParagraphStyle("PdfSub", fontName="Amiri", fontSize=9, leading=13,
-                              alignment=0, textColor=muted)
-    heading = ParagraphStyle("PdfHeading", fontName="Amiri-Bold", fontSize=13, leading=18,
-                             alignment=TA_CENTER, textColor=dark)
-    meta = ParagraphStyle("PdfMeta", fontName="Amiri", fontSize=9, leading=13,
-                          alignment=TA_CENTER, textColor=muted)
-    small = ParagraphStyle("PdfSmall", fontName="Amiri", fontSize=9, leading=13,
-                           alignment=TA_CENTER, textColor=muted)
+    title = ParagraphStyle(
+        "ReportTitle", fontName="Amiri-Bold", fontSize=21, leading=27,
+        alignment=TA_LEFT, textColor=blue, spaceAfter=2,
+    )
+    subtitle = ParagraphStyle(
+        "ReportSubtitle", fontName="Amiri", fontSize=8.5, leading=12,
+        alignment=TA_LEFT, textColor=muted,
+    )
+    section = ParagraphStyle(
+        "ReportSection", fontName="Amiri-Bold", fontSize=13, leading=17,
+        alignment=TA_LEFT, textColor=blue, spaceBefore=7, spaceAfter=5,
+    )
+    chart_title = ParagraphStyle(
+        "ReportChartTitle", fontName="Amiri-Bold", fontSize=9.5, leading=12,
+        alignment=TA_CENTER, textColor=blue,
+    )
+    card_label = ParagraphStyle(
+        "ReportCardLabel", fontName="Amiri", fontSize=7.5, leading=10,
+        alignment=TA_CENTER, textColor=white,
+    )
+    card_value = ParagraphStyle(
+        "ReportCardValue", fontName="Amiri-Bold", fontSize=14, leading=18,
+        alignment=TA_CENTER, textColor=white,
+    )
+    table_head = ParagraphStyle(
+        "ReportTableHead", fontName="Amiri-Bold", fontSize=7.2, leading=9,
+        alignment=TA_CENTER, textColor=navy,
+    )
+    table_cell = ParagraphStyle(
+        "ReportTableCell", fontName="Amiri", fontSize=7.3, leading=9.5,
+        alignment=TA_CENTER, textColor=ink,
+    )
+    table_total = ParagraphStyle(
+        "ReportTableTotal", fontName="Amiri-Bold", fontSize=7.4, leading=9.5,
+        alignment=TA_CENTER, textColor=navy,
+    )
+    note_style = ParagraphStyle(
+        "ReportNote", fontName="Amiri", fontSize=8, leading=11,
+        alignment=TA_CENTER, textColor=muted,
+    )
 
-    def table(data: list[list], total_rows: int) -> Table:
-        t = Table([[ar(str(cell)) for cell in row] for row in data],
-                  repeatRows=2, hAlign="CENTER")
-        style = [
-            ("BACKGROUND", (0, 0), (-1, 0), dark),
-            ("BACKGROUND", (0, 1), (-1, 1), green),
-            ("TEXTCOLOR", (0, 0), (-1, 1), white),
-            ("FONTNAME", (0, 0), (-1, 1), "Amiri-Bold"),
-            ("FONTNAME", (0, 2), (-1, -1), "Amiri"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("TEXTCOLOR", (0, 2), (-1, -1), ink),
-            ("FONTNAME", (0, -total_rows), (-1, -1), "Amiri-Bold"),
-            ("BACKGROUND", (0, -total_rows), (-1, -1), pale),
+    def p(value, style=table_cell):
+        return Paragraph(ar(str(value)), style)
+
+    def money(value):
+        return f"{_tn_money(value)} DT"
+
+    def make_card(label, value, background):
+        cell = Table(
+            [[Paragraph(ar(label), card_label)], [Paragraph(ar(str(value)), card_value)]],
+            colWidths=[43 * mm],
+            rowHeights=[12 * mm, 14 * mm],
+        )
+        cell.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), background),
+            ("BOX", (0, 0), (-1, -1), 0.5, background),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        return cell
+
+    def axis_step(value):
+        return max(1, ceil(max(float(value or 0), 1) / 4))
+
+    def chart_drawing(values, labels, chart_kind, fill):
+        drawing = Drawing(250, 132)
+        clean_values = [float(v or 0) for v in values]
+        if not clean_values:
+            clean_values = [0]
+            labels = ["—"]
+        max_value = max(clean_values + [1])
+        if chart_kind == "line":
+            chart = LinePlot()
+            chart.x = 29
+            chart.y = 30
+            chart.width = 207
+            chart.height = 88
+            chart.data = [[(i, value) for i, value in enumerate(clean_values)]]
+            chart.lines[0].strokeColor = fill
+            chart.lines[0].strokeWidth = 2
+            chart.lines[0].symbol = "FilledCircle"
+            chart.lines[0].symbolSize = 3
+            x_axis = XCategoryAxis()
+            x_axis.categoryNames = labels
+            x_axis.labels.fontName = "Helvetica"
+            x_axis.labels.fontSize = 5
+            x_axis.labels.angle = 35
+            x_axis.labels.boxAnchor = "ne"
+            x_axis.visibleTicks = 1
+            chart.xValueAxis = x_axis
+            y_axis = YValueAxis()
+            y_axis.valueMin = 0
+            y_axis.valueMax = max_value * 1.15
+            y_axis.valueStep = axis_step(max_value * 1.15)
+            y_axis.labels.fontName = "Helvetica"
+            y_axis.labels.fontSize = 5
+            y_axis.strokeColor = border
+            y_axis.gridStrokeColor = border
+            chart.yValueAxis = y_axis
+        else:
+            chart = VerticalBarChart()
+            chart.x = 29
+            chart.y = 30
+            chart.width = 207
+            chart.height = 88
+            chart.data = [clean_values]
+            chart.categoryAxis.categoryNames = labels
+            chart.categoryAxis.labels.fontName = "Helvetica"
+            chart.categoryAxis.labels.fontSize = 5
+            chart.categoryAxis.labels.angle = 35
+            chart.categoryAxis.labels.boxAnchor = "ne"
+            chart.categoryAxis.visibleTicks = 1
+            chart.categoryAxis.strokeColor = border
+            chart.valueAxis.valueMin = 0
+            chart.valueAxis.valueMax = max_value * 1.15
+            chart.valueAxis.valueStep = axis_step(max_value * 1.15)
+            chart.valueAxis.labels.fontName = "Helvetica"
+            chart.valueAxis.labels.fontSize = 5
+            chart.valueAxis.strokeColor = border
+            chart.valueAxis.gridStrokeColor = border
+            chart.bars[0].fillColor = fill
+            chart.bars[0].strokeColor = fill
+            chart.barWidth = min(13, max(3, 150 / len(clean_values)))
+            chart.groupSpacing = 3
+        drawing.add(chart)
+        return drawing
+
+    def make_report_table(headers, rows, widths, total_rows=1):
+        rendered = [[p(value, table_head) for value in row] for row in headers]
+        rendered.extend([
+            [p(value, table_total if index >= len(rows) - total_rows else table_cell) for value in row]
+            for index, row in enumerate(rows)
+        ])
+        result = Table(rendered, colWidths=widths, repeatRows=len(headers), hAlign="CENTER")
+        styles = [
+            ("BACKGROUND", (0, 0), (-1, 0), light_blue),
+            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#E8F1F9")),
+            ("TEXTCOLOR", (0, 0), (-1, -1), ink),
             ("GRID", (0, 0), (-1, -1), 0.35, border),
-            ("LINEBELOW", (0, 1), (-1, 1), 1.2, gold),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-            ("TOPPADDING", (0, 0), (-1, 1), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, 1), 8),
-            ("TOPPADDING", (0, 2), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 2), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("BACKGROUND", (0, -total_rows), (-1, -1), pale_blue),
+            ("LINEABOVE", (0, -total_rows), (-1, -total_rows), 1, blue),
         ]
-        if len(data) > 3:
-            style.append(("ROWBACKGROUNDS", (0, 2), (-1, -total_rows - 1),
-                          [white, colors.HexColor("#F8FAF6")]))
-        t.setStyle(TableStyle(style))
-        return t
+        body_end = len(rendered) - total_rows - 1
+        if body_end >= len(headers):
+            styles.append(("ROWBACKGROUNDS", (0, len(headers)), (-1, body_end), [white, pale_blue]))
+        result.setStyle(TableStyle(styles))
+        return result
 
-    total_label = "TOTAL / المجموع"
-    data = [HEAD_FR, HEAD_AR] + [
-        [r.period if r.period != "TOTAL" else total_label, r.loads,
-         f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", _tn_money(r.revenue)]
+    # Main report and worker data are unchanged from the existing report builders.
+    labels = [r.period for r in rep.rows]
+    revenue_values = [r.revenue for r in rep.rows]
+    load_values = [r.loads for r in rep.rows]
+
+    main_rows = [
+        [r.period if r.period != "TOTAL" else "TOTAL / المجموع", r.loads,
+         f"{r.olive_kg:,.1f}", f"{r.oil_kg:,.1f}", money(r.revenue)]
         for r in rep.rows + [rep.total]
     ]
-    worker_data = [WHEAD_FR, WHEAD_AR] + [
+    worker_rows = [
         [r.day, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
-         f"{r.oil_kg:,.1f}", _tn_money(r.revenue)] for r in wrep.rows
+         f"{r.oil_kg:,.1f}", money(r.revenue)]
+        for r in wrep.rows
     ] + [
-        [total_label, r.full_name, r.loads, f"{r.olive_kg:,.1f}",
-         f"{r.oil_kg:,.1f}", _tn_money(r.revenue)] for r in wrep.totals
+        ["TOTAL / المجموع", r.full_name, r.loads, f"{r.olive_kg:,.1f}",
+         f"{r.oil_kg:,.1f}", money(r.revenue)]
+        for r in wrep.totals
     ]
 
     contact = " • ".join(x for x in [m.mill_address, m.mill_phone] if x)
+
     def draw_footer(canvas, doc):
         canvas.saveState()
         page_width, _ = doc.pagesize
         canvas.setStrokeColor(border)
         canvas.setLineWidth(0.6)
-        canvas.line(16 * mm, 13 * mm, page_width - 16 * mm, 13 * mm)
-        canvas.setFont("Amiri", 8)
+        canvas.line(13 * mm, 12 * mm, page_width - 13 * mm, 12 * mm)
+        canvas.setFont("Amiri", 7.5)
         canvas.setFillColor(muted)
-        canvas.drawString(16 * mm, 8 * mm, ar(mill))
-        canvas.drawRightString(page_width - 16 * mm, 8 * mm, str(doc.page))
+        canvas.drawString(13 * mm, 7 * mm, ar(mill))
+        canvas.drawRightString(page_width - 13 * mm, 7 * mm, f"Page {doc.page}")
         canvas.restoreState()
 
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=12*mm,
-                            rightMargin=12*mm, topMargin=12*mm, bottomMargin=18*mm,
-                            title=f"Rapport des recettes - {mill}", author=mill)
-    story = [
-        Paragraph(ar(mill), title),
-        Paragraph(ar(contact), subtitle) if contact else Spacer(1, 2),
-        Spacer(1, 5),
-        HRFlowable(width="18%", thickness=2, color=gold, hAlign="LEFT"),
-        Spacer(1, 10),
-        Paragraph(t_fr, heading),
-        Paragraph(ar(t_ar), heading),
-        Spacer(1, 4),
-        Paragraph(ar(f"Du {rep.start} au {rep.end}"), meta),
-        Spacer(1, 12),
-        table(data, 1),
-        Spacer(1, 18),
-        Paragraph("Recettes par ouvrier", heading),
-        Paragraph(ar("المداخيل حسب العامل"), heading),
-        Spacer(1, 8),
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4, leftMargin=12 * mm, rightMargin=12 * mm,
+        topMargin=10 * mm, bottomMargin=17 * mm,
+        title=f"Rapport des recettes - {mill}", author=mill,
+    )
+
+    cards = Table(
+        [[
+            make_card("RECETTES ENCAISSÉES", money(rep.total.revenue), navy),
+            make_card("NOMBRE DE CHARGEMENTS", rep.total.loads, gold),
+            make_card("OLIVES TRAITÉES (KG)", f"{rep.total.olive_kg:,.1f}", colors.HexColor("#78A95E")),
+            make_card("HUILE EXTRAITE (KG)", f"{rep.total.oil_kg:,.1f}", blue),
+        ]],
+        colWidths=[45.5 * mm] * 4,
+        hAlign="LEFT",
+    )
+    cards.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    chart_pair = Table(
+        [[
+            [Paragraph(ar("ÉVOLUTION DES RECETTES"), chart_title),
+             chart_drawing(revenue_values, labels, "line", blue)],
+            [Paragraph(ar("CHARGEMENTS PAR PÉRIODE"), chart_title),
+             chart_drawing(load_values, labels, "bar", gold)],
+        ]],
+        colWidths=[92 * mm, 92 * mm],
+        hAlign="CENTER",
+    )
+    chart_pair.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    main_headers = [
+        ["Période", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"],
+        HEAD_AR,
     ]
-    if wrep.rows:
-        story.append(table(worker_data, max(len(wrep.totals), 1)))
+    worker_headers = [WHEAD_FR, WHEAD_AR]
+    story = [
+        Paragraph(ar(mill.upper()), title),
+        Paragraph(ar(f"{t_fr} — {t_ar}"), subtitle),
+        Paragraph(ar(f"Période : du {rep.start} au {rep.end}" + (f" | Employé : {worker}" if worker else "")), subtitle),
+        Paragraph(ar(contact), subtitle) if contact else Spacer(1, 2),
+        Spacer(1, 7),
+        HRFlowable(width="100%", thickness=1.5, color=blue),
+        Spacer(1, 8),
+        cards,
+        Spacer(1, 10),
+        chart_pair,
+        Spacer(1, 4),
+        Paragraph(ar("SYNTHÈSE DES RÉSULTATS"), section),
+        make_report_table(main_headers, main_rows, [36 * mm, 29 * mm, 32 * mm, 31 * mm, 42 * mm], 1),
+        Spacer(1, 10),
+        Paragraph(ar("RÉSULTATS PAR EMPLOYÉ"), section),
+    ]
+
+    if worker_rows:
+        story.append(make_report_table(
+            worker_headers, worker_rows,
+            [27 * mm, 37 * mm, 25 * mm, 29 * mm, 28 * mm, 40 * mm],
+            max(len(wrep.totals), 1),
+        ))
     else:
-        story.append(Paragraph("Aucune donnée pour cette période / لا توجد بيانات لهذه الفترة", small))
+        story.append(Paragraph(ar("Aucune donnée pour cette période / لا توجد بيانات لهذه الفترة"), note_style))
 
     story.extend([
-        Spacer(1, 12),
-        Table(
-            [[ar("Total des factures / مجموع الفواتير"), f"{_tn_money(invoice_totals['total'])} DT"],
-             [ar("Montant payé / المبلغ المدفوع"), f"{_tn_money(invoice_totals['paid'])} DT"],
-             [ar("Reste à payer / المبلغ المتبقي"), f"{_tn_money(invoice_totals['balance'])} DT"]],
-            colWidths=[120 * mm, 55 * mm], hAlign="CENTER",
-            style=TableStyle([
-                ("TEXTCOLOR", (0, 0), (-1, -1), ink),
-                ("FONTNAME", (0, 0), (-1, -1), "Amiri-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]),
-        ),
+        Spacer(1, 10),
+        Paragraph(ar("SITUATION DES FACTURES"), section),
     ])
+    invoice_summary = [
+        [p("Total des factures / مجموع الفواتير", table_head), p(money(invoice_totals["total"]), table_total)],
+        [p("Montant payé / المبلغ المدفوع", table_head), p(money(invoice_totals["paid"]), table_total)],
+        [p("Reste à payer / المبلغ المتبقي", table_head), p(money(invoice_totals["balance"]), table_total)],
+    ]
+    invoice_table = Table(invoice_summary, colWidths=[125 * mm, 60 * mm], hAlign="CENTER")
+    invoice_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), light_blue),
+        ("BACKGROUND", (1, 0), (1, -1), pale_gold),
+        ("GRID", (0, 0), (-1, -1), 0.4, border),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(invoice_table)
 
     doc.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
     filename = f"recettes_{period}_{rep.start}_{rep.end}.pdf"
-    return StreamingResponse(buf, media_type="application/pdf",
-                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-
+    return StreamingResponse(
+        buf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 # ---------- Clients ----------
 @router.get("/clients", response_model=list[ClientSummary])
