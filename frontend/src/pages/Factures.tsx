@@ -23,6 +23,13 @@ function parseTariffPrice(value: string): number {
   const normalized = value.trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
   return normalized === "" ? Number.NaN : Number(normalized);
 }
+function formatInvoiceDate(value: string, lang: "fr" | "ar"): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-TN" : "fr-TN", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Africa/Tunis",
+  }).format(date);
+}
 
 type Invoice = {
   id: string; number: string; load_id: string; load_code: string; client_name: string; phone: string; variety?: string | null;
@@ -161,7 +168,7 @@ export default function Factures() {
     {selected&&<div className="invoice-print fixed inset-0 z-40 overflow-auto bg-white p-6 md:p-10">
       <div className="no-print mb-4 flex justify-end gap-2"><Button variant="outline" onClick={()=>{setSelected(null);setSearchParams({}, {replace:true});}}>{t("invoice_close")}</Button><Button onClick={()=>window.print()}><Printer className="mr-2 size-4"/>{t("invoice_print_pdf")}</Button></div>
       <article className="mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
-        <header className="flex items-start justify-between gap-5 border-b pb-5"><div className="flex shrink-0 items-start">{selected.mill_logo?<img src={selected.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/>:null}</div><div className="text-left"><h1 className="text-2xl font-bold">{selected.mill_name||"Huilerie Oro Verde"}</h1><p>{selected.mill_address}</p><p>{selected.mill_phone}</p></div><div className="ml-auto shrink-0 text-right"><p className="text-sm text-stone-500">{t("invoice_date")}</p><strong>{fmtDate(selected.created_at)}</strong></div></header>
+        <header className="flex items-start justify-between gap-5 border-b pb-5"><div className="flex shrink-0 items-start">{selected.mill_logo?<img src={selected.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/>:null}</div><div className="text-left"><h1 className="text-2xl font-bold">{selected.mill_name||"Huilerie Oro Verde"}</h1><p>{selected.mill_address}</p><p>{selected.mill_phone}</p></div><div className="ml-auto shrink-0 text-right"><p className="text-sm text-stone-500">{t("invoice_date")}</p><strong>{formatInvoiceDate(selected.created_at, lang)}</strong></div></header>
         <section className="my-5 mb-6 flex items-start justify-between gap-6">
           <div className="min-w-0 flex-1 text-left">
             <h2 className="text-3xl font-bold tracking-wide">{t("invoice_title")}</h2>
