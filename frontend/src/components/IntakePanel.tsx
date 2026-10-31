@@ -60,7 +60,12 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [clientSearch, setClientSearch] = useState("");
   const allClients = useQuery({ queryKey: ["clients", "__all"], queryFn: () => apiGet<ClientSummary[]>("/clients") });
   const clientList = allClients.isError ? [] : [...(allClients.data ?? [])].sort((a, b) => a.client_name.localeCompare(b.client_name));
-  const filteredClients = clientList.filter((c) => c.phone.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
+  const normalizeClientSearch = (value: string) => value.trim().toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const searchTerm = normalizeClientSearch(clientSearch);
+  const filteredClients = clientList.filter((c) =>
+    normalizeClientSearch(c.client_name).includes(searchTerm) ||
+    normalizeClientSearch(c.phone).includes(searchTerm)
+  );
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const varietyList = vq.isError ? [] : (vq.data?.varieties ?? []);
   const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
@@ -150,7 +155,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                 <div className="absolute inset-x-0 top-full z-50 mt-1 flex flex-col gap-1">
                   <div role="listbox" aria-label={t("client")} className="max-h-72 overflow-y-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10">
                     <div className="sticky top-0 z-10 border-b border-lime-100 bg-white p-2">
-                      <Input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par téléphone..." aria-label="Rechercher un client par téléphone" data-testid="intake-client-search-input" className="h-10 rounded-lg" />
+                      <Input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par nom ou téléphone..." aria-label="Rechercher un client par nom ou téléphone" data-testid="intake-client-search-input" className="h-10 rounded-lg" />
                     </div>
                     {filteredClients.length > 0 ? filteredClients.map((c) => (
                       <button
