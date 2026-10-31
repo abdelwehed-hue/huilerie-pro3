@@ -124,17 +124,17 @@ export default function Factures() {
   const loads = eligible.data ?? [];
   const create = useMutation({
     mutationFn:()=>apiPost<Invoice>("/invoices",{load_id:loadId,paid_amount:parseTariffPrice(paid)}),
-    onSuccess:(invoice)=>{toast.success(t("invoice_created"));setLoadId("");setPaid("0,000");qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["invoice-eligible-loads"]});setSelected(invoice);},
+    onSuccess:(invoice)=>{toast.success(t("invoice_created"));setLoadId("");setPaid("0,000");qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["invoice-eligible-loads"]});qc.invalidateQueries({queryKey:["client-account"]});setSelected(invoice);},
     onError:(e)=>toast.error(errMsg(e)),
   });
   const update = useMutation({
     mutationFn:()=>apiPatch<Invoice>(`/invoices/${editing!.id}`,{price_per_kg:parseTariffPrice(editPrice),payment_amount:parseTariffPrice(editPaid)}),
-    onSuccess:(invoice)=>{toast.success(t("invoice_updated"));setEditing(null);qc.invalidateQueries({queryKey:["invoices"]});setSelected(invoice);},
+    onSuccess:(invoice)=>{toast.success(t("invoice_updated"));setEditing(null);qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["client-account"]});setSelected(invoice);},
     onError:(e)=>toast.error(errMsg(e)),
   });
   const remove = useMutation({
     mutationFn:(invoiceId:string)=>apiDelete<{ok:boolean}>(`/invoices/${invoiceId}`),
-    onSuccess:(_,invoiceId)=>{toast.success(t("invoice_deleted"));qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["invoice-eligible-loads"]});setSelected(current=>current?.id===invoiceId?null:current);},
+    onSuccess:(_,invoiceId)=>{toast.success(t("invoice_deleted"));qc.invalidateQueries({queryKey:["invoices"]});qc.invalidateQueries({queryKey:["invoice-eligible-loads"]});qc.invalidateQueries({queryKey:["client-account"]});setSelected(current=>current?.id===invoiceId?null:current);},
     onError:(e)=>toast.error(errMsg(e)),
   });
   const validAmount = (value: string) => value.trim() !== "" && Number.isFinite(parseTariffPrice(value)) && parseTariffPrice(value) >= 0;
