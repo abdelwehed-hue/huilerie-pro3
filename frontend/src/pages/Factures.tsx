@@ -25,7 +25,7 @@ function parseTariffPrice(value: string): number {
 }
 
 type Invoice = {
-  id: string; number: string; load_id: string; load_code: string; client_name: string; phone: string;
+  id: string; number: string; load_id: string; load_code: string; client_name: string; phone: string; variety?: string | null;
   olive_kg: number; oil_kg: number; price_per_kg: number; total: number; paid_amount: number; balance: number;
   day: string; created_at: string; mill_name: string; mill_address: string; mill_phone: string;
   mill_logo: string; history?: Array<{at: string; by: string; action: string; before?: unknown; after?: unknown}>; payments?: Array<{at: string; by: string; amount: number}>;
@@ -174,7 +174,7 @@ export default function Factures() {
             <p>{t("invoice_load_label")} : {selected.load_code}</p>
           </div>
         </section>
-        <table className="w-full border-collapse text-sm"><thead><tr className="border-y"><th className="p-3 text-left">{t("invoice_service")}</th><th className="p-3 text-right">{t("invoice_quantity")}</th><th className="p-3 text-right">{t("invoice_price_per_kg")}</th><th className="p-3 text-right">Total de la Facture</th></tr></thead><tbody><tr className="border-b"><td className="p-3">{t("invoice_service")}</td><td className="p-3 text-right">{fmtNum(selected.oil_kg)} kg</td><td className="p-3 text-right">{money(selected.price_per_kg)}</td><td className="p-3 text-right">{money(selected.total)}</td></tr></tbody></table>
+        <table className="w-full border-collapse text-sm"><thead><tr className="border-y"><th className="p-3 text-left">Variétés d'olives</th><th className="p-3 text-right">Quantité</th><th className="p-3 text-right">Prix/kg</th><th className="p-3 text-right">Total</th></tr></thead><tbody><tr className="border-b"><td className="p-3">{selected.variety || "—"}</td><td className="p-3 text-right">{fmtNum(selected.oil_kg)} kg</td><td className="p-3 text-right">{money(selected.price_per_kg)}</td><td className="p-3 text-right">{money(selected.total)}</td></tr></tbody></table>
         <div className="ml-auto mt-8 max-w-xs space-y-3"><div className="flex justify-between gap-4"><strong>Total de la Facture</strong><strong>{money(selected.total)}</strong></div><div className="flex justify-between gap-4"><strong>Montant payé (DT)</strong><strong>{money(selected.paid_amount)}</strong></div><div className="flex justify-between gap-4 border-t pt-3 text-lg"><strong>Solde restant</strong><strong>{money(selected.balance)}</strong></div><p className="text-right text-sm italic text-stone-600" dir={lang === "ar" ? "rtl" : "ltr"}>{amountInWords(selected.balance, lang)}</p></div>
         <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{t("invoice_thanks")}</footer>
       </article>

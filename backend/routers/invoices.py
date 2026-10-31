@@ -46,21 +46,30 @@ async def list_invoices(q: str = "", _: dict = Depends(current_user)):
             {"phone": {"$regex": term, "$options": "i"}},
         ]
     docs = await db.invoices.find(flt, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    # Correct legacy invoices once: the billed quantity is the extracted/pressed oil,
-    # not the incoming olive weight. Preserve recorded payments.
+    # Enrich invoices with the olive variety stored on their source load.
+    # Also repair legacy invoices whose billed oil quantity was not persisted.
+    load_ids = [doc.get("load_id") for doc in docs if doc.get("load_id")]
+    loads_by_id = {}
+    if load_ids:
+        async for load in db.loads.find(
+            {"id": {"$in": load_ids}},
+            {"_id": 0, "id": 1, "variety": 1, "oil_kg": 1},
+        ):
+            loads_by_id[load["id"]] = load
     for doc in docs:
-        if doc.get("oil_kg") is None:
-            load = await db.loads.find_one({"id": doc.get("load_id")}, {"_id": 0, "oil_kg": 1})
-            if load and load.get("oil_kg") is not None:
-                oil_kg = float(load["oil_kg"])
-                total = _money(oil_kg * float(doc.get("price_per_kg", 0)))
-                paid = _money(doc.get("paid_amount", 0))
-                balance = _money(max(0, total - paid))
-                await db.invoices.update_one(
-                    {"id": doc["id"], "oil_kg": {"$exists": False}},
-                    {"$set": {"oil_kg": oil_kg, "total": total, "balance": balance}},
-                )
-                doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
+        load = loads_by_id.get(doc.get("load_id"), {})
+        if not doc.get("variety"):
+            doc["variety"] = load.get("variety")
+        if doc.get("oil_kg") is None and load.get("oil_kg") is not None:
+            oil_kg = float(load["oil_kg"])
+            total = _money(oil_kg * float(doc.get("price_per_kg", 0)))
+            paid = _money(doc.get("paid_amount", 0))
+            balance = _money(max(0, total - paid))
+            await db.invoices.update_one(
+                {"id": doc["id"], "oil_kg": {"$exists": False}},
+                {"$set": {"oil_kg": oil_kg, "total": total, "balance": balance}},
+            )
+            doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
     return docs
 
 
@@ -104,6 +113,7 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
         "number": f"FAC-{load['code']}",
         "load_id": load["id"], "load_code": load["code"],
         "client_name": load["client_name"], "phone": load.get("phone", ""),
+        "variety": load.get("variety"),
         "olive_kg": float(load["olive_kg"]), "oil_kg": oil_kg, "price_per_kg": price,
         "total": total, "paid_amount": paid, "balance": _money(total - paid),
         "payments": ([{"at": now, "by": user.get("username", ""), "amount": paid}] if paid > 0 else []),
