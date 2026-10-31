@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 
 type ClientHit = { phone: string; client_name: string; codes: string[] };
 type LoadRow = {
-  day: string; code: string; client_name: string; olive_kg: number; oil_kg: number;
+  day: string; code: string; client_name: string; olive_kg: number; oil_kg: number; variety?: string | null;
   invoice_number: string | null; total: number; paid: number; balance: number;
   cancelled: boolean; cancel_reason: string; cancelled_at: string | null; has_invoice: boolean;
 };
@@ -46,7 +46,7 @@ export default function ClientAccounts() {
     search: "ابحث باسم العميل أو الهاتف أو رقم الوصل", select: "اختر العميل",
     season: "الموسم", all: "كل المواسم", custom: "فترة مخصصة", from: "من", to: "إلى",
     print: "طباعة / PDF", close: "إغلاق", noClient: "لم يتم العثور على عميل",
-    date: "التاريخ", receipt: "رقم الوصل", olives: "الزيتون (كغ)", oil: "الزيت (كغ)",
+    date: "التاريخ", receipt: "رقم الوصل", olives: "الزيتون (كغ)", varieties: "الأصناف", oil: "الزيت (كغ)",
     invoice: "رقم الفاتورة", total: "الإجمالي", paid: "المدفوع", remaining: "المتبقي",
     cancelled: "ملغاة", noInvoice: "لا توجد فاتورة", cancelledNote: "الإلغاء بحد ذاته لا ينشئ حركة مالية",
     opening: "الرصيد الافتتاحي", debits: "مجموع المدين", credits: "مجموع الدائن",
@@ -59,7 +59,7 @@ export default function ClientAccounts() {
     search: "Rechercher par nom, téléphone ou code reçu", select: "Sélectionner le client",
     season: "Saison", all: "Toutes les saisons", custom: "Période personnalisée", from: "Du", to: "Au",
     print: "Imprimer / PDF", close: "Fermer", noClient: "Aucun client trouvé",
-    date: "Date", receipt: "N° reçu", olives: "Olives (kg)", oil: "Huile (kg)",
+    date: "Date", receipt: "N° reçu", olives: "Olives (kg)", varieties: "Variétés", oil: "Huile (kg)",
     invoice: "N° facture", total: "Total", paid: "Payé", remaining: "Reste",
     cancelled: "Annulée", noInvoice: "Sans facture", cancelledNote: "L’annulation seule ne crée pas d’écriture financière",
     opening: "Solde initial", debits: "Total débit", credits: "Total crédit",
@@ -236,9 +236,9 @@ export default function ClientAccounts() {
         </header>
         {mode === "global" ? <>
           <div className="overflow-x-auto"><table className="global-invoice-table w-full min-w-[720px] border-collapse text-sm"><colgroup>{Array.from({length:8},(_,i)=><col key={i}/>)}</colgroup>
-            <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map((x,i)=><th key={x} className={`border p-2 text-start ${i === 4 ? "global-invoice-hide-on-print" : ""}`}>{i === 1 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.invoice}</span></> : x}</th>)}</tr></thead>
+            <thead><tr className="bg-stone-100">{[labels.date,labels.receipt,labels.olives,labels.oil,labels.invoice,labels.total,labels.paid,labels.remaining].map((x,i)=><th key={x} className={`border p-2 text-start ${i === 4 ? "global-invoice-hide-on-print" : ""}`}>{i === 1 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.invoice}</span></> : i === 2 ? <><span className="global-invoice-screen-only">{x}</span><span className="global-invoice-print-only">{labels.varieties}</span></> : x}</th>)}</tr></thead>
             <tbody>{data.global_invoice.loads.map((row)=> <tr key={row.code} className="border-b">
-              <td className="whitespace-nowrap p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2">{fmtNum(row.olive_kg)} </td><td className="p-2">{fmtNum(row.oil_kg)}</td>
+              <td className="whitespace-nowrap p-2">{row.day}</td><td className="p-2 font-semibold"><span className="global-invoice-screen-only">{row.code}</span><span className="global-invoice-print-only">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</span></td><td className="p-2"><span className="global-invoice-screen-only">{fmtNum(row.olive_kg)}</span><span className="global-invoice-print-only">{row.variety || "—"}</span></td><td className="p-2">{fmtNum(row.oil_kg)}</td>
               <td className="p-2 global-invoice-hide-on-print">{row.invoice_number || labels.noInvoice}{row.cancelled ? <small className="block text-rose-600">{labels.cancelled}</small> : null}</td>
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
             </tr>)}
