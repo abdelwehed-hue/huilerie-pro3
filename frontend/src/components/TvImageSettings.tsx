@@ -5,14 +5,14 @@ import { Trash2, Upload, Youtube } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { apiGet, apiPut } from "@/lib/api";
-import type { AppSettings } from "@/lib/types";
+import type { TvMediaSettings } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export default function TvImageSettings() {
   const { t, errMsg } = useI18n();
   const qc = useQueryClient();
-  const settings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<TvMediaSettings>("/tv/media-settings") });
   const [selected, setSelected] = useState<string | null>(null);
   const current = selected ?? settings.data?.tv_image ?? "";
   const [processing, setProcessing] = useState(false);
@@ -31,7 +31,7 @@ export default function TvImageSettings() {
     }
   }, [settings.data]);
   const saveVideo = useMutation({
-    mutationFn: () => apiPut<AppSettings>("/settings", {
+    mutationFn: () => apiPut<TvMediaSettings>("/tv/media-settings", {
       ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_source: videoSource,
       tv_display_mode: displayMode, tv_video_enabled: videoEnabled, tv_receipt_duration: receiptDuration,
     }),
