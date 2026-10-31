@@ -17,6 +17,7 @@ import Cancellations from "@/pages/Cancellations";
 import TvScreen from "@/pages/TvScreen";
 import TvAdmin from "@/pages/TvAdmin";
 import Factures from "@/pages/Factures";
+import Appearance from "@/pages/Appearance";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/loads" element={<Loads />} />
           <Route path="/lab" element={<Lab />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/appearance" element={<Appearance />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/factures" element={<Factures />} />
