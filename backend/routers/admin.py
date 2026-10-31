@@ -48,7 +48,7 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
     import arabic_reshaper
     from bidi.algorithm import get_display
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
@@ -109,7 +109,7 @@ async def export_database_pdf(_: dict = Depends(require_admin)):
     collection_names = sorted(await db.list_collection_names())
     story = [
         Paragraph("Export de la base de données", title_style),
-        Paragraph("تصدير قاعدة البيانات", title_style),
+        Paragraph(shape("تصدير قاعدة البيانات"), title_style),
         Paragraph(f"Application: Oro Verde / Huilerie Pro — Date UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}", subtitle_style),
         Paragraph("Document de consultation et d'impression. Les mots de passe et clés secrètes sont masqués. Les données image/base64 et les champs très longs peuvent être abrégés; utiliser le fichier ZIP pour une sauvegarde complète.", subtitle_style),
         Spacer(1, 8),
