@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from lib.db import db
 from lib.auth import current_user
 from lib.dates import today_iso
-from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate, TvMediaSettings
+from models.schemas import TvAdminItem, TvArrival, TvBoard, TvDisplaySettings, TvItem, TvItemUpdate, TvMediaSettings
 
 router = APIRouter()
 
@@ -64,6 +64,14 @@ async def build_board() -> TvBoard:
         sound_enabled=bool(settings.get("tv_sound_enabled", False)),
         server_time=datetime.now(timezone.utc),
     )
+
+
+@router.get("/tv/display-settings", response_model=TvDisplaySettings)
+async def get_tv_display_settings():
+    # Public TV page needs a safe, read-only subset; never expose price, login, or SMS settings.
+    fields = {name: 1 for name in TvDisplaySettings.model_fields}
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, **fields}) or {}
+    return TvDisplaySettings(**settings)
 
 
 @router.get("/tv/media-settings", response_model=TvMediaSettings)
