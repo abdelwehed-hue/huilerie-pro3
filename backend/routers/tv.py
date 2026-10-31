@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from lib.db import db
 from lib.auth import current_user
 from lib.dates import today_iso
-from models.schemas import TvAdminItem, TvArrival, TvBoard, TvItem, TvItemUpdate, TvMediaSettings
+from models.schemas import TvAdminItem, TvArrival, TvBoard, TvDisplaySettings, TvItem, TvItemUpdate, TvMediaSettings
 
 router = APIRouter()
 
@@ -71,6 +71,15 @@ async def get_tv_media_settings(_: dict = Depends(current_user)):
     fields = {name: 1 for name in TvMediaSettings.model_fields}
     settings = await db.settings.find_one({"key": "app"}, {"_id": 0, **fields}) or {}
     return TvMediaSettings(**settings)
+
+
+@router.get("/tv/display-settings", response_model=TvDisplaySettings)
+async def get_tv_display_settings():
+    # Public TV page needs only its own display media and public mill identity.
+    # Do not expose price, login, SMS, or other administrative settings.
+    fields = {name: 1 for name in TvDisplaySettings.model_fields}
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, **fields}) or {}
+    return TvDisplaySettings(**settings)
 
 
 @router.put("/tv/media-settings", response_model=TvMediaSettings)

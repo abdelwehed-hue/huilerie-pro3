@@ -237,6 +237,12 @@ class TvMediaSettings(BaseModel):
     tv_receipt_duration: int = Field(default=8, ge=3, le=30)
 
 
+class TvDisplaySettings(TvMediaSettings):
+    mill_name: str = ""
+    mill_address: str = ""
+    mill_phone: str = ""
+
+
 class SmsStatus(BaseModel):
     mode: Literal["simulated", "live"]
     enabled: bool
