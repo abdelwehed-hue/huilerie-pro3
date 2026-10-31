@@ -237,6 +237,13 @@ class TvMediaSettings(BaseModel):
     tv_receipt_duration: int = Field(default=8, ge=3, le=30)
 
 
+class TvDisplaySettings(TvMediaSettings):
+    # Only non-sensitive mill identity and TV media fields are exposed publicly.
+    mill_name: str = ""
+    mill_address: str = ""
+    mill_phone: str = ""
+
+
 class SmsStatus(BaseModel):
     mode: Literal["simulated", "live"]
     enabled: bool
