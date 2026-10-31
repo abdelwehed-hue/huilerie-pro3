@@ -152,18 +152,19 @@ export default function AppShell() {
     const connect = () => {
       if (disposed) return;
       const wsOrigin = API_ORIGIN.replace(/^http/, "ws");
-      socket = new WebSocket(`${wsOrigin}/api/realtime`);
+      const currentSocket = new WebSocket(`${wsOrigin}/api/realtime`);
+      socket = currentSocket;
 
-      socket.onopen = () => {
+      currentSocket.onopen = () => {
         retryDelay = 1_000;
         // Re-sync after initial connection and every reconnect.
         void queryClient.invalidateQueries();
         heartbeatTimer = window.setInterval(() => {
-          if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
+          if (currentSocket.readyState === WebSocket.OPEN) currentSocket.send("ping");
         }, 25_000);
       };
 
-      socket.onmessage = (event) => {
+      currentSocket.onmessage = (event) => {
         try {
           const message = JSON.parse(String(event.data)) as { type?: string };
           if (message.type === "data_changed") {
@@ -174,7 +175,7 @@ export default function AppShell() {
         }
       };
 
-      socket.onclose = () => {
+      currentSocket.onclose = () => {
         if (heartbeatTimer !== undefined) window.clearInterval(heartbeatTimer);
         heartbeatTimer = undefined;
         if (!disposed) {
@@ -183,7 +184,7 @@ export default function AppShell() {
         }
       };
 
-      socket.onerror = () => socket?.close();
+      currentSocket.onerror = () => currentSocket.close();
     };
 
     connect();
