@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/lib/theme";
 
 // Menu-only labels (page titles keep their own wording).
-const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
+const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms" | "appearance">> = {
   dashboard: "menu_dashboard",
   search: "menu_search",
   sms: "menu_sms",
