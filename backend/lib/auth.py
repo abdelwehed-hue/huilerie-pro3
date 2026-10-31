@@ -10,7 +10,7 @@ from lib.db import db
 
 COOKIE = "olive_session"
 JWT_SECRET = os.environ["JWT_SECRET"]
-TTL_DAYS = 7
+TTL_DAYS = 30
 
 
 def hash_password(pw: str) -> str:
