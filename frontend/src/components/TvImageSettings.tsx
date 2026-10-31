@@ -38,7 +38,7 @@ export default function TvImageSettings() {
     onSuccess: () => {
       toast.success(t("saved"));
       qc.invalidateQueries({ queryKey: ["settings"] });
-      qc.invalidateQueries({ queryKey: ["tv-mill-settings"] });
+      qc.invalidateQueries({ queryKey: ["tv-display-settings"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -49,7 +49,7 @@ export default function TvImageSettings() {
       toast.success(t("saved"));
       setSelected(null);
       qc.invalidateQueries({ queryKey: ["settings"] });
-      qc.invalidateQueries({ queryKey: ["tv-mill-settings"] });
+      qc.invalidateQueries({ queryKey: ["tv-display-settings"] });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
