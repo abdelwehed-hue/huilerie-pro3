@@ -37,6 +37,132 @@ async def export_database(_: dict = Depends(require_admin)):
     return Response(buf.getvalue(), media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="huilerie-export-{stamp}.zip"'})
 
+@router.get("/admin/export.pdf")
+async def export_database_pdf(_: dict = Depends(require_admin)):
+    """Admin-only human-readable PDF export. Sensitive credentials are redacted."""
+    import json
+    from html import escape as html_escape
+    from pathlib import Path
+
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    font_dir = Path(__file__).resolve().parent.parent / "fonts"
+    regular_font = "DbExportAmiri"
+    bold_font = "DbExportAmiriBold"
+    if regular_font not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(regular_font, str(font_dir / "Amiri-Regular.ttf")))
+    if bold_font not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(bold_font, str(font_dir / "Amiri-Bold.ttf")))
+
+    def shape(value: str) -> str:
+        has_arabic = any(0x0600 <= ord(char) <= 0x06FF for char in value)
+        return get_display(arabic_reshaper.reshape(value)) if has_arabic else value
+
+    sensitive_parts = ("password", "token", "secret", "api_key", "private_key", "credential")
+
+    def shape(value: str) -> str:
+        return get_display(arabic_reshaper.reshape(value)) if arabic_pattern.search(value) else value
+
+    def redact(value):
+        if isinstance(value, dict):
+            clean = {}
+            for key, item in value.items():
+                if any(part in str(key).lower() for part in sensitive_parts):
+                    clean[key] = "[MASQUÉ / مخفي]"
+                else:
+                    clean[key] = redact(item)
+            return clean
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        if isinstance(value, str) and value.startswith("data:"):
+            return f"[Données intégrées omises du PDF — {len(value)} caractères; conservées dans ZIP]"
+        return value
+
+    def display_value(value) -> str:
+        clean = redact(value)
+        if isinstance(clean, str):
+            result = clean
+        else:
+            result = json_util.dumps(clean, json_options=json_util.RELAXED_JSON_OPTIONS, ensure_ascii=False)
+        if len(result) > 6000:
+            result = result[:6000] + "… [contenu long tronqué dans le PDF; conserver le ZIP pour l'export complet]"
+        return result
+
+    title_style = ParagraphStyle("dbTitle", fontName=bold_font, fontSize=18, leading=24, alignment=TA_CENTER, spaceAfter=8)
+    subtitle_style = ParagraphStyle("dbSub", fontName=regular_font, fontSize=9, leading=13, alignment=TA_CENTER, textColor=colors.HexColor("#57534E"))
+    section_style = ParagraphStyle("dbSection", fontName=bold_font, fontSize=14, leading=19, textColor=colors.HexColor("#365314"), spaceBefore=10, spaceAfter=5)
+    doc_style = ParagraphStyle("dbDoc", fontName=bold_font, fontSize=10, leading=14, textColor=colors.HexColor("#44403C"), spaceBefore=5, spaceAfter=3)
+    cell_style = ParagraphStyle("dbCell", fontName=regular_font, fontSize=7.5, leading=10, wordWrap="CJK")
+    key_style = ParagraphStyle("dbKey", fontName=bold_font, fontSize=7.5, leading=10, wordWrap="CJK")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=13 * mm, leftMargin=13 * mm,
+                            topMargin=15 * mm, bottomMargin=17 * mm, title="Export de la base de données")
+
+    collection_names = sorted(await db.list_collection_names())
+    story = [
+        Paragraph("Export de la base de données", title_style),
+        Paragraph(shape("تصدير قاعدة البيانات"), title_style),
+        Paragraph(f"Application: Oro Verde / Huilerie Pro — Date UTC: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}", subtitle_style),
+        Paragraph("Document de consultation et d'impression. Les mots de passe et clés secrètes sont masqués. Les données image/base64 et les champs très longs peuvent être abrégés; utiliser le fichier ZIP pour une sauvegarde complète.", subtitle_style),
+        Spacer(1, 8),
+    ]
+
+    def draw_footer(canvas, _document):
+        canvas.saveState()
+        canvas.setFont(regular_font, 8)
+        canvas.setFillColor(colors.HexColor("#78716C"))
+        canvas.drawString(13 * mm, 9 * mm, "Oro Verde — Export PDF")
+        canvas.drawRightString(A4[0] - 13 * mm, 9 * mm, f"Page {_document.page}")
+        canvas.restoreState()
+
+    for collection_index, name in enumerate(collection_names):
+        if collection_index:
+            story.append(PageBreak())
+        count = await db[name].count_documents({})
+        story.append(Paragraph(f"{html_escape(name)} — {count} document(s)", section_style))
+        doc_number = 0
+        async for record in db[name].find({}).sort("_id", 1):
+            doc_number += 1
+            story.append(Paragraph(f"Document {doc_number}", doc_style))
+            rows = [[Paragraph(shape("Champ / الحقل"), key_style), Paragraph(shape("Valeur / القيمة"), key_style)]]
+            for key, value in record.items():
+                rendered = display_value(value)
+                rows.append([
+                    Paragraph(shape(html_escape(str(key))), key_style),
+                    Paragraph(shape(html_escape(rendered).replace("\n", "<br/>")), cell_style),
+                ])
+            table = Table(rows, colWidths=[42 * mm, 142 * mm], repeatRows=1, splitByRow=1, hAlign="LEFT")
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3F6212")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6D3D1")),
+                ("BACKGROUND", (0, 1), (0, -1), colors.HexColor("#F5F5F4")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]))
+            story.extend([table, Spacer(1, 5)])
+        if not count:
+            story.append(Paragraph("Aucune donnée / لا توجد بيانات", subtitle_style))
+
+    doc.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
+    buf.seek(0)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    return Response(buf.getvalue(), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="huilerie-export-{stamp}.pdf"'})
+
 
 @router.get("/users", response_model=list[User])
 async def list_users(_: dict = Depends(require_admin)):
