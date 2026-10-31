@@ -160,7 +160,19 @@ export default function ClientAccounts() {
                       role="option"
                       aria-selected={client?.phone === hit.phone}
                       key={hit.phone}
+                      onPointerDown={(e) => {
+                        // Select on pointer-down so mobile blur cannot close the list first.
+                        e.preventDefault();
+                        setClient(hit);
+                        setSeason("all");
+                        setCustom(false);
+                        setStart("");
+                        setEnd("");
+                        setClientDropdownOpen(false);
+                        setClientSearch("");
+                      }}
                       onClick={() => {
+                        // Keep click support for keyboard and assistive-technology activation.
                         setClient(hit);
                         setSeason("all");
                         setCustom(false);
