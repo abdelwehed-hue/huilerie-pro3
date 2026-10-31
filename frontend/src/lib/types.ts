@@ -166,6 +166,15 @@ export interface AppSettings extends MillInfo {
   sms_reminder_template: string;
 }
 
+export interface TvMediaSettings {
+  tv_image: string;
+  tv_youtube_url: string;
+  tv_video_source: "youtube" | "direct";
+  tv_display_mode: "background" | "split" | "fullscreen";
+  tv_video_enabled: boolean;
+  tv_receipt_duration: number;
+}
+
 // Mirrors DEFAULT_SMS_REMINDER in backend/models/schemas.py
 export const DEFAULT_SMS_REMINDER =
   "{mill}: {name}, rappel: votre huile ({oil_kg} kg, code {code}) vous attend.\n{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} كغ، الكود {code}) في انتظارك.";
