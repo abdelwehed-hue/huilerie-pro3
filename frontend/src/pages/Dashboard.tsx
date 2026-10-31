@@ -104,15 +104,15 @@ export default function Dashboard() {
       <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm">
         <Table data-testid="today-arrivals-table">
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="h-12 ps-4 text-start text-[15px] text-stone-700">{t("code")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">{t("client")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">{t("phone")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">{t("varieties")}</TableHead>
-              <TableHead className="text-end text-[15px] text-stone-700">{t("olive_kg")}</TableHead>
-              <TableHead className="text-end text-[15px] text-stone-700">{t("oil_kg")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">{t("status")}</TableHead>
-              <TableHead className="text-start text-[15px] text-stone-700">Facture</TableHead>
+            <TableRow className="bg-[#E5EFF7] hover:bg-[#E5EFF7]">
+              <TableHead className="h-12 ps-4 text-start text-[15px] font-semibold text-[#31536F]">{t("code")}</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("client")}</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("phone")}</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("varieties")}</TableHead>
+              <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("olive_kg")}</TableHead>
+              <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("oil_kg")}</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("status")}</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">Facture</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
