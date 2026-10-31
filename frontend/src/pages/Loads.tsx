@@ -80,7 +80,7 @@ export default function Loads() {
         <div className="ms-auto flex flex-wrap gap-2 text-sm">
           <span className="rounded-full bg-lime-100 px-3 py-1.5 font-semibold text-lime-900" data-testid="loads-total-olive">{t("olives")}: {fmtNum(totalOlive)} {t("kg")}</span>
           <span className="rounded-full bg-yellow-100 px-3 py-1.5 font-semibold text-yellow-900" data-testid="loads-total-oil">{t("oil")}: {fmtNum(totalOil)} {t("kg")}</span>
-          {isAdmin && <span className="rounded-full bg-violet-100 px-3 py-1.5 font-semibold text-violet-900" data-testid="loads-total-amount">{t("revenue")}: {fmtMoney(totalAmount)} {t("dt")}</span>}
+          {isAdmin && <span className="rounded-full bg-violet-100 px-3 py-1.5 font-semibold text-violet-900" data-testid="loads-total-amount">{t("revenue")}: {fmtMoney(totalAmount)}</span>}
         </div>
       </div>
 

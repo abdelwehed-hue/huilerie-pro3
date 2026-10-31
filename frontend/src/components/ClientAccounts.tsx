@@ -26,7 +26,7 @@ type AccountData = {
   mill: { mill_name?: string; mill_address?: string; mill_phone?: string; mill_logo?: string };
 };
 
-const cash = (n: number) => `${fmtMoney(n)} DT`;
+const cash = (n: number) => fmtMoney(n);
 const fmtDateOnly = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" });
 
 export default function ClientAccounts() {
