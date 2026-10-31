@@ -160,3 +160,25 @@
   100% { transform: scale(1); }
 }
 .tv-pop { animation: tv-pop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+
+/* Application theme overrides: keep the existing green navigation and status colors. */
+html.dark body { background-color: #1c1917; color: #fafaf9; }
+html.dark .bg-white { background-color: #292524 !important; }
+html.dark .bg-\\[\\#F9F8F3\\], html.dark .bg-\\[\\#F9F8F3\\]\\/85 { background-color: #1c1917 !important; }
+html.dark .bg-stone-50 { background-color: #292524 !important; }
+html.dark .bg-stone-100 { background-color: #34302e !important; }
+html.dark .bg-stone-200 { background-color: #44403c !important; }
+html.dark .text-stone-950, html.dark .text-stone-900, html.dark .text-stone-800 { color: #fafaf9 !important; }
+html.dark .text-stone-700, html.dark .text-stone-600 { color: #d6d3d1 !important; }
+html.dark .text-stone-500, html.dark .text-stone-400 { color: #a8a29e !important; }
+html.dark .border-stone-100, html.dark .border-stone-200, html.dark .border-stone-300 { border-color: #57534e !important; }
+html.dark input, html.dark textarea, html.dark select { background-color: #292524; color: #fafaf9; border-color: #57534e; }
+html.dark input::placeholder, html.dark textarea::placeholder { color: #a8a29e; }
+html.dark table thead { background-color: #292524; }
+html.dark table tbody tr { border-color: #44403c; }
+html.dark .shadow-sm, html.dark .shadow-md { --tw-shadow-color: rgb(0 0 0 / 25%); }
+html.dark .bg-indigo-50 { background-color: #312e4b !important; }
+html.dark .text-indigo-950 { color: #e0e7ff !important; }
+html.dark .text-indigo-700 { color: #c7d2fe !important; }
+html.dark .hover\\:bg-stone-50:hover { background-color: #34302e !important; }
