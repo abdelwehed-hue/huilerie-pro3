@@ -144,7 +144,7 @@ export default function ClientAccounts() {
                       placeholder={ar ? "ابحث برقم الهاتف..." : "Rechercher par téléphone..."}
                       aria-label={ar ? "البحث برقم الهاتف" : "Rechercher par téléphone"}
                       data-testid="client-account-client-search-input"
-                      className="h-10 rounded-lg"
+                      className="h-9 rounded-lg"
                     />
                   </div>
                   {searchQuery.isFetching && <div className="p-3 text-sm text-stone-500">{ar ? "جارٍ تحميل الحرفاء…" : "Chargement des clients…"}</div>}
