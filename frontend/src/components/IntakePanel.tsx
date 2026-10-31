@@ -277,7 +277,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             )}
           </div>
         )}
-        {created ? (
+        {created && (
           <ReceptionTicket load={created}>
             <div className="no-print mt-8 flex gap-3">
               <Button onClick={() => window.print()} variant="outline" className="rounded-xl" data-testid="intake-print-button">
@@ -288,8 +288,6 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               </Button>
             </div>
           </ReceptionTicket>
-        ) : (
-
         )}
       </div>
     </div>
