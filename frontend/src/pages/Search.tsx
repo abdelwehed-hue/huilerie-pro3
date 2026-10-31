@@ -172,7 +172,7 @@ export default function SearchPage() {
           <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
             {shown.status !== "cancelled" && (
-              <Button onClick={() => setEditing(shown)} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700">
+              <Button onClick={() => setEditing(shown)} disabled={shown.status === "done" || shown.status === "delivered"} title={shown.status === "done" || shown.status === "delivered" ? t("done") : undefined} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
                 <Droplet className="size-4" />
                 {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
               </Button>

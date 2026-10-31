@@ -138,7 +138,7 @@ export default function Loads() {
                         {t("mark_delivered")}
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => setEditing(l)} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50">
+                    <Button size="sm" variant="outline" onClick={() => setEditing(l)} disabled={l.status === "done"} title={l.status === "done" ? t("done") : undefined} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50">
                       <Droplet className="size-4" />
                       {l.oil_kg != null ? t("edit_oil") : t("enter_oil")}
                     </Button>

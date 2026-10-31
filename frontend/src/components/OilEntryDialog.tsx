@@ -35,11 +35,12 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
     onError: (e) => toast.error(errMsg(e)),
   });
 
+  const oilLocked = !!load && (load.status === "done" || load.status === "delivered" || load.status === "cancelled");
   const val = parseFloat(oil.replace(",", "."));
   const preview = load && !isNaN(val) && load.olive_kg ? (val / load.olive_kg) * 100 : null;
 
   return (
-    <Dialog open={!!load} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={!!load && !oilLocked} onOpenChange={(o) => !o && onClose()}>
       <DialogContent data-testid="oil-entry-dialog">
         <DialogHeader>
           <DialogTitle>{load?.oil_kg != null ? t("edit_oil") : t("enter_oil")}</DialogTitle>
