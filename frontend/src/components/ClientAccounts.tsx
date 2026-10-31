@@ -73,7 +73,13 @@ export default function ClientAccounts() {
     enabled: Boolean(mode),
   });
   const clientList = searchQuery.data ?? [];
-  const filteredClients = clientList.filter((hit) => hit.phone.toLocaleLowerCase().includes(clientSearch.trim().toLocaleLowerCase()));
+  const normalizeClientSearch = (value: string) => value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase().trim();
+  const normalizedClientSearch = normalizeClientSearch(clientSearch);
+  const filteredClients = clientList.filter((hit) => {
+    if (!normalizedClientSearch) return true;
+    return [hit.client_name, hit.phone, ...hit.codes]
+      .some((value) => normalizeClientSearch(value ?? "").includes(normalizedClientSearch));
+  });
   const accountUrl = useMemo(() => {
     if (!client) return "";
     const params = new URLSearchParams();
@@ -141,8 +147,8 @@ export default function ClientAccounts() {
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
-                      placeholder={ar ? "ابحث برقم الهاتف..." : "Rechercher par téléphone..."}
-                      aria-label={ar ? "البحث برقم الهاتف" : "Rechercher par téléphone"}
+                      placeholder={ar ? "ابحث بالاسم أو الهاتف أو رقم الوصل..." : "Rechercher par nom, téléphone ou code reçu..."}
+                      aria-label={ar ? "البحث بالاسم أو الهاتف أو رقم الوصل" : "Rechercher par nom, téléphone ou code reçu"}
                       data-testid="client-account-client-search-input"
                       className="h-9 rounded-lg"
                     />
