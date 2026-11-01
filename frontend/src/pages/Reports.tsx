@@ -167,12 +167,12 @@ export default function Reports() {
         <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
       </div>
 
-      <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.65fr)]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="report-revenue-chart">
           <div className="w-full overflow-x-auto" dir="ltr">
             <BarChart
-              width={Math.max(chartRows.length * 68, 600)}
-              height={300}
+              width={Math.max(chartRows.length * 44, 360)}
+              height={280}
               data={chartRows}
               margin={{ top: 12, right: 20, left: 8, bottom: 42 }}
               barCategoryGap="28%"
@@ -181,7 +181,7 @@ export default function Reports() {
               <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
               <YAxis fontSize={11} stroke="#78716C" />
               <Tooltip formatter={(value: number) => [`${fmtMoney(value)} ${t("dt")}`, t("revenue")]} />
-              <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
+              <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={34} isAnimationActive={false} />
             </BarChart>
           </div>
         </div>
