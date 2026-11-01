@@ -840,9 +840,22 @@ async def update_client(phone: str, body: ClientUpdate, _: dict = Depends(requir
     return ClientUpdate(client_name=body.client_name.strip(), phone=new_phone)
 
 
+async def _ensure_client_has_no_invoices(load_ids: list[str]) -> None:
+    """Preserve invoice history: never delete a client whose loads have invoices."""
+    if not load_ids:
+        return
+    invoice = await db.invoices.find_one(
+        {"load_id": {"$in": load_ids}},
+        {"_id": 0, "number": 1},
+    )
+    if invoice:
+        raise HTTPException(409, "client_has_invoices")
+
+
 @router.delete("/clients/{phone}", response_model=ClientDeleteResult)
 async def delete_client(phone: str, _: dict = Depends(require_admin)):
     ids = [d["id"] async for d in db.loads.find({"phone": phone.strip()}, {"_id": 0, "id": 1})]
+    await _ensure_client_has_no_invoices(ids)
     cres = await db.clients.delete_one({"phone": phone.strip()})
     if not ids and not cres.deleted_count:
         raise HTTPException(404, "client_not_found")
