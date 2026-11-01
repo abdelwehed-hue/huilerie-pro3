@@ -171,8 +171,8 @@ export default function TvImageSettings() {
         </div>
         </div>
         <Label>Image actuelle / aperçu</Label>
-        <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-[#142A1B] p-2" data-testid="tv-image-preview">
-          {current ? <img src={current} alt="Aperçu du fond de la page TV" className="max-h-80 w-full object-contain" /> : <div className="py-10 text-sm text-white/75">Aucune image personnalisée. Le fond vert actuel sera conservé.</div>}
+        <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-stone-100 p-2" data-testid="tv-image-preview">
+          {current ? <img src={current} alt="Aperçu du fond de la page TV" className="max-h-80 w-full object-contain" /> : <div className="py-10 text-sm text-stone-500">Aucune image personnalisée. Le fond par défaut sera conservé.</div>}
         </div>
         <div className="flex flex-wrap gap-3">
           <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer rounded-xl bg-white")}>
