@@ -10,7 +10,11 @@ import os
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from bson import ObjectId
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
+from gridfs.errors import NoFile
+from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 from lib.db import db
 from lib.auth import current_user
@@ -18,6 +22,8 @@ from lib.dates import today_iso
 from models.schemas import TvAdminItem, TvArrival, TvBoard, TvDisplaySettings, TvItem, TvItemUpdate, TvMediaSettings
 
 router = APIRouter()
+MAX_MUSIC_BYTES = 20 * 1024 * 1024
+
 
 def _today_start_utc() -> datetime:
     zone = ZoneInfo(os.environ.get("APP_TZ", "UTC"))
@@ -88,6 +94,89 @@ async def put_tv_media_settings(body: TvMediaSettings, _: dict = Depends(current
     values = body.model_dump()
     await db.settings.update_one({"key": "app"}, {"$set": values}, upsert=True)
     return body
+
+
+@router.post("/tv/music/upload")
+async def upload_tv_music(file: UploadFile = File(...), _: dict = Depends(current_user)):
+    """Store the background MP3 in MongoDB GridFS and publish its URL in app settings."""
+    filename = os.path.basename(file.filename or "background.mp3")
+    if not filename.lower().endswith(".mp3"):
+        raise HTTPException(status_code=400, detail="Choisissez un fichier MP3.")
+    if file.content_type and file.content_type not in {"audio/mpeg", "audio/mp3", "application/octet-stream"}:
+        raise HTTPException(status_code=400, detail="Format invalide : fichier MP3 requis.")
+
+    bucket = AsyncIOMotorGridFSBucket(db, bucket_name="tv_music_files")
+    upload = None
+    new_file_id = None
+    size = 0
+    try:
+        upload = bucket.open_upload_stream(filename, metadata={"contentType": "audio/mpeg"})
+        while True:
+            chunk = await file.read(256 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_MUSIC_BYTES:
+                await upload.abort()
+                raise HTTPException(status_code=413, detail="Le fichier MP3 ne doit pas dépasser 20 Mo.")
+            await upload.write(chunk)
+        if size == 0:
+            await upload.abort()
+            raise HTTPException(status_code=400, detail="Le fichier MP3 est vide.")
+        await upload.close()
+        new_file_id = upload._id
+
+        previous = await db.settings.find_one({"key": "app"}, {"_id": 0, "tv_music_file_id": 1})
+        music_url = f"/api/tv/music/audio/{new_file_id}"
+        await db.settings.update_one(
+            {"key": "app"},
+            {"$set": {
+                "tv_music_url": music_url,
+                "tv_music_filename": filename,
+                "tv_music_file_id": str(new_file_id),
+            }},
+            upsert=True,
+        )
+
+        old_id = (previous or {}).get("tv_music_file_id")
+        if old_id and old_id != str(new_file_id):
+            try:
+                await bucket.delete(ObjectId(old_id))
+            except Exception:
+                # The new file and settings are already committed; a stale old file is harmless.
+                pass
+
+        return {"success": True, "filename": filename, "url": music_url, "size": size}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if upload is not None and new_file_id is None:
+            try:
+                await upload.abort()
+            except Exception:
+                pass
+        if new_file_id is not None:
+            try:
+                await bucket.delete(new_file_id)
+            except Exception:
+                pass
+        raise HTTPException(status_code=500, detail="Échec du stockage du fichier MP3.") from exc
+    finally:
+        await file.close()
+
+
+@router.get("/tv/music/audio/{file_id}")
+async def get_tv_music(file_id: str):
+    """Public audio endpoint used by the TV screen; the file itself is not an admin setting."""
+    if not ObjectId.is_valid(file_id):
+        raise HTTPException(status_code=404, detail="Fichier audio introuvable.")
+    bucket = AsyncIOMotorGridFSBucket(db, bucket_name="tv_music_files")
+    try:
+        audio_file = await bucket.open_download_stream(ObjectId(file_id))
+        content = await audio_file.read()
+    except NoFile as exc:
+        raise HTTPException(status_code=404, detail="Fichier audio introuvable.") from exc
+    return Response(content=content, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.get("/tv/control")
