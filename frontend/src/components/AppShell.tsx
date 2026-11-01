@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, NavLink, Outlet } from "react-router-dom";
 import {
   FlaskConical,
@@ -19,6 +19,11 @@ import {
   Clock3,
   Volume2,
   VolumeX,
+  Menu,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -29,7 +34,7 @@ import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "@/lib/theme";
+import { ThemeProvider, useTheme } from "@/lib/theme";
 
 // Menu-only labels (page titles keep their own wording).
 const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
@@ -97,6 +102,56 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
         ))}
       </div>
     </nav>
+  );
+}
+
+function HeaderAppearanceMenu() {
+  const { mode, setMode } = useTheme();
+  const [open, setOpen] = useState(false);
+  const options = [
+    { value: "light" as const, label: "Mode clair", Icon: Sun },
+    { value: "dark" as const, label: "Mode sombre", Icon: Moon },
+    { value: "system" as const, label: "Mode automatique", Icon: Monitor },
+  ];
+  return (
+    <div className="relative shrink-0" data-testid="header-appearance-menu">
+      <button
+        type="button"
+        aria-label="Choisir le thème"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-testid="header-appearance-trigger"
+        onClick={() => setOpen((value) => !value)}
+        className="grid size-10 place-items-center rounded-xl border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800"
+      >
+        <Menu className="size-5" />
+      </button>
+      {open && (
+        <>
+          <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-30 cursor-default" onClick={() => setOpen(false)} />
+          <div role="menu" aria-label="Apparence" className="absolute left-0 top-full z-40 mt-2 w-52 rounded-xl border border-stone-200 bg-white p-1.5 shadow-xl shadow-stone-900/10">
+            {options.map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={mode === value}
+                data-testid={`header-theme-${value}`}
+                onClick={() => { setMode(value); setOpen(false); }}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm transition-colors",
+                  mode === value ? "bg-indigo-50 font-semibold text-indigo-900" : "text-stone-700 hover:bg-stone-50"
+                )}
+              >
+                <Icon className="size-4 shrink-0" />
+                <span className="flex-1">{label}</span>
+                {mode === value && <Check className="size-4 text-indigo-700" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -217,7 +272,10 @@ export default function AppShell() {
       <div>
         <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
-            <Brand />
+            <div dir="ltr" className="flex shrink-0 items-center gap-2">
+              {isAdmin && <HeaderAppearanceMenu />}
+              <Brand />
+            </div>
             <div
               data-testid="header-non-terminated"
               title="كل الحمولات التي لم تنتهِ من العصر"
