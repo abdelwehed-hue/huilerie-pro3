@@ -13,7 +13,7 @@ from lib.dates import today_iso
 from lib.db import db, run_transaction
 from lib.season import active_season, next_load_code, season_filter, season_of
 from lib.sms import send_load_sms
-from routers.invoices import create_invoice as create_load_invoice
+from routers.invoices import create_invoice as create_load_invoice, _create_invoice_in_session
 from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
 
 router = APIRouter(tags=["loads"])
@@ -136,54 +136,75 @@ async def _ensure_load_invoice(id: str, user: dict) -> None:
             raise
 
 
+async def _complete_load_and_invoice(id: str, oil_kg: float, user: dict):
+    """Persist the oil weight and its invoice atomically; return (load, notify_customer)."""
+
+    async def operation(session):
+        before = await db.loads.find_one(
+            {"id": id},
+            {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1},
+            session=session,
+        )
+        if not before:
+            raise HTTPException(404, "not_found")
+        if before.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        if before.get("delivered"):
+            raise HTTPException(409, "load_already_delivered")
+
+        if before.get("oil_kg") is not None:
+            if float(before["oil_kg"]) != float(oil_kg):
+                raise HTTPException(409, "oil_already_entered")
+            # A same-value retry repairs an invoice missing after an older
+            # non-transactional completion, but never sends a duplicate SMS.
+            existing = await db.invoices.find_one({"load_id": id}, session=session)
+            if not existing:
+                await _create_invoice_in_session(
+                    {"load_id": id, "paid_amount": 0}, user, session
+                )
+            doc = await db.loads.find_one({"id": id}, {"_id": 0}, session=session)
+            return doc, False
+
+        upd = {
+            "oil_kg": oil_kg,
+            "oil_by": user["username"],
+            "oil_ready_at": datetime.now(timezone.utc),
+        }
+        doc = await db.loads.find_one_and_update(
+            {
+                "id": id,
+                "oil_kg": None,
+                "cancelled": {"$ne": True},
+                "delivered": {"$ne": True},
+            },
+            {"$set": upd},
+            projection={"_id": 0},
+            return_document=True,
+            session=session,
+        )
+        if not doc:
+            raise HTTPException(409, "oil_already_entered")
+
+        # Invoice insertion and source-load guard run in this same transaction.
+        await _create_invoice_in_session(
+            {"load_id": id, "paid_amount": 0}, user, session
+        )
+        return doc, True
+
+    return await run_transaction(operation)
+
+
 @router.patch("/loads/{id}/oil", response_model=Load)
 async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
-    before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1})
-    if not before:
-        raise HTTPException(404, "not_found")
-    if before.get("cancelled"):
-        raise HTTPException(409, "load_cancelled")
-    if before.get("delivered"):
-        raise HTTPException(409, "load_already_delivered")
+    doc, should_notify = await _complete_load_and_invoice(id, body.oil_kg, user)
 
-    # A retry with the same saved oil weight repairs a missing automatic invoice
-    # after a transient invoice/database failure, without changing the oil value
-    # or sending the customer a duplicate SMS.
-    if before.get("oil_kg") is not None:
-        if float(before["oil_kg"]) != float(body.oil_kg):
-            raise HTTPException(409, "oil_already_entered")
-        await _ensure_load_invoice(id, user)
-        doc = await db.loads.find_one({"id": id}, {"_id": 0})
-        labs = await _labs_for([id])
-        return to_load(doc, user, labs.get(id))
-
-    upd: dict = {"oil_kg": body.oil_kg, "oil_by": user["username"],
-                 "oil_ready_at": datetime.now(timezone.utc)}
-    # Only the first oil entry is accepted; completed loads are immutable.
-    doc = await db.loads.find_one_and_update(
-        {"id": id, "oil_kg": None, "cancelled": {"$ne": True}, "delivered": {"$ne": True}},
-        {"$set": upd},
-        projection={"_id": 0}, return_document=True,
-    )
-    if not doc:
-        current = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1})
-        if not current:
-            raise HTTPException(404, "not_found")
-        if current.get("cancelled"):
-            raise HTTPException(409, "load_cancelled")
-        if current.get("delivered"):
-            raise HTTPException(409, "load_already_delivered")
-        raise HTTPException(409, "oil_already_entered")
-
-    # Invoice creation is the accounting-critical operation: do it before SMS.
-    # If it fails, a same-value retry above can safely complete the invoice.
-    await _ensure_load_invoice(id, user)
-
-    # SMS is a notification, not a prerequisite for completing the load/invoice.
-    try:
-        await send_load_sms(doc, "ready")
-    except Exception:
-        log.exception("Ready SMS failed for completed load %s", id)
+    # Notification is deliberately outside the transaction: a provider outage
+    # must not roll back the completed load or its accounting invoice.
+    if should_notify:
+        try:
+            await send_load_sms(doc, "ready")
+        except Exception:
+            log.exception("Ready SMS failed for completed load %s", id)
 
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
