@@ -25,6 +25,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
     onSuccess: () => {
       toast.success(t("saved"));
       qc.invalidateQueries({ queryKey: ["loads"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["load-by-code"] });
       qc.invalidateQueries({ queryKey: ["sms"] });
