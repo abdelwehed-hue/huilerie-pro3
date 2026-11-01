@@ -80,7 +80,7 @@ function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   return (
     <nav
       data-testid="bottom-nav"
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-md"
+      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none"
     >
       <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
@@ -270,7 +270,7 @@ export default function AppShell() {
     <ThemeProvider userId={user.id}>
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
-        <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
+        <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-none">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
