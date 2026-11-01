@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { API_ORIGIN, apiGet } from "@/lib/api";
 import type { TvBoard, TvDisplaySettings } from "@/lib/types";
 
 type YouTubePlayer = { mute(): void; unMute(): void; playVideo(): void; destroy(): void };
@@ -100,6 +100,8 @@ export default function TvScreen() {
   const audioContext = useRef<AudioContext | null>(null);
   const youtubeHost = useRef<HTMLDivElement | null>(null);
   const directVideo = useRef<HTMLVideoElement | null>(null);
+  const musicAudio = useRef<HTMLAudioElement | null>(null);
+  const [musicNeedsGesture, setMusicNeedsGesture] = useState(false);
   const youtubePlayer = useRef<YouTubePlayer | null>(null);
   const soundGestureUnlocked = useRef(false);
   const [youtubeReady, setYoutubeReady] = useState(false);
@@ -148,6 +150,24 @@ export default function TvScreen() {
     oscillator.start();
     oscillator.stop(context.currentTime + 0.23);
   };
+
+  const musicEnabled = Boolean(mill?.tv_music_enabled && mill?.tv_music_url);
+  useEffect(() => {
+    const audio = musicAudio.current;
+    if (!audio) return;
+    if (!musicEnabled) { audio.pause(); setMusicNeedsGesture(false); return; }
+    audio.loop = true;
+    audio.volume = Math.max(0, Math.min(100, mill?.tv_music_volume ?? 40)) / 100;
+    void audio.play().then(() => setMusicNeedsGesture(false)).catch(() => setMusicNeedsGesture(true));
+  }, [musicEnabled, mill?.tv_music_url, mill?.tv_music_volume]);
+  const enableBackgroundMusic = () => {
+    const audio = musicAudio.current;
+    if (!audio || !musicEnabled) return;
+    audio.volume = Math.max(0, Math.min(100, mill?.tv_music_volume ?? 40)) / 100;
+    audio.loop = true;
+    void audio.play().then(() => setMusicNeedsGesture(false)).catch(() => setMusicNeedsGesture(true));
+  };
+
   const ids = (board?.items ?? []).map((i) => i.id).join(",");
   useEffect(() => {
     const cur = new Set(ids ? ids.split(",") : []);
@@ -280,6 +300,8 @@ export default function TvScreen() {
   }, [arrivalNotice, mill?.tv_receipt_duration]);
   return (
     <div className="tv-screen relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(132,153,42,0.18),transparent_44%),radial-gradient(ellipse_at_bottom_right,rgba(61,91,40,0.24),transparent_46%),linear-gradient(135deg,#0B1710_0%,#142A1B_52%,#20351F_100%)] bg-cover bg-center text-white" style={mill?.tv_image ? { backgroundImage: `linear-gradient(rgba(8,18,12,0.52), rgba(8,18,12,0.62)), url("${mill.tv_image}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} data-testid="tv-screen">
+      {mill?.tv_music_url ? <audio ref={musicAudio} src={`${API_ORIGIN}${mill.tv_music_url}`} preload="auto" loop /> : null}
+      {musicEnabled && musicNeedsGesture ? <button type="button" onClick={enableBackgroundMusic} className="fixed right-5 top-5 z-30 rounded-lg border border-emerald-300/50 bg-emerald-900/90 px-4 py-2 text-sm font-semibold text-white shadow-lg" data-testid="tv-music-unlock">🎵 Activer la musique</button> : null}
       {mill?.tv_video_enabled !== false && (videoId || directVideoUrl) ? (
         <div
           title="Vidéo de la page TV"

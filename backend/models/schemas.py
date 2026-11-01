@@ -238,6 +238,7 @@ class TvMediaSettings(BaseModel):
     tv_music_enabled: bool = False
     tv_music_volume: int = Field(default=40, ge=0, le=100)
     tv_music_url: str = Field(default="", max_length=2000)
+    tv_music_filename: str = Field(default="", max_length=255)
 
 
 class TvDisplaySettings(TvMediaSettings):

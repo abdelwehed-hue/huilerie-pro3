@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Music2, Trash2, Upload, Youtube } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { apiGet, apiPut } from "@/lib/api";
+import { API_ORIGIN, apiGet, apiPut } from "@/lib/api";
 import type { TvMediaSettings } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ export default function TvImageSettings() {
   const [receiptDuration, setReceiptDuration] = useState(8);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [musicVolume, setMusicVolume] = useState(40);
+  const [musicUploading, setMusicUploading] = useState(false);
   useEffect(() => {
     if (settings.data) {
       setYoutubeUrl(settings.data.tv_youtube_url ?? "");
@@ -34,6 +35,22 @@ export default function TvImageSettings() {
       setMusicVolume(settings.data.tv_music_volume ?? 40);
     }
   }, [settings.data]);
+  const uploadMusic = async (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".mp3") || (file.type && !["audio/mpeg", "audio/mp3", "application/octet-stream"].includes(file.type))) { toast.error("Choisissez un fichier MP3."); return; }
+    if (file.size > 20 * 1024 * 1024) { toast.error("Le fichier MP3 ne doit pas dépasser 20 Mo."); return; }
+    setMusicUploading(true);
+    try {
+      const body = new FormData(); body.append("file", file);
+      const response = await fetch(`${API_ORIGIN}/api/tv/music/upload`, { method: "POST", credentials: "include", body });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || "Échec du téléversement du MP3.");
+      toast.success("Fichier MP3 téléversé avec succès.");
+      qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["tv-mill-settings"] });
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Échec du téléversement du MP3."); }
+    finally { setMusicUploading(false); }
+  };
+
   const saveVideo = useMutation({
     mutationFn: () => apiPut<TvMediaSettings>("/tv/media-settings", {
       ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_source: videoSource,
@@ -140,7 +157,12 @@ export default function TvImageSettings() {
           </div>
           <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm text-stone-600">
             <div className="font-medium text-stone-800">Fichier musical MP3</div>
-            <p className="mt-1">Aucun fichier ajouté. L’emplacement est prêt ; le téléversement sera activé lorsque vous fournirez le fichier MP3.</p>
+            <p className="mt-1">{settings.data?.tv_music_filename ? `Fichier actuel : ${settings.data.tv_music_filename}` : "Aucun fichier MP3 ajouté."}</p>
+            <label className={cn(buttonVariants({ variant: "outline" }), "mt-3 cursor-pointer rounded-xl bg-white")}>
+              <Upload className="size-4" /> {musicUploading ? "Téléversement..." : "Télécharger un fichier MP3"}
+              <input type="file" accept=".mp3,audio/mpeg" className="hidden" disabled={musicUploading} data-testid="tv-music-input" onChange={(e) => { void uploadMusic(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+            <p className="mt-2 text-xs text-stone-500">MP3 uniquement · 20 Mo maximum · stockage permanent dans MongoDB.</p>
           </div>
           <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-emerald-700 hover:bg-emerald-800">
             {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres musicaux"}

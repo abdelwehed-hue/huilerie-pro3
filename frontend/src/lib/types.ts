@@ -176,6 +176,7 @@ export interface TvMediaSettings {
   tv_music_enabled: boolean;
   tv_music_volume: number;
   tv_music_url: string;
+  tv_music_filename: string;
 }
 
 export interface TvDisplaySettings extends TvMediaSettings {
