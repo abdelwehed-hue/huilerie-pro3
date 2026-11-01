@@ -138,9 +138,9 @@ export default function Loads() {
                         {t("mark_delivered")}
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => setEditing(l)} disabled={l.status === "done"} title={l.status === "done" ? t("done") : undefined} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50">
+                    <Button size="sm" variant="outline" onClick={() => setEditing(l)} disabled={l.status === "done" && invoiceByLoad.has(l.id)} title={l.status === "done" ? (invoiceByLoad.has(l.id) ? t("err_load_already_invoiced") : t("invoice_retry_hint")) : undefined} data-testid={`load-enter-oil-${l.code}`} className="rounded-lg border-amber-300 text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50">
                       <Droplet className="size-4" />
-                      {l.oil_kg != null ? t("edit_oil") : t("enter_oil")}
+                      {l.status === "done" && !invoiceByLoad.has(l.id) ? t("invoice_retry") : l.oil_kg != null ? t("edit_oil") : t("enter_oil")}
                     </Button>
                     {isAdmin && (
                       <Button size="sm" variant="ghost" onClick={() => setCancelling(l)} data-testid={`load-cancel-${l.code}`} className="rounded-lg text-red-600 hover:bg-red-50">

@@ -130,7 +130,7 @@ async def _ensure_load_invoice(id: str, user: dict) -> None:
     try:
         await create_load_invoice({"load_id": id, "paid_amount": 0}, user)
     except HTTPException as exc:
-        if exc.status_code != 409:
+        if exc.status_code != 409 or exc.detail != "load_already_invoiced":
             raise
 
 

@@ -25,6 +25,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
     onSuccess: () => {
       toast.success(t("saved"));
       qc.invalidateQueries({ queryKey: ["loads"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["load-by-code"] });
       qc.invalidateQueries({ queryKey: ["sms"] });
@@ -32,10 +33,19 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
       qc.invalidateQueries({ queryKey: ["clients"] });
       onClose();
     },
-    onError: (e) => toast.error(errMsg(e)),
+    onError: (e) => {
+      toast.error(errMsg(e));
+      // Oil may already be saved even when invoice creation failed; refresh caches
+      // so a reload exposes the same-value invoice retry action.
+      for (const key of ["loads", "stats", "load-by-code", "invoices", "client", "clients"]) {
+        qc.invalidateQueries({ queryKey: [key] });
+      }
+      onClose();
+    },
   });
 
-  const oilLocked = !!load && (load.status === "done" || load.status === "delivered" || load.status === "cancelled");
+  const invoiceRetry = !!load && load.status === "done" && load.oil_kg != null;
+  const oilLocked = !!load && (load.status === "delivered" || load.status === "cancelled");
   const val = parseFloat(oil.replace(",", "."));
   const preview = load && !isNaN(val) && load.olive_kg ? (val / load.olive_kg) * 100 : null;
 
@@ -43,7 +53,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
     <Dialog open={!!load && !oilLocked} onOpenChange={(o) => !o && onClose()}>
       <DialogContent data-testid="oil-entry-dialog">
         <DialogHeader>
-          <DialogTitle>{load?.oil_kg != null ? t("edit_oil") : t("enter_oil")}</DialogTitle>
+          <DialogTitle>{invoiceRetry ? t("invoice_retry_title") : load?.oil_kg != null ? t("edit_oil") : t("enter_oil")}</DialogTitle>
           <DialogDescription>
             {load && (
               <span className="flex flex-wrap items-center gap-2">
@@ -55,21 +65,23 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!isNaN(val) && val >= 0) m.mutate(val);
+            if (invoiceRetry && load?.oil_kg != null) m.mutate(Number(load.oil_kg));
+            else if (!isNaN(val) && val >= 0) m.mutate(val);
           }}
           className="space-y-4"
         >
           <div className="space-y-2">
             <Label htmlFor="oil">{t("oil_kg")}</Label>
-            <Input id="oil" data-testid="oil-entry-input" inputMode="decimal" value={oil} onChange={(e) => setOil(e.target.value)} autoFocus className="h-11 text-lg" />
+            <Input id="oil" data-testid="oil-entry-input" inputMode="decimal" value={oil} onChange={(e) => setOil(e.target.value)} readOnly={invoiceRetry} autoFocus className="h-11 text-lg" />
+            {invoiceRetry && <p className="text-sm text-sky-800">{t("invoice_retry_hint")}</p>}
           </div>
           <div className="rounded-xl bg-sky-50 p-3 text-sm text-sky-900" data-testid="oil-entry-yield-preview">
             {t("yield")}: <b dir="ltr">{preview != null ? `${fmtNum(preview, 2)} %` : "—"}</b>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} data-testid="oil-entry-cancel-btn">{t("cancel")}</Button>
-            <Button type="submit" disabled={m.isPending || isNaN(val)} data-testid="oil-entry-submit-btn" className="bg-amber-600 hover:bg-amber-700">
-              {t("save")}
+            <Button type="submit" disabled={m.isPending || (invoiceRetry ? load?.oil_kg == null : isNaN(val))} data-testid="oil-entry-submit-btn" className="bg-amber-600 hover:bg-amber-700">
+              {invoiceRetry ? t("invoice_retry") : t("save")}
             </Button>
           </DialogFooter>
         </form>
