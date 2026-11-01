@@ -37,7 +37,7 @@ jobs:
       - name: Install isolated test dependencies
         run: python -m pip install fastapi pymongo motor python-dotenv pyjwt passlib httpx pytest pytest-asyncio pytest-xdist
       - name: Test invoice calculations without database access
-        run: python -m pytest -o addopts= tests/test_invoices_unit.py tests/test_client_accounts_unit.py tests/test_tunisie_sms_phone_unit.py tests/test_client_delete_unit.py tests/test_load_delete_unit.py tests/test_load_completion_reliability.py
+        run: python -m pytest -o addopts= tests/test_invoices_unit.py tests/test_client_accounts_unit.py tests/test_tunisie_sms_phone_unit.py tests/test_client_delete_unit.py tests/test_load_delete_unit.py tests/test_load_completion_reliability.py tests/test_atomic_invoice_deletes_unit.py
 
   frontend-build:
     runs-on: ubuntu-latest

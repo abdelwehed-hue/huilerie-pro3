@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import DuplicateKeyError
 
 from lib.auth import current_user, require_admin
-from lib.db import db
+from lib.db import db, run_transaction
 
 router = APIRouter(tags=["invoices"])
 
@@ -85,17 +85,16 @@ async def eligible_loads(_: dict = Depends(require_admin)):
     return docs
 
 
-@router.post("/invoices")
-async def create_invoice(body: dict, user: dict = Depends(require_admin)):
+async def _create_invoice_in_session(body: dict, user: dict, session):
     load_id = str(body.get("load_id") or "").strip()
     if not load_id:
         raise HTTPException(422, "load_id_required")
-    load = await db.loads.find_one({"id": load_id}, {"_id": 0})
+    load = await db.loads.find_one({"id": load_id}, {"_id": 0}, session=session)
     if not load or load.get("oil_kg") is None or load.get("cancelled"):
         raise HTTPException(400, "load_not_completed_or_cancelled")
-    if await db.invoices.find_one({"load_id": load_id}):
+    if await db.invoices.find_one({"load_id": load_id}, session=session):
         raise HTTPException(409, "load_already_invoiced")
-    settings = await db.settings.find_one({"key": "app"}, {"_id": 0}) or {}
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0}, session=session) or {}
     price = _number(settings.get("price_per_kg", 0), "price_invalid")
     if price < 0:
         raise HTTPException(422, "price_invalid")
@@ -126,11 +125,29 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
                      "before": None, "after": {"price_per_kg": price, "paid_amount": paid,
                                                   "total": total, "balance": _money(total - paid)}}],
     }
+
+    # Touch the source load in the same transaction as the invoice insert.
+    # A concurrent delete of this load must conflict with this write; merely
+    # checking the invoice collection would leave a check-then-delete race.
+    guarded = await db.loads.update_one(
+        {"id": load_id, "oil_kg": load["oil_kg"], "cancelled": {"$ne": True}},
+        {"$inc": {"invoice_guard_version": 1}},
+        session=session,
+    )
+    if not guarded.matched_count:
+        raise HTTPException(409, "load_changed_retry")
+    await db.invoices.insert_one(doc, session=session)
+    return _public(doc)
+
+
+@router.post("/invoices")
+async def create_invoice(body: dict, user: dict = Depends(require_admin)):
     try:
-        await db.invoices.insert_one(doc)
+        return await run_transaction(
+            lambda session: _create_invoice_in_session(body, user, session)
+        )
     except DuplicateKeyError:
         raise HTTPException(409, "load_already_invoiced")
-    return _public(doc)
 
 
 @router.patch("/invoices/{invoice_id}")

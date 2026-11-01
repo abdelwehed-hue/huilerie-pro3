@@ -14,6 +14,12 @@ mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
 
+
+async def run_transaction(operation):
+    """Run a database operation in a retryable MongoDB transaction."""
+    async with await client.start_session() as session:
+        return await session.with_transaction(operation)
+
 logger = logging.getLogger(__name__)
 
 # One entry per collection: every field a route filters, sorts, or dedupes on. Applied by ensure_indexes() at startup.

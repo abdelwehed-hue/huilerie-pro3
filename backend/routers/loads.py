@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
-from lib.db import db
+from lib.db import db, run_transaction
 from lib.season import active_season, next_load_code, season_filter, season_of
 from lib.sms import send_load_sms
 from routers.invoices import create_invoice as create_load_invoice
@@ -264,24 +264,30 @@ async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_ad
     return to_load(doc, user, labs.get(id))
 
 
-async def _ensure_load_has_no_invoice(load_id: str) -> None:
-    """Preserve accounting history: a load linked to an invoice cannot be deleted."""
+async def _ensure_load_has_no_invoice(load_id: str, session=None) -> None:
+    """Preserve accounting history, using the caller's transaction when supplied."""
+    options = {"session": session} if session is not None else {}
     invoice = await db.invoices.find_one(
         {"load_id": load_id},
         {"_id": 0, "number": 1},
+        **options,
     )
     if invoice:
         raise HTTPException(409, "load_has_invoice")
 
 
-@router.delete("/loads/{id}")
-async def delete_load(id: str, _: dict = Depends(require_admin)):
-    await _ensure_load_has_no_invoice(id)
-    res = await db.loads.delete_one({"id": id})
+async def _delete_load_in_transaction(load_id: str, session):
+    await _ensure_load_has_no_invoice(load_id, session=session)
+    res = await db.loads.delete_one({"id": load_id}, session=session)
     if not res.deleted_count:
         raise HTTPException(404, "not_found")
-    await db.lab.delete_many({"load_id": id})
+    await db.lab.delete_many({"load_id": load_id}, session=session)
     return {"ok": True}
+
+
+@router.delete("/loads/{id}")
+async def delete_load(id: str, _: dict = Depends(require_admin)):
+    return await run_transaction(lambda session: _delete_load_in_transaction(id, session))
 
 
 @router.get("/stats", response_model=Stats)

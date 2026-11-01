@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
-from lib.db import db
+from lib.db import db, run_transaction
 from lib.reminders import run_reminders
 from lib.season import season_filter
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
@@ -840,29 +840,43 @@ async def update_client(phone: str, body: ClientUpdate, _: dict = Depends(requir
     return ClientUpdate(client_name=body.client_name.strip(), phone=new_phone)
 
 
-async def _ensure_client_has_no_invoices(load_ids: list[str]) -> None:
-    """Preserve invoice history: never delete a client whose loads have invoices."""
+async def _ensure_client_has_no_invoices(load_ids: list[str], session=None) -> None:
+    """Preserve invoice history, using the caller's transaction when supplied."""
     if not load_ids:
         return
+    options = {"session": session} if session is not None else {}
     invoice = await db.invoices.find_one(
         {"load_id": {"$in": load_ids}},
         {"_id": 0, "number": 1},
+        **options,
     )
     if invoice:
         raise HTTPException(409, "client_has_invoices")
 
 
-@router.delete("/clients/{phone}", response_model=ClientDeleteResult)
-async def delete_client(phone: str, _: dict = Depends(require_admin)):
-    ids = [d["id"] async for d in db.loads.find({"phone": phone.strip()}, {"_id": 0, "id": 1})]
-    await _ensure_client_has_no_invoices(ids)
-    cres = await db.clients.delete_one({"phone": phone.strip()})
+async def _delete_client_in_transaction(phone: str, session):
+    loads = await db.loads.find(
+        {"phone": phone.strip()}, {"_id": 0, "id": 1}, session=session
+    ).to_list(None)
+    ids = [doc["id"] for doc in loads]
+    await _ensure_client_has_no_invoices(ids, session=session)
+
+    cres = await db.clients.delete_one({"phone": phone.strip()}, session=session)
     if not ids and not cres.deleted_count:
         raise HTTPException(404, "client_not_found")
-    await db.lab.delete_many({"load_id": {"$in": ids}})
-    await db.sms_log.delete_many({"load_id": {"$in": ids}})
-    res = await db.loads.delete_many({"id": {"$in": ids}})
+
+    # Keep the client, loads, lab results and SMS history in one commit.
+    await db.lab.delete_many({"load_id": {"$in": ids}}, session=session)
+    await db.sms_log.delete_many({"load_id": {"$in": ids}}, session=session)
+    res = await db.loads.delete_many({"id": {"$in": ids}}, session=session)
     return ClientDeleteResult(deleted=res.deleted_count)
+
+
+@router.delete("/clients/{phone}", response_model=ClientDeleteResult)
+async def delete_client(phone: str, _: dict = Depends(require_admin)):
+    return await run_transaction(
+        lambda session: _delete_client_in_transaction(phone, session)
+    )
 
 
 @router.get("/clients/{phone}", response_model=ClientHistory)
