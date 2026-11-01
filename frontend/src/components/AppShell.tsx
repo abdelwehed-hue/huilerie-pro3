@@ -34,7 +34,7 @@ import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "@/lib/theme";
+import { ThemeProvider, useTheme } from "@/lib/theme";
 
 // Menu-only labels (page titles keep their own wording).
 const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
