@@ -172,9 +172,9 @@ export default function SearchPage() {
           <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <StatusControl load={shown} onNeedOil={() => setEditing(shown)} />
             {shown.status !== "cancelled" && (
-              <Button onClick={() => setEditing(shown)} disabled={shown.status === "done" || shown.status === "delivered"} title={shown.status === "done" || shown.status === "delivered" ? t("done") : undefined} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
+              <Button onClick={() => setEditing(shown)} disabled={shown.status === "delivered" || shown.status === "cancelled"} title={shown.status === "done" ? t("invoice_retry_hint") : shown.status === "delivered" ? t("done") : undefined} data-testid="search-enter-oil-button" className="h-11 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
                 <Droplet className="size-4" />
-                {shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
+                {shown.status === "done" ? t("invoice_retry") : shown.oil_kg != null ? t("edit_oil") : t("enter_oil")}
               </Button>
             )}
             <Button onClick={() => pressingMutation.mutate(shown)} disabled={pressingMutation.isPending || shown.status === "pressing" || shown.oil_kg != null || shown.status === "cancelled"} data-testid="search-pressing-button" className="h-11 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:bg-green-200">
