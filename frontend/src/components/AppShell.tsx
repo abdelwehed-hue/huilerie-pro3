@@ -270,7 +270,7 @@ export default function AppShell() {
     <ThemeProvider userId={user.id}>
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
-        <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-none">
+        <header className="fixed inset-x-0 top-0 z-50 border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
@@ -319,6 +319,7 @@ export default function AppShell() {
             </div>
           </div>
         </header>
+        <div aria-hidden="true" className="h-14" />
         <main className="px-4 pb-32 pt-6 md:px-8 md:pt-8">
           <Outlet />
         </main>
