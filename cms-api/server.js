@@ -12,6 +12,7 @@ const required = ['MONGODB_URI', 'JWT_SECRET', 'CMS_SETUP_KEY'];
 for (const key of required) if (!process.env[key]) throw new Error(`Missing environment variable: ${key}`);
 
 const app = express();
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: (process.env.FRONTEND_ORIGIN || '').split(',').map(v => v.trim()).filter(Boolean), credentials: false }));
