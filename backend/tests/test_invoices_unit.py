@@ -29,8 +29,8 @@ class FakeCollection:
                     doc.setdefault(key, []).append(value)
                 for key, value in update.get("$inc", {}).items():
                     doc[key] = doc.get(key, 0) + value
-                return SimpleNamespace(modified_count=1)
-        return SimpleNamespace(modified_count=0)
+                return SimpleNamespace(modified_count=1, matched_count=1)
+        return SimpleNamespace(modified_count=0, matched_count=0)
 
 
 @pytest.fixture
