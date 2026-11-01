@@ -272,7 +272,10 @@ export default function AppShell() {
       <div>
         <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-[#F9F8F3]/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
-            <div dir="ltr" className="flex shrink-0 items-center gap-2">\n              {isAdmin && <HeaderAppearanceMenu />}\n              <Brand />\n            </div>
+            <div dir="ltr" className="flex shrink-0 items-center gap-2">
+              {isAdmin && <HeaderAppearanceMenu />}
+              <Brand />
+            </div>
             <div
               data-testid="header-non-terminated"
               title="كل الحمولات التي لم تنتهِ من العصر"
