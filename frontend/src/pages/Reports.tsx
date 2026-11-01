@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileSpreadsheet, FileText, ShieldAlert, Wallet, Layers, Sprout, Droplet } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -14,76 +14,6 @@ import { useMe } from "@/lib/useMe";
 import { PageHeader, StatCard, StatusPill } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
-
-type PanelOffset = { x: number; y: number };
-
-function IndependentReportPanel({
-  children,
-  className,
-  initialLeft,
-  initialWidth,
-  testId,
-}: {
-  children: React.ReactNode;
-  className: string;
-  initialLeft: string;
-  initialWidth: string;
-  testId: string;
-}) {
-  const [offset, setOffset] = useState<PanelOffset>({ x: 0, y: 0 });
-  const dragStart = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const move = (event: PointerEvent) => {
-      if (!dragStart.current || !panelRef.current) return;
-      const workspace = panelRef.current.parentElement?.getBoundingClientRect();
-      if (!workspace) return;
-      const dx = event.clientX - dragStart.current.x;
-      const dy = event.clientY - dragStart.current.y;
-      const panel = panelRef.current.getBoundingClientRect();
-      const maxX = Math.max(0, workspace.width - panel.width);
-      const maxY = Math.max(0, workspace.height - panel.height);
-      setOffset({
-        x: Math.min(maxX, Math.max(-parseFloat(initialLeft) * workspace.width / 100, dragStart.current.originX + dx)),
-        y: Math.min(maxY, Math.max(0, dragStart.current.originY + dy)),
-      });
-    };
-    const stop = () => { dragStart.current = null; };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-    };
-  }, [initialLeft]);
-
-  return (
-    <section
-      ref={panelRef}
-      data-testid={testId}
-      className={`absolute top-0 flex min-h-0 flex-col rounded-2xl border border-stone-200 bg-white shadow-sm ${className} max-md:!relative max-md:!left-auto max-md:!top-auto max-md:!h-auto max-md:!w-full max-md:!translate-x-0 max-md:!translate-y-0 max-md:!resize-none`}
-      style={{ left: initialLeft, width: initialWidth, height: "100%", resize: "both", overflow: "auto", transform: `translate(${offset.x}px, ${offset.y}px)`, zIndex: offset.x || offset.y ? 2 : 1 }}
-    >
-      <div
-        className="sticky top-0 z-10 flex shrink-0 cursor-move items-center justify-between border-b border-stone-100 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-500 backdrop-blur"
-        style={{ touchAction: "none" }}
-        onPointerDown={(event) => {
-          if (event.button !== 0 || window.matchMedia("(max-width: 767px)").matches) return;
-          event.preventDefault();
-          dragStart.current = { x: event.clientX, y: event.clientY, originX: offset.x, originY: offset.y };
-        }}
-        title="اسحب هذا الشريط لتحريك النافذة، واسحب الزاوية السفلية اليمنى لتغيير حجمها"
-      >
-        <span>تحريك النافذة</span>
-        <span className="text-[10px] font-normal text-stone-400">اسحب للتنقل · اسحب الزاوية لتغيير الحجم</span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-    </section>
-  );
-}
 
 export default function Reports() {
   const { t } = useI18n();
@@ -237,27 +167,25 @@ export default function Reports() {
         <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
       </div>
 
-      <div className="relative mt-6 min-h-[560px] w-full max-md:flex max-md:flex-col max-md:gap-4">
-        <IndependentReportPanel className="p-4" initialLeft="0%" initialWidth="58%" testId="report-chart-window">
-          <div className="min-w-0 p-1" data-testid="report-revenue-chart">
-            <div className="w-full overflow-x-auto" dir="ltr">
-              <BarChart
-                width={Math.max(chartRows.length * 68, 420)}
-                height={300}
-                data={chartRows}
-                margin={{ top: 12, right: 20, left: 8, bottom: 42 }}
-                barCategoryGap="28%"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
-                <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
-                <YAxis fontSize={11} stroke="#78716C" />
-                <Tooltip formatter={(value: number) => [`${fmtMoney(value)} ${t("dt")}`, t("revenue")]} />
-                <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
-              </BarChart>
-            </div>
+      <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="report-revenue-chart">
+          <div className="w-full overflow-x-auto" dir="ltr">
+            <BarChart
+              width={Math.max(chartRows.length * 68, 600)}
+              height={300}
+              data={chartRows}
+              margin={{ top: 12, right: 20, left: 8, bottom: 42 }}
+              barCategoryGap="28%"
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" vertical={false} />
+              <XAxis dataKey="period" fontSize={11} stroke="#78716C" interval={0} angle={-35} textAnchor="end" height={58} />
+              <YAxis fontSize={11} stroke="#78716C" />
+              <Tooltip formatter={(value: number) => [`${fmtMoney(value)} ${t("dt")}`, t("revenue")]} />
+              <Bar dataKey="revenue" fill="#9333EA" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} />
+            </BarChart>
           </div>
-        </IndependentReportPanel>
-        <IndependentReportPanel className="" initialLeft="60%" initialWidth="40%" testId="report-table-window">
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
           <Table data-testid="report-table">
             <TableHeader className="bg-stone-50">
               <TableRow>
@@ -296,7 +224,7 @@ export default function Reports() {
 
             </TableBody>
           </Table>
-        </IndependentReportPanel>
+        </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-teal-200 bg-white shadow-sm" data-testid="worker-report-section">
