@@ -80,7 +80,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} data-testid="oil-entry-cancel-btn">{t("cancel")}</Button>
-            <Button type="submit" disabled={m.isPending || isNaN(val)} data-testid="oil-entry-submit-btn" className="bg-amber-600 hover:bg-amber-700">
+            <Button type="submit" disabled={m.isPending || (invoiceRetry ? load?.oil_kg == null : isNaN(val))} data-testid="oil-entry-submit-btn" className="bg-amber-600 hover:bg-amber-700">
               {invoiceRetry ? t("invoice_retry") : t("save")}
             </Button>
           </DialogFooter>
