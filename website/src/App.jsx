@@ -12,7 +12,7 @@ const copy = {
     visit:'RENDEZ-NOUS VISITE', contactTitle:'L’huile d’olive est une histoire qui se partage.', contactText:'Une question sur nos huiles, nos services ou une commande ? Notre équipe sera heureuse de vous renseigner.', contactBtn:'Nous contacter',
     cart:'Votre panier', empty:'Votre panier est encore vide.', continue:'Continuer la découverte', subtotal:'Sous-total indicatif', checkout:'Préparer ma demande', remove:'Retirer', footer:'L’excellence de l’olive.', rights:'Tous droits réservés.', cartNote:'Les prix et la disponibilité seront confirmés lors de votre demande.',
     menu:'Menu', language:'Langue', orderTitle:'Votre demande', name:'Nom complet', phone:'Téléphone', city:'Ville / pays', note:'Votre message (facultatif)', send:'Préparer la demande', orderDisclaimer:'Le formulaire est une prévisualisation : aucun paiement ni commande n’est transmis pour le moment. Les coordonnées et le système de commande seront configurés avant l’ouverture officielle.',
-    orderReady:'Votre demande est prête à être configurée.', close:'Fermer'
+    orderReady:'Votre demande est prête à être configurée.', country:'Pays de livraison', address:'Adresse complète', currency:'Devise d’affichage', payment:'Mode de paiement', cod:'Paiement à la livraison', electronic:'Paiement électronique (activation après configuration)', destination:'Choisissez votre pays', cartSummary:'Récapitulatif', close:'Fermer'
   },
   ar: {
     nav:['الرئيسية','معصرتنا','زيوتنا','الجودة','خدماتنا','اتصل بنا'],
@@ -24,7 +24,7 @@ const copy = {
     visit:'نرحب بزيارتكم', contactTitle:'زيت الزيتون حكاية نتقاسمها.', contactText:'هل لديك سؤال حول زيوتنا أو خدماتنا أو طلبية؟ يسعد فريقنا بمساعدتك.', contactBtn:'تواصل معنا',
     cart:'سلة المشتريات', empty:'سلتك فارغة حالياً.', continue:'واصل الاكتشاف', subtotal:'المجموع التقديري', checkout:'إعداد طلب', remove:'حذف', footer:'تميّز الزيتون.', rights:'جميع الحقوق محفوظة.', cartNote:'يتم تأكيد الأسعار والتوفر عند تقديم طلبك.',
     menu:'القائمة', language:'اللغة', orderTitle:'طلبك', name:'الاسم الكامل', phone:'رقم الهاتف', city:'المدينة / البلد', note:'رسالتك (اختياري)', send:'إعداد الطلب', orderDisclaimer:'هذه معاينة للنموذج فقط: لا يتم حالياً إرسال أي طلب أو تنفيذ أي دفع. سيتم إعداد بيانات الاتصال ونظام الطلبات قبل الإطلاق الرسمي.',
-    orderReady:'طلبك جاهز للإعداد والربط.', close:'إغلاق'
+    orderReady:'طلبك جاهز للإعداد والربط.', country:'بلد التوصيل', address:'العنوان الكامل', currency:'العملة', payment:'طريقة الدفع', cod:'الدفع عند الاستلام', electronic:'الدفع الإلكتروني (يُفعّل بعد الإعداد)', destination:'اختر بلدك', cartSummary:'ملخص الطلب', close:'إغلاق'
   },
   en: {
     nav:['Home','Our mill','Our oils','Quality','Services','Contact'],
@@ -36,7 +36,7 @@ const copy = {
     visit:'COME AND VISIT US', contactTitle:'Olive oil is a story worth sharing.', contactText:'Questions about our oils, services or an order? Our team will be happy to help.', contactBtn:'Get in touch',
     cart:'Your basket', empty:'Your basket is currently empty.', continue:'Continue exploring', subtotal:'Indicative subtotal', checkout:'Prepare my request', remove:'Remove', footer:'The excellence of olives.', rights:'All rights reserved.', cartNote:'Prices and availability will be confirmed with your enquiry.',
     menu:'Menu', language:'Language', orderTitle:'Your enquiry', name:'Full name', phone:'Phone', city:'City / country', note:'Your message (optional)', send:'Prepare enquiry', orderDisclaimer:'This is a preview form: no payment or order is submitted yet. Contact details and the order system will be configured before the official launch.',
-    orderReady:'Your enquiry is ready to be connected.', close:'Close'
+    orderReady:'Your enquiry is ready to be connected.', country:'Shipping country', address:'Full address', currency:'Display currency', payment:'Payment method', cod:'Cash on delivery', electronic:'Online payment (available after setup)', destination:'Choose your country', cartSummary:'Order summary', close:'Close'
   }
 };
 
@@ -52,14 +52,14 @@ function App(){
   const [cartOpen,setCartOpen]=useState(false);
   const [orderOpen,setOrderOpen]=useState(false);
   const [mobileOpen,setMobileOpen]=useState(false);
-  const [form,setForm]=useState({name:'',phone:'',city:'',note:''});
+  const [form,setForm]=useState({name:'',phone:'',city:'',country:'',address:'',currency:'EUR',payment:'electronic',note:''});
   const [prepared,setPrepared]=useState(false);
   const t=copy[lang], rtl=lang==='ar';
   const count=Object.values(cart).reduce((a,b)=>a+b,0);
   const items=useMemo(()=>products.filter(p=>cart[p.id]).map(p=>({...p,qty:cart[p.id]})),[cart]);
   const setQty=(id,n)=>setCart(old=>{const next={...old}; if(n<=0) delete next[id]; else next[id]=n; return next;});
   const navTo=(id)=>{setMobileOpen(false);document.getElementById(id)?.scrollIntoView({behavior:'smooth'});};
-  const submit=(e)=>{e.preventDefault();setPrepared(true);};
+  const submit=(e)=>{e.preventDefault();setPrepared(true);};\n  const isTunisia=form.country==='TN';
   return <div className={rtl?'site rtl':'site'} dir={rtl?'rtl':'ltr'}>
     <header className="header">
       <a className="brand" href="#home" onClick={()=>navTo('home')} aria-label="Oro Verde home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name">ORO VERDE<small>OLIVE OIL · EST. WITH CARE</small></span></a>
@@ -89,7 +89,17 @@ function App(){
     </main>
     <footer className="footer"><a className="brand footer-brand" href="#home"><span className="brand-mark"><Leaf size={21}/></span><span className="brand-name">ORO VERDE<small>OLIVE OIL · EST. WITH CARE</small></span></a><p>{t.footer}</p><span>© {new Date().getFullYear()} ORO VERDE. {t.rights}</span></footer>
     {cartOpen&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setCartOpen(false)}><aside className="drawer"><div className="drawer-head"><h2>{t.cart} <small>({count})</small></h2><button onClick={()=>setCartOpen(false)} aria-label="Close"><X/></button></div>{items.length===0?<div className="empty-cart"><ShoppingBag size={36}/><p>{t.empty}</p><button className="text-link" onClick={()=>setCartOpen(false)}>{t.continue}<ArrowUpRight size={16}/></button></div>:<><div className="cart-items">{items.map(p=><div className="cart-item" key={p.id}><img src={p.image} alt=""/><div className="cart-item-info"><h3>{p.name[lang]}</h3><small>{t.price}</small><div className="quantity"><button onClick={()=>setQty(p.id,p.qty-1)}><Minus size={13}/></button><span>{p.qty}</span><button onClick={()=>setQty(p.id,p.qty+1)}><Plus size={13}/></button></div><button className="remove-link" onClick={()=>setQty(p.id,0)}>{t.remove}</button></div></div>)}</div><div className="cart-bottom"><p>{t.cartNote}</p><button className="button button-dark full" onClick={()=>{setCartOpen(false);setOrderOpen(true);setPrepared(false)}}>{t.checkout}<ArrowUpRight size={17}/></button></div></>}</aside></div>}
-    {orderOpen&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setOrderOpen(false)}><div className="order-modal"><div className="drawer-head"><h2>{t.orderTitle}</h2><button onClick={()=>setOrderOpen(false)}><X/></button></div>{prepared?<div className="prepared"><Check size={36}/><h3>{t.orderReady}</h3><p>{t.orderDisclaimer}</p><button className="button button-dark full" onClick={()=>setOrderOpen(false)}>{t.close}</button></div>:<form onSubmit={submit}><label>{t.name}<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>{t.phone}<input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label>{t.city}<input value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/></label><label>{t.note}<textarea value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label><p className="form-disclaimer">{t.orderDisclaimer}</p><button className="button button-dark full" type="submit">{t.send}<ArrowUpRight size={17}/></button></form>}</div></div>}
+    {orderOpen&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setOrderOpen(false)}><div className="order-modal"><div className="drawer-head"><h2>{t.orderTitle}</h2><button onClick={()=>setOrderOpen(false)}><X/></button></div>{prepared?<div className="prepared"><Check size={36}/><h3>{t.orderReady}</h3><p>{t.orderDisclaimer}</p><button className="button button-dark full" onClick={()=>setOrderOpen(false)}>{t.close}</button></div>:<form onSubmit={submit}>
+  <div className="checkout-summary"><strong>{t.cartSummary}</strong>{items.map(p=><div key={p.id}><span>{p.name[lang]} × {p.qty}</span><small>{t.price}</small></div>)}</div>
+  <label>{t.name}<input required autoComplete="name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
+  <label>{t.phone}<input required autoComplete="tel" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
+  <label>{t.country}<select required value={form.country} onChange={e=>setForm({...form,country:e.target.value,payment:e.target.value==='TN'?'cod':'electronic'})}><option value="">{t.destination}</option><option value="TN">Tunisie / تونس</option><option value="CA">Canada</option><option value="FR">France</option><option value="DE">Deutschland</option><option value="GB">United Kingdom</option><option value="US">United States</option><option value="OTHER">Autre pays</option></select></label>
+  <label>{t.address}<input required autoComplete="street-address" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label>
+  <label>{t.city}<input required autoComplete="address-level2" value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/></label>
+  <label>{t.currency}<select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="TND">TND — Dinar tunisien</option><option value="EUR">EUR — Euro</option><option value="CAD">CAD — Dollar canadien</option><option value="USD">USD — US Dollar</option><option value="GBP">GBP — Pound sterling</option></select></label>
+  <label>{t.payment}<select value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}><option value="electronic">{t.electronic}</option>{isTunisia&&<option value="cod">{t.cod}</option>}</select></label>
+  <label>{t.note}<textarea value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label>
+  <p className="form-disclaimer">{t.orderDisclaimer}</p><button className="button button-dark full" type="submit">{t.send}<ArrowUpRight size={17}/></button></form>}</div></div>}
   </div>;
 }
 export default App;
