@@ -130,3 +130,25 @@ async def test_different_oil_value_still_cannot_overwrite_completed_load(load_en
 
     assert exc.value.status_code == 409
     assert load_env.doc["oil_kg"] == 15.0
+
+@pytest.mark.asyncio
+async def test_existing_invoice_conflict_is_treated_as_success(load_env, monkeypatch):
+    async def duplicate_invoice(_body, _user):
+        raise HTTPException(409, "load_already_invoiced")
+
+    monkeypatch.setattr(load_routes, "create_load_invoice", duplicate_invoice)
+    await load_routes._ensure_load_invoice("load-retry-test", {"username": "worker"})
+
+
+@pytest.mark.asyncio
+async def test_unrelated_conflict_is_not_swallowed(load_env, monkeypatch):
+    async def unrelated_conflict(_body, _user):
+        raise HTTPException(409, "invoice_state_conflict")
+
+    monkeypatch.setattr(load_routes, "create_load_invoice", unrelated_conflict)
+    with pytest.raises(HTTPException) as exc:
+        await load_routes._ensure_load_invoice("load-retry-test", {"username": "worker"})
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == "invoice_state_conflict"
+
