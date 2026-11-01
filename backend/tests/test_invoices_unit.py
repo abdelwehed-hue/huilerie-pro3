@@ -11,22 +11,24 @@ class FakeCollection:
     def __init__(self, docs=None):
         self.docs = list(docs or [])
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **kwargs):
         for doc in self.docs:
             if all(doc.get(key) == value for key, value in query.items()):
                 return dict(doc)
         return None
 
-    async def insert_one(self, doc):
+    async def insert_one(self, doc, **kwargs):
         self.docs.append(dict(doc))
         return SimpleNamespace(inserted_id="fake-id")
 
-    async def update_one(self, query, update):
+    async def update_one(self, query, update, **kwargs):
         for doc in self.docs:
             if all(doc.get(key) == value for key, value in query.items()):
                 doc.update(update.get("$set", {}))
                 for key, value in update.get("$push", {}).items():
                     doc.setdefault(key, []).append(value)
+                for key, value in update.get("$inc", {}).items():
+                    doc[key] = doc.get(key, 0) + value
                 return SimpleNamespace(modified_count=1)
         return SimpleNamespace(modified_count=0)
 
@@ -49,6 +51,11 @@ def fake_db(monkeypatch):
         invoices=FakeCollection(),
     )
     monkeypatch.setattr(invoice_routes, "db", fake)
+
+    async def fake_transaction(operation):
+        return await operation(object())
+
+    monkeypatch.setattr(invoice_routes, "run_transaction", fake_transaction)
     return fake
 
 
