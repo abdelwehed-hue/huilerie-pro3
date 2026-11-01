@@ -4,7 +4,6 @@ import {
   FlaskConical,
   Layers,
   LayoutDashboard,
-  LogOut,
   PlusCircle,
   Search,
   Settings,
@@ -32,7 +31,6 @@ import type { MillInfo, Stats } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
-import { endSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 
@@ -313,9 +311,7 @@ export default function AppShell() {
                   <div className="text-sm text-stone-500">{isAdmin ? t("admin") : t("worker")} · <span dir="ltr">@{user.username}</span></div>
                 </div>
               )}
-              <Button variant="ghost" size="icon" onClick={() => endSession()} data-testid="logout-button" title={t("logout")} className="h-9 w-9 rounded-xl text-stone-600 hover:bg-stone-200/60">
-                <LogOut className="size-4 rtl:rotate-180" />
-              </Button>
+
             </div>
           </div>
         </header>

@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n";
 import AppShell from "@/components/AppShell";
-import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Intake from "@/pages/Intake";
 import SearchPage from "@/pages/Search";
@@ -22,7 +21,7 @@ export default function App() {
   return (
     <I18nProvider>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/tv" element={<TvScreen />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />

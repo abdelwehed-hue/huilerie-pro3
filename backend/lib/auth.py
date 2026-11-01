@@ -30,6 +30,14 @@ def make_token(user_id: str) -> str:
 
 
 async def current_user(request: Request) -> dict:
+    # Temporary public mode: every visitor is treated as the active administrator.
+    # Set AUTH_DISABLED=false to restore the normal cookie/JWT authentication flow.
+    if os.environ.get("AUTH_DISABLED", "false").strip().lower() in {"1", "true", "yes", "on"}:
+        user = await db.users.find_one({"role": "admin", "active": True}, {"_id": 0})
+        if not user:
+            raise HTTPException(503, "admin_user_not_configured")
+        return user
+
     token = request.cookies.get(COOKIE)
     if not token:
         raise HTTPException(401, "not_authenticated")
