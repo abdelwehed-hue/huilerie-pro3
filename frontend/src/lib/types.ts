@@ -173,6 +173,9 @@ export interface TvMediaSettings {
   tv_display_mode: "background" | "split" | "fullscreen";
   tv_video_enabled: boolean;
   tv_receipt_duration: number;
+  tv_music_enabled: boolean;
+  tv_music_volume: number;
+  tv_music_url: string;
 }
 
 export interface TvDisplaySettings extends TvMediaSettings {

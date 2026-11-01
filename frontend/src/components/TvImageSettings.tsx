@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Upload, Youtube } from "lucide-react";
+import { Music2, Trash2, Upload, Youtube } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { apiGet, apiPut } from "@/lib/api";
@@ -21,6 +21,8 @@ export default function TvImageSettings() {
   const [displayMode, setDisplayMode] = useState<"background" | "split" | "fullscreen">("background");
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [receiptDuration, setReceiptDuration] = useState(8);
+  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(40);
   useEffect(() => {
     if (settings.data) {
       setYoutubeUrl(settings.data.tv_youtube_url ?? "");
@@ -28,12 +30,15 @@ export default function TvImageSettings() {
       setDisplayMode(settings.data.tv_display_mode ?? "background");
       setVideoEnabled(settings.data.tv_video_enabled ?? true);
       setReceiptDuration(settings.data.tv_receipt_duration ?? 8);
+      setMusicEnabled(settings.data.tv_music_enabled ?? false);
+      setMusicVolume(settings.data.tv_music_volume ?? 40);
     }
   }, [settings.data]);
   const saveVideo = useMutation({
     mutationFn: () => apiPut<TvMediaSettings>("/tv/media-settings", {
       ...settings.data!, tv_youtube_url: youtubeUrl.trim(), tv_video_source: videoSource,
       tv_display_mode: displayMode, tv_video_enabled: videoEnabled, tv_receipt_duration: receiptDuration,
+      tv_music_enabled: musicEnabled, tv_music_volume: musicVolume,
     }),
     onSuccess: () => {
       toast.success(t("saved"));
@@ -92,8 +97,9 @@ export default function TvImageSettings() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-6">
-      <div className="space-y-3">
+    <div className="max-w-6xl space-y-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-6">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-red-200 bg-white p-4 space-y-3">
           <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo sur l’écran TV</div>
           <Label htmlFor="tv-youtube-url">Lien de la vidéo (laisser vide pour le moment)</Label>
@@ -124,6 +130,23 @@ export default function TvImageSettings() {
             {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres vidéo"}
           </Button>
           <p className="text-xs text-stone-500">Le lien reste vide tant que vous ne l’avez pas renseigné. YouTube ou une URL directe MP4/WebM hébergée sur un autre service sont acceptés. Aucun fichier vidéo n’est envoyé ni stocké dans MongoDB.</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-white p-4 space-y-4" data-testid="tv-music-settings">
+          <div className="flex items-center gap-2 font-semibold text-stone-800"><Music2 className="size-5 text-emerald-700" /> Musique de fond sur l’écran TV</div>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /> Activer la musique de fond</label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3"><Label htmlFor="tv-music-volume">Niveau sonore</Label><span className="text-sm font-semibold tabular-nums">{musicVolume}%</span></div>
+            <input id="tv-music-volume" type="range" min="0" max="100" step="1" value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))} disabled={!musicEnabled} className="w-full accent-emerald-700" />
+          </div>
+          <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm text-stone-600">
+            <div className="font-medium text-stone-800">Fichier musical MP3</div>
+            <p className="mt-1">Aucun fichier ajouté. L’emplacement est prêt ; le téléversement sera activé lorsque vous fournirez le fichier MP3.</p>
+          </div>
+          <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-emerald-700 hover:bg-emerald-800">
+            {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres musicaux"}
+          </Button>
+          <p className="text-xs text-stone-500">La musique sera lue en continu dès qu’un fichier sera ajouté. Le navigateur du téléviseur peut demander une première activation manuelle du son.</p>
+        </div>
         </div>
         <Label>Image actuelle / aperçu</Label>
         <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-[#142A1B] p-2" data-testid="tv-image-preview">

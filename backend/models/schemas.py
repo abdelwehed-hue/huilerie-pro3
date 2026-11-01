@@ -235,6 +235,9 @@ class TvMediaSettings(BaseModel):
     tv_display_mode: Literal["background", "split", "fullscreen"] = "background"
     tv_video_enabled: bool = True
     tv_receipt_duration: int = Field(default=8, ge=3, le=30)
+    tv_music_enabled: bool = False
+    tv_music_volume: int = Field(default=40, ge=0, le=100)
+    tv_music_url: str = Field(default="", max_length=2000)
 
 
 class TvDisplaySettings(TvMediaSettings):
