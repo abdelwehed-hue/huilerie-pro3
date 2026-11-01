@@ -15,6 +15,7 @@ from lib.db import db
 from lib.reminders import run_reminders
 from lib.season import season_filter
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
+from lib.phone import is_valid_tunisie_sms_phone, normalize_tunisie_sms_phone
 from models.schemas import (
     ReminderRunResult, SmsTestIn, SmsTestResult, TwilioConfigIn, TwilioConfigOut, ClientUpdate, ClientDeleteResult, ClientCreate,
     Certificate, ClientHistory, ClientSummary, LabAnalysis, MillInfo, ReportRow,
@@ -143,8 +144,8 @@ async def put_tunisie_sms(body: dict, _: dict = Depends(require_admin)):
 @router.post("/sms/tunisie/test")
 async def tunisie_sms_test(body: dict, _: dict = Depends(require_admin)):
     """Send a one-off test using the configured TunisieSMS endpoint and credentials."""
-    phone = re.sub(r"\\s+", "", str(body.get("phone", "")))
-    if not phone or not re.fullmatch(r"\\+?[0-9]{7,16}", phone):
+    phone = normalize_tunisie_sms_phone(body.get("phone", ""))
+    if not is_valid_tunisie_sms_phone(phone):
         raise HTTPException(400, "invalid_test_phone")
 
     cfg = await db.settings.find_one({"key": "tunisie_sms"}) or {}
