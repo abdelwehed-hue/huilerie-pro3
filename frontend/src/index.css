@@ -183,14 +183,3 @@ html.dark .text-indigo-950 { color: #e0e7ff !important; }
 html.dark .text-indigo-700 { color: #c7d2fe !important; }
 html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 
-
-/* Consistent pale-blue header row for every application table (screen UI only). */
-@media screen {
-  table thead tr {
-    background-color: #dbeafe !important;
-  }
-  table thead th {
-    background-color: transparent !important;
-    color: #1e3a5f !important;
-  }
-}
