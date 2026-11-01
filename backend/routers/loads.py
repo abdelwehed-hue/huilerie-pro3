@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import uuid
@@ -16,6 +17,7 @@ from routers.invoices import create_invoice as create_load_invoice
 from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
 
 router = APIRouter(tags=["loads"])
+log = logging.getLogger(__name__)
 
 
 def _tz() -> ZoneInfo:
@@ -123,6 +125,15 @@ async def get_by_code(code: str, user: dict = Depends(current_user)):
     return to_load(doc, user, labs.get(doc["id"]))
 
 
+async def _ensure_load_invoice(id: str, user: dict) -> None:
+    """Create the automatic invoice, treating an existing invoice as a safe retry."""
+    try:
+        await create_load_invoice({"load_id": id, "paid_amount": 0}, user)
+    except HTTPException as exc:
+        if exc.status_code != 409:
+            raise
+
+
 @router.patch("/loads/{id}/oil", response_model=Load)
 async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
     before = await db.loads.find_one({"id": id}, {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1})
@@ -132,8 +143,18 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         raise HTTPException(409, "load_cancelled")
     if before.get("delivered"):
         raise HTTPException(409, "load_already_delivered")
+
+    # A retry with the same saved oil weight repairs a missing automatic invoice
+    # after a transient invoice/database failure, without changing the oil value
+    # or sending the customer a duplicate SMS.
     if before.get("oil_kg") is not None:
-        raise HTTPException(409, "oil_already_entered")
+        if float(before["oil_kg"]) != float(body.oil_kg):
+            raise HTTPException(409, "oil_already_entered")
+        await _ensure_load_invoice(id, user)
+        doc = await db.loads.find_one({"id": id}, {"_id": 0})
+        labs = await _labs_for([id])
+        return to_load(doc, user, labs.get(id))
+
     upd: dict = {"oil_kg": body.oil_kg, "oil_by": user["username"],
                  "oil_ready_at": datetime.now(timezone.utc)}
     # Only the first oil entry is accepted; completed loads are immutable.
@@ -151,16 +172,17 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
         if current.get("delivered"):
             raise HTTPException(409, "load_already_delivered")
         raise HTTPException(409, "oil_already_entered")
-    if before and before.get("oil_kg") is None:
+
+    # Invoice creation is the accounting-critical operation: do it before SMS.
+    # If it fails, a same-value retry above can safely complete the invoice.
+    await _ensure_load_invoice(id, user)
+
+    # SMS is a notification, not a prerequisite for completing the load/invoice.
+    try:
         await send_load_sms(doc, "ready")
-        # A load becomes "done" as soon as its oil weight is recorded; create its
-        # invoice immediately, using the existing invoice rules and current tariff.
-        try:
-            await create_load_invoice({"load_id": id, "paid_amount": 0}, user)
-        except HTTPException as exc:
-            # Keep completion idempotent if an invoice already exists (e.g. a retry).
-            if exc.status_code != 409:
-                raise
+    except Exception:
+        log.exception("Ready SMS failed for completed load %s", id)
+
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
