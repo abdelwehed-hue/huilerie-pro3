@@ -39,6 +39,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
       for (const key of ["loads", "stats", "load-by-code", "invoices", "client", "clients"]) {
         qc.invalidateQueries({ queryKey: [key] });
       }
+      onClose();
     },
   });
 
