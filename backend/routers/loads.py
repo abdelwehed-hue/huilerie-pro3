@@ -240,8 +240,19 @@ async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_ad
     return to_load(doc, user, labs.get(id))
 
 
+async def _ensure_load_has_no_invoice(load_id: str) -> None:
+    """Preserve accounting history: a load linked to an invoice cannot be deleted."""
+    invoice = await db.invoices.find_one(
+        {"load_id": load_id},
+        {"_id": 0, "number": 1},
+    )
+    if invoice:
+        raise HTTPException(409, "load_has_invoice")
+
+
 @router.delete("/loads/{id}")
 async def delete_load(id: str, _: dict = Depends(require_admin)):
+    await _ensure_load_has_no_invoice(id)
     res = await db.loads.delete_one({"id": id})
     if not res.deleted_count:
         raise HTTPException(404, "not_found")
