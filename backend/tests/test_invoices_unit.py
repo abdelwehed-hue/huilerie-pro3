@@ -13,7 +13,11 @@ class FakeCollection:
 
     async def find_one(self, query, projection=None, **kwargs):
         for doc in self.docs:
-            if all(doc.get(key) == value for key, value in query.items()):
+            if all(
+                doc.get(key) != value["$ne"] if isinstance(value, dict) and "$ne" in value
+                else doc.get(key) == value
+                for key, value in query.items()
+            ):
                 return dict(doc)
         return None
 
@@ -23,7 +27,11 @@ class FakeCollection:
 
     async def update_one(self, query, update, **kwargs):
         for doc in self.docs:
-            if all(doc.get(key) == value for key, value in query.items()):
+            if all(
+                doc.get(key) != value["$ne"] if isinstance(value, dict) and "$ne" in value
+                else doc.get(key) == value
+                for key, value in query.items()
+            ):
                 doc.update(update.get("$set", {}))
                 for key, value in update.get("$push", {}).items():
                     doc.setdefault(key, []).append(value)
