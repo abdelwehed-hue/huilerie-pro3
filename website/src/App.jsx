@@ -59,7 +59,8 @@ function App(){
   const items=useMemo(()=>products.filter(p=>cart[p.id]).map(p=>({...p,qty:cart[p.id]})),[cart]);
   const setQty=(id,n)=>setCart(old=>{const next={...old}; if(n<=0) delete next[id]; else next[id]=n; return next;});
   const navTo=(id)=>{setMobileOpen(false);document.getElementById(id)?.scrollIntoView({behavior:'smooth'});};
-  const submit=(e)=>{e.preventDefault();setPrepared(true);};\n  const isTunisia=form.country==='TN';
+  const submit=(e)=>{e.preventDefault();setPrepared(true);};
+  const isTunisia=form.country==='TN';
   return <div className={rtl?'site rtl':'site'} dir={rtl?'rtl':'ltr'}>
     <header className="header">
       <a className="brand" href="#home" onClick={()=>navTo('home')} aria-label="Oro Verde home"><span className="brand-mark"><Leaf size={23}/></span><span className="brand-name">ORO VERDE<small>OLIVE OIL · EST. WITH CARE</small></span></a>
