@@ -1037,3 +1037,116 @@ async def test_draft_sale_cancellation_is_atomic_and_never_reverses_approved_sal
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_sale_return_receipt_is_atomic_idempotent_and_quarantined():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.returns import SaleReturnDraft
+    from commercial.services.sale_returns import receive_wholesale_sale_return
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "sale_return_quarantine_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "RET", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "LOT", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+        ])
+        await db.commercial_tanks.insert_one({
+            "id": "tank-quarantine-1", "code": "T09", "active": True,
+            "role": "QUARANTINE", "version": 2,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "original-oil-lot", "product_kind": "OIL",
+            "owner": {"kind": "MILL"}, "status": "OPEN",
+            "quality_status": "RELEASED",
+        })
+        await db.commercial_sales.insert_one({
+            "id": "sale-return-source", "status": "APPROVED", "version": 2,
+            "invoice_id": "invoice-return-source", "buyer_id": "buyer-return",
+            "oil_lot_id": "original-oil-lot", "quantity_kg": Decimal128("100.000"),
+            "unit_price_dt": Decimal128("5.000"), "total_amount_dt": Decimal128("500.000"),
+            "returned_quantity_kg": Decimal128("0.000"),
+            "idempotency_scope": "test:sale", "idempotency_key": "sale-source-idempotency",
+        })
+        await db.commercial_sales_invoices.insert_one({
+            "id": "invoice-return-source", "sale_id": "sale-return-source",
+            "buyer_id": "buyer-return", "total_amount_dt": Decimal128("500.000"),
+            "paid_amount_dt": Decimal128("0.000"), "outstanding_amount_dt": Decimal128("500.000"),
+            "payment_status": "UNPAID",
+        })
+        draft = SaleReturnDraft(
+            expected_sale_version=2, quantity_kg=Decimal("30.000"),
+            quarantine_tank_id="tank-quarantine-1",
+            reason="Buyer returned sealed containers",
+            buyer_acknowledgement_reference="ACK-RET-001",
+            idempotency_key="sale-return-idempotency-001",
+        )
+
+        async def receive(active_session, return_id="return-1", lot_id="returned-lot-1"):
+            return await receive_wholesale_sale_return(
+                db, "sale-return-source", draft, season_code="2627",
+                actor_user=admin, actor_user_id="return-admin",
+                return_id=return_id, returned_lot_id=lot_id,
+                stock_movement_id="return-stock-movement-1",
+                audit_event_id="return-audit-1", created_at=now, session=active_session,
+            )
+
+        async with await client.start_session() as session:
+            result = await session.with_transaction(receive)
+        assert result["document_number"] == "2627RET0001"
+        assert result["status"] == "RECEIVED"
+        assert result["commercial_acceptance_status"] == "PENDING"
+        assert result["quality_status"] == "PENDING"
+
+        sale = await db.commercial_sales.find_one({"id": "sale-return-source"})
+        assert sale["returned_quantity_kg"].to_decimal() == Decimal("30.000")
+        assert sale["version"] == 3
+        returned_lot = await db.commercial_lots.find_one({"id": "returned-lot-1"})
+        assert returned_lot["quality_status"] == "PENDING"
+        balance = await db.commercial_stock_balances.find_one({
+            "lot_id": "returned-lot-1", "location_id": "tank-quarantine-1",
+        })
+        assert balance["quantity_kg"].to_decimal() == Decimal("30.000")
+        movement = await db.commercial_stock_movements.find_one({
+            "source_document_type": "RET", "source_document_id": "return-1",
+        })
+        assert movement["movement_kind"] == "RECEIPT"
+        assert movement["destination_location_id"] == "tank-quarantine-1"
+
+        async with await client.start_session() as session:
+            repeated = await session.with_transaction(receive)
+        assert repeated["id"] == "return-1"
+        assert await db.commercial_sale_returns.count_documents({}) == 1
+        assert await db.commercial_stock_movements.count_documents({
+            "source_document_type": "RET",
+        }) == 1
+
+        excessive = SaleReturnDraft(
+            expected_sale_version=3, quantity_kg=Decimal("70.001"),
+            quarantine_tank_id="tank-quarantine-1", reason="Exceeds remaining sold quantity",
+            idempotency_key="sale-return-idempotency-002",
+        )
+        with pytest.raises(ValueError, match="exceeds the remaining dispatched quantity"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: receive_wholesale_sale_return(
+                        db, "sale-return-source", excessive, season_code="2627",
+                        actor_user=admin, actor_user_id="return-admin",
+                        return_id="return-2", returned_lot_id="returned-lot-2",
+                        stock_movement_id="return-stock-movement-2",
+                        audit_event_id="return-audit-2", created_at=now, session=active,
+                    )
+                )
+        assert await db.commercial_sale_returns.count_documents({}) == 1
+        assert await db.commercial_lots.count_documents({"source_sale_return_id": "return-2"}) == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
