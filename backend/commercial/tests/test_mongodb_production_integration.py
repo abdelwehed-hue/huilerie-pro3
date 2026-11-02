@@ -60,6 +60,9 @@ async def test_production_posts_olive_and_oil_balances_atomically():
                 )
             )
         assert result["document_number"] == "2627PROD0001"
+        assert result["owner"] == {"kind": "MILL"}
+        origin_lot = await db.commercial_lots.find_one({"id": "olive-1"}, {"_id": 0})
+        assert origin_lot["owner"] == {"kind": "CUSTOMER", "customer_id": "customer-origin"}
         assert await db.commercial_stock_movements.count_documents({}) == 3
         olive = await db.commercial_stock_balances.find(
             {"product_kind": "OLIVE"}, {"_id": 0}
