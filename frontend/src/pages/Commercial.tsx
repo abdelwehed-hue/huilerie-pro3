@@ -118,6 +118,30 @@ export default function Commercial() {
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && tab === "suppliers" });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && tab === "locations" });
+  const addSupplier = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
+      name: supplierName.trim(), phone: supplierPhone.trim() || null,
+      tax_identifier: supplierTaxId.trim() || null, notes: supplierNotes.trim() || null,
+    }),
+    onSuccess: async () => {
+      toast.success(l.supplierSaved);
+      setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "suppliers"] });
+    },
+    onError: () => toast.error(l.warning),
+  });
+  const addLocation = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/locations", {
+      code: locationCode.trim().toUpperCase(), name: locationName.trim(),
+      kind: locationKind, notes: locationNotes.trim() || null,
+    }),
+    onSuccess: async () => {
+      toast.success(l.locationSaved);
+      setLocationCode(""); setLocationName(""); setLocationNotes("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "locations"] });
+    },
+    onError: () => toast.error(l.warning),
+  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
