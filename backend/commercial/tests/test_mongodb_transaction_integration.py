@@ -862,10 +862,15 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
         assert result["summary"]["partially_paid_invoice_count"] == 1
         assert result["summary"]["paid_invoice_count"] == 1
 
+        await test_db.commercial_buyers.insert_one({
+            "id": "buyer-summary-empty", "name": "New Buyer", "active": True,
+        })
         empty = await routers.get_commercial_buyer_account_summary(
-            "buyer-summary-1", {"id": "reader-1"}
+            "buyer-summary-empty", {"id": "reader-1"}
         )
-        assert empty["summary"]["invoice_count"] == 2
+        assert empty["summary"]["invoice_count"] == 0
+        assert empty["summary"]["total_amount_dt"] == "0.000"
+        assert empty["summary"]["outstanding_amount_dt"] == "0.000"
     finally:
         await client.drop_database(db_name)
         client.close()
