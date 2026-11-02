@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from bson.decimal128 import Decimal128
@@ -384,3 +385,88 @@ async def release_customer_oil_custody(
         session=session,
     )
     return await releases.find_one({"id": release_id}, {"_id": 0}, session=session)
+
+
+def _decimal_quantity(value: Any) -> Decimal:
+    if isinstance(value, Decimal128):
+        return value.to_decimal()
+    return Decimal(str(value or "0"))
+
+
+async def get_customer_custody_statement(db: Any, customer_id: str) -> dict[str, Any]:
+    """Reconcile a customer's complete custody ledger to live stock balances."""
+    owner = await db["commercial_custody_owners"].find_one(
+        {"id": customer_id},
+        {"_id": 0, "id": 1, "client_phone": 1, "client_name": 1, "active": 1},
+    )
+    if not owner:
+        raise ValueError("Customer custody account does not exist")
+
+    movements = await db["commercial_stock_movements"].find(
+        {"$or": [
+            {"source_owner.kind": "CUSTOMER", "source_owner.customer_id": customer_id},
+            {"destination_owner.kind": "CUSTOMER", "destination_owner.customer_id": customer_id},
+        ]},
+        {"_id": 0, "id": 1, "document_number": 1, "movement_kind": 1,
+         "product_kind": 1, "lot_id": 1, "quantity_kg": 1,
+         "source_location_id": 1, "destination_location_id": 1,
+         "source_owner": 1, "destination_owner": 1,
+         "source_document_type": 1, "source_document_id": 1,
+         "reason": 1, "created_at": 1},
+    ).sort([("created_at", 1), ("document_number", 1)]).to_list(10000)
+
+    ledger_totals = {"OLIVE": Decimal("0.000"), "OIL": Decimal("0.000")}
+    rows = []
+    for movement in movements:
+        product = movement["product_kind"]
+        if product not in ledger_totals:
+            raise ValueError("Custody ledger contains an unsupported product kind")
+        source = movement.get("source_owner") or {}
+        destination = movement.get("destination_owner") or {}
+        source_matches = source.get("kind") == "CUSTOMER" and source.get("customer_id") == customer_id
+        destination_matches = destination.get("kind") == "CUSTOMER" and destination.get("customer_id") == customer_id
+        quantity = _decimal_quantity(movement["quantity_kg"])
+        delta = quantity if destination_matches and not source_matches else (
+            -quantity if source_matches and not destination_matches else Decimal("0.000")
+        )
+        ledger_totals[product] += delta
+        if ledger_totals[product] < 0:
+            raise ValueError("Customer custody ledger has a negative running balance")
+        rows.append({
+            "id": movement["id"],
+            "document_number": movement["document_number"],
+            "movement_kind": movement["movement_kind"],
+            "product_kind": product,
+            "lot_id": movement["lot_id"],
+            "quantity_kg": quantity,
+            "delta_kg": delta,
+            "balance_after_kg": ledger_totals[product],
+            "source_location_id": movement.get("source_location_id"),
+            "destination_location_id": movement.get("destination_location_id"),
+            "source_document_type": movement["source_document_type"],
+            "source_document_id": movement["source_document_id"],
+            "reason": movement.get("reason"),
+            "created_at": movement["created_at"],
+        })
+
+    balances = await db["commercial_stock_balances"].find(
+        {"owner.kind": "CUSTOMER", "owner.customer_id": customer_id},
+        {"_id": 0, "product_kind": 1, "quantity_kg": 1},
+    ).to_list(10000)
+    current_totals = {"OLIVE": Decimal("0.000"), "OIL": Decimal("0.000")}
+    for balance in balances:
+        product = balance["product_kind"]
+        if product in current_totals:
+            current_totals[product] += _decimal_quantity(balance["quantity_kg"])
+
+    for product in ("OLIVE", "OIL"):
+        if ledger_totals[product].quantize(Decimal("0.001")) != current_totals[product].quantize(Decimal("0.001")):
+            raise ValueError(f"Customer custody {product.lower()} ledger does not reconcile to stock balances")
+
+    return {
+        "owner": owner,
+        "ledger_totals_kg": ledger_totals,
+        "current_balances_kg": current_totals,
+        "movement_count": len(rows),
+        "movements": rows,
+    }
