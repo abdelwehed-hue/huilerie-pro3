@@ -12,7 +12,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.services.numbering import reserve_document_number
-from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
+from commercial.services.payment_ledger import assert_invoice_receivable_fields_reconcile
 
 
 def _decimal(value: Any) -> Decimal:
@@ -94,26 +94,7 @@ async def accept_sale_return_and_issue_credit_note(
     applied_credit = _decimal(invoice.get("applied_credit_amount_dt", Decimal128("0.000")))
     previous_credited = _decimal(invoice.get("credited_amount_dt", Decimal128("0.000")))
     previous_net = _decimal(invoice.get("net_amount_dt", gross - previous_credited))
-    expected_previous_net = gross - previous_credited
-    expected_previous_outstanding = max(Decimal("0.000"), expected_previous_net - paid - applied_credit)
-    stored_previous_outstanding = _decimal(
-        invoice.get("outstanding_amount_dt", Decimal128(expected_previous_outstanding))
-    )
-    if (gross < 0 or paid < 0 or applied_credit < 0 or previous_credited < 0
-            or paid + applied_credit > gross
-            or previous_net != expected_previous_net
-            or stored_previous_outstanding != expected_previous_outstanding):
-        raise ValueError("Invoice receivable fields are inconsistent; reconcile before issuing a credit note")
-    await assert_invoice_cash_paid_reconciles(db, invoice["id"], paid, session=session)
-    prior_applications = await db["commercial_buyer_credit_applications"].find(
-        {"target_invoice_id": invoice["id"], "status": "APPLIED"},
-        {"_id": 0, "amount_dt": 1}, session=session,
-    ).to_list(None)
-    ledger_applied_credit = _money(sum(
-        (_decimal(item["amount_dt"]) for item in prior_applications), Decimal("0.000")
-    ))
-    if ledger_applied_credit != applied_credit:
-        raise ValueError("Invoice applied-credit amount does not reconcile to CAP documents")
+    await assert_invoice_receivable_fields_reconcile(db, invoice, session=session)
 
     buyer_credit_before = _decimal(buyer.get("credit_balance_dt", Decimal128("0.000")))
     if buyer_credit_before < 0:
