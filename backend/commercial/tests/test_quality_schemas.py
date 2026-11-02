@@ -56,6 +56,6 @@ def test_quality_assessment_requires_positive_lot_version_and_measurement():
 
 def test_quality_measurements_allow_signed_values_when_method_requires_them():
     draft = _draft(measurements=[
-        {"code": "DELTA_K", "value": "-0.001", "unit": ""},
+        {"code": "DELTA_K", "value": "-0.001", "unit": "index"},
     ], laboratory_name="Lab", specification_reference="SPEC-A")
     assert str(draft.measurements[0].value) == "-0.001"
