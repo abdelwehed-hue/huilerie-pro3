@@ -832,7 +832,7 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
     monkeypatch.setattr(routers, "_authorize", lambda user, permission: None)
     try:
         await test_db.commercial_buyers.insert_one({
-            "id": "buyer-summary-1", "name": "Historical Buyer", "active": False,
+            "id": "buyer-summary-1", "name": "Historical Buyer", "active": False, "credit_balance_dt": Decimal128("12.500"),
         })
         await test_db.commercial_sales_invoices.insert_many([
             {
@@ -855,9 +855,9 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
         )
         assert result["buyer"]["active"] is False
         assert result["summary"]["invoice_count"] == 2
-        assert result["summary"]["total_amount_dt"] == "150.500"
+        assert result["summary"]["gross_invoiced_amount_dt"] == "150.500"\n        assert result["summary"]["total_amount_dt"] == "140.500"\n        assert result["summary"]["credited_amount_dt"] == "10.000"
         assert result["summary"]["paid_amount_dt"] == "75.500"
-        assert result["summary"]["outstanding_amount_dt"] == "75.000"
+        assert result["summary"]["outstanding_amount_dt"] == "65.000"\n        assert result["summary"]["buyer_credit_balance_dt"] == "12.500"
         assert result["summary"]["unpaid_invoice_count"] == 0
         assert result["summary"]["partially_paid_invoice_count"] == 1
         assert result["summary"]["paid_invoice_count"] == 1
