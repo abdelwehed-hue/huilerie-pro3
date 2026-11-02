@@ -16,6 +16,7 @@ import Cancellations from "@/pages/Cancellations";
 import TvScreen from "@/pages/TvScreen";
 import TvAdmin from "@/pages/TvAdmin";
 import Factures from "@/pages/Factures";
+import Commercial from "@/pages/Commercial";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/factures" element={<Factures />} />
+          <Route path="/commercial" element={<Commercial />} />
           <Route path="/certificate/:id" element={<Certificate />} />
           <Route path="/sms" element={<SmsLog />} />
           <Route path="/cancellations" element={<Cancellations />} />
