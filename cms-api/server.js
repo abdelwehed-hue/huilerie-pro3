@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { MongoClient, ObjectId, GridFSBucket } from 'mongodb';
+import { normalizeItem, validateSiteTranslations, detectImageType } from './content.js';
 
 const required = ['MONGODB_URI', 'JWT_SECRET'];
 for (const key of required) if (!process.env[key]) throw new Error(`Missing environment variable: ${key}`);
@@ -99,61 +100,13 @@ app.get('/api/admin/me', auth, async (req, res) => res.json({ email: req.admin.e
 app.get('/api/admin/content', auth, async (_req, res) => res.json(await content.findOne({ key: 'main' }) || { key: 'main', translations: { fr: {}, ar: {}, en: {} } }));
 app.put('/api/admin/content', auth, async (req, res) => {
   const translations = req.body?.translations;
-  if (!translations || typeof translations !== 'object' || Array.isArray(translations) || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object' && !Array.isArray(translations[lang]))) return res.status(400).json({ error: 'Les traductions fr, ar et en doivent être des objets' });
-  for (const lang of ['fr', 'ar', 'en']) {
-    const fields = Object.entries(translations[lang]);
-    if (fields.length > 100) return res.status(400).json({ error: 'Maximum 100 champs par langue' });
-    for (const [key, value] of fields) {
-      if (!/^[a-zA-Z0-9_-]{1,80}$/.test(key) || ['__proto__', 'prototype', 'constructor'].includes(key)) return res.status(400).json({ error: 'Nom de champ invalide' });
-      if (typeof value !== 'string' || value.length > 30000) return res.status(400).json({ error: 'Chaque champ doit être un texte de 30 000 caractères maximum' });
-    }
-  }
+  const validationError = validateSiteTranslations(translations);
+  if (validationError) return res.status(400).json({ error: validationError });
   const doc = { key: 'main', translations, updatedAt: new Date(), updatedBy: req.admin.email };
   await content.updateOne({ key: 'main' }, { $set: doc }, { upsert: true });
   res.json({ ok: true, updatedAt: doc.updatedAt });
 });
-function normalizeItem(route, input, adminEmail, previous = null) {
-  const data = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
-  const translations = data.translations;
-  if (!translations || typeof translations !== 'object' || Array.isArray(translations) || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object' && !Array.isArray(translations[lang]))) {
-    return { error: 'Les traductions fr, ar et en sont obligatoires' };
-  }
-  const cleanTranslations = {};
-  for (const lang of ['fr', 'ar', 'en']) {
-    cleanTranslations[lang] = {};
-    for (const field of ['title', 'summary', 'body']) {
-      const value = translations[lang][field] ?? '';
-      if (typeof value !== 'string' || value.length > (field === 'body' ? 30000 : 5000)) return { error: 'Un champ de traduction est invalide ou trop long' };
-      cleanTranslations[lang][field] = value.trim();
-    }
-  }
-  const status = data.status ?? previous?.status ?? 'draft';
-  if (!['draft', 'published'].includes(status)) return { error: 'Statut invalide' };
-  const imageUrl = data.imageUrl ?? previous?.imageUrl ?? '';
-  if (typeof imageUrl !== 'string' || imageUrl.length > 2048 || (imageUrl && !(/^(https?:\/\/|\/api\/public\/media\/)/i.test(imageUrl)))) {
-    return { error: 'URL d’image invalide' };
-  }
-  if (status === 'published' && ['fr', 'ar', 'en'].some(lang => !cleanTranslations[lang].title)) return { error: 'Un titre est obligatoire dans les trois langues pour publier' };
-  const now = new Date();
-  const wasPublished = previous?.status === 'published';
-  const doc = {
-    translations: cleanTranslations,
-    status,
-    imageUrl,
-    updatedAt: now,
-    updatedBy: adminEmail,
-    publishedAt: status === 'published' ? (wasPublished && previous?.publishedAt ? previous.publishedAt : now) : null
-  };
-  if (route === 'news') {
-    doc.title = cleanTranslations.fr.title;
-    doc.summary = cleanTranslations.fr.summary;
-    doc.body = cleanTranslations.fr.body;
-  } else {
-    doc.name = cleanTranslations.fr.title;
-    doc.description = cleanTranslations.fr.summary || cleanTranslations.fr.body;
-  }
-  return doc;
-}
+
 for (const [route, collection] of [['news', news], ['products', products]]) {
   app.get(`/api/admin/${route}`, auth, async (_req, res) => res.json(await collection.find({}).sort({ updatedAt: -1 }).toArray()));
   app.post(`/api/admin/${route}`, auth, async (req, res) => {
@@ -201,13 +154,7 @@ app.delete('/api/admin/media/:id', auth, async (req, res) => {
   await bucket.delete(_id);
   res.json({ ok: true });
 });
-function detectImageType(buffer) {
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
-  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
-  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
-  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp' && ['avif', 'avis'].includes(buffer.toString('ascii', 8, 12))) return 'image/avif';
-  return null;
-}
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|avif)$/.test(file.mimetype)) });
 app.post('/api/admin/media', auth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image JPEG, PNG, WEBP ou AVIF requise (8 Mo max)' });
