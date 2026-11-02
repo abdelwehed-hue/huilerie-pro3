@@ -25,6 +25,12 @@ INVENTORY_INDEXES = {
         IndexModel([("supplier_id", ASCENDING), ("purchase_date", DESCENDING)],
                    name="olive_purchase_supplier_date"),
     ],
+    "commercial_locations": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_location_id"),
+        IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_location_code"),
+        IndexModel([("kind", ASCENDING), ("active", ASCENDING)],
+                   name="commercial_location_kind_active"),
+    ],
     "commercial_tanks": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_tank_id"),
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_tank_code"),
