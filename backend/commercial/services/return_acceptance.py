@@ -112,6 +112,8 @@ async def accept_sale_return_and_issue_credit_note(
     if credit_balance_delta < 0:
         raise ValueError("Buyer credit balance calculation is inconsistent")
     buyer_credit_before = _decimal(buyer.get("credit_balance_dt", Decimal128("0.000")))
+    if buyer_credit_before < 0:
+        raise ValueError("Buyer credit balance is negative; reconcile before issuing a credit note")
     buyer_credit_after = buyer_credit_before + credit_balance_delta
     outstanding = max(Decimal("0.000"), new_net - paid)
 
