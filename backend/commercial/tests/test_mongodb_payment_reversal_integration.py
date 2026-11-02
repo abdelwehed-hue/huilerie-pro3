@@ -58,6 +58,7 @@ async def test_payment_reversal_is_append_only_and_updates_invoice_balance():
         await db.commercial_sale_payments.insert_one(_payment("payment-a", "invoice-a", "60.000"))
 
         draft = PaymentReversalDraft(
+            reversal_date="2026-11-02",
             amount_dt=Decimal("20.000"), expected_invoice_version=1,
             reason="Correct duplicate cash entry",
             idempotency_key="payment-reversal-append-only-001",
