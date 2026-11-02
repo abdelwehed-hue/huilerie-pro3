@@ -720,3 +720,101 @@ async def test_wholesale_sale_rejects_customer_custody_and_unreleased_oil():
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+
+@pytest.mark.asyncio
+async def test_wholesale_sale_approval_audit_failure_rolls_back_invoice_dispatch_and_counters():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from pymongo.errors import DuplicateKeyError
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.sales import ApproveWholesaleSaleCommand, WholesaleSaleDraft
+    from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "wholesale_sale_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    sale_id = "sale-rollback"
+    approval_key = "sale-approval-rollback-key-001"
+    approval_audit_id = "sale-approval-audit-conflict"
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("VTE", "FAC", "MVT")
+        ])
+        await db.commercial_buyers.insert_one({
+            "id": "buyer-rollback", "name": "Rollback Buyer", "active": True,
+        })
+        await db.commercial_tanks.insert_one({
+            "id": "tank-rollback", "code": "TRB", "active": True,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "oil-lot-rollback", "season_code": "2627",
+            "document_type": "LOT", "document_number": "2627LOT0099",
+            "product_kind": "OIL", "status": "OPEN", "owner": {"kind": "MILL"},
+            "quality_status": "RELEASED", "quality_decision_id": "release-rollback",
+        })
+        await db.commercial_quality_releases.insert_one({
+            "id": "release-rollback", "oil_lot_id": "oil-lot-rollback",
+            "decision": "RELEASED",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OIL", "lot_id": "oil-lot-rollback",
+            "owner": {"kind": "MILL"}, "location_id": "tank-rollback",
+            "quantity_kg": Decimal128("50.000"), "created_at": now,
+        })
+        draft = WholesaleSaleDraft(
+            sale_date="2026-11-02", buyer_id="buyer-rollback",
+            oil_lot_id="oil-lot-rollback", source_tank_id="tank-rollback",
+            quantity_kg=Decimal("12.000"), unit_price_dt=Decimal("5.000"),
+            idempotency_key="sale-rollback-create-key-001",
+        )
+        async with await client.start_session() as session:
+            await session.with_transaction(
+                lambda active: create_wholesale_sale_draft(
+                    db, draft, season_code="2627", actor_user=admin,
+                    actor_user_id="admin-1", sale_id=sale_id,
+                    audit_event_id="sale-rollback-draft-audit",
+                    created_at=now, session=active,
+                )
+            )
+        # Fail the final approval audit write after the invoice and dispatch
+        # have been created inside the transaction.
+        await db.commercial_audit_events.insert_one({
+            "id": approval_audit_id, "entity_type": "test",
+            "entity_id": "preexisting", "action": "EXISTING",
+            "actor_user_id": "admin-1", "created_at": now, "details": {},
+        })
+        command = ApproveWholesaleSaleCommand(
+            expected_version=1, idempotency_key=approval_key,
+        )
+        with pytest.raises(DuplicateKeyError):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: approve_wholesale_sale(
+                        db, sale_id, command, season_code="2627",
+                        actor_user=admin, actor_user_id="admin-1",
+                        invoice_id="invoice-rollback", stock_movement_id="dispatch-rollback",
+                        audit_event_id=approval_audit_id, created_at=now, session=active,
+                    )
+                )
+        sale = await db.commercial_sales.find_one({"id": sale_id})
+        assert sale["status"] == "DRAFT"
+        assert sale["version"] == 1
+        assert await db.commercial_sales_invoices.count_documents({}) == 0
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        balance = await db.commercial_stock_balances.find_one({"location_id": "tank-rollback"})
+        assert balance["quantity_kg"].to_decimal() == Decimal("50.000")
+        assert await db.commercial_audit_events.count_documents({}) == 2
+        for kind in ("FAC", "MVT"):
+            counter = await db.commercial_counters.find_one({
+                "season_code": "2627", "document_type": kind,
+            })
+            assert counter["last_sequence"] == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
