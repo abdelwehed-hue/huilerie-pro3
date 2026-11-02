@@ -418,6 +418,81 @@ export default function Commercial() {
           {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}
         </TableBody></Table></CardContent></Card>
       </div>}
+
+      {tab === "production" && <div className="space-y-4">
+        {isAdmin && <Card>
+          <CardHeader><CardTitle>{l.newProduction}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); completeProduction.mutate(); }}>
+              <label className="grid max-w-sm gap-1 text-sm font-medium">{l.productionDate}
+                <input required type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.inputLots}</h3><Button type="button" variant="outline" onClick={() => setProductionInputs((rows) => [...rows, { balance_key: "", quantity_kg: "" }])}>{l.addInput}</Button></div>
+                {productionInputs.map((line, index) => {
+                  const key = (lotId: string, locationId: string) => lotId + "::" + locationId;
+                  const selectedBalance = availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === line.balance_key);
+                  const selectedLot = (lots.data ?? []).find((lot) => lot.id === selectedBalance?.lot_id);
+                  const usedKeys = productionInputs.filter((_, i) => i !== index).map((row) => row.balance_key);
+                  const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === row.balance_key)?.owner?.kind);
+                  return <div key={index} className="grid items-end gap-3 rounded-xl border p-3 md:grid-cols-[2fr_1fr_auto]">
+                    <label className="grid gap-1 text-sm font-medium">{l.chooseOliveBalance}
+                      <select required value={line.balance_key} onChange={(e) => setProductionInputs((rows) => rows.map((row, i) => i === index ? { ...row, balance_key: e.target.value, quantity_kg: "" } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                        <option value="">—</option>
+                        {availableOliveBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => owner === b.owner?.kind))).map((balance) => {
+                          const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
+                          const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
+                          return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {ownerLabel(balance.owner, l)} · {number(balance.quantity_kg)} kg</option>;
+                        })}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium">{l.inputQuantity}
+                      <input required type="number" min="0.001" step="0.001" max={selectedBalance?.quantity_kg ?? undefined} value={line.quantity_kg} disabled={!selectedBalance} onChange={(e) => setProductionInputs((rows) => rows.map((row, i) => i === index ? { ...row, quantity_kg: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                      {selectedBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedBalance.quantity_kg)} kg</span>}
+                    </label>
+                    <Button type="button" variant="outline" disabled={productionInputs.length === 1} onClick={() => setProductionInputs((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
+                    {selectedLot && <p className="text-xs text-muted-foreground md:col-span-3">{l.owner}: {ownerLabel(selectedLot.owner, l)}</p>}
+                  </div>;
+                })}
+                {availableOliveBalances.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{l.noOliveStock}</p>}
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="grid gap-1 text-sm font-medium">{l.totalInput}
+                  <input readOnly value={number(productionInputTotal)} className="h-10 rounded-lg border bg-muted px-3 font-normal" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">{l.outputQuantity}
+                  <input required type="number" min="0.001" step="0.001" max={productionInputTotal || undefined} value={productionOutputKg} onChange={(e) => setProductionOutputKg(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">{l.extractionRate} (%)
+                  <input readOnly value={productionInputTotal > 0 && Number(productionOutputKg) > 0 ? productionRate.toLocaleString(lang === "ar" ? "ar-TN" : "fr-FR", { maximumFractionDigits: 2 }) : "—"} className="h-10 rounded-lg border bg-muted px-3 font-normal" />
+                </label>
+              </div>
+              <label className="grid max-w-xl gap-1 text-sm font-medium">{l.outputTank}
+                <select required value={productionTankId} onChange={(e) => setProductionTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active).map((tank) => <option key={tank.id} value={tank.id}>{tank.code} · {tank.name}</option>)}</select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{l.notes}
+                <input maxLength={1000} value={productionNotes} onChange={(e) => setProductionNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              <Button type="submit" disabled={completeProduction.isPending || !productionTankId || !productionInputs.every((line) => line.balance_key && Number(line.quantity_kg) > 0) || !(Number(productionOutputKg) > 0) || Number(productionOutputKg) > productionInputTotal || productionInputs.some((line) => { const b = availableOliveBalances.find((x) => x.lot_id + "::" + x.location_id === line.balance_key); return !b || Number(line.quantity_kg) > Number(b.quantity_kg); })}>
+                <Factory className="size-4" /> {l.completeProduction}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>}
+        <Card><CardHeader><CardTitle>{l.productionHistory}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.productionDate}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.totalInput}</TableHead><TableHead>{l.outputQuantity}</TableHead><TableHead>{l.extractionRate} (%)</TableHead><TableHead>{l.outputTank}</TableHead></TableRow></TableHeader>
+            <TableBody>{(productionRuns.data ?? []).map((run) => <TableRow key={run.id}>
+              <TableCell className="font-mono text-xs">{value(run.document_number)}</TableCell>
+              <TableCell>{date(run.production_date)}</TableCell>
+              <TableCell>{ownerLabel(run.owner, l)}</TableCell>
+              <TableCell>{number(run.total_olive_input_kg)}</TableCell>
+              <TableCell>{number(run.actual_oil_output_kg)}</TableCell>
+              <TableCell>{number(run.extraction_rate_percent)}</TableCell>
+              <TableCell>{value((tanks.data ?? []).find((tank) => tank.id === run.output_tank_id)?.code, run.output_tank_id)}</TableCell>
+            </TableRow>)}{(!productionRuns.isLoading && !(productionRuns.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+      </div>}
     </div>
   );
 }
