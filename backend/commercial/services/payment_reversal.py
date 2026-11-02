@@ -110,6 +110,18 @@ async def reverse_sale_payment(
     if (gross < 0 or credited < 0 or paid < 0 or applied_credit < 0
             or net != expected_net or outstanding_before != expected_outstanding):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before reversing payment")
+    invoice_payments = await payments.find(
+        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
+    ).to_list(10000)
+    invoice_reversals = await reversals.find(
+        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
+    ).to_list(10000)
+    ledger_cash_paid = _money(
+        sum((_decimal(item["amount_dt"]) for item in invoice_payments), Decimal("0.000"))
+        - sum((_decimal(item["amount_dt"]) for item in invoice_reversals), Decimal("0.000"))
+    )
+    if ledger_cash_paid != paid:
+        raise ValueError("Invoice cash-paid amount does not reconcile to PAY and REV documents")
     if amount > paid:
         raise ValueError("Reversal exceeds the cash paid amount remaining on the invoice")
 
