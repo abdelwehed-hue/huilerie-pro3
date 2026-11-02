@@ -60,3 +60,17 @@ async def test_provision_is_idempotent_and_preserves_existing_name():
     assert len(rows) == 9
     assert rows[0]["name"] == "Cuve principale"
     assert len(db["commercial_tanks"].rows) == 9
+
+
+def test_production_collection_has_unique_id_document_and_idempotency_indexes():
+    from commercial.inventory_bootstrap import INVENTORY_INDEXES
+
+    indexes = INVENTORY_INDEXES["commercial_production_runs"]
+    names = {index.document["name"] for index in indexes}
+    assert names == {
+        "uq_commercial_production_id",
+        "uq_commercial_production_document",
+        "uq_commercial_production_idempotency",
+        "commercial_production_date",
+    }
+    assert all(index.document.get("unique") for index in indexes[:3])
