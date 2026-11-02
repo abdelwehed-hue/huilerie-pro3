@@ -79,15 +79,15 @@ async def complete_commercial_production(
     for line in draft.inputs:
         lot = await db["commercial_lots"].find_one(
             {"id": line.olive_lot_id},
-            {"_id": 0, "id": 1, "product_kind": 1, "owner": 1, "status": 1},
+            {"_id": 0, "id": 1, "product_kind": 1, "status": 1},
             session=session,
         )
         if not lot:
             raise ValueError(f"Unknown olive lot: {line.olive_lot_id}")
         if lot.get("product_kind") != "OLIVE":
             raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
-        if lot.get("owner") != owner_doc or line.owner != owner:
-            raise ValueError(f"Olive lot ownership mismatch: {line.olive_lot_id}")
+        if line.owner != owner:
+            raise ValueError(f"Production input owner mismatch: {line.olive_lot_id}")
         if lot.get("status") != "OPEN":
             raise ValueError(f"Olive lot is not open: {line.olive_lot_id}")
 
