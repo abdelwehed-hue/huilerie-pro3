@@ -62,3 +62,30 @@ async def provision_nine_tanks(db):
     }:
         raise RuntimeError("Commercial tank provisioning verification failed")
     return result
+
+
+async def provision_commercial_counters(db, season_code, document_types=(
+    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE"
+)):
+    """Initialize zero-based counters for one validated four-digit season.
+
+    This is an explicit bootstrap operation, not part of document issuance.
+    Existing counters are never reset or decremented.
+    """
+    if not isinstance(season_code, str) or len(season_code) != 4 or not season_code.isdigit():
+        raise ValueError("season_code must contain exactly four digits")
+    collection = db["commercial_counters"]
+    await collection.create_indexes(INVENTORY_INDEXES["commercial_counters"])
+    for document_type in document_types:
+        if not isinstance(document_type, str) or not document_type.isalpha() or not document_type.isupper():
+            raise ValueError(f"Invalid commercial document type: {document_type!r}")
+        await collection.update_one(
+            {"season_code": season_code, "document_type": document_type},
+            {"$setOnInsert": {
+                "season_code": season_code,
+                "document_type": document_type,
+                "last_sequence": 0,
+            }},
+            upsert=True,
+        )
+    return len(document_types)
