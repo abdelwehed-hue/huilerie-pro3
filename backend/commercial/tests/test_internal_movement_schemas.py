@@ -52,3 +52,29 @@ def test_ownership_transfer_rejects_different_locations():
 def test_external_receipt_or_dispatch_cannot_be_submitted_as_internal_movement():
     with pytest.raises(ValidationError):
         InternalMovementDraft(**base(movement_kind="DISPATCH"))
+
+
+@pytest.mark.asyncio
+async def test_generic_stock_endpoint_rejects_internal_document_source():
+    from fastapi import HTTPException
+    from commercial.routers import create_stock_movement
+    from commercial.schemas.inventory import StockMovementDraft
+
+    draft = StockMovementDraft(
+        movement_kind="DISPATCH",
+        product_kind="OIL",
+        lot_id="oil-lot-1",
+        quantity_kg="10.000",
+        source_location_id="tank-01",
+        source_owner={"kind": "MILL"},
+        source_document_type="INT",
+        source_document_id="internal-doc-1",
+        idempotency_key="generic-int-reject-key-001",
+        reason="Attempt to bypass internal movement workflow",
+    )
+    with pytest.raises(HTTPException) as error:
+        await create_stock_movement(
+            draft, {"active": True, "role": "admin", "id": "admin-1"}
+        )
+    assert error.value.status_code == 422
+    assert "internal_movement_sources" in error.value.detail
