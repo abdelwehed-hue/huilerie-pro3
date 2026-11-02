@@ -955,3 +955,84 @@ async def test_buyer_profile_lifecycle_is_versioned_and_audited(monkeypatch):
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_draft_sale_cancellation_is_atomic_and_never_reverses_approved_sale():
+    from fastapi import HTTPException
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.sales import CancelWholesaleSaleCommand
+    from commercial.services.sales import cancel_wholesale_sale_draft
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "sale_cancel_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_sales.insert_many([
+            {
+                "id": "sale-draft-cancel", "document_number": "2627VTE0001",
+                "status": "DRAFT", "version": 1,
+            },
+            {
+                "id": "sale-approved-protected", "document_number": "2627VTE0002",
+                "status": "APPROVED", "version": 2,
+            },
+        ])
+        command = CancelWholesaleSaleCommand(
+            expected_version=1, reason="Buyer withdrew the order",
+            idempotency_key="cancel-draft-sale-key-001",
+        )
+        async with await client.start_session() as session:
+            cancelled = await session.with_transaction(
+                lambda active: cancel_wholesale_sale_draft(
+                    db, "sale-draft-cancel", command, actor_user=admin,
+                    actor_user_id="admin-1", audit_event_id="sale-cancel-audit-1",
+                    created_at=now, session=active,
+                )
+            )
+        assert cancelled["status"] == "CANCELLED"
+        assert cancelled["version"] == 2
+        assert cancelled["cancellation_reason"] == "Buyer withdrew the order"
+
+        # Same request is idempotent; a different request cannot rewrite history.
+        async with await client.start_session() as session:
+            repeated = await session.with_transaction(
+                lambda active: cancel_wholesale_sale_draft(
+                    db, "sale-draft-cancel", command, actor_user=admin,
+                    actor_user_id="admin-1", audit_event_id="ignored-audit",
+                    created_at=now, session=active,
+                )
+            )
+        assert repeated["status"] == "CANCELLED"
+        assert await db.commercial_audit_events.count_documents(
+            {"entity_id": "sale-draft-cancel", "action": "SALE_DRAFT_CANCELLED"}
+        ) == 1
+
+        approved_command = CancelWholesaleSaleCommand(
+            expected_version=2, reason="Attempt to cancel posted sale",
+            idempotency_key="cancel-approved-sale-key-001",
+        )
+        with pytest.raises(ValueError, match="Only a draft"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: cancel_wholesale_sale_draft(
+                        db, "sale-approved-protected", approved_command,
+                        actor_user=admin, actor_user_id="admin-1",
+                        audit_event_id="must-not-exist", created_at=now, session=active,
+                    )
+                )
+        protected = await db.commercial_sales.find_one({"id": "sale-approved-protected"})
+        assert protected["status"] == "APPROVED"
+        assert protected["version"] == 2
+        assert await db.commercial_sales_invoices.count_documents(
+            {"sale_id": "sale-approved-protected"}
+        ) == 0
+        assert await db.commercial_stock_movements.count_documents(
+            {"source_document_id": "sale-approved-protected"}
+        ) == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
