@@ -1150,3 +1150,120 @@ async def test_sale_return_receipt_is_atomic_idempotent_and_quarantined():
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_return_acceptance_issues_credit_note_and_tracks_buyer_credit_without_refund():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
+    from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "sale_return_credit_note_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "AVO", "last_sequence": 0,
+        })
+        await db.commercial_buyers.insert_many([
+            {"id": "buyer-credit-paid", "name": "Paid Buyer", "normalized_name": "paid buyer",
+             "active": True, "version": 1, "credit_balance_dt": Decimal128("0.000")},
+            {"id": "buyer-credit-partial", "name": "Partial Buyer", "normalized_name": "partial buyer",
+             "active": True, "version": 1, "credit_balance_dt": Decimal128("0.000")},
+        ])
+        await db.commercial_sales.insert_many([
+            {"id": "sale-credit-paid", "status": "APPROVED", "buyer_id": "buyer-credit-paid",
+             "unit_price_dt": Decimal128("5.000"), "idempotency_scope": "test:credit",
+             "idempotency_key": "sale-credit-paid-key"},
+            {"id": "sale-credit-partial", "status": "APPROVED", "buyer_id": "buyer-credit-partial",
+             "unit_price_dt": Decimal128("5.000"), "idempotency_scope": "test:credit",
+             "idempotency_key": "sale-credit-partial-key"},
+        ])
+        await db.commercial_sales_invoices.insert_many([
+            {"id": "invoice-credit-paid", "sale_id": "sale-credit-paid", "buyer_id": "buyer-credit-paid",
+             "total_amount_dt": Decimal128("500.000"), "paid_amount_dt": Decimal128("500.000"),
+             "outstanding_amount_dt": Decimal128("0.000"), "payment_status": "PAID", "version": 1},
+            {"id": "invoice-credit-partial", "sale_id": "sale-credit-partial", "buyer_id": "buyer-credit-partial",
+             "total_amount_dt": Decimal128("500.000"), "paid_amount_dt": Decimal128("200.000"),
+             "outstanding_amount_dt": Decimal128("300.000"), "payment_status": "PARTIALLY_PAID", "version": 1},
+        ])
+        await db.commercial_sale_returns.insert_many([
+            {"id": "return-credit-paid", "sale_id": "sale-credit-paid", "invoice_id": "invoice-credit-paid",
+             "buyer_id": "buyer-credit-paid", "returned_oil_lot_id": "returned-credit-lot-1",
+             "quantity_kg": Decimal128("10.000"), "status": "RECEIVED",
+             "commercial_acceptance_status": "PENDING", "version": 1,
+             "idempotency_scope": "return:test", "idempotency_key": "return-credit-paid-key"},
+            {"id": "return-credit-partial", "sale_id": "sale-credit-partial", "invoice_id": "invoice-credit-partial",
+             "buyer_id": "buyer-credit-partial", "returned_oil_lot_id": "returned-credit-lot-2",
+             "quantity_kg": Decimal128("20.000"), "status": "RECEIVED",
+             "commercial_acceptance_status": "PENDING", "version": 1,
+             "idempotency_scope": "return:test", "idempotency_key": "return-credit-partial-key"},
+        ])
+        paid_command = AcceptSaleReturnCommand(
+            expected_return_version=1, reason="Commercial return accepted after inspection",
+            idempotency_key="accept-return-credit-paid-001",
+        )
+
+        async def accept_paid(active_session):
+            return await accept_sale_return_and_issue_credit_note(
+                db, "return-credit-paid", paid_command, season_code="2627",
+                actor_user=admin, actor_user_id="credit-admin",
+                credit_note_id="credit-note-paid", buyer_credit_entry_id="buyer-credit-entry-paid",
+                audit_event_id="credit-audit-paid", decided_at=now, session=active_session,
+            )
+
+        async with await client.start_session() as session:
+            paid_note = await session.with_transaction(accept_paid)
+        assert paid_note["document_number"] == "2627AVO0001"
+        assert paid_note["amount_dt"].to_decimal() == Decimal("50.000")
+
+        paid_invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-credit-paid"})
+        assert paid_invoice["total_amount_dt"].to_decimal() == Decimal("500.000")
+        assert paid_invoice["credited_amount_dt"].to_decimal() == Decimal("50.000")
+        assert paid_invoice["net_amount_dt"].to_decimal() == Decimal("450.000")
+        assert paid_invoice["outstanding_amount_dt"].to_decimal() == Decimal("0.000")
+        assert paid_invoice["paid_amount_dt"].to_decimal() == Decimal("500.000")
+        paid_buyer = await db.commercial_buyers.find_one({"id": "buyer-credit-paid"})
+        assert paid_buyer["credit_balance_dt"].to_decimal() == Decimal("50.000")
+
+        # Same command is idempotent and does not create another AVO or ledger entry.
+        async with await client.start_session() as session:
+            repeated = await session.with_transaction(accept_paid)
+        assert repeated["id"] == "credit-note-paid"
+        assert await db.commercial_credit_notes.count_documents({}) == 1
+        assert await db.commercial_buyer_credit_ledger.count_documents({}) == 1
+
+        partial_command = AcceptSaleReturnCommand(
+            expected_return_version=1, reason="Partial invoice return accepted",
+            idempotency_key="accept-return-credit-partial-001",
+        )
+        async with await client.start_session() as session:
+            partial_note = await session.with_transaction(
+                lambda active: accept_sale_return_and_issue_credit_note(
+                    db, "return-credit-partial", partial_command, season_code="2627",
+                    actor_user=admin, actor_user_id="credit-admin",
+                    credit_note_id="credit-note-partial", buyer_credit_entry_id="buyer-credit-entry-partial",
+                    audit_event_id="credit-audit-partial", decided_at=now, session=active,
+                )
+            )
+        assert partial_note["amount_dt"].to_decimal() == Decimal("100.000")
+        partial_invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-credit-partial"})
+        assert partial_invoice["net_amount_dt"].to_decimal() == Decimal("400.000")
+        assert partial_invoice["outstanding_amount_dt"].to_decimal() == Decimal("200.000")
+        assert partial_invoice["paid_amount_dt"].to_decimal() == Decimal("200.000")
+        assert partial_invoice["payment_status"] == "PARTIALLY_PAID"
+        partial_buyer = await db.commercial_buyers.find_one({"id": "buyer-credit-partial"})
+        assert partial_buyer["credit_balance_dt"].to_decimal() == Decimal("0.000")
+
+        accepted = await db.commercial_sale_returns.find_one({"id": "return-credit-paid"})
+        assert accepted["commercial_acceptance_status"] == "ACCEPTED"
+        assert accepted["credit_note_id"] == "credit-note-paid"
+        assert await db.commercial_sale_payments.count_documents({}) == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
