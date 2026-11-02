@@ -379,6 +379,11 @@ async def create_stock_movement(
 ):
     """Post a validated stock movement atomically; never accept client balances."""
     _authorize(user, "commercial.post_stock")
+    if draft.movement_kind == "RECEIPT":
+        raise HTTPException(
+            422,
+            "stock_receipts_must_be_created_by_approved_purchase_or_production_workflows",
+        )
     _, season_code = await _require_commercial_ready()
     movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
