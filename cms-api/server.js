@@ -100,6 +100,14 @@ app.get('/api/admin/content', auth, async (_req, res) => res.json(await content.
 app.put('/api/admin/content', auth, async (req, res) => {
   const translations = req.body?.translations;
   if (!translations || typeof translations !== 'object' || Array.isArray(translations) || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object' && !Array.isArray(translations[lang]))) return res.status(400).json({ error: 'Les traductions fr, ar et en doivent être des objets' });
+  for (const lang of ['fr', 'ar', 'en']) {
+    const fields = Object.entries(translations[lang]);
+    if (fields.length > 100) return res.status(400).json({ error: 'Maximum 100 champs par langue' });
+    for (const [key, value] of fields) {
+      if (!/^[a-zA-Z0-9_-]{1,80}$/.test(key) || ['__proto__', 'prototype', 'constructor'].includes(key)) return res.status(400).json({ error: 'Nom de champ invalide' });
+      if (typeof value !== 'string' || value.length > 30000) return res.status(400).json({ error: 'Chaque champ doit être un texte de 30 000 caractères maximum' });
+    }
+  }
   const doc = { key: 'main', translations, updatedAt: new Date(), updatedBy: req.admin.email };
   await content.updateOne({ key: 'main' }, { $set: doc }, { upsert: true });
   res.json({ ok: true, updatedAt: doc.updatedAt });
@@ -184,7 +192,61 @@ app.delete('/api/admin/media/:id', auth, async (req, res) => {
   if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
   const idText = _id.toString();
   const [newsUse, productUse, file] = await Promise.all([
-    news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
+    news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText + '] }),
+    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
+    db.collection('site_media.files').findOne({ _id }, { projection: { _id: 1 } })
+  ]);
+  if (!file) return res.status(404).json({ error: 'Image introuvable' });
+  if (newsUse + productUse > 0) return res.status(409).json({ error: 'Cette image est utilisée par un article ou un produit. Remplacez son image avant de la supprimer.' });
+  await bucket.delete(_id);
+  res.json({ ok: true });
+});
+function detectImageType(buffer) {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp' && ['avif', 'avis'].includes(buffer.toString('ascii', 8, 12))) return 'image/avif';
+  return null;
+}
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|avif)$/.test(file.mimetype)) });
+app.post('/api/admin/media', auth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Image JPEG, PNG, WEBP ou AVIF requise (8 Mo max)' });
+  const verifiedType = detectImageType(req.file.buffer);
+  if (!verifiedType) return res.status(400).json({ error: 'Le contenu du fichier ne correspond pas à une image autorisée' });
+  const id = new ObjectId();
+  const safeName = String(req.file.originalname || 'image').replace(/[\/\\\x00-\x1f]/g, '_').slice(0, 180);
+  const stream = bucket.openUploadStreamWithId(id, safeName, { contentType: verifiedType, metadata: { uploadedBy: req.admin.email } });
+  stream.once('error', error => {
+    console.error('CMS media upload failed', { message: error?.message });
+    if (!res.headersSent) res.status(500).json({ error: 'Échec de l’enregistrement de l’image' });
+  });
+  stream.once('finish', () => {
+    if (!res.headersSent) res.status(201).json({ id: id.toString(), url: `/api/public/media/${id}` });
+  });
+  stream.end(req.file.buffer);
+});
+app.get('/api/public/media/:id', async (req, res) => {
+  const _id = cleanId(req.params.id);
+  if (!_id) return res.status(404).end();
+  const file = await db.collection('site_media.files').findOne({ _id });
+  if (!file) return res.status(404).end();
+  res.set('Content-Type', file.contentType || 'application/octet-stream');
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  bucket.openDownloadStream(_id).pipe(res);
+});
+
+app.use((error, req, res, next) => {
+  console.error('CMS request failed', { method: req.method, path: req.path, message: error?.message });
+  if (res.headersSent) return next(error);
+  const status = error?.name === 'MulterError'
+    ? (error.code === 'LIMIT_FILE_SIZE' ? 413 : 400)
+    : 500;
+  res.status(status).json({ error: status === 413 ? 'Fichier trop volumineux (8 Mo maximum)' : status === 400 ? 'Requête invalide' : 'Erreur interne du serveur' });
+});
+
+const port = Number(process.env.PORT || 10000);
+app.listen(port, '0.0.0.0', () => console.log(`Oro Verde CMS API listening on ${port}`));
+ } }] }),
     products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
     db.collection('site_media.files').findOne({ _id }, { projection: { _id: 1 } })
   ]);
