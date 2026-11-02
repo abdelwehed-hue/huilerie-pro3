@@ -40,6 +40,7 @@ from commercial.schemas.buyers import (
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
+from commercial.schemas.return_rejection import RejectSaleReturnCommand
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft, CustomerOilCustodyReleaseDraft
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
@@ -53,6 +54,7 @@ from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
+from commercial.services.return_rejection import reject_sale_return_and_dispatch_to_buyer
 from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody, get_customer_custody_statement
 from commercial.services.credit_application import apply_buyer_credit_to_invoice
 from commercial.services.payment_reversal import reverse_sale_payment
@@ -698,6 +700,50 @@ async def accept_sale_return(
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
+
+
+@router.post("/sale-returns/{return_id}/reject", status_code=201)
+async def reject_sale_return(
+    return_id: str,
+    command: RejectSaleReturnCommand,
+    user: dict = Depends(require_admin),
+):
+    """Reject a received return and dispatch the quarantined lot back to the buyer."""
+    _authorize(user, "commercial.manage_sales")
+    _authorize(user, "commercial.post_stock")
+    season, season_code = await _require_commercial_ready()
+    if season_of(command.rejection_date.isoformat()) != season:
+        raise HTTPException(422, "return_rejection_date_outside_active_season")
+    rejection_id, movement_id, audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: reject_sale_return_and_dispatch_to_buyer(
+                db, return_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                rejection_id=rejection_id, movement_id=movement_id,
+                audit_event_id=audit_id, decided_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sale-return-rejections")
+async def list_sale_return_rejections(
+    return_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"return_id": return_id} if return_id else {}
+    docs = await db.commercial_sale_return_rejections.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
 
 
 @router.get("/credit-notes")
