@@ -92,6 +92,15 @@ async def accept_sale_return_and_issue_credit_note(
     paid = _decimal(invoice.get("paid_amount_dt", Decimal128("0.000")))
     previous_credited = _decimal(invoice.get("credited_amount_dt", Decimal128("0.000")))
     previous_net = _decimal(invoice.get("net_amount_dt", gross - previous_credited))
+    expected_previous_net = gross - previous_credited
+    expected_previous_outstanding = max(Decimal("0.000"), expected_previous_net - paid)
+    stored_previous_outstanding = _decimal(
+        invoice.get("outstanding_amount_dt", Decimal128(expected_previous_outstanding))
+    )
+    if (gross < 0 or paid < 0 or previous_credited < 0 or paid > gross
+            or previous_net != expected_previous_net
+            or stored_previous_outstanding != expected_previous_outstanding):
+        raise ValueError("Invoice receivable fields are inconsistent; reconcile before issuing a credit note")
     credit_amount = _money(_decimal(returned["quantity_kg"]) * _decimal(sale["unit_price_dt"]))
     new_credited = previous_credited + credit_amount
     if credit_amount <= 0 or new_credited > gross:
