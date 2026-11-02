@@ -79,7 +79,9 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         )
     source = await db[collection_name].find_one(
         {"id": draft.source_document_id},
-        {"_id": 0, "id": 1, "status": 1, "returned_oil_lot_id": 1, "quarantine_tank_id": 1},
+        {"_id": 0, "id": 1, "status": 1, "returned_oil_lot_id": 1, "quarantine_tank_id": 1,
+         "customer_id": 1, "olive_lot_id": 1, "receiving_location_id": 1,
+         "oil_lot_id": 1, "source_tank_id": 1},
         session=session,
     )
     if not source:
