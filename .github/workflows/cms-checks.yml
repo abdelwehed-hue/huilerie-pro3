@@ -1,0 +1,43 @@
+name: Oro Verde CMS checks
+
+on:
+  push:
+    branches:
+      - website/cms-foundation
+    paths:
+      - "cms-api/**"
+      - "website-admin/**"
+      - ".github/workflows/cms-checks.yml"
+  pull_request:
+    branches:
+      - website/cms-foundation
+    paths:
+      - "cms-api/**"
+      - "website-admin/**"
+      - ".github/workflows/cms-checks.yml"
+
+jobs:
+  api-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check API JavaScript syntax
+        run: node --check cms-api/server.js
+
+  admin-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install admin dependencies
+        run: npm install
+      - name: Build admin interface
+        run: npm run build
