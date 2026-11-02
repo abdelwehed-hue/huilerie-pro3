@@ -1067,12 +1067,13 @@ async def receive_customer_custody_olives(
 
 @router.get("/customer-custody/receipts")
 async def list_customer_custody_receipts(
+    customer_id: str | None = None,
     customer_phone: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
-    query = {"customer_phone": customer_phone} if customer_phone else {}
+    query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_receipts.find(
         query, {"_id": 0, "id": 1, "document_number": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "created_at": 1}
     ).sort("created_at", -1).to_list(limit)
@@ -1106,12 +1107,13 @@ async def release_customer_custody_oil(
 
 @router.get("/customer-custody/releases")
 async def list_customer_custody_releases(
+    customer_id: str | None = None,
     customer_phone: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
-    query = {"customer_phone": customer_phone} if customer_phone else {}
+    query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_releases.find(
         query, {"_id": 0, "id": 1, "document_number": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "oil_lot_id": 1, "source_tank_id": 1, "quantity_kg": 1, "release_date": 1, "customer_acknowledgement_reference": 1, "reason": 1, "status": 1, "created_at": 1}
     ).sort("created_at", -1).to_list(limit)
