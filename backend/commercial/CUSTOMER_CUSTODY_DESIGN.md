@@ -104,12 +104,12 @@ Implemented automated coverage:
 - customer pickup debits the matching customer balance only;
 - cross-customer pickup is rejected;
 - oil with pending quality cannot be picked up;
-- customer-owned stock remains excluded from mill sale selection and dispatch.
+- customer-owned stock remains excluded from mill sale selection and dispatch;
+- custody statement recomputes per-owner running balances and matches the live stock balance collection.
 
 Remaining gates:
 - real browser acceptance on desktop and mobile;
 - customer phone-change/owner-profile maintenance workflow;
-- customer custody statement reconciliation;
 - explicit OWN authorization and compensation policy;
 - owner payout/consignment policy, if ever required;
 - backup restoration and production security review.
