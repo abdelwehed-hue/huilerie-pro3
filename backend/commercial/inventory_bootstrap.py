@@ -3,7 +3,7 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 from commercial.services.numbering import validate_numbering_components
 
 COMMERCIAL_DOCUMENT_TYPES = (
-    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS"
+    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP"
 )
 
 
@@ -94,9 +94,24 @@ INVENTORY_INDEXES = {
                    unique=True, name="uq_commercial_credit_note_document"),
         IndexModel([("return_id", ASCENDING)], unique=True, name="uq_commercial_credit_note_return"),
     ],
+    "commercial_buyer_credit_applications": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_buyer_credit_application_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_buyer_credit_application_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_buyer_credit_application_idempotency"),
+        IndexModel([("buyer_id", ASCENDING), ("created_at", DESCENDING)], name="buyer_credit_application_buyer_created"),
+        IndexModel([("target_invoice_id", ASCENDING), ("created_at", DESCENDING)], name="buyer_credit_application_invoice_created"),
+    ],
     "commercial_buyer_credit_ledger": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_buyer_credit_entry_id"),
-        IndexModel([("credit_note_id", ASCENDING)], unique=True, name="uq_buyer_credit_entry_credit_note"),
+        IndexModel([("credit_note_id", ASCENDING)], unique=True,
+                   partialFilterExpression={"credit_note_id": {"$type": "string"}},
+                   name="uq_buyer_credit_entry_credit_note"),
+        IndexModel([("source_document_type", ASCENDING), ("source_document_id", ASCENDING),
+                    ("source_credit_note_id", ASCENDING)], unique=True,
+                   partialFilterExpression={"source_document_type": {"$type": "string"}},
+                   name="uq_buyer_credit_adjustment_source"),
+        IndexModel([("source_credit_note_id", ASCENDING), ("created_at", ASCENDING)],
+                   name="buyer_credit_ledger_source_note_created"),
         IndexModel([("buyer_id", ASCENDING), ("created_at", DESCENDING)],
                    name="buyer_credit_ledger_buyer_created"),
     ],
