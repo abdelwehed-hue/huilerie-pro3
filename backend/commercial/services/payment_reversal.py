@@ -13,6 +13,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.numbering import reserve_document_number
+from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
 
 
 def _decimal(value: Any) -> Decimal:
@@ -110,18 +111,7 @@ async def reverse_sale_payment(
     if (gross < 0 or credited < 0 or paid < 0 or applied_credit < 0
             or net != expected_net or outstanding_before != expected_outstanding):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before reversing payment")
-    invoice_payments = await payments.find(
-        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
-    ).to_list(10000)
-    invoice_reversals = await reversals.find(
-        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
-    ).to_list(10000)
-    ledger_cash_paid = _money(
-        sum((_decimal(item["amount_dt"]) for item in invoice_payments), Decimal("0.000"))
-        - sum((_decimal(item["amount_dt"]) for item in invoice_reversals), Decimal("0.000"))
-    )
-    if ledger_cash_paid != paid:
-        raise ValueError("Invoice cash-paid amount does not reconcile to PAY and REV documents")
+    await assert_invoice_cash_paid_reconciles(db, invoice_id, paid, session=session)
     if amount > paid:
         raise ValueError("Reversal exceeds the cash paid amount remaining on the invoice")
 
