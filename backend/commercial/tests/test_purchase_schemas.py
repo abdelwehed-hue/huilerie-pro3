@@ -50,3 +50,22 @@ def test_olive_purchase_rejects_excess_decimal_precision():
             lines=[{"variety_id": "chemlali", "quantity_kg": "10.1234", "unit_price_dt": "1.200"}],
             idempotency_key="purchase-request-0004",
         )
+
+from commercial.schemas.purchases import ApproveOlivePurchaseCommand
+
+
+def test_purchase_approval_requires_receiving_location_and_version():
+    command = ApproveOlivePurchaseCommand(
+        expected_version=1,
+        receiving_location_id="olive-yard-01",
+        idempotency_key="approve-purchase-0001",
+    )
+    assert command.receiving_location_id == "olive-yard-01"
+
+
+def test_purchase_approval_rejects_missing_receiving_location():
+    with pytest.raises(ValidationError):
+        ApproveOlivePurchaseCommand(
+            expected_version=1,
+            idempotency_key="approve-purchase-0002",
+        )
