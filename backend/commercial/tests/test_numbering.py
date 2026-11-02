@@ -1,6 +1,9 @@
 import pytest
 
-from commercial.services.numbering import format_document_number
+from commercial.services.numbering import (
+    format_document_number,
+    validate_numbering_components,
+)
 
 
 def test_formats_season_scoped_document_number():
@@ -13,22 +16,21 @@ def test_sequence_expands_beyond_four_digits():
 
 
 @pytest.mark.parametrize(
-    "season, document_type, sequence",
+    "season, document_type",
     [
-        ("2026", "LOT", 1),  # Calendar-year values are not forbidden syntactically;
-        ("26-27", "LOT", 1),
-        ("2627", "lot", 1),
-        ("2627", "LOT-1", 1),
-        ("2627", "LOT", 0),
-        ("2627", "LOT", -1),
-        ("2627", "LOT", True),
+        ("26-27", "LOT"),
+        ("262", "LOT"),
+        ("26270", "LOT"),
+        ("2627", "lot"),
+        ("2627", "LOT-1"),
     ],
 )
-def test_rejects_invalid_components(season, document_type, sequence):
-    if season == "2026":
-        # Four-digit season codes are format-validated; the active season is
-        # checked by the domain service, not by this pure formatter.
-        assert format_document_number(season, document_type, sequence) == "2026LOT0001"
-    else:
-        with pytest.raises(ValueError):
-            format_document_number(season, document_type, sequence)
+def test_rejects_invalid_numbering_components(season, document_type):
+    with pytest.raises(ValueError):
+        validate_numbering_components(season, document_type)
+
+
+@pytest.mark.parametrize("sequence", [0, -1, True, 1.5, "1"])
+def test_rejects_invalid_sequences(sequence):
+    with pytest.raises(ValueError):
+        format_document_number("2627", "LOT", sequence)
