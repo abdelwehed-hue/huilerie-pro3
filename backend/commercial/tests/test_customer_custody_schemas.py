@@ -53,7 +53,7 @@ def test_customer_oil_release_requires_acknowledgement_and_positive_quantity():
 def test_customer_oil_release_rejects_missing_acknowledgement():
     with pytest.raises(ValidationError):
         CustomerOilCustodyReleaseDraft(
-            customer_phone="21612345678",
+            customer_id="custody-owner-a",
             release_date="2026-11-02",
             oil_lot_id="customer-oil-lot-01",
             source_tank_id="tank-01",
