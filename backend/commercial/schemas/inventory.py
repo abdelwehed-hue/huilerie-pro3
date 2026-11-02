@@ -102,12 +102,3 @@ class CommercialLocationDraft(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     kind: Literal["OLIVE_STORAGE", "STAGING"]
     notes: str | None = Field(default=None, max_length=500)
-
-
-class CommercialSupplierDraft(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    name: str = Field(min_length=2, max_length=160)
-    phone: str | None = Field(default=None, max_length=40)
-    tax_identifier: str | None = Field(default=None, max_length=80)
-    notes: str | None = Field(default=None, max_length=1000)
