@@ -11,13 +11,20 @@ class Collection:
         self.rows = list(rows or [])
 
     async def find_one(self, query, projection=None, session=None):
-        return next((r for r in self.rows if all(
-            (r.get(k, 1) if k == "version" and isinstance(v, dict) else r.get(k)) == v
-            if not isinstance(v, dict) else (
-                (k == "version" and v.get("$exists") is False and "version" not in r)
-            )
-            for k, v in query.items()
-        )), None)
+        for row in self.rows:
+            matched = True
+            for key, expected in query.items():
+                actual = row.get(key)
+                if isinstance(expected, dict):
+                    if "$gt" in expected and not (actual is not None and actual > expected["$gt"]):
+                        matched = False
+                    if "$exists" in expected and ((key in row) != expected["$exists"]):
+                        matched = False
+                elif actual != expected:
+                    matched = False
+            if matched:
+                return row
+        return None
 
     async def update_one(self, query, update, session=None):
         row = await self.find_one(query, session=session)
