@@ -48,7 +48,10 @@ async def test_unknown_lot_is_rejected():
 
 @pytest.mark.asyncio
 async def test_unregistered_source_document_type_is_rejected_closed():
-    assert SOURCE_DOCUMENT_COLLECTIONS == {\n        "ACH": "commercial_olive_purchases",\n        "PROD": "commercial_production_runs",\n    }
+    assert SOURCE_DOCUMENT_COLLECTIONS == {
+        "ACH": "commercial_olive_purchases",
+        "PROD": "commercial_production_runs",
+    }
     db = Database({
         "commercial_lots": Collection([{"id": "lot-1"}]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
