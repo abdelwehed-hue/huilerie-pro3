@@ -171,7 +171,7 @@ async def approve_wholesale_sale(
         db,
         StockMovementDraft(
             movement_kind="DISPATCH", product_kind="OIL",
-            lot_id=sale["oil_lot_id"], quantity_kg=sale["quantity_kg"],
+            lot_id=sale["oil_lot_id"], quantity_kg=sale["quantity_kg"].to_decimal(),
             source_location_id=sale["source_tank_id"],
             source_owner=OwnerRef(kind="MILL"),
             source_document_type="VTE", source_document_id=sale_id,
