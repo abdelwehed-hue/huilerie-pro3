@@ -94,7 +94,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Controlled buyer duplicate/merge process.
 - Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal, credit application, and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
-- Customer-custody oil settlement and owner payout accounting.
+- Customer pickup, authorized ownership transfer, custody statements, and owner payout/consignment accounting. Design constraints are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
 
