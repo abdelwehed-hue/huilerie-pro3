@@ -189,6 +189,7 @@ export default function Commercial() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const status = useQuery({
     queryKey: ["commercial", "status"],
@@ -428,12 +429,13 @@ export default function Commercial() {
       if (!invoice) throw new Error("Invoice is no longer available");
       return apiPost<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, {
         payment_date: paymentDate, amount_dt: paymentAmount, method: paymentMethod,
+        reference: paymentReference.trim() || null,
         expected_invoice_version: invoice.version, idempotency_key: crypto.randomUUID(),
       });
     },
     onSuccess: async () => {
       toast.success(salesText.paymentSaved);
-      setPaymentAmount("");
+      setPaymentAmount(""); setPaymentReference("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "sale-payments", selectedInvoiceId] }),
@@ -835,11 +837,11 @@ export default function Commercial() {
           </Table>
           {selectedInvoiceId && <div className="mt-4 space-y-3 rounded-xl border p-4">
             <h3 className="font-semibold">{salesText.recordPayment}</h3>
-            {isAdmin && <form className="grid gap-3 md:grid-cols-4" onSubmit={(e) => { e.preventDefault(); recordPayment.mutate(); }}>
+            {isAdmin && <form className="grid gap-3 md:grid-cols-5" onSubmit={(e) => { e.preventDefault(); recordPayment.mutate(); }}>
               <label className="grid gap-1 text-sm font-medium">{salesText.paymentDate}<input required type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{salesText.paymentAmount}<input required type="number" min="0.001" step="0.001" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{salesText.paymentMethod}<select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="CASH">{salesText.cash}</option><option value="BANK_TRANSFER">{salesText.bank}</option><option value="CHEQUE">{salesText.cheque}</option></select></label>
-              <div className="flex items-end"><Button type="submit" disabled={recordPayment.isPending || !(Number(paymentAmount) > 0) || (salesInvoices.data ?? []).find((i) => i.id === selectedInvoiceId)?.payment_status === "PAID"}><Wallet className="size-4" />{salesText.recordPayment}</Button></div>
+              <label className="grid gap-1 text-sm font-medium">{salesText.paymentMethod}<select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="CASH">{salesText.cash}</option><option value="BANK_TRANSFER">{salesText.bank}</option><option value="CHEQUE">{salesText.cheque}</option></select></label>\n              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مرجع العملية" : "Référence du paiement"}<input maxLength={120} value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <div className="flex items-end"><Button type="submit" disabled={recordPayment.isPending || !(Number(paymentAmount) > 0) || (salesInvoices.data ?? []).find((i) => i.id === selectedInvoiceId)?.payment_status === "PAID" || (paymentMethod !== "CASH" && !paymentReference.trim())}><Wallet className="size-4" />{salesText.recordPayment}</Button></div>
             </form>}
             <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.paymentDate}</TableHead><TableHead>{salesText.paymentAmount}</TableHead><TableHead>{salesText.paymentMethod}</TableHead></TableRow></TableHeader><TableBody>{(salePayments.data ?? []).map((payment) => <TableRow key={payment.id}><TableCell>{value(payment.document_number)}</TableCell><TableCell>{date(payment.payment_date)}</TableCell><TableCell>{number(payment.amount_dt)} DT</TableCell><TableCell>{value(payment.method)}</TableCell></TableRow>)}{(!salePayments.isLoading && !(salePayments.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table>
           </div>}
