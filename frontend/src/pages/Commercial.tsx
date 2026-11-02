@@ -622,6 +622,32 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const reversePayment = useMutation({
+    mutationFn: () => {
+      if (!selectedPayment || !selectedSalesInvoice) throw new Error("Select a valid original payment");
+      return apiPost<AnyRecord>(
+        "/commercial/v1/sale-payments/" + encodeURIComponent(selectedPayment.id) + "/reversals",
+        {
+          amount_dt: reversalAmount,
+          expected_invoice_version: selectedSalesInvoice.version,
+          reason: reversalReason.trim(),
+          idempotency_key: reversalKey,
+        },
+      );
+    },
+    onSuccess: async () => {
+      toast.success(salesText.reversalSaved);
+      setSelectedPaymentForReversal(""); setReversalAmount(""); setReversalReason("");
+      setReversalKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const receiveCustomerCustody = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", {
       customer_phone: custodyCustomerPhone,
