@@ -14,7 +14,7 @@ from typing import Any
 
 from bson.decimal128 import Decimal128
 
-from backend.commercial.schemas.inventory import StockMovementDraft
+from commercial.schemas.inventory import StockMovementDraft
 from backend.commercial.services.numbering import reserve_document_number
 
 
