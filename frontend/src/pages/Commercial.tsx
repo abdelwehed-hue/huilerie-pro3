@@ -89,6 +89,10 @@ function ownerLabel(owner: AnyRecord | undefined, l: { mill: string; customer: s
   if (!owner) return l.unknown;
   return owner.kind === "MILL" ? l.mill : owner.kind === "CUSTOMER" ? `${l.customer}: ${value(owner.customer_id)}` : value(owner.kind);
 }
+function ownerIdentity(owner: AnyRecord | undefined) {
+  if (!owner) return "";
+  return owner.kind === "CUSTOMER" ? "CUSTOMER:" + String(owner.customer_id ?? "") : String(owner.kind ?? "");
+}
 function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
   return <TableRow><TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">{text}</TableCell></TableRow>;
 }
@@ -434,12 +438,12 @@ export default function Commercial() {
                   const selectedBalance = availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === line.balance_key);
                   const selectedLot = (lots.data ?? []).find((lot) => lot.id === selectedBalance?.lot_id);
                   const usedKeys = productionInputs.filter((_, i) => i !== index).map((row) => row.balance_key);
-                  const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === row.balance_key)?.owner?.kind);
+                  const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === row.balance_key)?.owner);
                   return <div key={index} className="grid items-end gap-3 rounded-xl border p-3 md:grid-cols-[2fr_1fr_auto]">
                     <label className="grid gap-1 text-sm font-medium">{l.chooseOliveBalance}
                       <select required value={line.balance_key} onChange={(e) => setProductionInputs((rows) => rows.map((row, i) => i === index ? { ...row, balance_key: e.target.value, quantity_kg: "" } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal">
                         <option value="">—</option>
-                        {availableOliveBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => owner === b.owner?.kind))).map((balance) => {
+                        {availableOliveBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
                           const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
                           const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
                           return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {ownerLabel(balance.owner, l)} · {number(balance.quantity_kg)} kg</option>;
