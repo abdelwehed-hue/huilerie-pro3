@@ -676,13 +676,14 @@ async def receive_sale_return(
 async def list_sale_returns(
     sale_id: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"sale_id": sale_id} if sale_id else {}
     docs = await db.commercial_sale_returns.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -748,13 +749,14 @@ async def reject_sale_return(
 async def list_sale_return_rejections(
     return_id: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"return_id": return_id} if return_id else {}
     docs = await db.commercial_sale_return_rejections.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -762,23 +764,25 @@ async def list_sale_return_rejections(
 async def list_commercial_credit_notes(
     return_id: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"return_id": return_id} if return_id else {}
     docs = await db.commercial_credit_notes.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
 @router.get("/sales")
 async def list_wholesale_sales(
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
-    docs = await db.commercial_sales.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    docs = await db.commercial_sales.find({}, {"_id": 0}).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -809,10 +813,11 @@ async def approve_wholesale_sale_route(
 @router.get("/sales-invoices")
 async def list_commercial_sales_invoices(
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
-    docs = await db.commercial_sales_invoices.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    docs = await db.commercial_sales_invoices.find({}, {"_id": 0}).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1148,13 +1153,14 @@ async def release_quality_assessment(
 async def list_quality_assessments(
     lot_id: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"oil_lot_id": lot_id} if lot_id else {}
     docs = await db.commercial_quality_assessments.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1189,13 +1195,14 @@ async def create_stock_movement(
 @router.get("/internal-movements")
 async def list_internal_stock_movements(
     limit: int = Query(default=200, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     """List season-numbered internal transfer and ownership-change documents."""
     _authorize(user, "commercial.read")
     docs = await db.commercial_internal_movements.find(
         {}, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1257,13 +1264,14 @@ async def list_customer_custody_receipts(
     customer_id: str | None = None,
     customer_phone: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_receipts.find(
         query, {"_id": 0, "id": 1, "document_number": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "created_at": 1}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1297,13 +1305,14 @@ async def list_customer_custody_releases(
     customer_id: str | None = None,
     customer_phone: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_releases.find(
         query, {"_id": 0, "id": 1, "document_number": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "oil_lot_id": 1, "source_tank_id": 1, "quantity_kg": 1, "release_date": 1, "customer_acknowledgement_reference": 1, "reason": 1, "status": 1, "created_at": 1}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1357,13 +1366,14 @@ async def list_stock_balances(
 async def list_stock_movements(
     lot_id: str | None = None,
     limit: int = Query(default=200, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"lot_id": lot_id} if lot_id else {}
     docs = await db.commercial_stock_movements.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
