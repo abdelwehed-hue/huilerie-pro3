@@ -232,3 +232,111 @@ async def test_purchase_approval_audit_failure_rolls_back_lots_receipts_and_coun
     finally:
         await client.drop_database(db_name)
         client.close()
+
+@pytest.mark.asyncio
+async def test_concurrent_stock_consumption_cannot_overspend_same_balance():
+    from decimal import Decimal
+
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.inventory import OwnerRef, StockMovementDraft
+    from commercial.services.stock_ledger import post_stock_movement
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "stock_overspend_concurrency_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627",
+            "document_type": "MVT",
+            "last_sequence": 0,
+        })
+        await db.commercial_locations.insert_one({
+            "id": "olive-storage-concurrency",
+            "code": "OLIVE-CONC",
+            "name": "Concurrency test storage",
+            "kind": "OLIVE_STORAGE",
+            "active": True,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "olive-lot-concurrency",
+            "season_code": "2627",
+            "document_type": "LOT",
+            "document_number": "2627LOT0001",
+            "product_kind": "OLIVE",
+            "status": "OPEN",
+            "owner": {"kind": "MILL"},
+        })
+        await db.commercial_olive_purchases.insert_one({
+            "id": "approved-purchase-concurrency",
+            "season_code": "2627",
+            "status": "APPROVED",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE",
+            "lot_id": "olive-lot-concurrency",
+            "owner": {"kind": "MILL"},
+            "location_id": "olive-storage-concurrency",
+            "quantity_kg": Decimal128("100.000"),
+            "created_at": now,
+        })
+
+        async def consume(key: str):
+            draft = StockMovementDraft(
+                movement_kind="CONSUMPTION",
+                product_kind="OLIVE",
+                lot_id="olive-lot-concurrency",
+                quantity_kg=Decimal("80.000"),
+                source_location_id="olive-storage-concurrency",
+                source_owner=OwnerRef(kind="MILL"),
+                source_document_type="ACH",
+                source_document_id="approved-purchase-concurrency",
+                idempotency_key=key,
+                reason="Concurrent overspend integration test",
+            )
+            movement_id = str(uuid.uuid4())
+            audit_id = str(uuid.uuid4())
+
+            async with await client.start_session() as session:
+                async def operation(active_session):
+                    return await post_stock_movement(
+                        db, draft,
+                        season_code="2627",
+                        actor_user_id="integration-admin",
+                        actor_user={"active": True, "role": "admin"},
+                        movement_id=movement_id,
+                        audit_event_id=audit_id,
+                        created_at=now,
+                        session=active_session,
+                    )
+                return await session.with_transaction(operation)
+
+        outcomes = await asyncio.gather(
+            consume("overspend-attempt-one-0001"),
+            consume("overspend-attempt-two-0002"),
+            return_exceptions=True,
+        )
+        successes = [item for item in outcomes if isinstance(item, dict)]
+        failures = [item for item in outcomes if isinstance(item, Exception)]
+        assert len(successes) == 1, outcomes
+        assert len(failures) == 1, outcomes
+        assert isinstance(failures[0], ValueError)
+        assert "Insufficient stock" in str(failures[0])
+
+        balance = await db.commercial_stock_balances.find_one(
+            {"product_kind": "OLIVE", "lot_id": "olive-lot-concurrency",
+             "location_id": "olive-storage-concurrency"},
+            {"_id": 0},
+        )
+        assert balance["quantity_kg"].to_decimal() == Decimal("20.000")
+        assert await db.commercial_stock_movements.count_documents({}) == 1
+        assert await db.commercial_audit_events.count_documents({}) == 1
+        counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "MVT"}, {"_id": 0}
+        )
+        assert counter["last_sequence"] == 1
+    finally:
+        await client.drop_database(db_name)
+        client.close()
