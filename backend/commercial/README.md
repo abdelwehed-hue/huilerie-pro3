@@ -119,9 +119,9 @@ CIN and CUS each have their own season-scoped counter and each stock posting cre
 ## Validation
 
 - GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
-- Full CI run `41521851252` on current head `8a651bf0dfd6c0d415942eb2df460f8dee569a7b` passed all five jobs: invoice unit tests, commercial unit tests, MongoDB replica-set transaction integration, frontend production build, and backend syntax.
-- The validated head includes buyer lifecycle, draft sale cancellation, tank quarantine controls, atomic physical sale return intake, concurrent over-return protection, AVO credit notes, paid/partial invoice receivable and buyer-credit accounting, bilingual return/tank UI, buyer account summary display, and the payment-adjustment/customer-custody design specifications.
-- A passing CI run does not replace browser-based operational acceptance, backup restoration verification, or production security configuration review.
+- The last fully green CI run was `41521851252` at commit `8a651bf0dfd6c0d415942eb2df460f8dee569a7b`; it passed invoice unit tests, commercial unit tests, MongoDB replica-set transaction integration, frontend production build, and backend syntax.
+- Subsequent CAP, REV, buyer-credit reconciliation, and custody UI changes are not yet release-validated. CI exposed a stale source-document assertion and frontend typing issues; those code/test fixes have been committed. The latest GitHub Actions attempts on the current feature head failed within seconds without producing downloadable job logs, so a clean rerun is required before merge.
+- The feature branch includes buyer lifecycle, draft sale cancellation, tank quarantine controls, atomic physical sale return intake, concurrent over-return protection, AVO credit notes, CAP credit application, REV payment reversal, buyer account summaries, and bilingual commercial workflows.
 
 ## Not yet implemented / blockers before operational release
 
