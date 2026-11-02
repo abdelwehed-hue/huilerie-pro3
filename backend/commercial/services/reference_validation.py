@@ -7,6 +7,7 @@ from typing import Any
 # Legacy pressing loads and service invoices are intentionally excluded.
 SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "ACH": "commercial_olive_purchases",
+    "PROD": "commercial_production_runs",
 }
 
 
