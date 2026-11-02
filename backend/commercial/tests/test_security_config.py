@@ -4,6 +4,7 @@ from lib.security_config import (
     auth_is_disabled,
     cors_origins,
     initial_admin_credentials,
+    has_known_demo_password,
     validate_runtime_security,
 )
 
@@ -62,3 +63,12 @@ def test_auth_disabled_parser(monkeypatch):
     assert auth_is_disabled()
     monkeypatch.setenv("AUTH_DISABLED", "false")
     assert not auth_is_disabled()
+
+
+def test_known_demo_password_is_detected_but_rotated_password_is_not():
+    from passlib.hash import pbkdf2_sha256
+
+    assert has_known_demo_password("admin", pbkdf2_sha256.hash("admin123"))
+    assert has_known_demo_password("ouvrier", pbkdf2_sha256.hash("ouvrier123"))
+    assert not has_known_demo_password("admin", pbkdf2_sha256.hash("a-new-unique-password"))
+    assert not has_known_demo_password("other-user", pbkdf2_sha256.hash("admin123"))
