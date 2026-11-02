@@ -49,6 +49,14 @@ async def create_olive_purchase_draft(
     if not supplier:
         raise ValueError("Unknown or inactive commercial supplier")
 
+    variety_ids = sorted({line.variety_id for line in draft.lines})
+    active_varieties = await db["commercial_varieties"].find(
+        {"id": {"$in": variety_ids}, "active": True},
+        {"_id": 0, "id": 1}, session=session,
+    ).to_list(len(variety_ids))
+    if {item["id"] for item in active_varieties} != set(variety_ids):
+        raise ValueError("One or more olive varieties are unknown or inactive")
+
     collection = db["commercial_olive_purchases"]
     scope = f"{season_code}:{actor_user_id}"
     fingerprint = _fingerprint(draft)
