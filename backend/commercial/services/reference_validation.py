@@ -24,6 +24,12 @@ def _quantity(value: Any) -> Decimal:
     return value.to_decimal() if isinstance(value, Decimal128) else Decimal(str(value or "0"))
 
 
+def _owner_matches(owner: Any, stored: Any) -> bool:
+    if owner is None or not isinstance(stored, dict):
+        return owner is None and stored is None
+    return owner.kind == stored.get("kind") and owner.customer_id == stored.get("customer_id")
+
+
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
     lot = await db["commercial_lots"].find_one(
         {"id": draft.lot_id}, {"_id": 0, "id": 1, "product_kind": 1}, session=session
@@ -104,12 +110,94 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         {"_id": 0, "id": 1, "status": 1, "returned_oil_lot_id": 1, "quarantine_tank_id": 1,
          "customer_id": 1, "olive_lot_id": 1, "receiving_location_id": 1,
          "oil_lot_id": 1, "source_tank_id": 1, "return_id": 1,
-         "quantity_kg": 1},
+         "quantity_kg": 1, "season_code": 1, "owner": 1, "inputs": 1,
+         "actual_oil_output_kg": 1, "output_tank_id": 1, "output_oil_lot_id": 1,
+         "source_purchase_id": 1, "quantity_received_kg": 1,
+         "movement_kind": 1, "product_kind": 1, "lot_id": 1,
+         "source_location_id": 1, "destination_location_id": 1,
+         "source_owner": 1, "destination_owner": 1},
         session=session,
     )
     if not source:
         raise ValueError("Source document does not exist")
-    if draft.source_document_type == "RET":
+    if draft.source_document_type == "ACH":
+        received_lot = await db["commercial_lots"].find_one(
+            {"id": draft.lot_id, "source_purchase_id": source["id"], "product_kind": "OLIVE"},
+            {"_id": 0, "quantity_received_kg": 1, "owner": 1}, session=session,
+        )
+        if (
+            source.get("status") != "APPROVED"
+            or draft.movement_kind != "RECEIPT"
+            or draft.product_kind != "OLIVE"
+            or draft.source_location_id is not None
+            or draft.destination_location_id != source.get("receiving_location_id")
+            or not _owner_matches(draft.destination_owner, {"kind": "MILL"})
+            or not received_lot
+            or _quantity(received_lot.get("quantity_received_kg")) != _quantity(draft.quantity_kg)
+            or not _owner_matches(draft.destination_owner, received_lot.get("owner"))
+        ):
+            raise ValueError("Olive purchase receipt does not match its approved purchase and lot")
+    elif draft.source_document_type == "PROD":
+        if source.get("status") != "COMPLETED":
+            raise ValueError("Production run is not completed")
+        if draft.movement_kind == "CONSUMPTION":
+            matching_input = next((
+                line for line in source.get("inputs", [])
+                if line.get("olive_lot_id") == draft.lot_id
+                and line.get("source_location_id") == draft.source_location_id
+                and _quantity(line.get("quantity_kg")) == _quantity(draft.quantity_kg)
+            ), None)
+            if (
+                draft.product_kind != "OLIVE"
+                or draft.destination_location_id is not None
+                or not matching_input
+                or not _owner_matches(draft.source_owner, source.get("owner"))
+            ):
+                raise ValueError("Production consumption does not match an input line")
+        elif draft.movement_kind == "RECEIPT":
+            output_lot = await db["commercial_lots"].find_one(
+                {"id": draft.lot_id, "source_production_id": source["id"], "product_kind": "OIL"},
+                {"_id": 0, "owner": 1, "quantity_received_kg": 1}, session=session,
+            )
+            if (
+                draft.product_kind != "OIL"
+                or draft.source_location_id is not None
+                or draft.destination_location_id != source.get("output_tank_id")
+                or not output_lot
+                or _quantity(source.get("actual_oil_output_kg")) != _quantity(draft.quantity_kg)
+                or _quantity(output_lot.get("quantity_received_kg")) != _quantity(draft.quantity_kg)
+                or not _owner_matches(draft.destination_owner, source.get("owner"))
+                or not _owner_matches(draft.destination_owner, output_lot.get("owner"))
+            ):
+                raise ValueError("Production output receipt does not match the completed run")
+        else:
+            raise ValueError("Unsupported production stock movement")
+    elif draft.source_document_type == "VTE":
+        if (
+            source.get("status") != "APPROVED"
+            or draft.movement_kind != "DISPATCH"
+            or draft.product_kind != "OIL"
+            or source.get("oil_lot_id") != draft.lot_id
+            or source.get("source_tank_id") != draft.source_location_id
+            or draft.destination_location_id is not None
+            or _quantity(source.get("quantity_kg")) != _quantity(draft.quantity_kg)
+            or not _owner_matches(draft.source_owner, {"kind": "MILL"})
+        ):
+            raise ValueError("Wholesale sale dispatch does not match its approved sale")
+    elif draft.source_document_type == "INT":
+        if (
+            source.get("status") != "APPROVED"
+            or source.get("movement_kind") != draft.movement_kind
+            or source.get("product_kind") != draft.product_kind
+            or source.get("lot_id") != draft.lot_id
+            or _quantity(source.get("quantity_kg")) != _quantity(draft.quantity_kg)
+            or source.get("source_location_id") != draft.source_location_id
+            or source.get("destination_location_id") != draft.destination_location_id
+            or not _owner_matches(draft.source_owner, source.get("source_owner"))
+            or not _owner_matches(draft.destination_owner, source.get("destination_owner"))
+        ):
+            raise ValueError("Internal stock movement does not match its approved document")
+    elif draft.source_document_type == "RET":
         if (source.get("status") != "RECEIVED"
                 or draft.movement_kind != "RECEIPT"
                 or source.get("returned_oil_lot_id") != draft.lot_id
