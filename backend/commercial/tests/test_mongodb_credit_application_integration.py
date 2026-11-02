@@ -113,7 +113,7 @@ async def test_credit_application_allocates_oldest_credit_notes_and_updates_invo
         async with await client.start_session() as session:
             payment = await session.with_transaction(
                 lambda active: record_sale_payment(
-                    db, "invoice-target", payment_draft,
+                    db, "invoice-target", payment_draft, season_code="2627",
                     actor_user={"active": True, "role": "admin"},
                     actor_user_id="integration-admin",
                     payment_id="cash-payment-1", audit_event_id="cash-payment-audit-1",
