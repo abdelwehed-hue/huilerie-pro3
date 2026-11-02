@@ -41,6 +41,7 @@ class Owner:
 class Draft:
     lot_id = "lot-1"
     product_kind = "OIL"
+    movement_kind = "RECEIPT"
     source_location_id = None
     destination_location_id = "tank-01"
     source_owner = None
