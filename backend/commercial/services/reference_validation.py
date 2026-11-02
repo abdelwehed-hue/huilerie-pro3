@@ -76,10 +76,17 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
             f"Unsupported source document type: {draft.source_document_type}"
         )
     source = await db[collection_name].find_one(
-        {"id": draft.source_document_id}, {"_id": 0, "id": 1, "status": 1},
+        {"id": draft.source_document_id},
+        {"_id": 0, "id": 1, "status": 1, "returned_oil_lot_id": 1, "quarantine_tank_id": 1},
         session=session,
     )
     if not source:
         raise ValueError("Source document does not exist")
-    if source.get("status") not in {"APPROVED", "COMPLETED"}:
+    if draft.source_document_type == "RET":
+        if (source.get("status") != "RECEIVED"
+                or draft.movement_kind != "RECEIPT"
+                or source.get("returned_oil_lot_id") != draft.lot_id
+                or source.get("quarantine_tank_id") != draft.destination_location_id):
+            raise ValueError("Return receipt does not match its received return document")
+    elif source.get("status") not in {"APPROVED", "COMPLETED"}:
         raise ValueError("Source document is not approved for stock posting")
