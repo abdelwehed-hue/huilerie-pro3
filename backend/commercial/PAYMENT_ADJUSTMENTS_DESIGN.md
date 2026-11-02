@@ -1,6 +1,6 @@
 # Commercial Payment Reversals and Buyer-Credit Settlement — Design
 
-Status: **partially implemented**. Non-cash buyer-credit application (CAP) is implemented with source-credit allocation, invoice/buyer version checks, and transactional ledger updates. Payment reversal (REV) and cash refund are not implemented.
+Status: **partially implemented**. Non-cash buyer-credit application (CAP) and immutable payment reversal (REV) are implemented with source-credit allocation, invoice/buyer version checks, and transactional ledger updates. Cash refund remains disabled.
 
 ## Non-negotiable invariants
 
@@ -12,25 +12,19 @@ Status: **partially implemented**. Non-cash buyer-credit application (CAP) is im
 6. Buyer credit cannot become negative. A reversal that would consume credit already applied or refunded must fail closed until the prior settlement/refund is itself reversed through a compensating record.
 7. All calculations use Decimal/Decimal128 at three decimal places. All writes are transactional, idempotent, version-checked, permission-checked, and audited.
 
-## Payment reversal (REV)
+## Implemented payment reversal (REV)
 
-The command should require:
-- original payment ID (the server resolves invoice and buyer);
-- reversal amount in DT, strictly positive and <= remaining reversible amount;
-- reversal date and reason;
-- bank/cheque chargeback or other evidence reference where applicable;
-- expected invoice version and idempotency key.
+- `POST /api/commercial/v1/sale-payments/{payment_id}/reversals` — administrator-only partial or full reversal.
+- `GET /api/commercial/v1/sales-invoices/{invoice_id}/payment-reversals` — read reversal history.
+- Requires positive amount, business reversal date, reason, expected invoice version, and idempotency key. Bank/cheque reversals require traceable evidence.
+- Aggregates prior REV documents and rejects cumulative reversals above the original PAY amount.
+- Keeps the original PAY immutable and appends a separately numbered REV document.
+- Recalculates cash-paid amount and invoice outstanding from the original invoice net receivable and current applied credit.
+- When an AVO created buyer credit on the same invoice, reduces only the still-available source credit and appends ledger adjustments; blocks if that source credit was already consumed.
+- Updates invoice/buyer balances, REV, source-ledger adjustments, and audit event in one MongoDB transaction.
+- Does not issue cash or bank refunds.
 
-The backend must:
-- verify the payment exists and is posted;
-- aggregate prior REV documents for that payment and reject any cumulative amount above the PAY amount;
-- derive invoice net receivable from gross invoice amount minus AVO credit notes;
-- derive cash-paid amount from posted PAY records minus REV records, not from client input;
-- calculate prior and new buyer-credit excess attributable to that invoice;
-- if buyer credit must be reduced, verify the invoice-attributed credit is still available and that aggregate buyer credit remains non-negative;
-- create a REV document, append a negative buyer-credit ledger adjustment if required, update invoice derived paid/outstanding/payment status, and write audit events in one MongoDB transaction.
-
-Do not mutate the original payment record. A REV document can be partial, so multiple REV documents may link to one PAY, but their total must remain <= the original payment.
+Integration tests cover append-only reversal, idempotency, payment and invoice limits, credit-note interaction, insufficient/consumed source credit, and transaction rollback.
 
 ## Interaction with credit notes
 
@@ -77,6 +71,7 @@ A cash refund is a separate bank/cash disbursement workflow, not an invoice paym
 - Unique season/document number and idempotency keys for REV and CAP documents.
 - CAP source-credit allocation indexes and append-only ledger adjustment uniqueness.
 - Source-link indexes from REV to PAY and CAP to source credit/target invoice.
+- REV is integration-tested for append-only writes, source-credit reconciliation, idempotency, and transaction rollback.
 - Multiple partial reversals cannot exceed a payment; concurrent reversals cannot over-reverse.
 - Reversal of a payment after an AVO credit note reduces invoice-attributed buyer credit correctly.
 - Reversal fails if required buyer credit has already been consumed/refunded.
@@ -88,4 +83,4 @@ A cash refund is a separate bank/cash disbursement workflow, not an invoice paym
 
 ## Release gate
 
-Keep REV and cash-refund actions disabled until their service, ledger indexes, concurrent transaction tests, bilingual UI, bank/cash reconciliation, and approval controls are complete. CAP is implemented but must still pass the full release and browser-acceptance gates before production deployment. This design does not authorize production financial postings.
+Keep cash-refund actions disabled until bank/cash reconciliation, proof-of-disbursement, and approval-separation controls are implemented. REV and CAP are implemented but must still pass full release and browser-acceptance gates before production deployment. This design does not authorize production financial postings.
