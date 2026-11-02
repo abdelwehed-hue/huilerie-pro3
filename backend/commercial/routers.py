@@ -850,6 +850,8 @@ async def reverse_wholesale_sale_payment(
 @router.get("/sales-invoices/{invoice_id}/payment-reversals")
 async def list_invoice_payment_reversals(
     invoice_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
@@ -858,7 +860,7 @@ async def list_invoice_payment_reversals(
         {"_id": 0, "id": 1, "document_number": 1, "payment_id": 1,
          "original_payment_number": 1, "amount_dt": 1, "reason": 1,
          "status": 1, "remaining_reversible_dt": 1, "created_at": 1},
-    ).sort("created_at", -1).to_list(5000)
+    ).sort([("created_at", -1), ("id", -1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -889,6 +891,8 @@ async def apply_buyer_credit(
 @router.get("/sales-invoices/{invoice_id}/credit-applications")
 async def list_buyer_credit_applications(
     invoice_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
@@ -896,7 +900,7 @@ async def list_buyer_credit_applications(
         {"target_invoice_id": invoice_id},
         {"_id": 0, "id": 1, "document_number": 1, "amount_dt": 1,
          "source_allocations": 1, "reason": 1, "status": 1, "created_at": 1},
-    ).sort("created_at", -1).to_list(500)
+    ).sort([("created_at", -1), ("id", -1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -928,12 +932,13 @@ async def create_sale_payment(
 async def list_sale_payments(
     invoice_id: str,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_sale_payments.find(
         {"invoice_id": invoice_id}, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", -1)]).skip(skip).to_list(limit)
     payment_ids = [doc["id"] for doc in docs]
     reversal_totals = {}
     if payment_ids:
