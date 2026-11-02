@@ -537,6 +537,11 @@ async def get_commercial_buyer_account_summary(
             "total_amount_dt": {"$sum": {"$ifNull": ["$net_amount_dt", "$total_amount_dt"]}},
             "credited_amount_dt": {"$sum": {"$ifNull": ["$credited_amount_dt", Decimal128("0.000")]}},
             "paid_amount_dt": {"$sum": "$paid_amount_dt"},
+            "applied_credit_amount_dt": {"$sum": {"$ifNull": ["$applied_credit_amount_dt", Decimal128("0.000")]}},
+            "settled_amount_dt": {"$sum": {"$add": [
+                {"$ifNull": ["$paid_amount_dt", Decimal128("0.000")]},
+                {"$ifNull": ["$applied_credit_amount_dt", Decimal128("0.000")]}
+            ]}},
             "outstanding_amount_dt": {"$sum": "$outstanding_amount_dt"},
             "unpaid_invoice_count": {
                 "$sum": {"$cond": [{"$eq": ["$payment_status", "UNPAID"]}, 1, 0]}
@@ -550,6 +555,12 @@ async def get_commercial_buyer_account_summary(
             "credited_invoice_count": {
                 "$sum": {"$cond": [{"$eq": ["$payment_status", "CREDITED"]}, 1, 0]}
             },
+            "credit_applied_invoice_count": {
+                "$sum": {"$cond": [
+                    {"$gt": [{"$ifNull": ["$applied_credit_amount_dt", Decimal128("0.000")]}, Decimal128("0.000")]},
+                    1, 0
+                ]}
+            },
         }},
     ]).to_list(length=1)
     summary = rows[0] if rows else {
@@ -558,11 +569,14 @@ async def get_commercial_buyer_account_summary(
         "total_amount_dt": Decimal128("0.000"),
         "credited_amount_dt": Decimal128("0.000"),
         "paid_amount_dt": Decimal128("0.000"),
+        "applied_credit_amount_dt": Decimal128("0.000"),
+        "settled_amount_dt": Decimal128("0.000"),
         "outstanding_amount_dt": Decimal128("0.000"),
         "unpaid_invoice_count": 0,
         "partially_paid_invoice_count": 0,
         "paid_invoice_count": 0,
         "credited_invoice_count": 0,
+        "credit_applied_invoice_count": 0,
     }
     summary.pop("_id", None)
     summary["buyer_credit_balance_dt"] = buyer.get("credit_balance_dt", Decimal128("0.000"))
