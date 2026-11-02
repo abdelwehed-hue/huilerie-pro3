@@ -68,8 +68,14 @@ async def _get_or_create_custody_owner(
         if not existing.get("active", True):
             raise ValueError("Customer custody account is inactive")
         if existing.get("client_phone") != phone or existing.get("client_name") != name:
-            await db["commercial_custody_owners"].update_one(
-                {"id": existing["id"], "version": existing.get("version", 1)},
+            owner_version = int(existing.get("version", 1))
+            owner_version_filter = (
+                {"version": owner_version}
+                if "version" in existing
+                else {"version": {"$exists": False}}
+            )
+            owner_update = await db["commercial_custody_owners"].update_one(
+                {"id": existing["id"], **owner_version_filter},
                 {
                     "$set": {
                         "client_phone": phone,
@@ -80,6 +86,8 @@ async def _get_or_create_custody_owner(
                 },
                 session=session,
             )
+            if owner_update.matched_count != 1:
+                raise ValueError("Customer custody owner changed concurrently; retry the receipt")
             existing.update({
                 "client_phone": phone,
                 "client_name": name,
