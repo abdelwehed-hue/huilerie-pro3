@@ -1,8 +1,9 @@
 """Customer-owned olive intake and oil custody release command schemas."""
 from datetime import date
+import re
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CustomerOliveCustodyReceiptDraft(BaseModel):
@@ -17,6 +18,11 @@ class CustomerOliveCustodyReceiptDraft(BaseModel):
     source_reference: str | None = Field(default=None, max_length=120)
     notes: str | None = Field(default=None, max_length=1000)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+    @field_validator("customer_phone", mode="before")
+    @classmethod
+    def normalize_customer_phone(cls, value):
+        return re.sub(r"\\s+", "", value) if isinstance(value, str) else value
 
 
 class CustomerOilCustodyReleaseDraft(BaseModel):
