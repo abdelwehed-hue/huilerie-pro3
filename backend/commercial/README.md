@@ -126,7 +126,7 @@ CIN and CUS each have their own season-scoped counter and each stock posting cre
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Cash refund, return rejection and outbound re-dispatch. Non-cash buyer-credit application and immutable payment reversal are implemented; cash refunds remain disabled until bank/cash reconciliation and approval controls are implemented. Existing PAY records are never edited or deleted. Tax treatment remains `NOT_CONFIGURED`. See [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md) and [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
+- Cash refund. Non-cash buyer-credit application (CAP), immutable payment reversal (REV), and rejected-return re-dispatch (RJT) are implemented; cash refunds remain disabled until bank/cash reconciliation and approval controls are implemented. Existing PAY records are never edited or deleted. Tax treatment remains `NOT_CONFIGURED`. See [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md) and [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Authorized ownership transfer and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
