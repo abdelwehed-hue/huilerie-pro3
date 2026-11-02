@@ -16,6 +16,8 @@ from bson.decimal128 import Decimal128
 
 from commercial.schemas.inventory import StockMovementDraft
 from commercial.services.numbering import reserve_document_number
+from commercial.permissions import require_commercial_permission
+from commercial.services.reference_validation import validate_stock_references
 
 
 def _decimal128(value: Decimal) -> Decimal128:
@@ -85,6 +87,7 @@ async def post_stock_movement(
     *,
     season_code: str,
     actor_user_id: str,
+    actor_user: dict[str, Any],
     movement_id: str,
     audit_event_id: str,
     created_at: datetime,
@@ -99,6 +102,8 @@ async def post_stock_movement(
     """
     if not actor_user_id or not movement_id or not audit_event_id:
         raise ValueError("Actor and stable event identifiers are required")
+    require_commercial_permission(actor_user, "commercial.post_stock")
+    await validate_stock_references(db, draft, session=session)
     if created_at.tzinfo is None:
         raise ValueError("created_at must be timezone-aware")
 
