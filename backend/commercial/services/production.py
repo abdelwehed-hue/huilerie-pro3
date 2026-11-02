@@ -1,0 +1,244 @@
+"""Atomic commercial olive-to-oil production posting.
+
+The caller MUST execute this service inside the existing run_transaction
+callback. A production run, all olive consumption movements, the output oil
+lot, the tank receipt, and audit records commit or roll back together.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from typing import Any
+from uuid import NAMESPACE_URL, uuid5
+
+from bson.decimal128 import Decimal128
+
+from commercial.permissions import require_commercial_permission
+from commercial.schemas.inventory import OwnerRef, StockMovementDraft
+from commercial.schemas.production import CommercialProductionDraft
+from commercial.services.numbering import reserve_document_number
+from commercial.services.stock_ledger import post_stock_movement
+
+
+def _stable_id(namespace: str, value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"oroverde:{namespace}:{value}"))
+
+
+def _owner_document(owner: OwnerRef) -> dict[str, str]:
+    result = {"kind": owner.kind}
+    if owner.customer_id is not None:
+        result["customer_id"] = owner.customer_id
+    return result
+
+
+def _key(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _fingerprint(draft: CommercialProductionDraft) -> str:
+    payload = json.dumps(draft.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+async def complete_commercial_production(
+    db: Any,
+    draft: CommercialProductionDraft,
+    *,
+    season_code: str,
+    actor_user: dict[str, Any],
+    actor_user_id: str,
+    production_id: str,
+    created_at: datetime,
+    session: Any,
+) -> dict[str, Any]:
+    """Consume owned olive stock and receive actual oil output into one tank.
+
+    This function does not start a transaction. Pass the active session from
+    run_transaction; never call it outside that transaction.
+    """
+    require_commercial_permission(actor_user, "commercial.manage_production")
+    if not actor_user_id or not production_id or created_at.tzinfo is None:
+        raise ValueError("Authenticated actor, stable ID, and timezone-aware timestamp are required")
+
+    productions = db["commercial_production_runs"]
+    fingerprint = _fingerprint(draft)
+    prior = await productions.find_one(
+        {"idempotency_scope": f"{season_code}:{actor_user_id}",
+         "idempotency_key": draft.idempotency_key},
+        {"_id": 0}, session=session,
+    )
+    if prior:
+        if prior.get("request_fingerprint") != fingerprint:
+            raise ValueError("Idempotency key was already used for a different production request")
+        return prior
+
+    owner = draft.owner
+    owner_doc = _owner_document(owner)
+    # Validate every input lot's identity and owner before writing anything.
+    for line in draft.inputs:
+        lot = await db["commercial_lots"].find_one(
+            {"id": line.olive_lot_id},
+            {"_id": 0, "id": 1, "product_kind": 1, "owner": 1, "status": 1},
+            session=session,
+        )
+        if not lot:
+            raise ValueError(f"Unknown olive lot: {line.olive_lot_id}")
+        if lot.get("product_kind") != "OLIVE":
+            raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
+        if lot.get("owner") != owner_doc or line.owner != owner:
+            raise ValueError(f"Olive lot ownership mismatch: {line.olive_lot_id}")
+        if lot.get("status") != "OPEN":
+            raise ValueError(f"Olive lot is not open: {line.olive_lot_id}")
+
+    tank = await db["commercial_tanks"].find_one(
+        {"id": draft.output_tank_id, "active": True},
+        {"_id": 0, "id": 1}, session=session,
+    )
+    if not tank:
+        raise ValueError("Output tank does not exist or is inactive")
+
+    run_number = await reserve_document_number(
+        db["commercial_counters"], season_code, "PROD", session=session
+    )
+    oil_lot_number = await reserve_document_number(
+        db["commercial_counters"], season_code, "LOT", session=session
+    )
+    oil_lot_id = _stable_id("production-oil-lot", f"{production_id}:{draft.idempotency_key}")
+    created_utc = created_at.astimezone(timezone.utc)
+
+    run = {
+        "id": production_id,
+        "season_code": season_code,
+        "document_type": "PROD",
+        "document_number": run_number,
+        "production_date": draft.production_date.isoformat(),
+        "status": "COMPLETED",
+        "version": 1,
+        "owner": owner_doc,
+        "inputs": [
+            {
+                "olive_lot_id": line.olive_lot_id,
+                "source_location_id": line.source_location_id,
+                "quantity_kg": Decimal128(line.quantity_kg),
+            }
+            for line in draft.inputs
+        ],
+        "total_olive_input_kg": Decimal128(draft.total_olive_input_kg),
+        "actual_oil_output_kg": Decimal128(draft.actual_oil_output_kg),
+        "extraction_rate_percent": Decimal128(draft.extraction_rate_percent),
+        "output_tank_id": draft.output_tank_id,
+        "output_oil_lot_id": oil_lot_id,
+        "idempotency_scope": f"{season_code}:{actor_user_id}",
+        "idempotency_key": draft.idempotency_key,
+        "request_fingerprint": fingerprint,
+        "notes": draft.notes,
+        "created_by": actor_user_id,
+        "completed_by": actor_user_id,
+        "created_at": created_utc,
+        "completed_at": created_utc,
+    }
+    # Insert COMPLETED inside this transaction before ledger movements; the
+    # source-document validator can then verify PROD, while rollback prevents
+    # any externally visible half-completed run.
+    await productions.insert_one(run, session=session)
+
+    oil_lot = {
+        "id": oil_lot_id,
+        "season_code": season_code,
+        "document_type": "LOT",
+        "document_number": oil_lot_number,
+        "product_kind": "OIL",
+        "source_production_id": production_id,
+        "quantity_received_kg": Decimal128(draft.actual_oil_output_kg),
+        "owner": owner_doc,
+        "quality_status": "PENDING",
+        "status": "OPEN",
+        "created_by": actor_user_id,
+        "created_at": created_utc,
+    }
+    await db["commercial_lots"].insert_one(oil_lot, session=session)
+
+    movement_ids: list[str] = []
+    for index, line in enumerate(draft.inputs):
+        line_key = f"{production_id}:{draft.idempotency_key}:consume:{index}"
+        movement_id = _stable_id("production-consumption", line_key)
+        await post_stock_movement(
+            db,
+            StockMovementDraft(
+                movement_kind="CONSUMPTION",
+                product_kind="OLIVE",
+                lot_id=line.olive_lot_id,
+                quantity_kg=line.quantity_kg,
+                source_location_id=line.source_location_id,
+                source_owner=owner,
+                source_document_type="PROD",
+                source_document_id=production_id,
+                idempotency_key=_key(line_key),
+                reason=f"Olive input consumed by {run_number}",
+            ),
+            season_code=season_code,
+            actor_user_id=actor_user_id,
+            actor_user=actor_user,
+            movement_id=movement_id,
+            audit_event_id=_stable_id("production-consumption-audit", line_key),
+            created_at=created_at,
+            session=session,
+        )
+        movement_ids.append(movement_id)
+
+    receipt_key = f"{production_id}:{draft.idempotency_key}:oil-receipt"
+    receipt_id = _stable_id("production-oil-receipt", receipt_key)
+    await post_stock_movement(
+        db,
+        StockMovementDraft(
+            movement_kind="RECEIPT",
+            product_kind="OIL",
+            lot_id=oil_lot_id,
+            quantity_kg=draft.actual_oil_output_kg,
+            destination_location_id=draft.output_tank_id,
+            destination_owner=owner,
+            source_document_type="PROD",
+            source_document_id=production_id,
+            idempotency_key=_key(receipt_key),
+            reason=f"Actual oil output received from {run_number}",
+        ),
+        season_code=season_code,
+        actor_user_id=actor_user_id,
+        actor_user=actor_user,
+        movement_id=receipt_id,
+        audit_event_id=_stable_id("production-oil-receipt-audit", receipt_key),
+        created_at=created_at,
+        session=session,
+    )
+    movement_ids.append(receipt_id)
+
+    update = await productions.update_one(
+        {"id": production_id, "status": "COMPLETED", "version": 1},
+        {"$set": {"stock_movement_ids": movement_ids, "updated_at": created_utc}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Production run changed before stock movement links were saved")
+
+    await db["commercial_audit_events"].insert_one(
+        {
+            "id": _stable_id("production-completion-audit", f"{production_id}:{draft.idempotency_key}"),
+            "entity_type": "commercial_production_run",
+            "entity_id": production_id,
+            "action": "COMPLETED_AND_STOCK_POSTED",
+            "actor_user_id": actor_user_id,
+            "created_at": created_utc,
+            "details": {
+                "document_number": run_number,
+                "oil_lot_id": oil_lot_id,
+                "oil_lot_number": oil_lot_number,
+                "stock_movement_ids": movement_ids,
+                "output_tank_id": draft.output_tank_id,
+                "owner": owner_doc,
+            },
+        },
+        session=session,
+    )
+    result = await productions.find_one({"id": production_id}, {"_id": 0}, session=session)
+    return result
