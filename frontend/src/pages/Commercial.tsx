@@ -202,6 +202,7 @@ export default function Commercial() {
   const [returnTankId, setReturnTankId] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [returnAcknowledgement, setReturnAcknowledgement] = useState("");
+  const [returnIdempotencyKey, setReturnIdempotencyKey] = useState(() => crypto.randomUUID());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -476,11 +477,12 @@ export default function Commercial() {
         quarantine_tank_id: returnTankId,
         reason: returnReason.trim(),
         buyer_acknowledgement_reference: returnAcknowledgement.trim() || null,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: returnIdempotencyKey,
       });
     },
     onSuccess: async () => {
       toast.success(salesText.returnSaved);
+      setReturnIdempotencyKey(crypto.randomUUID());
       setReturnQuantity(""); setReturnReason(""); setReturnAcknowledgement("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
@@ -972,11 +974,11 @@ export default function Commercial() {
         
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.returnIntake}</CardTitle><CardDescription>{(tanks.data ?? []).some((tank) => tank.active && tank.role === "QUARANTINE") ? salesText.returnWarning : salesText.noQuarantineTank}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); if (window.confirm(salesText.returnConfirm)) receiveSaleReturn.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{salesText.returnSale}<select required value={returnSaleId} onChange={(e) => setReturnSaleId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(sales.data ?? []).filter((sale) => sale.status === "APPROVED" && Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0) > 0).map((sale) => <option key={sale.id} value={sale.id}>{sale.document_number} · {number(Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0))} kg</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.quarantineTank}<select required value={returnTankId} onChange={(e) => setReturnTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active && tank.role === "QUARANTINE").map((tank) => <option key={tank.id} value={tank.id}>{tank.code} · {tank.name}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.returnQty}<input required type="number" min="0.001" step="0.001" max={(sales.data ?? []).find((sale) => sale.id === returnSaleId) ? Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.quantity_kg) - Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.returned_quantity_kg ?? 0) : undefined} value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.returnReason}<input required minLength={5} maxLength={500} value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.ackRef}<input maxLength={120} value={returnAcknowledgement} onChange={(e) => setReturnAcknowledgement(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.returnSale}<select required value={returnSaleId} onChange={(e) => { setReturnIdempotencyKey(crypto.randomUUID()); setReturnSaleId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(sales.data ?? []).filter((sale) => sale.status === "APPROVED" && Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0) > 0).map((sale) => <option key={sale.id} value={sale.id}>{sale.document_number} · {number(Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0))} kg</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.quarantineTank}<select required value={returnTankId} onChange={(e) => { setReturnIdempotencyKey(crypto.randomUUID()); setReturnTankId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active && tank.role === "QUARANTINE").map((tank) => <option key={tank.id} value={tank.id}>{tank.code} · {tank.name}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.returnQty}<input required type="number" min="0.001" step="0.001" max={(sales.data ?? []).find((sale) => sale.id === returnSaleId) ? Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.quantity_kg) - Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.returned_quantity_kg ?? 0) : undefined} value={returnQuantity} onChange={(e) => { setReturnIdempotencyKey(crypto.randomUUID()); setReturnQuantity(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.returnReason}<input required minLength={5} maxLength={500} value={returnReason} onChange={(e) => { setReturnIdempotencyKey(crypto.randomUUID()); setReturnReason(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.ackRef}<input maxLength={120} value={returnAcknowledgement} onChange={(e) => { setReturnIdempotencyKey(crypto.randomUUID()); setReturnAcknowledgement(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <Button type="submit" disabled={receiveSaleReturn.isPending || !returnSaleId || !returnTankId || !(Number(returnQuantity) > 0) || returnReason.trim().length < 5 || !(tanks.data ?? []).some((tank) => tank.id === returnTankId && tank.role === "QUARANTINE")}>{salesText.returnIntake}</Button>
           </form>
         </CardContent></Card>}
