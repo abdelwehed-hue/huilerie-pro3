@@ -605,7 +605,7 @@ export default function Commercial() {
       const balance = (balances.data ?? []).find((item) => item.lot_id + "::" + item.location_id === pickupBalanceKey);
       if (!owner || !balance) throw new Error("Customer or stock balance is no longer available");
       return apiPost<AnyRecord>("/commercial/v1/customer-custody/releases", {
-        customer_phone: owner.client_phone,
+        customer_id: owner.id,
         release_date: pickupDate,
         oil_lot_id: balance.lot_id,
         source_tank_id: balance.location_id,
