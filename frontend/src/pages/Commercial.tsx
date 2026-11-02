@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -21,10 +21,11 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "permissions";
 
 const labels = {
   fr: {
+    permissionsTab: "Droits des employés", chooseWorker: "Choisir un employé", labPermission: "Saisie des analyses laboratoire", reviewerPermission: "Validation indépendante de la qualité", auditPermission: "Consultation du journal d’audit", savePermissions: "Enregistrer les autorisations", permissionsSaved: "Autorisations mises à jour", noWorkers: "Aucun compte employé actif.",
     labEntry: "Saisie des analyses", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
     productionTab: "Production", newProduction: "Nouvelle production", productionDate: "Date de production", inputLots: "Lots d’olives consommés", chooseOliveBalance: "Lot · emplacement · propriétaire", inputQuantity: "Quantité consommée (kg)", outputQuantity: "Huile réellement obtenue (kg)", outputTank: "Cuve de réception", extractionRate: "Rendement réel", completeProduction: "Enregistrer la production", productionSaved: "Production enregistrée et stock mis à jour", productionHistory: "Historique de production", ownerMill: "Maâsra", ownerCustomer: "Client", addInput: "Ajouter un lot", totalInput: "Total olives consommées (kg)", noOliveStock: "Aucun stock d’olives disponible pour la production.", selectTank: "Sélectionnez une cuve.",
     actions: "Actions",
@@ -49,6 +50,7 @@ const labels = {
     varietiesTab: "Variétés d’olives", varietyCode: "Code variété", varietyNameFr: "Nom en français", varietyNameAr: "Nom en arabe", addVariety: "Ajouter une variété", varietySaved: "Variété ajoutée",     purchasesTab: "Achats d’olives", newPurchase: "Nouvel achat", purchaseDate: "Date d’achat", supplier: "Fournisseur", variety: "Variété", unitPrice: "Prix unitaire (DT/kg)", addLine: "Ajouter une ligne", removeLine: "Retirer", createDraft: "Créer le brouillon", purchaseCreated: "Brouillon d’achat créé", approve: "Approuver et réceptionner", receivingLocation: "Emplacement de réception", totalAmount: "Montant total (DT)", totalQuantity: "Quantité totale (kg)", draft: "Brouillon", approved: "Approuvé", noSuppliers: "Créez d’abord un fournisseur.", noVarieties: "Créez d’abord les variétés commerciales.",     suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", notes: "Notes",
   },
   ar: {
+    permissionsTab: "صلاحيات العمال", chooseWorker: "اختيار العامل", labPermission: "تسجيل التحاليل المخبرية", reviewerPermission: "المراجعة المستقلة للجودة", auditPermission: "الاطلاع على سجل التدقيق", savePermissions: "حفظ الصلاحيات", permissionsSaved: "تم تحديث الصلاحيات", noWorkers: "لا توجد حسابات عمال نشطة.",
     labEntry: "تسجيل التحاليل", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
     productionTab: "الإنتاج", newProduction: "إنتاج جديد", productionDate: "تاريخ الإنتاج", inputLots: "دفعات الزيتون المستهلكة", chooseOliveBalance: "الدفعة · الموقع · المالك", inputQuantity: "الكمية المستهلكة (كغ)", outputQuantity: "كمية الزيت الفعلية الناتجة (كغ)", outputTank: "خزان الاستلام", extractionRate: "المردودية الفعلية", completeProduction: "تسجيل الإنتاج", productionSaved: "تم تسجيل الإنتاج وتحيين المخزون", productionHistory: "سجل الإنتاج", ownerMill: "المعصرة", ownerCustomer: "الحريف", addInput: "إضافة دفعة", totalInput: "مجموع الزيتون المستهلك (كغ)", noOliveStock: "لا يوجد مخزون زيتون متاح للإنتاج.", selectTank: "يرجى اختيار خزان.",
     actions: "الإجراءات",
@@ -137,6 +139,8 @@ export default function Commercial() {
   const [reviewAssessmentId, setReviewAssessmentId] = useState("");
   const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
   const [reviewReason, setReviewReason] = useState("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
+  const [assignedPermissions, setAssignedPermissions] = useState<string[]>([]);
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -149,6 +153,8 @@ export default function Commercial() {
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-movements?limit=500"), enabled: ready && tab === "movements" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/quality-assessments?limit=500"), enabled: ready && tab === "quality" });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
+  const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
+  const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production") });
@@ -319,6 +325,16 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const saveWorkerPermissions = useMutation({
+    mutationFn: () => apiPost<AnyRecord>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
+      permissions: ["commercial.read", ...assignedPermissions],
+    }),
+    onSuccess: async () => {
+      toast.success(l.permissionsSaved);
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "worker-permissions", selectedWorkerId] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
@@ -333,6 +349,10 @@ export default function Commercial() {
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
   const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
+  useEffect(() => {
+    setAssignedPermissions(targetPermissions.data?.permissions.filter((permission) => permission !== "commercial.read") ?? []);
+  }, [targetPermissions.data, selectedWorkerId]);
+
   const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && ["PENDING", "REJECTED"].includes(lot.quality_status));
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
@@ -364,6 +384,7 @@ export default function Commercial() {
     { id: "varieties", label: l.varietiesTab, icon: Boxes },
     { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
     { id: "production", label: l.productionTab, icon: Factory },
+    ...(isAdmin ? [{ id: "permissions" as const, label: l.permissionsTab, icon: ShieldCheck }] : []),
   ];
 
   return (
