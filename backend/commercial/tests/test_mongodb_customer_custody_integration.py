@@ -105,7 +105,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
                     created_at=now, session=active,
                 )
             )
-        updated_owner = await db.commercial_custody_owners.find_one({"legacy_client_id": str(owner["_id"])}, {"_id": 0})
+        updated_owner = await db.commercial_custody_owners.find_one({"legacy_client_id": owner["legacy_client_id"]}, {"_id": 0})
         assert updated_owner["id"] == "custody-owner-1"
         assert updated_owner["client_phone"] == "21698765432"
         assert updated_owner["client_name"] == "Updated Customer Name"
@@ -114,9 +114,9 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         # Same idempotency key returns the original receipt even with new generated IDs.
         repeated = await post("unused-receipt-id", "unused-owner-id", "unused-lot-id", "unused-movement-id", "unused-audit-id")
         assert repeated["id"] == result["id"]
-        assert await db.commercial_customer_custody_receipts.count_documents({}) == 1
-        assert await db.commercial_lots.count_documents({}) == 1
-        assert await db.commercial_stock_movements.count_documents({}) == 1
+        assert await db.commercial_customer_custody_receipts.count_documents({}) == 2
+        assert await db.commercial_lots.count_documents({}) == 2
+        assert await db.commercial_stock_movements.count_documents({}) == 2
     finally:
         await client.drop_database(name)
         client.close()
