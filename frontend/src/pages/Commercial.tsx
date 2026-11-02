@@ -97,6 +97,17 @@ function ownerIdentity(owner: AnyRecord | undefined) {
   if (!owner) return "";
   return owner.kind === "CUSTOMER" ? "CUSTOMER:" + String(owner.customer_id ?? "") : String(owner.kind ?? "");
 }
+async function apiGetAllPages<T>(path: string, pageSize: number): Promise<T[]> {
+  const rows: T[] = [];
+  for (let skip = 0, page = 0; page < 100; skip += pageSize, page += 1) {
+    const separator = path.includes("?") ? "&" : "?";
+    const chunk = await apiGet<T[]>(`${path}${separator}limit=${pageSize}&skip=${skip}`);
+    rows.push(...chunk);
+    if (chunk.length < pageSize) return rows;
+  }
+  throw new Error("Commercial list exceeded the safe pagination limit; narrow the list before continuing.");
+}
+
 function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
   return <TableRow><TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">{text}</TableCell></TableRow>;
 }
@@ -250,8 +261,8 @@ export default function Commercial() {
   });
   const ready = status.data?.ready === true;
   const tanks = useQuery({ queryKey: ["commercial", "tanks"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/tanks"), enabled: ready });
-  const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/lots?limit=500"), enabled: ready });
-  const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-balances?limit=1000"), enabled: ready });
+  const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/lots", 500), enabled: ready });
+  const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-balances", 1000), enabled: ready });
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-movements?limit=500"), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/internal-movements?limit=500"), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/quality-assessments?limit=500"), enabled: ready && tab === "quality" });
