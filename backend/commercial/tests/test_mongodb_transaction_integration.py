@@ -409,6 +409,90 @@ async def test_internal_transfer_document_and_ledger_post_atomically():
 
 
 @pytest.mark.asyncio
+async def test_partial_ownership_transfer_splits_one_lot_between_mill_and_customer():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.internal_movements import InternalMovementDraft
+    from commercial.services.internal_movements import create_internal_movement
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "internal_ownership_transfer_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "INT", "last_sequence": 0},
+        ])
+        await db.commercial_locations.insert_one({
+            "id": "storage-a", "code": "STORAGE-A", "active": True, "kind": "OLIVE_STORAGE",
+        })
+        await db.commercial_custody_owners.insert_one({
+            "id": "custody-owner-a", "legacy_client_id": "legacy-a",
+            "client_phone": "21611111111", "client_name": "Customer A", "active": True,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "olive-lot-split", "season_code": "2627",
+            "document_number": "2627LOT0001", "product_kind": "OLIVE",
+            "owner": {"kind": "MILL"}, "status": "OPEN",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "olive-lot-split",
+            "owner": {"kind": "MILL"}, "location_id": "storage-a",
+            "quantity_kg": Decimal128("100.000"), "created_at": now,
+        })
+        draft = InternalMovementDraft(
+            movement_kind="OWNERSHIP_TRANSFER", product_kind="OLIVE",
+            lot_id="olive-lot-split", quantity_kg=Decimal("35.000"),
+            source_location_id="storage-a", destination_location_id="storage-a",
+            source_owner={"kind": "MILL"},
+            destination_owner={"kind": "CUSTOMER", "customer_id": "custody-owner-a"},
+            idempotency_key="partial-ownership-transfer-key-001",
+            reason="Transfer part of this lot to customer custody",
+        )
+        async with await client.start_session() as session:
+            result = await session.with_transaction(
+                lambda active: create_internal_movement(
+                    db, draft, season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    movement_document_id="internal-ownership-doc-1",
+                    stock_movement_id="stock-ownership-movement-1",
+                    audit_event_id="internal-ownership-audit-1",
+                    created_at=now, session=active,
+                )
+            )
+        assert result["document_number"] == "2627INT0001"
+        mill_balance = await db.commercial_stock_balances.find_one({
+            "product_kind": "OLIVE", "lot_id": "olive-lot-split",
+            "owner.kind": "MILL", "location_id": "storage-a",
+        })
+        customer_balance = await db.commercial_stock_balances.find_one({
+            "product_kind": "OLIVE", "lot_id": "olive-lot-split",
+            "owner.kind": "CUSTOMER", "owner.customer_id": "custody-owner-a",
+            "location_id": "storage-a",
+        })
+        assert mill_balance["quantity_kg"].to_decimal() == Decimal("65.000")
+        assert customer_balance["quantity_kg"].to_decimal() == Decimal("35.000")
+        assert (
+            mill_balance["quantity_kg"].to_decimal()
+            + customer_balance["quantity_kg"].to_decimal()
+        ) == Decimal("100.000")
+        movement = await db.commercial_stock_movements.find_one(
+            {"id": "stock-ownership-movement-1"}, {"_id": 0}
+        )
+        assert movement["movement_kind"] == "OWNERSHIP_TRANSFER"
+        assert movement["source_owner"] == {"kind": "MILL"}
+        assert movement["destination_owner"] == {
+            "kind": "CUSTOMER", "customer_id": "custody-owner-a"
+        }
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
+
 async def test_internal_movement_audit_failure_rolls_back_document_and_balances():
     from decimal import Decimal
     from bson.decimal128 import Decimal128
