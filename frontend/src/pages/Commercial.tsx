@@ -643,6 +643,7 @@ export default function Commercial() {
       setCreditApplicationKey(crypto.randomUUID());
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "credit-applications", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
