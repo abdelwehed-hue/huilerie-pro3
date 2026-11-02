@@ -3,40 +3,47 @@ import pytest
 from commercial.permissions import require_commercial_permission
 
 
-def test_admin_can_post_commercial_stock():
-    require_commercial_permission(
-        {"active": True, "role": "admin"}, "commercial.post_stock"
-    )
+def test_admin_has_commercial_quality_permissions():
+    admin = {"active": True, "role": "admin"}
+    require_commercial_permission(admin, "commercial.lab_record")
+    require_commercial_permission(admin, "commercial.quality_release")
+    require_commercial_permission(admin, "commercial.post_stock")
+
+
+def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
+    lab = {"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]}
+    reviewer = {"active": True, "role": "worker", "commercial_permissions": ["commercial.quality_release"]}
+    require_commercial_permission(lab, "commercial.read")
+    require_commercial_permission(lab, "commercial.lab_record")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(lab, "commercial.quality_release")
+    require_commercial_permission(reviewer, "commercial.quality_release")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(reviewer, "commercial.lab_record")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(reviewer, "commercial.post_stock")
 
 
 @pytest.mark.parametrize("user", [
-    {"active": True, "role": "worker"},
     {"active": False, "role": "admin"},
     {"active": True, "role": "unknown"},
     {},
 ])
-def test_non_admin_or_inactive_user_cannot_post_stock(user):
+def test_inactive_or_unknown_user_has_no_commercial_permissions(user):
     with pytest.raises(PermissionError):
-        require_commercial_permission(user, "commercial.post_stock")
+        require_commercial_permission(user, "commercial.read")
 
 
-def test_worker_can_only_read_commercial_module():
-    require_commercial_permission({"active": True, "role": "worker"}, "commercial.read")
-    with pytest.raises(PermissionError):
-        require_commercial_permission({"active": True, "role": "worker"}, "commercial.manage_sales")
-
-
-def test_commercial_api_router_exposes_only_versioned_commercial_paths(monkeypatch):
+def test_commercial_api_router_exposes_quality_submission_and_separate_release(monkeypatch):
     import os
-
     monkeypatch.setenv("JWT_SECRET", "commercial-router-test-secret")
     monkeypatch.setenv("MONGO_URL", "mongodb://127.0.0.1:27017")
     monkeypatch.setenv("DB_NAME", "commercial_router_test")
-
     from commercial.routers import router
-
     paths = {route.path for route in router.routes}
     assert "/commercial/v1/bootstrap" in paths
     assert "/commercial/v1/olive-purchases" in paths
     assert "/commercial/v1/production-runs" in paths
     assert "/commercial/v1/quality-assessments" in paths
+    assert "/commercial/v1/quality-assessments/release" in paths
+    assert "/commercial/v1/users/{target_user_id}/commercial-permissions" in paths
