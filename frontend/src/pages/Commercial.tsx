@@ -21,7 +21,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties";
 
 const labels = {
   fr: {
@@ -43,7 +43,7 @@ const labels = {
     awaiting: "En attente de revue", unknown: "—", noPermission: "Accès en lecture seule selon vos autorisations.",
     qualityRule: "Un lot d'huile reste bloqué tant qu'un réviseur indépendant n'a pas approuvé son analyse.",
     warning: "Le module commercial n'est pas encore initialisé dans la base de données.",
-    suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", notes: "Notes",
+    varietiesTab: "Variétés d’olives", varietyCode: "Code variété", varietyNameFr: "Nom en français", varietyNameAr: "Nom en arabe", addVariety: "Ajouter une variété", varietySaved: "Variété ajoutée",     suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", notes: "Notes",
   },
   ar: {
     title: "Oro Verde — التسيير التجاري",
@@ -64,7 +64,7 @@ const labels = {
     awaiting: "في انتظار المراجعة", unknown: "—", noPermission: "صلاحية العرض فقط حسب أذونات حسابك.",
     qualityRule: "تبقى دفعة الزيت غير متاحة للبيع حتى يعتمد محلل مستقل نتائج التحليل.",
     warning: "لم تتم تهيئة الوحدة التجارية في قاعدة البيانات بعد.",
-    suppliers: "المزوّدون", locationsTab: "مواقع التخزين", supplierName: "اسم المزوّد", supplierPhone: "الهاتف", taxId: "المعرّف الجبائي", addSupplier: "إضافة المزوّد", supplierSaved: "تمت إضافة المزوّد", locationCode: "الرمز", locationName: "اسم الموقع", locationType: "النوع", oliveStorage: "مخزن الزيتون", staging: "منطقة التحضير", addLocation: "إضافة الموقع", locationSaved: "تمت إضافة الموقع", notes: "ملاحظات",
+    varietiesTab: "أصناف الزيتون", varietyCode: "رمز الصنف", varietyNameFr: "الاسم بالفرنسية", varietyNameAr: "الاسم بالعربية", addVariety: "إضافة صنف", varietySaved: "تمت إضافة الصنف",     suppliers: "المزوّدون", locationsTab: "مواقع التخزين", supplierName: "اسم المزوّد", supplierPhone: "الهاتف", taxId: "المعرّف الجبائي", addSupplier: "إضافة المزوّد", supplierSaved: "تمت إضافة المزوّد", locationCode: "الرمز", locationName: "اسم الموقع", locationType: "النوع", oliveStorage: "مخزن الزيتون", staging: "منطقة التحضير", addLocation: "إضافة الموقع", locationSaved: "تمت إضافة الموقع", notes: "ملاحظات",
   },
 } as const;
 
@@ -104,6 +104,9 @@ export default function Commercial() {
   const [locationName, setLocationName] = useState("");
   const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
   const [locationNotes, setLocationNotes] = useState("");
+  const [varietyCode, setVarietyCode] = useState("");
+  const [varietyNameFr, setVarietyNameFr] = useState("");
+  const [varietyNameAr, setVarietyNameAr] = useState("");
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -118,6 +121,7 @@ export default function Commercial() {
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && tab === "suppliers" });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && tab === "locations" });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && tab === "varieties" });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
       name: supplierName.trim(), phone: supplierPhone.trim() || null,
@@ -139,6 +143,18 @@ export default function Commercial() {
       toast.success(l.locationSaved);
       setLocationCode(""); setLocationName(""); setLocationNotes("");
       await queryClient.invalidateQueries({ queryKey: ["commercial", "locations"] });
+    },
+    onError: () => toast.error(l.warning),
+  });
+  const addVariety = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/varieties", {
+      code: varietyCode.trim().toUpperCase(), name_fr: varietyNameFr.trim(),
+      name_ar: varietyNameAr.trim() || null,
+    }),
+    onSuccess: async () => {
+      toast.success(l.varietySaved);
+      setVarietyCode(""); setVarietyNameFr(""); setVarietyNameAr("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "varieties"] });
     },
     onError: () => toast.error(l.warning),
   });
@@ -164,6 +180,7 @@ export default function Commercial() {
     { id: "audit", label: l.audit, icon: ClipboardList },
     { id: "suppliers", label: l.suppliers, icon: Boxes },
     { id: "locations", label: l.locationsTab, icon: Warehouse },
+    { id: "varieties", label: l.varietiesTab, icon: Boxes },
   ];
 
   return (
@@ -261,6 +278,18 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{l.locationsTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.locationCode}</TableHead><TableHead>{l.locationName}</TableHead><TableHead>{l.locationType}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(locations.data ?? []).map((loc) => <TableRow key={loc.id}><TableCell className="font-mono">{value(loc.code)}</TableCell><TableCell className="font-semibold">{value(loc.name)}</TableCell><TableCell>{loc.kind === "OLIVE_STORAGE" ? l.oliveStorage : l.staging}</TableCell><TableCell>{loc.active ? l.active : l.closed}</TableCell></TableRow>)}{(!locations.isLoading && !(locations.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>
+      </div>}
+
+      {tab === "varieties" && <div className="space-y-4">
+        {isAdmin && <Card><CardHeader><CardTitle>{l.addVariety}</CardTitle></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (varietyCode.trim().length >= 2 && varietyNameFr.trim().length >= 2) addVariety.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{l.varietyCode}<input required minLength={2} maxLength={20} value={varietyCode} onChange={(e) => setVarietyCode(e.target.value.toUpperCase())} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{l.varietyNameFr}<input required minLength={2} maxLength={100} value={varietyNameFr} onChange={(e) => setVarietyNameFr(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{l.varietyNameAr}<input maxLength={100} value={varietyNameAr} onChange={(e) => setVarietyNameAr(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" dir="rtl" /></label>
+            <div className="md:col-span-3"><Button type="submit" disabled={addVariety.isPending || varietyCode.trim().length < 2 || varietyNameFr.trim().length < 2}>{l.addVariety}</Button></div>
+          </form>
+        </CardContent></Card>}
+        <Card><CardHeader><CardTitle>{l.varietiesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.varietyCode}</TableHead><TableHead>{l.varietyNameFr}</TableHead><TableHead>{l.varietyNameAr}</TableHead></TableRow></TableHeader><TableBody>{(varieties.data ?? []).map((v) => <TableRow key={v.id}><TableCell className="font-mono">{value(v.code)}</TableCell><TableCell className="font-semibold">{value(v.name_fr)}</TableCell><TableCell dir="rtl">{value(v.name_ar)}</TableCell></TableRow>)}{(!varieties.isLoading && !(varieties.data?.length)) && <EmptyRow colSpan={3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
       </div>}
     </div>
   );
