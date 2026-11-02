@@ -1125,7 +1125,7 @@ async def list_customer_custody_owners(
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_custody_owners.find(
-        {}, {"_id": 0}
+        {}, {"_id": 0, "id": 1, "client_phone": 1, "client_name": 1, "active": 1, "version": 1}
     ).sort("client_name", 1).to_list(limit)
     return _safe(docs)
 
