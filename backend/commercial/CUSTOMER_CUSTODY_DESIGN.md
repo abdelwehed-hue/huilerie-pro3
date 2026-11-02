@@ -1,6 +1,6 @@
 # Customer-Owned Oil Custody and Ownership Settlement
 
-Status: **partially implemented**. Customer-owned olive intake (CIN) and customer-owned oil pickup (CUS) are implemented as transactional workflows. Customer-authorized ownership transfer, custody statements, owner payout, and consignment sales remain deferred.
+Status: **partially implemented**. Customer-owned olive intake (CIN) and customer-owned oil pickup (CUS) are implemented as transactional workflows. A read-only custody statement is implemented and reconciles the append-only ledger to live balances. Customer-authorized ownership transfer, owner payout, and consignment sales remain deferred.
 
 ## Core ownership rules
 
@@ -77,7 +77,11 @@ Required evidence:
 
 The service must debit CUSTOMER balance and credit MILL balance atomically, preserve lot identity/history, and audit the authorization. If compensation is due, a separate payable/settlement record is required. Do not silently treat ownership transfer as cash payment.
 
-## Custody statement and consignment — deferred
+## Implemented custody statement
+
+The read-only endpoint GET /api/commercial/v1/customer-custody/owners/{customer_id}/statement returns chronological customer-owned OLIVE and OIL movements, per-product running balances, and current stock totals. It recalculates balances from the append-only MVT ledger and fails closed with a reconciliation conflict if the ledger does not equal the live stock-balance collection. The statement includes internal transfers with zero net owner quantity change.
+
+## Consignment — deferred
 
 A future customer statement must reconcile:
 
