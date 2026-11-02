@@ -109,6 +109,16 @@ for (const [route, collection] of [['news', news], ['products', products]]) {
     res.json({ ok: true });
   });
 }
+app.get('/api/admin/media', auth, async (_req, res) => {
+  const files = await db.collection('site_media.files').find({}).sort({ uploadDate: -1 }).limit(100).project({ filename: 1, contentType: 1, length: 1, uploadDate: 1 }).toArray();
+  res.json(files.map(file => ({ _id: file._id.toString(), filename: file.filename, contentType: file.contentType, size: file.length, uploadDate: file.uploadDate, url: '/api/public/media/' + file._id })));
+});
+app.delete('/api/admin/media/:id', auth, async (req, res) => {
+  const _id = cleanId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid id' });
+  try { await bucket.delete(_id); res.json({ ok: true }); }
+  catch { res.status(404).json({ error: 'Media not found' }); }
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|avif)$/.test(file.mimetype)) });
 app.post('/api/admin/media', auth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image JPEG, PNG, WEBP ou AVIF requise (8 Mo max)' });
