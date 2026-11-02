@@ -4,6 +4,7 @@ A run has one owner only. Mixing mill-owned and customer-custody olives in a
 single output lot is rejected; ownership must remain traceable end to end.
 Actual oil output is recorded, never estimated from a configured yield rate.
 """
+from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
@@ -36,6 +37,9 @@ class CommercialProductionDraft(BaseModel):
 
     @model_validator(mode="after")
     def validate_production_balance_and_ownership(self):
+        lot_ids = [line.olive_lot_id for line in self.inputs]
+        if len(lot_ids) != len(set(lot_ids)):
+            raise ValueError("Each olive lot may appear only once in a production run")
         owners = {line.owner.model_dump_json() for line in self.inputs}
         if len(owners) != 1:
             raise ValueError(
