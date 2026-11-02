@@ -1374,3 +1374,65 @@ async def test_concurrent_sale_returns_cannot_over_return_same_dispatch():
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_stock_movement_rejects_product_kind_mismatch_with_lot():
+    from decimal import Decimal
+
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.inventory import OwnerRef, StockMovementDraft
+    from commercial.services.stock_ledger import post_stock_movement
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "stock_product_kind_mismatch_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_lots.insert_one({
+            "id": "oil-lot-used-as-olive",
+            "season_code": "2627",
+            "document_type": "LOT",
+            "document_number": "2627LOT0001",
+            "product_kind": "OIL",
+            "owner": {"kind": "MILL"},
+            "status": "OPEN",
+        })
+        await db.commercial_locations.insert_one({
+            "id": "olive-storage-mismatch",
+            "code": "OLIVE-MISMATCH",
+            "kind": "OLIVE_STORAGE",
+            "active": True,
+        })
+        draft = StockMovementDraft(
+            movement_kind="RECEIPT",
+            product_kind="OLIVE",
+            lot_id="oil-lot-used-as-olive",
+            quantity_kg=Decimal("10.000"),
+            destination_location_id="olive-storage-mismatch",
+            destination_owner=OwnerRef(kind="MILL"),
+            source_document_type="ACH",
+            source_document_id="not-reached-because-lot-kind-is-invalid",
+            idempotency_key="stock-product-kind-mismatch-001",
+            reason="Reject cross-product stock posting",
+        )
+        with pytest.raises(ValueError, match="does not match lot product kind"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: post_stock_movement(
+                        db, draft,
+                        season_code="2627",
+                        actor_user_id="integration-admin",
+                        actor_user={"active": True, "role": "admin"},
+                        movement_id="stock-product-kind-mismatch-movement",
+                        audit_event_id="stock-product-kind-mismatch-audit",
+                        created_at=now,
+                        session=active,
+                    )
+                )
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        assert await db.commercial_stock_balances.count_documents({}) == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
