@@ -13,7 +13,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.numbering import reserve_document_number
-from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
+from commercial.services.payment_ledger import assert_invoice_receivable_fields_reconcile
 
 
 def _decimal(value: Any) -> Decimal:
@@ -106,12 +106,7 @@ async def reverse_sale_payment(
     paid = _decimal(invoice.get("paid_amount_dt", Decimal128("0.000")))
     applied_credit = _decimal(invoice.get("applied_credit_amount_dt", Decimal128("0.000")))
     outstanding_before = _decimal(invoice["outstanding_amount_dt"])
-    expected_net = gross - credited
-    expected_outstanding = max(Decimal("0.000"), expected_net - paid - applied_credit)
-    if (gross < 0 or credited < 0 or paid < 0 or applied_credit < 0
-            or net != expected_net or outstanding_before != expected_outstanding):
-        raise ValueError("Invoice receivable fields are inconsistent; reconcile before reversing payment")
-    await assert_invoice_cash_paid_reconciles(db, invoice_id, paid, session=session)
+    await assert_invoice_receivable_fields_reconcile(db, invoice, session=session)
     if amount > paid:
         raise ValueError("Reversal exceeds the cash paid amount remaining on the invoice")
 
