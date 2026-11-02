@@ -877,7 +877,7 @@ export default function Commercial() {
           : ownerLabel(balance.owner, l);
         return [ownerIdentity(balance.owner), label];
       })).values());
-    return owners.length ? owners.join(" / ") : l.unknown;
+    return owners.length ? owners.join(" / ") : "—";
   };
   const currentStockQuantityForLot = (lot: AnyRecord) => (balances.data ?? [])
     .filter((balance) => balance.lot_id === lot.id)
@@ -937,7 +937,7 @@ export default function Commercial() {
     { id: "tanks", label: l.tanks, icon: Warehouse },
     { id: "lots", label: l.lots, icon: Boxes },
     { id: "movements", label: l.movements, icon: RefreshCw },
-    ...(canPostStock ? [{ id: "transfers" as const, label: l.internalMovementsTab, icon: RefreshCw }] : []),
+    { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "audit", label: l.audit, icon: ClipboardList },
     { id: "suppliers", label: l.suppliers, icon: Boxes },
@@ -1016,11 +1016,11 @@ export default function Commercial() {
 
       {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => <TableRow key={lot.id}><TableCell className="font-mono text-xs">{value(lot.document_number)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>)}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
-      {tab === "transfers" && canPostStock && <div className="space-y-4">
+      {tab === "transfers" && <div className="space-y-4">
         <Card>
           <CardHeader><CardTitle>{l.internalMovementTitle}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
+            {canPostStock && <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-medium">{l.movementType}
                   <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey("MILL"); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
@@ -1073,7 +1073,7 @@ export default function Commercial() {
                   {l.postInternalMovement}
                 </Button>
               </div>
-            </form>
+            </form>}
           </CardContent>
         </Card>
         <Card>
