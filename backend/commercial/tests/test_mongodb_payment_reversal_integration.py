@@ -91,6 +91,7 @@ async def test_payment_reversal_is_append_only_and_updates_invoice_balance():
         assert await db.commercial_payment_reversals.count_documents({}) == 1
 
         second = PaymentReversalDraft(
+            reversal_date="2026-11-02",
             amount_dt=Decimal("40.000"), expected_invoice_version=2,
             reason="Reverse remaining amount",
             idempotency_key="payment-reversal-append-only-002",
@@ -137,6 +138,7 @@ async def test_payment_reversal_reduces_only_unapplied_credit_from_same_invoice(
             "created_at": datetime(2026, 10, 21, tzinfo=timezone.utc),
         })
         draft = PaymentReversalDraft(
+            reversal_date="2026-11-02",
             amount_dt=Decimal("100.000"), expected_invoice_version=1,
             reason="Reverse payment against credited invoice",
             idempotency_key="payment-reversal-credit-001",
@@ -203,6 +205,7 @@ async def test_payment_reversal_is_blocked_when_source_credit_was_already_applie
             },
         ])
         draft = PaymentReversalDraft(
+            reversal_date="2026-11-02",
             amount_dt=Decimal("100.000"), expected_invoice_version=1,
             reason="Attempt reversal after credit was used",
             idempotency_key="payment-reversal-consumed-credit-001",
