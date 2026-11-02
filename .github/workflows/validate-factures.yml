@@ -55,6 +55,79 @@ jobs:
       - name: Test commercial schemas, bootstrap, permissions, and reference validation
         run: python -m pytest -o addopts= commercial/tests
 
+  mongodb-transaction-integration:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --replSet rs0
+          --bind_ip_all
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MONGO_URL: mongodb://127.0.0.1:27017/?replicaSet=rs0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install transaction integration dependencies
+        run: python -m pip install pymongo motor pytest pytest-asyncio
+      - name: Initialize MongoDB replica set
+        run: |
+          python - <<'PY'
+          import time
+          from pymongo import MongoClient
+
+          direct = MongoClient(
+              "mongodb://127.0.0.1:27017/?directConnection=true",
+              serverSelectionTimeoutMS=2000,
+          )
+          for _ in range(30):
+              try:
+                  direct.admin.command("ping")
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise RuntimeError("MongoDB did not become available")
+
+          try:
+              direct.admin.command(
+                  "replSetInitiate",
+                  {"_id": "rs0", "members": [{"_id": 0, "host": "127.0.0.1:27017"}]},
+              )
+          except Exception as exc:
+              if "already initialized" not in str(exc).lower():
+                  raise
+          direct.close()
+
+          replica = MongoClient(
+              "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+              serverSelectionTimeoutMS=2000,
+          )
+          for _ in range(30):
+              try:
+                  if replica.admin.command("hello").get("isWritablePrimary"):
+                      break
+              except Exception:
+                  pass
+              time.sleep(1)
+          else:
+              raise RuntimeError("MongoDB replica set did not elect a primary")
+          replica.close()
+          PY
+      - name: Verify transaction rollback on a real replica set
+        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
