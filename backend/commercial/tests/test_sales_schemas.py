@@ -40,7 +40,7 @@ def test_sale_approval_requires_expected_version_and_idempotency():
 
 def test_payment_requires_positive_amount_and_supported_method():
     payment = SalePaymentDraft(
-        payment_date="2026-11-02", amount_dt="100.000", method="BANK_TRANSFER",
+        payment_date="2026-11-02", amount_dt="100.000", method="BANK_TRANSFER", reference="TRX-001",
         expected_invoice_version=1, idempotency_key="sale-payment-key-001",
     )
     assert payment.amount_dt == 100
@@ -53,4 +53,16 @@ def test_payment_requires_positive_amount_and_supported_method():
         SalePaymentDraft(
             payment_date="2026-11-02", amount_dt="10", method="UNKNOWN",
             expected_invoice_version=1, idempotency_key="sale-payment-key-003",
+        )
+
+def test_bank_and_cheque_payments_require_reference():
+    with pytest.raises(ValidationError, match="reference is required"):
+        SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt="10.000", method="BANK_TRANSFER",
+            expected_invoice_version=1, idempotency_key="sale-payment-no-ref-001",
+        )
+    with pytest.raises(ValidationError, match="reference is required"):
+        SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt="10.000", method="CHEQUE",
+            expected_invoice_version=1, idempotency_key="sale-payment-no-ref-002",
         )
