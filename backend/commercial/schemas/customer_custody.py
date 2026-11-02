@@ -22,7 +22,7 @@ class CustomerOliveCustodyReceiptDraft(BaseModel):
     @field_validator("customer_phone", mode="before")
     @classmethod
     def normalize_customer_phone(cls, value):
-        return re.sub(r"\\s+", "", value) if isinstance(value, str) else value
+        return re.sub(r"\s+", "", value) if isinstance(value, str) else value
 
 
 class CustomerOilCustodyReleaseDraft(BaseModel):
