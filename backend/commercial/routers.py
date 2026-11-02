@@ -765,7 +765,9 @@ async def reverse_wholesale_sale_payment(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_sales")
-    _, season_code = await _require_commercial_ready()
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.reversal_date.isoformat()) != season:
+        raise HTTPException(422, "payment_reversal_date_outside_active_season")
     reversal_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
