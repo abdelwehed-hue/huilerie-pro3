@@ -468,3 +468,195 @@ async def test_internal_movement_audit_failure_rolls_back_document_and_balances(
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+
+@pytest.mark.asyncio
+async def test_wholesale_sale_dispatches_only_released_mill_owned_oil_and_tracks_payments():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.sales import (
+        ApproveWholesaleSaleCommand, SalePaymentDraft, WholesaleSaleDraft,
+    )
+    from commercial.services.sales import (
+        create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment,
+    )
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "wholesale_sale_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("VTE", "FAC", "MVT", "PAY")
+        ])
+        await db.commercial_buyers.insert_one({
+            "id": "buyer-1", "name": "Wholesale Buyer", "active": True,
+        })
+        await db.commercial_tanks.insert_one({
+            "id": "tank-01", "code": "T01", "active": True,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "oil-lot-sale", "season_code": "2627", "document_type": "LOT",
+            "document_number": "2627LOT0001", "product_kind": "OIL",
+            "status": "OPEN", "owner": {"kind": "MILL"},
+            "quality_status": "RELEASED", "quality_decision_id": "quality-release-1",
+        })
+        await db.commercial_quality_releases.insert_one({
+            "id": "quality-release-1", "oil_lot_id": "oil-lot-sale", "decision": "RELEASED",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OIL", "lot_id": "oil-lot-sale",
+            "owner": {"kind": "MILL"}, "location_id": "tank-01",
+            "quantity_kg": Decimal128("100.000"), "created_at": now,
+        })
+        sale_draft = WholesaleSaleDraft(
+            sale_date="2026-11-02", buyer_id="buyer-1", oil_lot_id="oil-lot-sale",
+            source_tank_id="tank-01", quantity_kg="25.000", unit_price_dt="4.500",
+            idempotency_key="wholesale-sale-create-key-001",
+        )
+        async with await client.start_session() as session:
+            sale = await session.with_transaction(
+                lambda active: create_wholesale_sale_draft(
+                    db, sale_draft, season_code="2627", actor_user=admin,
+                    actor_user_id="admin-1", sale_id="sale-1",
+                    audit_event_id="sale-draft-audit-1", created_at=now, session=active,
+                )
+            )
+        assert sale["document_number"] == "2627VTE0001"
+        command = ApproveWholesaleSaleCommand(
+            expected_version=1, idempotency_key="wholesale-sale-approve-key-001"
+        )
+        async with await client.start_session() as session:
+            approved = await session.with_transaction(
+                lambda active: approve_wholesale_sale(
+                    db, "sale-1", command, season_code="2627",
+                    actor_user=admin, actor_user_id="admin-1",
+                    invoice_id="invoice-1", stock_movement_id="dispatch-1",
+                    audit_event_id="sale-approval-audit-1", created_at=now, session=active,
+                )
+            )
+        assert approved["status"] == "APPROVED"
+        invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-1"})
+        assert invoice["document_number"] == "2627FAC0001"
+        assert invoice["total_amount_dt"].to_decimal() == Decimal("112.500")
+        assert invoice["tax_treatment_status"] == "NOT_CONFIGURED"
+        balance = await db.commercial_stock_balances.find_one({"location_id": "tank-01"})
+        assert balance["quantity_kg"].to_decimal() == Decimal("75.000")
+        movement = await db.commercial_stock_movements.find_one({"id": "dispatch-1"})
+        assert movement["source_document_type"] == "VTE"
+
+        first_payment = SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt="50.000", method="CASH",
+            expected_invoice_version=1, idempotency_key="sale-payment-key-0001",
+        )
+        async with await client.start_session() as session:
+            payment = await session.with_transaction(
+                lambda active: record_sale_payment(
+                    db, "invoice-1", first_payment, season_code="2627",
+                    actor_user=admin, actor_user_id="admin-1",
+                    payment_id="payment-1", audit_event_id="payment-audit-1",
+                    created_at=now, session=active,
+                )
+            )
+        assert payment["document_number"] == "2627PAY0001"
+        invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-1"})
+        assert invoice["payment_status"] == "PARTIALLY_PAID"
+        assert invoice["outstanding_amount_dt"].to_decimal() == Decimal("62.500")
+
+        second_payment = SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt="62.500", method="BANK_TRANSFER",
+            expected_invoice_version=2, idempotency_key="sale-payment-key-0002",
+        )
+        async with await client.start_session() as session:
+            await session.with_transaction(
+                lambda active: record_sale_payment(
+                    db, "invoice-1", second_payment, season_code="2627",
+                    actor_user=admin, actor_user_id="admin-1",
+                    payment_id="payment-2", audit_event_id="payment-audit-2",
+                    created_at=now, session=active,
+                )
+            )
+        invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-1"})
+        assert invoice["payment_status"] == "PAID"
+        assert invoice["outstanding_amount_dt"].to_decimal() == Decimal("0.000")
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_wholesale_sale_rejects_customer_custody_and_unreleased_oil():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.sales import ApproveWholesaleSaleCommand, WholesaleSaleDraft
+    from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "wholesale_sale_blocked_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("VTE", "FAC", "MVT")
+        ])
+        await db.commercial_buyers.insert_one({
+            "id": "buyer-1", "name": "Wholesale Buyer", "active": True,
+        })
+        await db.commercial_tanks.insert_one({"id": "tank-01", "code": "T01", "active": True})
+        await db.commercial_lots.insert_one({
+            "id": "oil-lot-custody", "product_kind": "OIL", "status": "OPEN",
+            "owner": {"kind": "CUSTOMER", "customer_id": "client-1"},
+            "quality_status": "RELEASED", "quality_decision_id": "release-custody",
+        })
+        await db.commercial_quality_releases.insert_one({
+            "id": "release-custody", "oil_lot_id": "oil-lot-custody", "decision": "RELEASED",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OIL", "lot_id": "oil-lot-custody",
+            "owner": {"kind": "CUSTOMER", "customer_id": "client-1"},
+            "location_id": "tank-01", "quantity_kg": Decimal128("40.000"),
+            "created_at": now,
+        })
+        draft = WholesaleSaleDraft(
+            sale_date="2026-11-02", buyer_id="buyer-1", oil_lot_id="oil-lot-custody",
+            source_tank_id="tank-01", quantity_kg=Decimal("10.000"),
+            unit_price_dt=Decimal("5.000"), idempotency_key="blocked-sale-create-key-001",
+        )
+        async with await client.start_session() as session:
+            await session.with_transaction(
+                lambda active: create_wholesale_sale_draft(
+                    db, draft, season_code="2627", actor_user=admin,
+                    actor_user_id="admin-1", sale_id="sale-blocked",
+                    audit_event_id="sale-blocked-draft-audit", created_at=now, session=active,
+                )
+            )
+        with pytest.raises(ValueError, match="Customer-custody oil cannot be sold"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: approve_wholesale_sale(
+                        db, "sale-blocked",
+                        ApproveWholesaleSaleCommand(
+                            expected_version=1, idempotency_key="blocked-sale-approve-key-001"
+                        ),
+                        season_code="2627", actor_user=admin, actor_user_id="admin-1",
+                        invoice_id="blocked-invoice", stock_movement_id="blocked-dispatch",
+                        audit_event_id="blocked-approval-audit", created_at=now, session=active,
+                    )
+                )
+        sale = await db.commercial_sales.find_one({"id": "sale-blocked"})
+        assert sale["status"] == "DRAFT"
+        assert await db.commercial_sales_invoices.count_documents({}) == 0
+        balance = await db.commercial_stock_balances.find_one({"location_id": "tank-01"})
+        assert balance["quantity_kg"].to_decimal() == Decimal("40.000")
+    finally:
+        await client.drop_database(db_name)
+        client.close()
