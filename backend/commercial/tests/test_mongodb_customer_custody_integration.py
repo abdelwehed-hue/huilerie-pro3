@@ -79,6 +79,38 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert await db.commercial_stock_movements.count_documents({}) == 1
         assert await db.commercial_audit_events.count_documents({}) == 2
 
+        # A phone/name change on the legacy client keeps the same custody owner identity.
+        await db.clients.update_one(
+            {"phone": "21612345678"},
+            {"$set": {"phone": "21698765432", "client_name": "Updated Customer Name"}},
+        )
+        changed_phone_draft = CustomerOliveCustodyReceiptDraft(
+            customer_phone="21698765432",
+            receipt_date=date(2026, 11, 2),
+            variety_id="chemlali",
+            quantity_kg=Decimal("100.000"),
+            receiving_location_id="olive-yard-01",
+            customer_acknowledgement_reference="ACK-CUSTODY-002",
+            idempotency_key="customer-custody-intake-002",
+        )
+        async with await client.start_session() as session:
+            await session.with_transaction(
+                lambda active: receive_customer_olive_custody(
+                    db, changed_phone_draft, season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    receipt_id="custody-receipt-2", custody_owner_id="unused-new-owner",
+                    olive_lot_id="custody-olive-lot-2", stock_movement_id="custody-movement-2",
+                    audit_event_id="custody-audit-2",
+                    created_at=now, session=active,
+                )
+            )
+        updated_owner = await db.commercial_custody_owners.find_one({"legacy_client_id": str(owner["_id"])}, {"_id": 0})
+        assert updated_owner["id"] == "custody-owner-1"
+        assert updated_owner["client_phone"] == "21698765432"
+        assert updated_owner["client_name"] == "Updated Customer Name"
+        assert await db.commercial_custody_owners.count_documents({}) == 1
+
         # Same idempotency key returns the original receipt even with new generated IDs.
         repeated = await post("unused-receipt-id", "unused-owner-id", "unused-lot-id", "unused-movement-id", "unused-audit-id")
         assert repeated["id"] == result["id"]
@@ -103,7 +135,7 @@ async def test_customer_oil_pickup_debits_only_matching_customer_stock():
             for kind in ("CUS", "MVT")
         ])
         await db.commercial_custody_owners.insert_one({
-            "id": "custody-owner-a", "client_phone": "21612345678",
+            "id": "custody-owner-a", "legacy_client_id": "legacy-client-a", "client_phone": "21612345678",
             "client_name": "Customer A", "active": True,
         })
         await db.commercial_tanks.insert_one({
