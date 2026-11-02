@@ -64,7 +64,7 @@ const cleanId = id => ObjectId.isValid(id) ? new ObjectId(id) : null;
 
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'oro-verde-cms-api' }));
 app.get('/api/public/content', async (_req, res) => {
-  const doc = await content.findOne({ key: 'main' }, { projection: { _id: 0, key: 0 } });
+  const doc = await content.findOne({ key: 'main' }, { projection: { _id: 0, translations: 1, updatedAt: 1 } });
   res.json(doc || { translations: { fr: {}, ar: {}, en: {} }, updatedAt: null });
 });
 app.get('/api/public/news', async (_req, res) => res.json(await news.find({ status: 'published' }).sort({ publishedAt: -1 }).limit(50).project({ title: 1, summary: 1, body: 1, imageId: 1, imageUrl: 1, publishedAt: 1, translations: 1 }).toArray()));
