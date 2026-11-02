@@ -29,7 +29,8 @@ async def test_production_posts_olive_and_oil_balances_atomically():
             "id": "yard-1", "active": True, "kind": "OLIVE_STORAGE"
         })
         await db.commercial_lots.insert_many([
-            {"id": "olive-1", "season_code": "2627", "document_number": "2627LOT0001", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            # Lot owner is origin metadata; the current owner is recorded per stock balance.
+            {"id": "olive-1", "season_code": "2627", "document_number": "2627LOT0001", "product_kind": "OLIVE", "owner": {"kind": "CUSTOMER", "customer_id": "customer-origin"}, "status": "OPEN"},
             {"id": "olive-2", "season_code": "2627", "document_number": "2627LOT0002", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
         ])
         await db.commercial_stock_balances.insert_many([
