@@ -171,6 +171,13 @@ async def bootstrap_commercial_domain(user: dict = Depends(require_admin)):
     }
 
 
+@router.get("/me/permissions")
+async def get_my_commercial_permissions(user: dict = Depends(current_user)):
+    """Return effective commercial permissions for the authenticated user."""
+    _reject_public_auth_mode()
+    return {"permissions": sorted(effective_commercial_permissions(user))}
+
+
 @router.get("/tanks")
 async def list_commercial_tanks(user: dict = Depends(current_user)):
     _authorize(user, "commercial.read")
