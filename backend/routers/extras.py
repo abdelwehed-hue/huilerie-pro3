@@ -319,8 +319,8 @@ WHEAD_AR = ["التاريخ", "العامل", "الحمولات", "الزيتو�
 
 def _titles(period: str) -> tuple[str, str]:
     return (
-        f"Rapport des recettes {'journalier' if period == 'daily' else 'mensuel'}",
-        f"تقرير المداخيل {'اليومي' if period == 'daily' else 'الشهري'}",
+        "Rapport des recettes périodique",
+        "تقرير المداخيل الدوري",
     )
 
 
