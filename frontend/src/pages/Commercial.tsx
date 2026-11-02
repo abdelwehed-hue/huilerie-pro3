@@ -122,7 +122,7 @@ export default function Commercial() {
     paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
     paymentSaved: "تم تسجيل الخلاص", cash: "نقداً", bank: "تحويل بنكي", cheque: "صك",
     outstanding: "الباقي", total: "المجموع", paidAmount: "المبلغ المدفوع",
-    saleCancelled: "تم إلغاء مسودة البيع", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
+    saleCancelled: "تم إلغاء مسودة البيع", returnIntake: "تسجيل مرتجع زيت", returnSale: "عملية البيع الأصلية", returnQty: "الكمية المرتجعة (كغ)", quarantineTank: "خزان الحجر", returnReason: "سبب الإرجاع", returnSaved: "تم استلام المرتجع في خزان الحجر", returnHistory: "سجل المرتجعات", noQuarantineTank: "يجب تعيين خزان فارغ للحجر أولاً من تبويب الخزانات.", remainingReturnable: "الكمية المتبقية للإرجاع", ackRef: "مرجع إقرار الحريف", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
     noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
   } : {
     buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
@@ -142,7 +142,7 @@ export default function Commercial() {
     paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
     paymentSaved: "Paiement enregistré", cash: "Espèces", bank: "Virement", cheque: "Chèque",
     outstanding: "Solde dû", total: "Total", paidAmount: "Payé",
-    saleCancelled: "Brouillon de vente annulé", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
+    saleCancelled: "Brouillon de vente annulé", returnIntake: "Réception d’un retour d’huile", returnSale: "Vente d’origine", returnQty: "Quantité retournée (kg)", quarantineTank: "Cuve de quarantaine", returnReason: "Motif du retour", returnSaved: "Retour reçu en quarantaine", returnHistory: "Historique des retours", noQuarantineTank: "Désignez d’abord une cuve vide comme quarantaine dans l’onglet Cuves.", remainingReturnable: "Quantité encore retournable", ackRef: "Référence d’accusé de l’acheteur", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
     noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
   };
   const me = useMe();
@@ -196,6 +196,11 @@ export default function Commercial() {
   const [saleQuantity, setSaleQuantity] = useState("");
   const [saleUnitPrice, setSaleUnitPrice] = useState("");
   const [saleNotes, setSaleNotes] = useState("");
+  const [returnSaleId, setReturnSaleId] = useState("");
+  const [returnQuantity, setReturnQuantity] = useState("");
+  const [returnTankId, setReturnTankId] = useState("");
+  const [returnReason, setReturnReason] = useState("");
+  const [returnAcknowledgement, setReturnAcknowledgement] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -224,6 +229,7 @@ export default function Commercial() {
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/buyers"), enabled: ready && (tab === "buyers" || tab === "sales") });
   const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales?limit=500"), enabled: ready && tab === "sales" });
   const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices?limit=500"), enabled: ready && tab === "sales" });
+  const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
@@ -457,6 +463,33 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const receiveSaleReturn = useMutation({
+    mutationFn: () => {
+      const sale = (sales.data ?? []).find((item) => item.id === returnSaleId);
+      if (!sale) throw new Error("Sale is no longer available");
+      return apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/returns`, {
+        expected_sale_version: sale.version,
+        quantity_kg: returnQuantity,
+        quarantine_tank_id: returnTankId,
+        reason: returnReason.trim(),
+        buyer_acknowledgement_reference: returnAcknowledgement.trim() || null,
+        idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(salesText.returnSaved);
+      setReturnQuantity(""); setReturnReason(""); setReturnAcknowledgement("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sale-returns"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const approveSale = useMutation({
     mutationFn: (sale: AnyRecord) => apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/approve`, {
       expected_version: sale.version, idempotency_key: crypto.randomUUID(),
@@ -502,6 +535,20 @@ export default function Commercial() {
     onSuccess: async () => {
       toast.success(l.permissionsSaved);
       await queryClient.invalidateQueries({ queryKey: ["commercial", "worker-permissions", selectedWorkerId] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const changeTankRole = useMutation({
+    mutationFn: ({ tank, role }: { tank: AnyRecord; role: "NORMAL" | "QUARANTINE" }) =>
+      apiPost<AnyRecord>(`/commercial/v1/tanks/${encodeURIComponent(tank.id)}/role`, {
+        role, expected_version: tank.version ?? 1,
+      }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تحديث دور الخزان" : "Rôle de la cuve mis à jour");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "tanks"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
@@ -875,6 +922,17 @@ export default function Commercial() {
       </div>}
 
       {tab === "sales" && <div className="space-y-4">
+        {isAdmin && <Card><CardHeader><CardTitle>{salesText.returnIntake}</CardTitle><CardDescription>{salesText.noQuarantineTank}</CardDescription></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); receiveSaleReturn.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{salesText.returnSale}<select required value={returnSaleId} onChange={(e) => setReturnSaleId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(sales.data ?? []).filter((sale) => sale.status === "APPROVED" && Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0) > 0).map((sale) => <option key={sale.id} value={sale.id}>{sale.document_number} · {number(Number(sale.quantity_kg) - Number(sale.returned_quantity_kg ?? 0))} kg</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.quarantineTank}<select required value={returnTankId} onChange={(e) => setReturnTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active && tank.role === "QUARANTINE").map((tank) => <option key={tank.id} value={tank.id}>{tank.code} · {tank.name}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.returnQty}<input required type="number" min="0.001" step="0.001" max={(sales.data ?? []).find((sale) => sale.id === returnSaleId) ? Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.quantity_kg) - Number((sales.data ?? []).find((sale) => sale.id === returnSaleId)?.returned_quantity_kg ?? 0) : undefined} value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.returnReason}<input required minLength={5} maxLength={500} value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.ackRef}<input maxLength={120} value={returnAcknowledgement} onChange={(e) => setReturnAcknowledgement(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <Button type="submit" disabled={receiveSaleReturn.isPending || !returnSaleId || !returnTankId || !(Number(returnQuantity) > 0) || returnReason.trim().length < 5 || !(tanks.data ?? []).some((tank) => tank.id === returnTankId && tank.role === "QUARANTINE")}>{salesText.returnIntake}</Button>
+          </form>
+        </CardContent></Card>}
+        <Card><CardHeader><CardTitle>{salesText.saleHistory}</CardTitle></CardHeader><CardContent>
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
@@ -894,6 +952,11 @@ export default function Commercial() {
               <Button size="sm" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => approveSale.mutate(sale)}>{salesText.approveSale}</Button>
               <Button size="sm" variant="outline" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => { const reason = window.prompt(salesText.cancelSalePrompt); if (reason && reason.trim().length >= 5) cancelSale.mutate({ sale, reason: reason.trim() }); else if (reason !== null) toast.error(lang === "ar" ? "سبب الإلغاء يجب أن يكون 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}><Ban className="size-3.5" />{salesText.cancelSale}</Button>
             </div> : value((salesInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number)}</TableCell></TableRow>)}{(!sales.isLoading && !(sales.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+        <Card><CardHeader><CardTitle>{salesText.returnHistory}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.returnSale}</TableHead><TableHead>{salesText.returnQty}</TableHead><TableHead>{salesText.quarantineTank}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader>
+            <TableBody>{(saleReturns.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{value((sales.data ?? []).find((sale) => sale.id === item.sale_id)?.document_number, item.sale_id)}</TableCell><TableCell>{number(item.quantity_kg)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.quarantine_tank_id)?.code, item.quarantine_tank_id)}</TableCell><TableCell>{value(item.quality_status)}</TableCell><TableCell>{value(item.commercial_acceptance_status)}</TableCell></TableRow>)}{(!saleReturns.isLoading && !(saleReturns.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.invoice}</CardTitle><CardDescription>{salesText.taxNotice}</CardDescription></CardHeader><CardContent>
