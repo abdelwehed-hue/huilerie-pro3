@@ -246,10 +246,6 @@ app.use((error, req, res, next) => {
 
 const port = Number(process.env.PORT || 10000);
 app.listen(port, '0.0.0.0', () => console.log(`Oro Verde CMS API listening on ${port}`));
- } }] }),
-    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
-    db.collection('site_media.files').findOne({ _id }, { projection: { _id: 1 } })
-  ]);
   if (!file) return res.status(404).json({ error: 'Image introuvable' });
   if (newsUse + productUse > 0) return res.status(409).json({ error: 'Cette image est utilisée par un article ou un produit. Remplacez son image avant de la supprimer.' });
   await bucket.delete(_id);
