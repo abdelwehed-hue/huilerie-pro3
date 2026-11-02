@@ -13,6 +13,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.services.numbering import reserve_document_number
+from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
 
 
 def _decimal(value: Any) -> Decimal:
@@ -90,6 +91,7 @@ async def apply_buyer_credit_to_invoice(
     net = _decimal(invoice.get("net_amount_dt", Decimal128(gross - credited)))
     paid = _decimal(invoice.get("paid_amount_dt", Decimal128("0.000")))
     applied_before = _decimal(invoice.get("applied_credit_amount_dt", Decimal128("0.000")))
+    await assert_invoice_cash_paid_reconciles(db, invoice_id, paid, session=session)
     outstanding_before = _decimal(invoice["outstanding_amount_dt"])
     expected_net = gross - credited
     expected_outstanding = max(Decimal("0.000"), expected_net - paid - applied_before)
