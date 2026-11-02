@@ -384,3 +384,36 @@ async def list_stock_balances(
         query, {"_id": 0}
     ).sort("location_id", 1).to_list(limit)
     return _safe(docs)
+
+
+@router.get("/stock-movements")
+async def list_stock_movements(
+    lot_id: str | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"lot_id": lot_id} if lot_id else {}
+    docs = await db.commercial_stock_movements.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.get("/audit-events")
+async def list_commercial_audit_events(
+    entity_type: str | None = None,
+    entity_id: str | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.view_audit")
+    query: dict[str, Any] = {}
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    docs = await db.commercial_audit_events.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
