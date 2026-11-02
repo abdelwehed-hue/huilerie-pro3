@@ -80,4 +80,4 @@ async def test_generic_stock_endpoint_rejects_internal_document_source(monkeypat
             draft, {"active": True, "role": "admin", "id": "admin-1"}
         )
     assert error.value.status_code == 422
-    assert "internal_movement_sources" in error.value.detail
+    assert "owning_purchase_production_internal_or_sales_workflow" in error.value.detail
