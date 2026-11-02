@@ -363,6 +363,51 @@ async def list_commercial_buyers(user: dict = Depends(current_user)):
     return _safe(docs)
 
 
+@router.get("/buyers/{buyer_id}/account-summary")
+async def get_commercial_buyer_account_summary(
+    buyer_id: str,
+    user: dict = Depends(current_user),
+):
+    """Return a read-only receivables summary across this buyer's commercial invoices."""
+    _authorize(user, "commercial.read")
+    buyer = await db.commercial_buyers.find_one(
+        {"id": buyer_id}, {"_id": 0, "id": 1, "name": 1, "active": 1}
+    )
+    if not buyer:
+        raise HTTPException(404, "commercial_buyer_not_found")
+
+    rows = await db.commercial_sales_invoices.aggregate([
+        {"$match": {"buyer_id": buyer_id}},
+        {"$group": {
+            "_id": None,
+            "invoice_count": {"$sum": 1},
+            "total_amount_dt": {"$sum": "$total_amount_dt"},
+            "paid_amount_dt": {"$sum": "$paid_amount_dt"},
+            "outstanding_amount_dt": {"$sum": "$outstanding_amount_dt"},
+            "unpaid_invoice_count": {
+                "$sum": {"$cond": [{"$eq": ["$payment_status", "UNPAID"]}, 1, 0]}
+            },
+            "partially_paid_invoice_count": {
+                "$sum": {"$cond": [{"$eq": ["$payment_status", "PARTIALLY_PAID"]}, 1, 0]}
+            },
+            "paid_invoice_count": {
+                "$sum": {"$cond": [{"$eq": ["$payment_status", "PAID"]}, 1, 0]}
+            },
+        }},
+    ]).to_list(length=1)
+    summary = rows[0] if rows else {
+        "invoice_count": 0,
+        "total_amount_dt": Decimal128("0.000"),
+        "paid_amount_dt": Decimal128("0.000"),
+        "outstanding_amount_dt": Decimal128("0.000"),
+        "unpaid_invoice_count": 0,
+        "partially_paid_invoice_count": 0,
+        "paid_invoice_count": 0,
+    }
+    summary.pop("_id", None)
+    return _safe({"buyer": buyer, "summary": summary})
+
+
 @router.post("/sales", status_code=201)
 async def create_wholesale_sale(
     draft: WholesaleSaleDraft,
