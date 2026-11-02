@@ -8,7 +8,7 @@ TANKS = tuple(
 )
 
 INVENTORY_INDEXES = {
-    "commercial_tanks": [
+    "commercial_counters": [\n        IndexModel([("season_code", ASCENDING), ("document_type", ASCENDING)],\n                   unique=True, name="uq_commercial_counter_season_type"),\n    ],\n    "commercial_tanks": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_tank_id"),
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_tank_code"),
     ],
