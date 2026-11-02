@@ -51,7 +51,7 @@ from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
-from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody
+from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody, get_customer_custody_statement
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
@@ -1118,6 +1118,20 @@ async def list_customer_custody_releases(
         query, {"_id": 0, "id": 1, "document_number": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "oil_lot_id": 1, "source_tank_id": 1, "quantity_kg": 1, "release_date": 1, "customer_acknowledgement_reference": 1, "reason": 1, "status": 1, "created_at": 1}
     ).sort("created_at", -1).to_list(limit)
     return _safe(docs)
+
+
+@router.get("/customer-custody/owners/{customer_id}/statement")
+async def get_customer_custody_statement_route(
+    customer_id: str,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    try:
+        return _safe(await get_customer_custody_statement(db, customer_id))
+    except ValueError as exc:
+        if "does not exist" in str(exc).lower():
+            raise HTTPException(404, "customer_custody_owner_not_found") from exc
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.get("/customer-custody/owners")
