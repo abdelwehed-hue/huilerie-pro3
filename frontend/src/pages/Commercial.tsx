@@ -124,9 +124,10 @@ export default function Commercial() {
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-movements?limit=500"), enabled: ready && tab === "movements" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/quality-assessments?limit=500"), enabled: ready && tab === "quality" });
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
-  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && tab === "suppliers" });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && tab === "locations" });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && tab === "varieties" });
+  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && (tab === "suppliers" || tab === "purchases") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases") });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && (tab === "varieties" || tab === "purchases") });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/olive-purchases?limit=500"), enabled: ready && tab === "purchases" });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
       name: supplierName.trim(), phone: supplierPhone.trim() || null,
