@@ -1171,6 +1171,19 @@ async def create_stock_movement(
     )
 
 
+@router.get("/internal-movements")
+async def list_internal_stock_movements(
+    limit: int = Query(default=200, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    """List season-numbered internal transfer and ownership-change documents."""
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_internal_movements.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
 @router.post("/internal-movements", status_code=201)
 async def create_internal_stock_movement(
     draft: InternalMovementDraft,
