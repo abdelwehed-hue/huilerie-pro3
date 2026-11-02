@@ -21,7 +21,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "custody" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -40,7 +40,7 @@ const labels = {
     tank: "Cuve", capacity: "Capacité", flexible: "Flexible — capacité non définie", active: "Active",
     product: "Produit", document: "Document", owner: "Propriétaire", quantity: "Quantité (kg)",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
-    source: "Origine", destination: "Destination", movement: "Mouvement", noRows: "Aucune donnée à afficher",
+    source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts internes", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
     refresh: "Actualiser", adminOnly: "Initialisation réservée à l'administrateur",
     olive: "Olives", oil: "Huile", mill: "Maâsra", customer: "Client",
     pending: "En attente", released: "Libéré", rejected: "Rejeté", open: "Ouvert", closed: "Fermé",
@@ -65,7 +65,7 @@ const labels = {
     tank: "الخزان", capacity: "السعة", flexible: "مرنة — السعة غير محددة", active: "نشط",
     product: "المنتج", document: "الوثيقة", owner: "المالك", quantity: "الكمية (كغ)",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
-    source: "المصدر", destination: "الوجهة", movement: "الحركة", noRows: "لا توجد بيانات للعرض",
+    source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات الداخلية", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
     refresh: "تحديث", adminOnly: "التهيئة متاحة للمدير فقط",
     olive: "زيتون", oil: "زيت", mill: "المعصرة", customer: "الحريف",
     pending: "في الانتظار", released: "مقبول", rejected: "مرفوض", open: "مفتوح", closed: "مغلق",
@@ -235,6 +235,14 @@ export default function Commercial() {
   const [pickupAck, setPickupAck] = useState("");
   const [pickupReason, setPickupReason] = useState("");
   const [pickupKey, setPickupKey] = useState(() => crypto.randomUUID());
+  const [internalMovementKind, setInternalMovementKind] = useState<"TRANSFER" | "OWNERSHIP_TRANSFER">("TRANSFER");
+  const [internalProductKind, setInternalProductKind] = useState<"OLIVE" | "OIL">("OIL");
+  const [internalSourceBalanceKey, setInternalSourceBalanceKey] = useState("");
+  const [internalDestinationLocationId, setInternalDestinationLocationId] = useState("");
+  const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("MILL");
+  const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
+  const [internalMovementReason, setInternalMovementReason] = useState("");
+  const [internalMovementKey, setInternalMovementKey] = useState(() => crypto.randomUUID());
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -245,13 +253,14 @@ export default function Commercial() {
   const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/lots?limit=500"), enabled: ready });
   const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-balances?limit=1000"), enabled: ready });
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-movements?limit=500"), enabled: ready && tab === "movements" });
+  const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/internal-movements?limit=500"), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/quality-assessments?limit=500"), enabled: ready && tab === "quality" });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/suppliers"), enabled: ready && (tab === "suppliers" || tab === "purchases") });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "custody") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && (tab === "varieties" || tab === "purchases" || tab === "custody") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/olive-purchases?limit=500"), enabled: ready && tab === "purchases" });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/production-runs?limit=500"), enabled: ready && tab === "production" });
@@ -277,7 +286,7 @@ export default function Commercial() {
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
-  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && tab === "custody" });
+  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && (tab === "custody" || tab === "transfers") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/receipts?limit=500"), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/releases?limit=500"), enabled: ready && tab === "custody" });
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
@@ -389,6 +398,53 @@ export default function Commercial() {
       ]);
     },
     onError: (error) => toast.error(`${l.warning} ${error instanceof Error ? error.message : ""}`),
+  });
+  const postInternalMovement = useMutation({
+    mutationFn: () => {
+      const balance = (balances.data ?? []).find((item) =>
+        [item.product_kind, item.lot_id, item.location_id, ownerIdentity(item.owner)].join("::") === internalSourceBalanceKey
+      );
+      if (!balance) throw new Error("The selected source balance is no longer available");
+      const quantity = Number(internalMovementQuantity);
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > Number(balance.quantity_kg)) {
+        throw new Error("Movement quantity exceeds the available source balance");
+      }
+      const destinationOwner = internalMovementKind === "TRANSFER"
+        ? balance.owner
+        : internalDestinationOwnerKey === "MILL"
+          ? { kind: "MILL" }
+          : { kind: "CUSTOMER", customer_id: internalDestinationOwnerKey.slice("CUSTOMER:".length) };
+      return apiPost<AnyRecord>("/commercial/v1/internal-movements", {
+        movement_kind: internalMovementKind,
+        product_kind: balance.product_kind,
+        lot_id: balance.lot_id,
+        quantity_kg: internalMovementQuantity,
+        source_location_id: balance.location_id,
+        destination_location_id: internalMovementKind === "TRANSFER" ? internalDestinationLocationId : balance.location_id,
+        source_owner: balance.owner,
+        destination_owner: destinationOwner,
+        idempotency_key: internalMovementKey,
+        reason: internalMovementReason.trim(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.internalMovementSaved);
+      setInternalSourceBalanceKey("");
+      setInternalDestinationLocationId("");
+      setInternalDestinationOwnerKey("MILL");
+      setInternalMovementQuantity("");
+      setInternalMovementReason("");
+      setInternalMovementKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const submitQualityAssessment = useMutation({
     mutationFn: () => {
@@ -783,6 +839,7 @@ export default function Commercial() {
   const totalOlives = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OLIVE").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const totalOil = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
+  const canPostStock = permissions.data?.permissions.includes("commercial.post_stock") === true;
   const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
   useEffect(() => {
@@ -804,6 +861,32 @@ export default function Commercial() {
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
   );
 
+  const availableInternalBalances = (balances.data ?? []).filter((balance) => {
+    if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0) return false;
+    const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
+    if (!lot) return false;
+    if (internalProductKind === "OIL") {
+      const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
+      if (!tank) return false;
+      if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
+    } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id && item.active)) {
+      return false;
+    }
+    return true;
+  });
+  const selectedInternalBalance = availableInternalBalances.find((balance) =>
+    [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === internalSourceBalanceKey
+  );
+  const internalDestinationLocations = internalProductKind === "OIL"
+    ? (tanks.data ?? []).filter((item) => item.active && (item.role ?? "NORMAL") === "NORMAL")
+    : (locations.data ?? []).filter((item) => item.active);
+  const internalDestinationOwnerOptions = [
+    ...(selectedInternalBalance?.owner?.kind !== "MILL" ? [{ key: "MILL", label: l.mill }] : []),
+    ...(custodyOwners.data ?? [])
+      .filter((owner) => owner.active !== false && owner.id !== selectedInternalBalance?.owner?.customer_id)
+      .map((owner) => ({ key: "CUSTOMER:" + owner.id, label: l.customer + ": " + owner.client_name + " · " + owner.client_phone })),
+  ];
+
   const availableCustomerOilBalances = (balances.data ?? []).filter((balance) =>
     balance.product_kind === "OIL" && Number(balance.quantity_kg) > 0
     && balance.owner?.kind === "CUSTOMER" && balance.owner?.customer_id === pickupCustomerId
@@ -821,6 +904,7 @@ export default function Commercial() {
     { id: "tanks", label: l.tanks, icon: Warehouse },
     { id: "lots", label: l.lots, icon: Boxes },
     { id: "movements", label: l.movements, icon: RefreshCw },
+    ...(canPostStock ? [{ id: "transfers" as const, label: l.internalMovementsTab, icon: RefreshCw }] : []),
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "audit", label: l.audit, icon: ClipboardList },
     { id: "suppliers", label: l.suppliers, icon: Boxes },
@@ -898,6 +982,85 @@ export default function Commercial() {
       {tab === "tanks" && <Card><CardHeader><CardTitle>{l.tanks}</CardTitle><CardDescription>{l.capacity}: {l.flexible}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.tank}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.capacity}</TableHead><TableHead>{lang === "ar" ? "الدور" : "Rôle"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>{(tanks.data ?? []).map((tank) => { const quantity = (balances.data ?? []).filter((b) => b.location_id === tank.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0); return <TableRow key={tank.id}><TableCell className="font-semibold">{value(tank.code)} · {value(tank.name)}</TableCell><TableCell>{number(quantity)} kg</TableCell><TableCell>{tank.capacity_kg == null ? l.flexible : number(tank.capacity_kg)}</TableCell><TableCell>{(tank.role ?? "NORMAL") === "QUARANTINE" ? (lang === "ar" ? "حجر" : "Quarantaine") : (lang === "ar" ? "عادي" : "Normal")}</TableCell><TableCell>{tank.active ? l.active : l.closed}</TableCell><TableCell>{isAdmin && <select aria-label={lang === "ar" ? "دور الخزان" : "Rôle de la cuve"} value={tank.role ?? "NORMAL"} disabled={quantity > 0 || changeTankRole.isPending} onChange={(e) => { const role = e.target.value as "NORMAL" | "QUARANTINE"; if (window.confirm(lang === "ar" ? "تأكيد تغيير دور الخزان؟" : "Confirmer le changement de rôle de la cuve ?")) changeTankRole.mutate({ tank, role }); }} className="h-9 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"><option value="NORMAL">{lang === "ar" ? "عادي" : "Normal"}</option><option value="QUARANTINE">{lang === "ar" ? "حجر" : "Quarantaine"}</option></select>}</TableCell></TableRow>; })}{(!tanks.isLoading && !(tanks.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
       {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => <TableRow key={lot.id}><TableCell className="font-mono text-xs">{value(lot.document_number)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{ownerLabel(lot.owner, l)}</TableCell><TableCell>{number(lot.quantity_received_kg ?? lot.quantity_kg)}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>)}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+
+      {tab === "transfers" && canPostStock && <div className="space-y-4">
+        <Card>
+          <CardHeader><CardTitle>{l.internalMovementTitle}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1 text-sm font-medium">{l.movementType}
+                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey("MILL"); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="TRANSFER">{l.transferType}</option>
+                    <option value="OWNERSHIP_TRANSFER">{l.ownershipTransferType}</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">{l.productKind}
+                  <select value={internalProductKind} onChange={(e) => { setInternalProductKind(e.target.value as "OLIVE" | "OIL"); setInternalSourceBalanceKey(""); setInternalDestinationLocationId(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="OIL">{l.oil}</option><option value="OLIVE">{l.olive}</option>
+                  </select>
+                </label>
+              </div>
+              <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
+                <select required value={internalSourceBalanceKey} onChange={(e) => { setInternalSourceBalanceKey(e.target.value); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey("MILL"); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">—</option>
+                  {availableInternalBalances.map((balance) => {
+                    const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
+                    const location = internalProductKind === "OIL"
+                      ? (tanks.data ?? []).find((item) => item.id === balance.location_id)
+                      : (locations.data ?? []).find((item) => item.id === balance.location_id);
+                    const key = [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::");
+                    return <option key={key} value={key}>{lot?.document_number ?? balance.lot_id} · {location?.code ?? balance.location_id} · {ownerLabel(balance.owner, l)} · {number(balance.quantity_kg)} kg</option>;
+                  })}
+                </select>
+              </label>
+              <div className="grid gap-3 md:grid-cols-2">
+                {internalMovementKind === "TRANSFER" ? <label className="grid gap-1 text-sm font-medium">{l.targetLocation}
+                  <select required value={internalDestinationLocationId} onChange={(e) => { setInternalDestinationLocationId(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="">—</option>
+                    {internalDestinationLocations.filter((item) => item.id !== selectedInternalBalance?.location_id).map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name ?? item.code}</option>)}
+                  </select>
+                </label> : <label className="grid gap-1 text-sm font-medium">{l.targetOwner}
+                  <select required value={internalDestinationOwnerKey} onChange={(e) => { setInternalDestinationOwnerKey(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="">—</option>
+                    {internalDestinationOwnerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+                  </select>
+                </label>}
+                <label className="grid gap-1 text-sm font-medium">{l.quantity}
+                  <input required type="number" min="0.001" step="0.001" max={selectedInternalBalance?.quantity_kg ?? undefined} value={internalMovementQuantity} onChange={(e) => { setInternalMovementQuantity(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  {selectedInternalBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedInternalBalance.quantity_kg)} kg</span>}
+                </label>
+              </div>
+              <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.movementReason}
+                <input required minLength={3} maxLength={500} value={internalMovementReason} onChange={(e) => { setInternalMovementReason(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
+              <div className="flex justify-end">
+                <Button type="submit" disabled={postInternalMovement.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey))}>
+                  {l.postInternalMovement}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>{l.internalMovementHistory}</CardTitle></CardHeader>
+          <CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
+            <TableBody>{(internalMovementDocuments.data ?? []).map((movement) => {
+              return <TableRow key={movement.id}>
+                <TableCell className="font-mono text-xs">{value(movement.document_number)}</TableCell>
+                <TableCell>{value(movement.movement_kind)}</TableCell>
+                <TableCell>{movement.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell>
+                <TableCell>{number(movement.quantity_kg)} kg</TableCell>
+                <TableCell>{value(movement.source_location_id)}</TableCell>
+                <TableCell>{value(movement.destination_location_id)}</TableCell>
+                <TableCell>{ownerLabel(movement.source_owner, l)} → {ownerLabel(movement.destination_owner, l)}</TableCell>
+                <TableCell>{date(movement.created_at)}</TableCell>
+              </TableRow>;
+            })}{(!internalMovementDocuments.isLoading && !(internalMovementDocuments.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
+          </Table></CardContent>
+        </Card>
+      </div>}
 
       {tab === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{value(m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
