@@ -1197,12 +1197,14 @@ async def test_return_acceptance_issues_credit_note_and_tracks_buyer_credit_with
              "outstanding_amount_dt": Decimal128("300.000"), "payment_status": "PARTIALLY_PAID", "version": 1},
         ])
         await db.commercial_sale_returns.insert_many([
-            {"id": "return-credit-paid", "sale_id": "sale-credit-paid", "invoice_id": "invoice-credit-paid",
+            {"id": "return-credit-paid", "season_code": "2627", "document_number": "2627RET0001",
+             "sale_id": "sale-credit-paid", "invoice_id": "invoice-credit-paid",
              "buyer_id": "buyer-credit-paid", "returned_oil_lot_id": "returned-credit-lot-1",
              "quantity_kg": Decimal128("10.000"), "status": "RECEIVED",
              "commercial_acceptance_status": "PENDING", "version": 1,
              "idempotency_scope": "return:test", "idempotency_key": "return-credit-paid-key"},
-            {"id": "return-credit-partial", "sale_id": "sale-credit-partial", "invoice_id": "invoice-credit-partial",
+            {"id": "return-credit-partial", "season_code": "2627", "document_number": "2627RET0002",
+             "sale_id": "sale-credit-partial", "invoice_id": "invoice-credit-partial",
              "buyer_id": "buyer-credit-partial", "returned_oil_lot_id": "returned-credit-lot-2",
              "quantity_kg": Decimal128("20.000"), "status": "RECEIVED",
              "commercial_acceptance_status": "PENDING", "version": 1,
