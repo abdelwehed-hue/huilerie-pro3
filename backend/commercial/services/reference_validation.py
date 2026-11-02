@@ -11,6 +11,8 @@ SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "INT": "commercial_internal_movements",
     "VTE": "commercial_sales",
     "RET": "commercial_sale_returns",
+    "CIN": "commercial_customer_custody_receipts",
+    "CUS": "commercial_customer_custody_releases",
 }
 
 
@@ -64,11 +66,11 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
     for owner in (draft.source_owner, draft.destination_owner):
         if owner is None or owner.kind != "CUSTOMER":
             continue
-        customer = await db["clients"].find_one(
+        customer = await db["commercial_custody_owners"].find_one(
             {"id": owner.customer_id}, {"_id": 0, "id": 1}, session=session
         )
         if not customer:
-            raise ValueError(f"Unknown customer owner: {owner.customer_id}")
+            raise ValueError(f"Unknown commercial custody owner: {owner.customer_id}")
 
     collection_name = SOURCE_DOCUMENT_COLLECTIONS.get(draft.source_document_type)
     if not collection_name:
@@ -88,5 +90,26 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
                 or source.get("returned_oil_lot_id") != draft.lot_id
                 or source.get("quarantine_tank_id") != draft.destination_location_id):
             raise ValueError("Return receipt does not match its received return document")
+    elif draft.source_document_type == "CIN":
+        if (source.get("status") != "RECEIVED"
+                or draft.movement_kind != "RECEIPT"
+                or draft.product_kind != "OLIVE"
+                or source.get("olive_lot_id") != draft.lot_id
+                or source.get("customer_id") != (draft.destination_owner.customer_id if draft.destination_owner else None)
+                or source.get("receiving_location_id") != draft.destination_location_id):
+            raise ValueError("Customer olive custody receipt does not match its source document")
+    elif draft.source_document_type == "CUS":
+        if (source.get("status") != "APPROVED"
+                or draft.movement_kind != "DISPATCH"
+                or draft.product_kind != "OIL"
+                or source.get("oil_lot_id") != draft.lot_id
+                or source.get("customer_id") != (draft.source_owner.customer_id if draft.source_owner else None)
+                or source.get("source_tank_id") != draft.source_location_id):
+            raise ValueError("Customer oil custody release does not match its source document")
+        lot_quality = await db["commercial_lots"].find_one(
+            {"id": draft.lot_id}, {"_id": 0, "quality_status": 1}, session=session
+        )
+        if not lot_quality or lot_quality.get("quality_status") != "RELEASED":
+            raise ValueError("Customer oil pickup requires a released quality decision")
     elif source.get("status") not in {"APPROVED", "COMPLETED"}:
         raise ValueError("Source document is not approved for stock posting")
