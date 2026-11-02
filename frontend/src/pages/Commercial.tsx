@@ -341,6 +341,7 @@ export default function Commercial() {
       && lot?.last_quality_assessment_id === assessment.id
       && lot?.version === assessment.lot_version_after_submission;
   });
+  const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
 
   const availableOliveBalances: AnyRecord[] = (balances.data ?? []).filter((balance: AnyRecord) =>
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
@@ -463,6 +464,18 @@ export default function Commercial() {
             <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
               <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{(lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number ?? assessment.oil_lot_id} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
             </label>
+            {selectedReviewAssessment && <div className="space-y-3 rounded-xl border p-4">
+              <div className="grid gap-2 text-sm md:grid-cols-2">
+                <p><strong>{l.sampleReference}:</strong> {value(selectedReviewAssessment.sample_reference)}</p>
+                <p><strong>{l.laboratory}:</strong> {value(selectedReviewAssessment.laboratory_name)}</p>
+                <p><strong>{l.sampleDate}:</strong> {date(selectedReviewAssessment.sample_date)}</p>
+                <p><strong>{l.testedDate}:</strong> {date(selectedReviewAssessment.tested_date)}</p>
+                <p className="md:col-span-2"><strong>{l.specification}:</strong> {value(selectedReviewAssessment.specification_reference)}</p>
+              </div>
+              <Table><TableHeader><TableRow><TableHead>{l.measurementCode}</TableHead><TableHead>{l.measurementValue}</TableHead><TableHead>{l.measurementUnit}</TableHead></TableRow></TableHeader>
+                <TableBody>{(selectedReviewAssessment.measurements ?? []).map((item: AnyRecord, index: number) => <TableRow key={item.code + "-" + index}><TableCell className="font-mono">{value(item.code)}</TableCell><TableCell>{value(item.value)}</TableCell><TableCell>{value(item.unit)}</TableCell></TableRow>)}</TableBody>
+              </Table>
+            </div>}
             <label className="grid max-w-sm gap-1 text-sm font-medium">{l.decision}
               <select value={reviewDecision} onChange={(e) => setReviewDecision(e.target.value as "RELEASED" | "REJECTED")} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="RELEASED">{l.releaseOil}</option><option value="REJECTED">{l.rejectOil}</option></select>
             </label>
