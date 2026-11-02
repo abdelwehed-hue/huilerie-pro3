@@ -1,6 +1,7 @@
 """Fail-closed runtime security configuration shared by HTTP and WebSocket."""
 from __future__ import annotations
 import os
+from passlib.hash import pbkdf2_sha256
 
 _DEVELOPMENT_ORIGINS = (
     "http://localhost:3000", "http://127.0.0.1:3000",
@@ -46,3 +47,14 @@ def initial_admin_credentials() -> tuple[str, str, str]:
             raise RuntimeError("Choose a non-default INITIAL_ADMIN_USERNAME")
         return username, "Administrateur", password
     return "admin", "Administrateur", "admin123"
+
+
+def has_known_demo_password(username: str, password_hash: str) -> bool:
+    known = {"admin": "admin123", "ouvrier": "ouvrier123"}
+    candidate = known.get(username.strip().casefold())
+    if not candidate or not password_hash:
+        return False
+    try:
+        return pbkdf2_sha256.verify(candidate, password_hash)
+    except (ValueError, TypeError):
+        return False
