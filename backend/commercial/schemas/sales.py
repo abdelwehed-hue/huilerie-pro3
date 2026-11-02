@@ -40,3 +40,10 @@ class SalePaymentDraft(BaseModel):
         if self.method in {"BANK_TRANSFER", "CHEQUE"} and not (self.reference or "").strip():
             raise ValueError("A reference is required for bank transfers and cheques")
         return self
+
+
+class CancelWholesaleSaleCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=5, max_length=500)
+    idempotency_key: str = Field(min_length=16, max_length=128)
