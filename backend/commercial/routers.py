@@ -32,6 +32,7 @@ from commercial.schemas.purchases import (
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft
+from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft
@@ -244,6 +245,38 @@ async def list_commercial_suppliers(user: dict = Depends(current_user)):
         {"active": True}, {"_id": 0}
     ).sort("name", 1).to_list(1000)
     return _safe(docs)
+
+
+@router.get("/varieties")
+async def list_commercial_varieties(user: dict = Depends(current_user)):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_varieties.find(
+        {"active": True}, {"_id": 0}
+    ).sort("code", 1).to_list(500)
+    return _safe(docs)
+
+
+@router.post("/varieties", status_code=201)
+async def create_commercial_variety(
+    draft: CommercialVarietyDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_purchases")
+    await _require_commercial_ready()
+    normalized_name = " ".join(draft.name_fr.casefold().split())
+    doc = {
+        "id": str(uuid.uuid4()),
+        **draft.model_dump(),
+        "normalized_name_fr": normalized_name,
+        "active": True,
+        "created_by": user["id"],
+        "created_at": datetime.now(timezone.utc),
+    }
+    try:
+        await db.commercial_varieties.insert_one(doc)
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "commercial_variety_code_or_name_exists") from exc
+    return _safe(doc)
 
 
 @router.post("/olive-purchases", status_code=201)
