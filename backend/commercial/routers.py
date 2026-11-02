@@ -36,7 +36,7 @@ from commercial.schemas.suppliers import CommercialSupplierDraft
 from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
 )
-from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft
+from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
@@ -44,7 +44,7 @@ from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
-from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment
+from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
 from lib.season import active_season, season_of, season_prefix, valid_season
@@ -535,6 +535,27 @@ async def create_wholesale_sale(
             lambda session: create_wholesale_sale_draft(
                 db, draft, season_code=season_code, actor_user=user,
                 actor_user_id=user["id"], sale_id=sale_id,
+                audit_event_id=audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/sales/{sale_id}/cancel")
+async def cancel_wholesale_sale_route(
+    sale_id: str,
+    command: CancelWholesaleSaleCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    audit_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: cancel_wholesale_sale_draft(
+                db, sale_id, command, actor_user=user, actor_user_id=user["id"],
                 audit_event_id=audit_id, created_at=now, session=session,
             )
         )
