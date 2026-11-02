@@ -93,10 +93,12 @@ async def complete_commercial_production(
 
     tank = await db["commercial_tanks"].find_one(
         {"id": draft.output_tank_id, "active": True},
-        {"_id": 0, "id": 1}, session=session,
+        {"_id": 0, "id": 1, "role": 1}, session=session,
     )
     if not tank:
         raise ValueError("Output tank does not exist or is inactive")
+    if tank.get("role", "NORMAL") != "NORMAL":
+        raise ValueError("Production output must be received into a normal storage tank")
 
     run_number = await reserve_document_number(
         db["commercial_counters"], season_code, "PROD", session=session
