@@ -98,7 +98,7 @@ app.get('/api/admin/me', auth, async (req, res) => res.json({ email: req.admin.e
 app.get('/api/admin/content', auth, async (_req, res) => res.json(await content.findOne({ key: 'main' }) || { key: 'main', translations: { fr: {}, ar: {}, en: {} } }));
 app.put('/api/admin/content', auth, async (req, res) => {
   const translations = req.body?.translations;
-  if (!translations || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object')) return res.status(400).json({ error: 'Les traductions fr, ar et en sont obligatoires' });
+  if (!translations || typeof translations !== 'object' || Array.isArray(translations) || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object' && !Array.isArray(translations[lang]))) return res.status(400).json({ error: 'Les traductions fr, ar et en doivent être des objets' });
   const doc = { key: 'main', translations, updatedAt: new Date(), updatedBy: req.admin.email };
   await content.updateOne({ key: 'main' }, { $set: doc }, { upsert: true });
   res.json({ ok: true, updatedAt: doc.updatedAt });
@@ -124,6 +124,7 @@ function normalizeItem(route, input, adminEmail, previous = null) {
   if (typeof imageUrl !== 'string' || imageUrl.length > 2048 || (imageUrl && !(/^(https?:\/\/|\/api\/public\/media\/)/i.test(imageUrl)))) {
     return { error: 'URL d’image invalide' };
   }
+  if (status === 'published' && ['fr', 'ar', 'en'].some(lang => !cleanTranslations[lang].title)) return { error: 'Un titre est obligatoire dans les trois langues pour publier' };
   const now = new Date();
   const wasPublished = previous?.status === 'published';
   const doc = {
