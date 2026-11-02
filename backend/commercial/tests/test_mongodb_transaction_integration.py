@@ -67,7 +67,7 @@ async def test_concurrent_document_number_reservations_are_unique_and_sequential
         client.close()
 
 @pytest.mark.asyncio
-async def test_quality_release_audit_failure_rolls_back_assessment_and_lot_state():
+async def test_quality_submission_audit_failure_rolls_back_assessment_and_lot_version():
     from datetime import date
     from uuid import NAMESPACE_URL, uuid5
 
@@ -83,7 +83,7 @@ async def test_quality_release_audit_failure_rolls_back_assessment_and_lot_state
     lot_id = "oil-lot-quality-rollback"
     audit_id = str(uuid5(
         NAMESPACE_URL,
-        f"oroverde:quality-audit:{assessment_id}:{idempotency_key}",
+        f"oroverde:quality-submission-audit:{assessment_id}:{idempotency_key}",
     ))
     try:
         await ensure_inventory_indexes(db)
@@ -115,8 +115,6 @@ async def test_quality_release_audit_failure_rolls_back_assessment_and_lot_state
             laboratory_name="Integration Test Laboratory",
             specification_reference="SPEC-OLIVE-OIL-TEST",
             measurements=[{"code": "ACIDITY", "value": "0.35", "unit": "%"}],
-            decision="RELEASED",
-            decision_reason="Release decision used only to exercise rollback behavior.",
             idempotency_key=idempotency_key,
         )
         with pytest.raises(DuplicateKeyError):
