@@ -647,6 +647,26 @@ async def test_wholesale_sale_dispatches_only_released_mill_owned_oil_and_tracks
             payment_date="2026-11-02", amount_dt="50.000", method="CASH",
             expected_invoice_version=1, idempotency_key="sale-payment-key-0001",
         )
+        # A stale/corrupt receivable snapshot must not be trusted when posting new cash.
+        await db.commercial_sales_invoices.update_one(
+            {"id": "invoice-1"},
+            {"$set": {"outstanding_amount_dt": Decimal128("112.499")}},
+        )
+        with pytest.raises(ValueError, match="receivable fields are inconsistent"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: record_sale_payment(
+                        db, "invoice-1", first_payment, season_code="2627",
+                        actor_user=admin, actor_user_id="admin-1",
+                        payment_id="payment-corrupt", audit_event_id="payment-corrupt-audit",
+                        created_at=now, session=active,
+                    )
+                )
+        assert await db.commercial_sale_payments.count_documents({"invoice_id": "invoice-1"}) == 0
+        await db.commercial_sales_invoices.update_one(
+            {"id": "invoice-1"},
+            {"$set": {"outstanding_amount_dt": Decimal128("112.500")}},
+        )
         async with await client.start_session() as session:
             payment = await session.with_transaction(
                 lambda active: record_sale_payment(
