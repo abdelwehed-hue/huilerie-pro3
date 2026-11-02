@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone\nfrom decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from bson.decimal128 import Decimal128
@@ -68,11 +68,11 @@ async def create_olive_purchase_draft(
             "variety_id": line.variety_id,
             "quantity_kg": Decimal128(line.quantity_kg),
             "unit_price_dt": Decimal128(line.unit_price_dt),
-            "line_total_dt": Decimal128(line.quantity_kg * line.unit_price_dt),
+            "line_total_dt": Decimal128((line.quantity_kg * line.unit_price_dt).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)),
         }
         for line in draft.lines
     ]
-    total_quantity = sum((line.quantity_kg for line in draft.lines), start=0)
+    total_quantity = sum((line.quantity_kg for line in draft.lines), start=Decimal("0"))
     total_amount = sum(
         (line.quantity_kg * line.unit_price_dt for line in draft.lines), start=0
     )
