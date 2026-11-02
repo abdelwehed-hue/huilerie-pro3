@@ -685,7 +685,6 @@ export default function Commercial() {
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
   );
 
-  const selectedPickupOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId);
   const availableCustomerOilBalances = (balances.data ?? []).filter((balance) =>
     balance.product_kind === "OIL" && Number(balance.quantity_kg) > 0
     && balance.owner?.kind === "CUSTOMER" && balance.owner?.customer_id === pickupCustomerId
