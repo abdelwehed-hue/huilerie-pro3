@@ -33,6 +33,8 @@ from commercial.schemas.purchases import (
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft
+from commercial.schemas.buyers import CommercialBuyerDraft
+from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
@@ -40,6 +42,7 @@ from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
+from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
 from lib.season import active_season, season_of, season_prefix, valid_season
@@ -319,6 +322,150 @@ async def create_commercial_variety(
         return _safe(await run_transaction(create_variety))
     except DuplicateKeyError as exc:
         raise HTTPException(409, "commercial_variety_code_or_name_exists") from exc
+
+
+
+@router.post("/buyers", status_code=201)
+async def create_commercial_buyer(
+    draft: CommercialBuyerDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    await _require_commercial_ready()
+    normalized_name = " ".join(draft.name.casefold().split())
+    doc = {
+        "id": str(uuid.uuid4()), **draft.model_dump(),
+        "normalized_name": normalized_name, "active": True,
+        "created_by": user["id"], "created_at": datetime.now(timezone.utc),
+    }
+    audit_id = str(uuid.uuid4())
+
+    async def create_buyer(session):
+        await db.commercial_buyers.insert_one(doc, session=session)
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_buyer",
+            "entity_id": doc["id"], "action": "BUYER_CREATED",
+            "actor_user_id": user["id"], "created_at": doc["created_at"],
+            "details": {"name": doc["name"]},
+        }, session=session)
+        return doc
+
+    try:
+        return _safe(await run_transaction(create_buyer))
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "commercial_buyer_name_exists") from exc
+
+
+@router.get("/buyers")
+async def list_commercial_buyers(user: dict = Depends(current_user)):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_buyers.find({"active": True}, {"_id": 0}).sort("name", 1).to_list(1000)
+    return _safe(docs)
+
+
+@router.post("/sales", status_code=201)
+async def create_wholesale_sale(
+    draft: WholesaleSaleDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.sale_date.isoformat()) != season:
+        raise HTTPException(422, "sale_date_outside_active_season")
+    sale_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: create_wholesale_sale_draft(
+                db, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], sale_id=sale_id,
+                audit_event_id=audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sales")
+async def list_wholesale_sales(
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_sales.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/sales/{sale_id}/approve")
+async def approve_wholesale_sale_route(
+    sale_id: str,
+    command: ApproveWholesaleSaleCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    invoice_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: approve_wholesale_sale(
+                db, sale_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                invoice_id=invoice_id, stock_movement_id=movement_id,
+                audit_event_id=audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sales-invoices")
+async def list_commercial_sales_invoices(
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_sales_invoices.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/sales-invoices/{invoice_id}/payments", status_code=201)
+async def create_sale_payment(
+    invoice_id: str,
+    draft: SalePaymentDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    payment_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: record_sale_payment(
+                db, invoice_id, draft, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                payment_id=payment_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sales-invoices/{invoice_id}/payments")
+async def list_sale_payments(
+    invoice_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_sale_payments.find(
+        {"invoice_id": invoice_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
 
 
 @router.post("/olive-purchases", status_code=201)
