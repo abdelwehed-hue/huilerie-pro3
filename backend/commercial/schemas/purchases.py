@@ -36,4 +36,5 @@ class ApproveOlivePurchaseCommand(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     expected_version: int = Field(ge=1)
+    receiving_location_id: str = Field(min_length=1, max_length=100)
     idempotency_key: str = Field(min_length=16, max_length=128)
