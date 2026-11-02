@@ -64,6 +64,7 @@ Administrator endpoints (Bearer JWT required, except initial setup and login):
 - `POST /api/admin/setup` — one-time first-admin setup.
 - `POST /api/admin/login`
 - `GET /api/admin/me`
+- `PUT /api/admin/password` — change the current administrator password (current password required)
 - `GET/PUT /api/admin/content`
 - `GET/POST /api/admin/news`, `PUT/DELETE /api/admin/news/:id`
 - `GET/POST /api/admin/products`, `PUT/DELETE /api/admin/products/:id`
@@ -87,6 +88,21 @@ cd website-admin
 npm install
 # Set VITE_CMS_API_URL
 npm run dev
+```
+
+## Automated checks
+
+GitHub Actions runs JavaScript syntax checks, CMS helper unit tests, and the admin production build on pushes and pull requests to `website/cms-foundation`.
+
+Run the checks locally:
+
+```bash
+cd cms-api
+npm test
+node --check server.js
+cd ../website-admin
+npm install
+npm run build
 ```
 
 ## Operational safety
