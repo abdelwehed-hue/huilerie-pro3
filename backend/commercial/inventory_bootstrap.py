@@ -15,7 +15,7 @@ INVENTORY_INDEXES = {
     ],
     "commercial_suppliers": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_supplier_id"),
-        IndexModel([("name", ASCENDING)], name="commercial_supplier_name"),
+        IndexModel([("normalized_name", ASCENDING)], unique=True, name="uq_commercial_supplier_normalized_name"),
     ],
     "commercial_olive_purchases": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_olive_purchase_id"),
