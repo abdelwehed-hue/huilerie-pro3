@@ -66,7 +66,7 @@ A service function that accepts a MongoDB session is not by itself proof of tran
 - Public-auth mode (`AUTH_DISABLED=true`) is rejected for all commercial endpoints.
 - Write endpoints read the active season from existing application settings and fail closed until its counters and tanks are provisioned.
 - Supplier and olive receiving/staging location APIs are available. Commercial purchase, production, and quality commands are wrapped by the existing `run_transaction` helper.
-- Read APIs expose tanks, locations, suppliers, buyers, lots, stock balances, purchases, production runs, quality assessments, wholesale sales, invoices, and payment history.
+- Read APIs expose tanks, locations, suppliers, buyers, lots, stock balances, purchases, production runs, quality assessments, wholesale sales, invoices, and payment history. `GET /api/commercial/v1/buyers/{buyer_id}/account-summary` returns invoice count, total invoiced, paid, outstanding, and payment-status counts aggregated from commercial invoices; it includes inactive buyers so historical receivables remain visible.
 
 
 ## Quality separation of duties
@@ -92,4 +92,4 @@ A service function that accepts a MongoDB session is not by itself proof of tran
 - Approval creates a `FAC` commercial invoice and a `DISPATCH` MVT movement in the same MongoDB transaction. Customer-custody oil and pending/rejected oil cannot be sold.
 - Payments receive season-scoped `PAY` numbers. Payment posting is idempotent, version-checked, and rejects amounts greater than the outstanding invoice balance. Partial and full payment states are maintained on the invoice. Bank transfers and cheques require a traceable reference; cash payments may omit it.
 - Tax treatment is explicitly marked `NOT_CONFIGURED`; these records are not represented as legally compliant tax invoices. Configure and validate the applicable tax rules and invoice format before operational tax invoicing.
-- Sale correction, cancellation, return, dispatch reversal, buyer deactivation, and tax configuration are not yet implemented. Approved sales and payments must not be edited directly in MongoDB.
+- Sale correction, cancellation, return, dispatch reversal, buyer update/deactivation, payment reversal, and tax configuration are not yet implemented. Approved sales and payments must not be edited directly in MongoDB.
