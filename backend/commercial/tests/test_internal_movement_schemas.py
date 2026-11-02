@@ -49,6 +49,16 @@ def test_ownership_transfer_rejects_different_locations():
         ))
 
 
+def test_ownership_transfer_rejects_customer_to_customer_reassignment():
+    with pytest.raises(ValidationError, match="Invalid locations or owners"):
+        InternalMovementDraft(**base(
+            movement_kind="OWNERSHIP_TRANSFER",
+            destination_location_id="olive-a",
+            source_owner={"kind": "CUSTOMER", "customer_id": "c-1"},
+            destination_owner={"kind": "CUSTOMER", "customer_id": "c-2"},
+        ))
+
+
 def test_external_receipt_or_dispatch_cannot_be_submitted_as_internal_movement():
     with pytest.raises(ValidationError):
         InternalMovementDraft(**base(movement_kind="DISPATCH"))
