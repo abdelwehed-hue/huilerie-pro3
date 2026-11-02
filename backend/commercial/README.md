@@ -90,6 +90,6 @@ A service function that accepts a MongoDB session is not by itself proof of tran
 - Wholesale buyer records are separate from legacy pressing clients; no automatic identity mapping is assumed.
 - A sale draft receives a season-scoped `VTE` number. Approval requires an open oil lot owned by the mill, a persisted RELEASED quality decision, an active source tank, and sufficient stock.
 - Approval creates a `FAC` commercial invoice and a `DISPATCH` MVT movement in the same MongoDB transaction. Customer-custody oil and pending/rejected oil cannot be sold.
-- Payments receive season-scoped `PAY` numbers. Payment posting is idempotent, version-checked, and rejects amounts greater than the outstanding invoice balance. Partial and full payment states are maintained on the invoice.
+- Payments receive season-scoped `PAY` numbers. Payment posting is idempotent, version-checked, and rejects amounts greater than the outstanding invoice balance. Partial and full payment states are maintained on the invoice. Bank transfers and cheques require a traceable reference; cash payments may omit it.
 - Tax treatment is explicitly marked `NOT_CONFIGURED`; these records are not represented as legally compliant tax invoices. Configure and validate the applicable tax rules and invoice format before operational tax invoicing.
 - Sale correction, cancellation, return, dispatch reversal, buyer deactivation, and tax configuration are not yet implemented. Approved sales and payments must not be edited directly in MongoDB.
