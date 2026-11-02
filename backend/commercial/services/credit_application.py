@@ -207,6 +207,7 @@ async def apply_buyer_credit_to_invoice(
             "outstanding_amount_dt": Decimal128(outstanding_after),
             "payment_status": payment_status,
             "updated_at": now,
+            "updated_by": actor_user_id,
         }, "$inc": {"version": 1}},
         session=session,
     )
