@@ -192,8 +192,8 @@ app.delete('/api/admin/media/:id', auth, async (req, res) => {
   if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
   const idText = _id.toString();
   const [newsUse, productUse, file] = await Promise.all([
-    news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText + '] }),
-    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
+    news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText + String.fromCharCode(36) } }] }),
+    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText + String.fromCharCode(36) } }] }),
     db.collection('site_media.files').findOne({ _id }, { projection: { _id: 1 } })
   ]);
   if (!file) return res.status(404).json({ error: 'Image introuvable' });
