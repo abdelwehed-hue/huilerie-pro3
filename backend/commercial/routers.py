@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
 
 from commercial.inventory_bootstrap import (
+    COMMERCIAL_DOCUMENT_TYPES,
     ensure_inventory_indexes,
     provision_commercial_counters,
     provision_nine_tanks,
@@ -137,7 +138,7 @@ async def _require_commercial_ready() -> tuple[str, str]:
     season, season_code = await _active_season_code()
     tanks = await db.commercial_tanks.count_documents({})
     counter_docs = await db.commercial_counters.find({"season_code": season_code}, {"_id": 0, "document_type": 1}).to_list(20)
-    required_types = {"ACH", "PROD", "LOT", "MVT", "FAC", "VTE", "PAY", "RET", "AVO"}
+    required_types = set(COMMERCIAL_DOCUMENT_TYPES)
     counter_types = {item.get("document_type") for item in counter_docs}
     if tanks != 9 or not required_types.issubset(counter_types):
         raise HTTPException(503, "commercial_domain_not_bootstrapped")
