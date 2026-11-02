@@ -83,6 +83,14 @@ INVENTORY_INDEXES = {
         IndexModel([("sale_id", ASCENDING), ("created_at", DESCENDING)],
                    name="commercial_sale_return_sale_created"),
     ],
+    "commercial_sale_return_rejections": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sale_return_rejection_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
+                   unique=True, name="uq_commercial_sale_return_rejection_document"),
+        IndexModel([("return_id", ASCENDING)], unique=True, name="uq_commercial_sale_return_rejection_return"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)],
+                   unique=True, name="uq_commercial_sale_return_rejection_idempotency"),
+    ],
     "commercial_sales_invoices": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_document"),
