@@ -282,8 +282,8 @@ export default function Commercial() {
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-returns", 500), enabled: ready && tab === "sales" });
   const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-return-rejections", 500), enabled: ready && tab === "sales" });
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" });
-  const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
-  const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals"), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals", 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const selectedPayment = (salePayments.data ?? []).find((payment) => payment.id === selectedPaymentForReversal);
   const selectedSalesInvoice = (salesInvoices.data ?? []).find((invoice) => invoice.id === selectedInvoiceId);
   const invoiceBuyerSummary = useQuery({
@@ -293,7 +293,7 @@ export default function Commercial() {
   });
   const creditApplications = useQuery({
     queryKey: ["commercial", "credit-applications", selectedInvoiceId],
-    queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications"),
+    queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
