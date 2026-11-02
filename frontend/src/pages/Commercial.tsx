@@ -99,7 +99,7 @@ function ownerIdentity(owner: AnyRecord | undefined) {
 }
 async function apiGetAllPages<T>(path: string, pageSize: number): Promise<T[]> {
   const rows: T[] = [];
-  for (let skip = 0, page = 0; page < 100; skip += pageSize, page += 1) {
+  for (let skip = 0, page = 0; page <= 100; skip += pageSize, page += 1) {
     const separator = path.includes("?") ? "&" : "?";
     const chunk = await apiGet<T[]>(`${path}${separator}limit=${pageSize}&skip=${skip}`);
     rows.push(...chunk);
