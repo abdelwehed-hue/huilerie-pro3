@@ -850,7 +850,7 @@ async def list_client_options(
             loads_count=0,
             olive_kg=0,
             oil_kg=0,
-            last_visit=_aware(row["last_visit"]) if row.get("last_visit") else None,
+            last_visit=_aware(row["last_visit"]),
             amount=0 if is_admin else None,
         )
         async for row in db.loads.aggregate(pipeline)
