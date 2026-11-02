@@ -63,6 +63,7 @@ async def test_unregistered_source_document_type_is_rejected_closed():
         "PROD": "commercial_production_runs",
         "INT": "commercial_internal_movements",
         "VTE": "commercial_sales",
+        "RET": "commercial_sale_returns",
     }
     db = Database({
         "commercial_lots": Collection([{"id": "lot-1"}]),
