@@ -164,7 +164,7 @@ export default function Reports() {
         <StatCard tone="violet" testId="report-total-revenue" label={t("revenue")} value={fmtMoney(r?.total.revenue)} unit={t("dt")} icon={<Wallet />} />
         <StatCard tone="rose" label={t("loads")} value={r?.total.loads ?? "—"} icon={<Layers />} />
         <StatCard tone="olive" label={t("olive_kg")} value={fmtNum(r?.total.olive_kg)} unit={t("kg")} icon={<Sprout />} />
-        <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("kg")} icon={<Droplet />} />
+        <StatCard tone="gold" label={t("oil_kg")} value={fmtNum(r?.total.oil_kg)} unit={t("liter")} icon={<Droplet />} />
       </div>
 
       <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.65fr)]">

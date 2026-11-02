@@ -126,7 +126,7 @@ export default function Dashboard() {
                 <TableCell className="font-mono text-stone-500" dir="ltr">{l.phone}</TableCell>
                 <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
                 <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
-                <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("kg")}` : "—"}</TableCell>
+                <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("liter")}` : "—"}</TableCell>
                 <TableCell><StatusPill status={l.status} size="large" /></TableCell>
                 <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
               </TableRow>

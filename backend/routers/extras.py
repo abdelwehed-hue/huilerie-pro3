@@ -311,10 +311,10 @@ async def worker_report(period: str = PeriodQ, start: str | None = None, end: st
     return await build_worker_report(period, start, end, worker)
 
 
-HEAD_FR = ["Période", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"]
-HEAD_AR = ["الفترة", "الحمولات", "الزيتون (كغ)", "الزيت (كغ)", "المداخيل (د.ت)"]
-WHEAD_FR = ["Date", "Ouvrier", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"]
-WHEAD_AR = ["التاريخ", "العامل", "الحمولات", "الزيتون (كغ)", "الزيت (كغ)", "المداخيل (د.ت)"]
+HEAD_FR = ["Période", "Chargements", "Olives (kg)", "Huile (Li)", "Recettes (DT)"]
+HEAD_AR = ["الفترة", "الحمولات", "الزيتون (كغ)", "الزيت (لتر)", "المداخيل (د.ت)"]
+WHEAD_FR = ["Date", "Ouvrier", "Chargements", "Olives (kg)", "Huile (Li)", "Recettes (DT)"]
+WHEAD_AR = ["التاريخ", "العامل", "الحمولات", "الزيتون (كغ)", "الزيت (لتر)", "المداخيل (د.ت)"]
 
 
 def _titles(period: str) -> tuple[str, str]:
@@ -672,7 +672,7 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
             make_card("RECETTES ENCAISSÉES", money(rep.total.revenue), navy),
             make_card("NOMBRE DE CHARGEMENTS", rep.total.loads, gold),
             make_card("OLIVES TRAITÉES (KG)", f"{rep.total.olive_kg:,.1f}", colors.HexColor("#78A95E")),
-            make_card("HUILE EXTRAITE (KG)", f"{rep.total.oil_kg:,.1f}", blue),
+            make_card("HUILE EXTRAITE (LI)", f"{rep.total.oil_kg:,.1f}", blue),
         ]],
         colWidths=[45.5 * mm] * 4,
         hAlign="LEFT",
@@ -704,7 +704,7 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
     ]))
 
     main_headers = [
-        ["Période", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"],
+        ["Période", "Chargements", "Olives (kg)", "Huile (Li)", "Recettes (DT)"],
         HEAD_AR,
     ]
     worker_headers = [WHEAD_FR, WHEAD_AR]

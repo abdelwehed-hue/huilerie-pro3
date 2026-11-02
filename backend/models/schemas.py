@@ -173,12 +173,12 @@ DEFAULT_SMS_ARRIVAL = (
     "{mill}: مرحبا {name}، الكود متاعك: {code} - الزيتون: {olive_kg} كغ."
 )
 DEFAULT_SMS_READY = (
-    "{mill}: {name}, votre huile est prête: {oil_kg} kg (code {code}).\n"
-    "{mill}: {name}، الزيت متاعك جاهز: {oil_kg} كغ (الكود {code})."
+    "{mill}: {name}, votre huile est prête: {oil_kg} Li (code {code}).\n"
+    "{mill}: {name}، الزيت متاعك جاهز: {oil_kg} لتر (الكود {code})."
 )
 DEFAULT_SMS_REMINDER = (
-    "{mill}: {name}, rappel: votre huile ({oil_kg} kg, code {code}) vous attend.\n"
-    "{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} كغ، الكود {code}) في انتظارك."
+    "{mill}: {name}, rappel: votre huile ({oil_kg} Li, code {code}) vous attend.\n"
+    "{mill}: {name}، تذكير: الزيت متاعك ({oil_kg} لتر، الكود {code}) في انتظارك."
 )
 
 

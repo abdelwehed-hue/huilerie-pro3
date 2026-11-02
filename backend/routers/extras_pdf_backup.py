@@ -249,10 +249,10 @@ async def worker_report(period: str = PeriodQ, start: str | None = None, end: st
     return await build_worker_report(period, start, end, worker)
 
 
-HEAD_FR = ["Période", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"]
-HEAD_AR = ["الفترة", "الحمولات", "الزيتون (كغ)", "الزيت (كغ)", "المداخيل (د.ت)"]
-WHEAD_FR = ["Date", "Ouvrier", "Chargements", "Olives (kg)", "Huile (kg)", "Recettes (DT)"]
-WHEAD_AR = ["التاريخ", "العامل", "الحمولات", "الزيتون (كغ)", "الزيت (كغ)", "المداخيل (د.ت)"]
+HEAD_FR = ["Période", "Chargements", "Olives (kg)", "Huile (Li)", "Recettes (DT)"]
+HEAD_AR = ["الفترة", "الحمولات", "الزيتون (كغ)", "الزيت (لتر)", "المداخيل (د.ت)"]
+WHEAD_FR = ["Date", "Ouvrier", "Chargements", "Olives (kg)", "Huile (Li)", "Recettes (DT)"]
+WHEAD_AR = ["التاريخ", "العامل", "الحمولات", "الزيتون (كغ)", "الزيت (لتر)", "المداخيل (د.ت)"]
 
 
 def _titles(period: str) -> tuple[str, str]:
