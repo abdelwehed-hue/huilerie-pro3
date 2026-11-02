@@ -22,7 +22,7 @@ class CustomerOliveCustodyReceiptDraft(BaseModel):
 class CustomerOilCustodyReleaseDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    customer_phone: str = Field(min_length=5, max_length=20, pattern=r"^\+?[0-9]{5,20}$")
+    customer_id: str = Field(min_length=1, max_length=100)
     release_date: date
     oil_lot_id: str = Field(min_length=1, max_length=100)
     source_tank_id: str = Field(min_length=1, max_length=100)
