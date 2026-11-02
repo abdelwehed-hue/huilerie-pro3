@@ -50,3 +50,6 @@ async def test_client_options_are_global_deduplicated_and_paginated(monkeypatch)
     assert any(stage == {"$skip": 500} for stage in stages)
     assert any(stage == {"$limit": 2} for stage in stages)
     assert not any("$limit" in stage and stage["$limit"] == 300 for stage in stages)
+    timestamp_normalizer = next(stage["$set"]["created_at"] for stage in stages if "$set" in stage)
+    assert timestamp_normalizer["$cond"][0] == {"$eq": [{"$type": "$created_at"}, "date"]}
+    assert timestamp_normalizer["$cond"][2] == datetime(1970, 1, 1, tzinfo=timezone.utc)
