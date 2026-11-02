@@ -121,3 +121,17 @@ inside its transaction.
 7. API routes and permission matrix.
 8. Integration tests against a replica-set MongoDB deployment.
 9. Only then connect purchases, production, transfers, and bulk sales.
+
+
+## 9. Lot ownership provenance versus current stock ownership
+
+The `commercial_lots.owner` field records the lot's originating/initial owner
+for traceability; it is not a live ownership register. A lot may be split across
+MILL and one or more CUSTOMER balances after partial ownership transfers.
+Current ownership is determined exclusively by the owner dimension of each
+`commercial_stock_balances` row, reconciled with the append-only movement
+ledger. Any workflow that consumes, dispatches, or releases a quantity must
+debit the matching owner-specific balance in its transaction. It must not infer
+current ownership from the lot document. In particular, mill sales debit only
+MILL balances, customer pickups debit only the selected customer's balances,
+and production consumes the owner recorded on each input balance.
