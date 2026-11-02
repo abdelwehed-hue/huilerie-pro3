@@ -67,6 +67,7 @@ async def test_unregistered_source_document_type_is_rejected_closed():
         "RET": "commercial_sale_returns",
         "CIN": "commercial_customer_custody_receipts",
         "CUS": "commercial_customer_custody_releases",
+        "RJT": "commercial_sale_return_rejections",
     }
     db = Database({
         "commercial_lots": Collection([{"id": "lot-1"}]),
@@ -109,5 +110,5 @@ async def test_quarantine_tank_rejects_dispatch_without_reinspection():
         "commercial_lots": Collection([{"id": "lot-1", "quality_status": "PENDING"}]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
     })
-    with pytest.raises(ValueError, match="only by transfer after quality release"):
+    with pytest.raises(ValueError, match="quality-released transfer or approved return rejection"):
         await validate_stock_references(db, draft, session=object())
