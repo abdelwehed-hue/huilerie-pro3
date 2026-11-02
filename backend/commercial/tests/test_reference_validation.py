@@ -51,6 +51,7 @@ async def test_unregistered_source_document_type_is_rejected_closed():
     assert SOURCE_DOCUMENT_COLLECTIONS == {
         "ACH": "commercial_olive_purchases",
         "PROD": "commercial_production_runs",
+        "INT": "commercial_internal_movements",
     }
     db = Database({
         "commercial_lots": Collection([{"id": "lot-1"}]),
