@@ -657,6 +657,46 @@ async def test_wholesale_sale_rejects_customer_custody_and_unreleased_oil():
         assert await db.commercial_sales_invoices.count_documents({}) == 0
         balance = await db.commercial_stock_balances.find_one({"location_id": "tank-01"})
         assert balance["quantity_kg"].to_decimal() == Decimal("40.000")
+
+        # A mill-owned oil lot is still unsellable until an explicit quality release exists.
+        await db.commercial_lots.insert_one({
+            "id": "oil-lot-pending", "product_kind": "OIL", "status": "OPEN",
+            "owner": {"kind": "MILL"}, "quality_status": "PENDING",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OIL", "lot_id": "oil-lot-pending",
+            "owner": {"kind": "MILL"}, "location_id": "tank-01",
+            "quantity_kg": Decimal128("30.000"), "created_at": now,
+        })
+        pending_draft = WholesaleSaleDraft(
+            sale_date="2026-11-02", buyer_id="buyer-1", oil_lot_id="oil-lot-pending",
+            source_tank_id="tank-01", quantity_kg=Decimal("5.000"),
+            unit_price_dt=Decimal("5.000"), idempotency_key="pending-sale-create-key-001",
+        )
+        async with await client.start_session() as session:
+            await session.with_transaction(
+                lambda active: create_wholesale_sale_draft(
+                    db, pending_draft, season_code="2627", actor_user=admin,
+                    actor_user_id="admin-1", sale_id="sale-pending",
+                    audit_event_id="sale-pending-draft-audit", created_at=now, session=active,
+                )
+            )
+        with pytest.raises(ValueError, match="not been released"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: approve_wholesale_sale(
+                        db, "sale-pending",
+                        ApproveWholesaleSaleCommand(
+                            expected_version=1, idempotency_key="pending-sale-approve-key-001"
+                        ),
+                        season_code="2627", actor_user=admin, actor_user_id="admin-1",
+                        invoice_id="pending-invoice", stock_movement_id="pending-dispatch",
+                        audit_event_id="pending-approval-audit", created_at=now, session=active,
+                    )
+                )
+        pending_sale = await db.commercial_sales.find_one({"id": "sale-pending"})
+        assert pending_sale["status"] == "DRAFT"
+        assert await db.commercial_sales_invoices.count_documents({"sale_id": "sale-pending"}) == 0
     finally:
         await client.drop_database(db_name)
         client.close()
