@@ -1148,13 +1148,14 @@ async def list_quality_assessments(
 async def list_commercial_lots(
     product_kind: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     query = {"product_kind": product_kind} if product_kind in {"OLIVE", "OIL"} else {}
     docs = await db.commercial_lots.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1323,6 +1324,7 @@ async def list_stock_balances(
     product_kind: str | None = None,
     location_id: str | None = None,
     limit: int = Query(default=200, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
@@ -1333,7 +1335,7 @@ async def list_stock_balances(
         query["location_id"] = location_id
     docs = await db.commercial_stock_balances.find(
         query, {"_id": 0}
-    ).sort("location_id", 1).to_list(limit)
+    ).sort([("product_kind", 1), ("lot_id", 1), ("owner.kind", 1), ("owner.customer_id", 1), ("location_id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
