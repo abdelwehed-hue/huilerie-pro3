@@ -91,6 +91,13 @@ This package is an isolated commercial domain. It must not change existing olive
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
+## Buyer credit application API
+
+- `POST /api/commercial/v1/sales-invoices/{invoice_id}/credit-applications` — admin-only non-cash application of available AVO buyer credit to an outstanding invoice.
+- `GET /api/commercial/v1/sales-invoices/{invoice_id}/credit-applications` — read the target invoice's CAP history.
+
+CAP allocates available credit FIFO across issued credit notes for the same buyer. Each source allocation is appended to the buyer credit ledger, the buyer credit balance and target invoice outstanding are updated in one MongoDB transaction, and the invoice cash-paid amount and PAY records remain unchanged. Payment reversal and cash refunds are not enabled.
+
 ## Customer custody API
 
 - `POST /api/commercial/v1/customer-custody/receipts` — admin-only CIN intake of customer-owned olives.
