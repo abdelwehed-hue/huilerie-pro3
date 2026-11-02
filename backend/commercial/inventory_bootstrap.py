@@ -4,7 +4,7 @@ from commercial.services.numbering import validate_numbering_components
 
 TANKS = tuple(
     {"id": f"tank-{n:02d}", "code": f"T{n:02d}", "name": f"Cuve {n:02d}",
-     "active": True, "capacity_kg": None}
+     "active": True, "role": "NORMAL", "version": 1, "capacity_kg": None}
     for n in range(1, 10)
 )
 
