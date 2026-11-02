@@ -32,6 +32,7 @@ class InternalMovementDraft(BaseModel):
             valid = (
                 self.source_location_id == self.destination_location_id
                 and self.source_owner != self.destination_owner
+                and self.source_owner.kind != self.destination_owner.kind
             )
         if not valid:
             raise ValueError("Invalid locations or owners for internal movement kind")
