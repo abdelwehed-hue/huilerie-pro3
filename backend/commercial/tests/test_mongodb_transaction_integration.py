@@ -588,7 +588,7 @@ async def test_wholesale_sale_dispatches_only_released_mill_owned_oil_and_tracks
         assert invoice["outstanding_amount_dt"].to_decimal() == Decimal("62.500")
 
         second_payment = SalePaymentDraft(
-            payment_date="2026-11-02", amount_dt="62.500", method="BANK_TRANSFER",
+            payment_date="2026-11-02", amount_dt="62.500", method="BANK_TRANSFER", reference="BANK-TRX-002",
             expected_invoice_version=2, idempotency_key="sale-payment-key-0002",
         )
         async with await client.start_session() as session:
