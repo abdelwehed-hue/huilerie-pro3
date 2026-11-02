@@ -3,7 +3,7 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 from commercial.services.numbering import validate_numbering_components
 
 COMMERCIAL_DOCUMENT_TYPES = (
-    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV"
+    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT"
 )
 
 
@@ -93,6 +93,13 @@ INVENTORY_INDEXES = {
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
                    unique=True, name="uq_commercial_credit_note_document"),
         IndexModel([("return_id", ASCENDING)], unique=True, name="uq_commercial_credit_note_return"),
+    ],
+    "commercial_buyer_return_rejections": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_buyer_return_rejection_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_buyer_return_rejection_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_buyer_return_rejection_idempotency"),
+        IndexModel([("return_id", ASCENDING)], unique=True, name="uq_buyer_return_rejection_return"),
+        IndexModel([("sale_id", ASCENDING), ("created_at", DESCENDING)], name="buyer_return_rejection_sale_created"),
     ],
     "commercial_payment_reversals": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_payment_reversal_id"),
