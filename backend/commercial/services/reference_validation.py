@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
-# No commercial source-document collection is currently implemented. Keep
-# this registry empty so a caller cannot post a movement against an invented
-# or legacy document type. Add a type only alongside its real model/service.
-SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {\n    "ACH": "commercial_olive_purchases",\n}
+# Register only document types backed by real commercial collections/services.
+# Legacy pressing loads and service invoices are intentionally excluded.
+SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
+    "ACH": "commercial_olive_purchases",
+}
 
 
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
