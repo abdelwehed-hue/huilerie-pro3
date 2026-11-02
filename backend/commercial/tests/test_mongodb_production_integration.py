@@ -151,7 +151,7 @@ async def test_concurrent_productions_cannot_consume_the_same_olive_stock_twice(
     try:
         await ensure_inventory_indexes(db)
         await db.commercial_counters.insert_many([
-            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            {"season_code": "2627", "document_type": kind, "last_sequence": 1 if kind == "LOT" else 0}
             for kind in ("PROD", "LOT", "MVT")
         ])
         await db.commercial_tanks.insert_one({"id": "tank-01", "active": True})
