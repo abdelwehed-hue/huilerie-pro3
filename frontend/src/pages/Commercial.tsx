@@ -680,6 +680,7 @@ export default function Commercial() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "sale-payments", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
