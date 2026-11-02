@@ -352,21 +352,30 @@ async def assign_commercial_permissions(
         raise HTTPException(404, "user_not_found")
     if target.get("role") != "worker":
         raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
+    await _require_commercial_ready()
     permissions = sorted(set(assignment.permissions))
     now = datetime.now(timezone.utc)
-    await db.users.update_one(
-        {"id": target_user_id, "role": "worker"},
-        {"$set": {"commercial_permissions": permissions,
-                  "commercial_permissions_updated_by": user["id"],
-                  "commercial_permissions_updated_at": now}},
-    )
-    await db.commercial_audit_events.insert_one({
-        "id": str(uuid.uuid4()), "entity_type": "user",
-        "entity_id": target_user_id, "action": "COMMERCIAL_PERMISSIONS_UPDATED",
-        "actor_user_id": user["id"], "created_at": now,
-        "details": {"permissions": permissions},
-    })
-    return {"user_id": target_user_id, "permissions": permissions}
+    audit_id = str(uuid.uuid4())
+
+    async def apply_assignment(session):
+        updated = await db.users.update_one(
+            {"id": target_user_id, "role": "worker"},
+            {"$set": {"commercial_permissions": permissions,
+                      "commercial_permissions_updated_by": user["id"],
+                      "commercial_permissions_updated_at": now}},
+            session=session,
+        )
+        if updated.matched_count != 1:
+            raise ValueError("Target account changed; reload before assigning permissions")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "user",
+            "entity_id": target_user_id, "action": "COMMERCIAL_PERMISSIONS_UPDATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"permissions": permissions},
+        }, session=session)
+        return {"user_id": target_user_id, "permissions": permissions}
+
+    return await run_transaction(apply_assignment)
 
 
 @router.post("/quality-assessments", status_code=201)
