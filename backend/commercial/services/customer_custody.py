@@ -253,10 +253,10 @@ async def release_customer_oil_custody(
         return prior
 
     owner = await db["commercial_custody_owners"].find_one(
-        {"client_phone": draft.customer_phone}, {"_id": 0}, session=session
+        {"id": draft.customer_id}, {"_id": 0}, session=session
     )
     if not owner:
-        raise ValueError("Customer has no commercial custody account")
+        raise ValueError("Customer custody account does not exist")
     lot = await db["commercial_lots"].find_one(
         {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
         {"_id": 0, "id": 1, "owner": 1, "quality_status": 1}, session=session,
