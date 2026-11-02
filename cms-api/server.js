@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { MongoClient, ObjectId, GridFSBucket } from 'mongodb';
 
-const required = ['MONGODB_URI', 'JWT_SECRET', 'CMS_SETUP_KEY'];
+const required = ['MONGODB_URI', 'JWT_SECRET'];
 for (const key of required) if (!process.env[key]) throw new Error(`Missing environment variable: ${key}`);
 
 const app = express();
@@ -33,7 +33,8 @@ await Promise.all([
   admins.createIndex({ email: 1 }, { unique: true }),
   news.createIndex({ status: 1, publishedAt: -1 }),
   products.createIndex({ status: 1, updatedAt: -1 }),
-  content.createIndex({ key: 1 }, { unique: true })
+  content.createIndex({ key: 1 }, { unique: true }),
+  admins.createIndex({ role: 1 }, { unique: true, partialFilterExpression: { role: 'admin' } })
 ]);
 
 const tokenFor = admin => jwt.sign({ sub: admin._id.toString(), email: admin.email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '8h', issuer: 'oro-verde-cms' });
@@ -57,18 +58,26 @@ app.get('/api/public/news', async (_req, res) => res.json(await news.find({ stat
 app.get('/api/public/products', async (_req, res) => res.json(await products.find({ status: 'published' }).sort({ updatedAt: -1 }).limit(100).project({ name: 1, description: 1, imageId: 1, imageUrl: 1, translations: 1, updatedAt: 1 }).toArray()));
 
 app.post('/api/admin/setup', async (req, res) => {
-  if (await admins.countDocuments({}) > 0) return res.status(403).json({ error: 'Configuration initiale déjà effectuée' });
+  if (!process.env.CMS_SETUP_KEY) return res.status(503).json({ error: 'Configuration initiale désactivée sur ce serveur' });
+  if (await admins.countDocuments({ role: 'admin' }) > 0) return res.status(403).json({ error: 'Configuration initiale déjà effectuée' });
   const { setupKey, email, password } = req.body || {};
   if (!setupKey || setupKey !== process.env.CMS_SETUP_KEY) return res.status(403).json({ error: 'Clé de configuration incorrecte' });
-  if (!/^\S+@\S+\.\S+$/.test(email || '') || typeof password !== 'string' || password.length < 12) return res.status(400).json({ error: 'Adresse e-mail invalide ou mot de passe trop court (12 caractères minimum)' });
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || typeof password !== 'string' || password.length < 12 || password.length > 128) return res.status(400).json({ error: 'Adresse e-mail invalide ou mot de passe requis entre 12 et 128 caractères' });
   const passwordHash = await bcrypt.hash(password, 12);
-  const result = await admins.insertOne({ email: email.toLowerCase(), passwordHash, createdAt: new Date(), role: 'admin' });
-  const token = tokenFor({ _id: result.insertedId, email: email.toLowerCase() });
-  res.status(201).json({ token, email: email.toLowerCase() });
+  try {
+    const result = await admins.insertOne({ email: normalizedEmail, passwordHash, createdAt: new Date(), role: 'admin' });
+    const token = tokenFor({ _id: result.insertedId, email: normalizedEmail });
+    res.status(201).json({ token, email: normalizedEmail });
+  } catch (error) {
+    if (error?.code === 11000) return res.status(403).json({ error: 'Le compte administrateur existe déjà' });
+    throw error;
+  }
 });
 app.post('/api/admin/login', async (req, res) => {
   const { email, password } = req.body || {};
-  const admin = await admins.findOne({ email: String(email || '').toLowerCase() });
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const admin = await admins.findOne({ email: normalizedEmail });
   if (!admin || !(await bcrypt.compare(String(password || ''), admin.passwordHash))) return res.status(401).json({ error: 'Identifiants incorrects' });
   res.json({ token: tokenFor(admin), email: admin.email });
 });
@@ -81,31 +90,73 @@ app.put('/api/admin/content', auth, async (req, res) => {
   await content.updateOne({ key: 'main' }, { $set: doc }, { upsert: true });
   res.json({ ok: true, updatedAt: doc.updatedAt });
 });
+function normalizeItem(route, input, adminEmail, previous = null) {
+  const data = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const translations = data.translations;
+  if (!translations || typeof translations !== 'object' || Array.isArray(translations) || !['fr', 'ar', 'en'].every(lang => translations[lang] && typeof translations[lang] === 'object' && !Array.isArray(translations[lang]))) {
+    return { error: 'Les traductions fr, ar et en sont obligatoires' };
+  }
+  const cleanTranslations = {};
+  for (const lang of ['fr', 'ar', 'en']) {
+    cleanTranslations[lang] = {};
+    for (const field of ['title', 'summary', 'body']) {
+      const value = translations[lang][field] ?? '';
+      if (typeof value !== 'string' || value.length > (field === 'body' ? 30000 : 5000)) return { error: 'Un champ de traduction est invalide ou trop long' };
+      cleanTranslations[lang][field] = value.trim();
+    }
+  }
+  const status = data.status ?? previous?.status ?? 'draft';
+  if (!['draft', 'published'].includes(status)) return { error: 'Statut invalide' };
+  const imageUrl = data.imageUrl ?? previous?.imageUrl ?? '';
+  if (typeof imageUrl !== 'string' || imageUrl.length > 2048 || (imageUrl && !(/^(https?:\/\/|\/api\/public\/media\/)/i.test(imageUrl)))) {
+    return { error: 'URL d’image invalide' };
+  }
+  const now = new Date();
+  const wasPublished = previous?.status === 'published';
+  const doc = {
+    translations: cleanTranslations,
+    status,
+    imageUrl,
+    updatedAt: now,
+    updatedBy: adminEmail,
+    publishedAt: status === 'published' ? (wasPublished && previous?.publishedAt ? previous.publishedAt : now) : null
+  };
+  if (route === 'news') {
+    doc.title = cleanTranslations.fr.title;
+    doc.summary = cleanTranslations.fr.summary;
+    doc.body = cleanTranslations.fr.body;
+  } else {
+    doc.name = cleanTranslations.fr.title;
+    doc.description = cleanTranslations.fr.summary || cleanTranslations.fr.body;
+  }
+  return doc;
+}
 for (const [route, collection] of [['news', news], ['products', products]]) {
   app.get(`/api/admin/${route}`, auth, async (_req, res) => res.json(await collection.find({}).sort({ updatedAt: -1 }).toArray()));
   app.post(`/api/admin/${route}`, auth, async (req, res) => {
-    const data = req.body || {};
-    if (!data.translations || typeof data.translations !== 'object') return res.status(400).json({ error: 'Translations required' });
-    const doc = { ...data, status: ['draft', 'published'].includes(data.status) ? data.status : 'draft', createdAt: new Date(), updatedAt: new Date(), createdBy: req.admin.email };
+    const doc = normalizeItem(route, req.body, req.admin.email);
+    if (doc.error) return res.status(400).json({ error: doc.error });
+    doc.createdAt = new Date();
+    doc.createdBy = req.admin.email;
     const result = await collection.insertOne(doc);
     res.status(201).json({ ...doc, _id: result.insertedId });
   });
   app.put(`/api/admin/${route}/:id`, auth, async (req, res) => {
     const _id = cleanId(req.params.id);
-    if (!_id) return res.status(400).json({ error: 'Invalid id' });
-    const data = { ...req.body };
-    delete data._id; delete data.createdAt; delete data.createdBy;
-    data.updatedAt = new Date(); data.updatedBy = req.admin.email;
-    if (data.status && !['draft', 'published'].includes(data.status)) return res.status(400).json({ error: 'Invalid status' });
-    const result = await collection.updateOne({ _id }, { $set: data });
-    if (!result.matchedCount) return res.status(404).json({ error: 'Not found' });
+    if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
+    const previous = await collection.findOne({ _id });
+    if (!previous) return res.status(404).json({ error: 'Élément introuvable' });
+    const doc = normalizeItem(route, req.body, req.admin.email, previous);
+    if (doc.error) return res.status(400).json({ error: doc.error });
+    const result = await collection.updateOne({ _id }, { $set: doc });
+    if (!result.matchedCount) return res.status(404).json({ error: 'Élément introuvable' });
     res.json({ ok: true });
   });
   app.delete(`/api/admin/${route}/:id`, auth, async (req, res) => {
     const _id = cleanId(req.params.id);
-    if (!_id) return res.status(400).json({ error: 'Invalid id' });
+    if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
     const result = await collection.deleteOne({ _id });
-    if (!result.deletedCount) return res.status(404).json({ error: 'Not found' });
+    if (!result.deletedCount) return res.status(404).json({ error: 'Élément introuvable' });
     res.json({ ok: true });
   });
 }
@@ -115,9 +166,15 @@ app.get('/api/admin/media', auth, async (_req, res) => {
 });
 app.delete('/api/admin/media/:id', auth, async (req, res) => {
   const _id = cleanId(req.params.id);
-  if (!_id) return res.status(400).json({ error: 'Invalid id' });
+  if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
+  const idText = _id.toString();
+  const [newsUse, productUse] = await Promise.all([
+    news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
+    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] })
+  ]);
+  if (newsUse + productUse > 0) return res.status(409).json({ error: 'Cette image est utilisée par un article ou un produit. Remplacez son image avant de la supprimer.' });
   try { await bucket.delete(_id); res.json({ ok: true }); }
-  catch { res.status(404).json({ error: 'Media not found' }); }
+  catch { res.status(404).json({ error: 'Image introuvable' }); }
 });
 function detectImageType(buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
