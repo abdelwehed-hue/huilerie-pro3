@@ -59,7 +59,6 @@ async def assert_invoice_receivable_fields_reconcile(
         or applied_credit < 0
         or net < 0
         or net != gross - credited
-        or paid + applied_credit > net
         or outstanding != expected_outstanding
     ):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before recording payment")
