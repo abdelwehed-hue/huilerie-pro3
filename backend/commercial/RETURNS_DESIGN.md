@@ -1,6 +1,6 @@
 # Approved Sale Returns, Quarantine, and Credit Notes — Design
 
-Status: design proposal for PR #147; not yet implemented.
+Status: partial implementation in PR #147. Empty-tank role assignment and atomic physical return intake into quarantine are implemented on the feature branch; commercial acceptance, credit notes, buyer-credit accounting, rejection/re-dispatch, and browser UI remain unimplemented and unvalidated.
 
 ## Invariants
 
