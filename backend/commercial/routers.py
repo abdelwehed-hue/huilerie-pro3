@@ -550,6 +550,8 @@ async def create_stock_movement(
 ):
     """Post a validated stock movement atomically; never accept client balances."""
     _authorize(user, "commercial.post_stock")
+    if draft.source_document_type == "INT":
+        raise HTTPException(422, "internal_movement_sources_must_use_the_internal_movement_workflow")
     if draft.movement_kind == "RECEIPT":
         raise HTTPException(
             422,
