@@ -37,7 +37,7 @@ def test_customer_custody_rejects_invalid_phone(phone):
 
 def test_customer_oil_release_requires_acknowledgement_and_positive_quantity():
     draft = CustomerOilCustodyReleaseDraft(
-        customer_phone="21612345678",
+        customer_id="custody-owner-a",
         release_date="2026-11-02",
         oil_lot_id="customer-oil-lot-01",
         source_tank_id="tank-01",
