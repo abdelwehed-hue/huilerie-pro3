@@ -1,5 +1,6 @@
 """Provision the nine commercial tanks without creating stock."""
 from pymongo import ASCENDING, DESCENDING, IndexModel
+from commercial.services.numbering import validate_numbering_components
 
 TANKS = tuple(
     {"id": f"tank-{n:02d}", "code": f"T{n:02d}", "name": f"Cuve {n:02d}",
@@ -95,8 +96,7 @@ async def provision_commercial_counters(db, season_code, document_types=(
     This is an explicit bootstrap operation, not part of document issuance.
     Existing counters are never reset or decremented.
     """
-    if not isinstance(season_code, str) or len(season_code) != 4 or not season_code.isdigit():
-        raise ValueError("season_code must contain exactly four digits")
+    validate_numbering_components(season_code, "LOT")
     collection = db["commercial_counters"]
     await collection.create_indexes(INVENTORY_INDEXES["commercial_counters"])
     for document_type in document_types:
