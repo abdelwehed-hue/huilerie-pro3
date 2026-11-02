@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -33,8 +34,8 @@ class FakeLoads:
 @pytest.mark.asyncio
 async def test_client_options_are_global_deduplicated_and_paginated(monkeypatch):
     loads = FakeLoads([
-        {"_id": "+21611111111", "client_name": "Client A", "last_visit": None},
-        {"_id": "+21622222222", "client_name": "Client B", "last_visit": None},
+        {"_id": "+21611111111", "client_name": "Client A", "last_visit": datetime(2026, 10, 1, tzinfo=timezone.utc)},
+        {"_id": "+21622222222", "client_name": "Client B", "last_visit": datetime(2026, 10, 2, tzinfo=timezone.utc)},
     ])
     monkeypatch.setattr(extras, "db", SimpleNamespace(loads=loads))
 
