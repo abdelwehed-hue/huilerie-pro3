@@ -45,16 +45,25 @@ loads, reception numbering, or service invoices.
 - services/purchases.py creates a DRAFT olive purchase with an ACH season number, supplier validation, idempotency fingerprint, Decimal128 line values, and audit event. The caller must supply an active MongoDB transaction session.
 - services/purchase_approval.py approves a draft with an expected-version check, creates one LOT per variety line, and posts each olive receipt to an explicitly configured olive storage/staging location in the same transaction.
 - Oil tanks and olive staging locations are distinct. Olive intake cannot be silently placed in one of the nine oil tanks.
-- services/reference_validation.py recognizes only ACH as a registered source document type. A movement is rejected unless its purchase source is approved and its lot and location references exist.
-- permissions.py currently grants commercial write permissions to administrators only; workers are read-only until a separate permission design is implemented.
+- services/reference_validation.py recognizes ACH and PROD as registered source document types. A movement is rejected unless its source document is approved/completed and its lot and location references exist.
+- permissions.py grants commercial write permissions to administrators only; workers have read-only access.
 
 ## Not yet implemented
 
-- Supplier CRUD/API and user interface.
-- Configuration UI/API for olive receiving and staging locations.
+- Frontend screens and user workflows.
 - Purchase cancellation/reversal after approval.
-- Commercial production batches, oil-lot creation, lab analysis and quality release.
 - Bulk sales, payments, and customer-custody settlement.
-- API routes, frontend screens, and end-to-end transaction tests against a MongoDB replica set.
+- Quality specification catalog and reviewer/approver separation.
+- End-to-end transaction tests against a MongoDB replica set.
 
 A service function that accepts a MongoDB session is not by itself proof of transaction safety: its caller must wrap the full command in run_transaction, and this integration still requires replica-set tests.
+
+
+## API and activation
+
+- Authenticated commercial API routes are mounted under `/api/commercial/v1`.
+- `POST /api/commercial/v1/bootstrap` is an explicit admin operation; it checks transaction-capable MongoDB topology, creates critical indexes, provisions nine empty oil tanks, and initializes active-season counters.
+- Public-auth mode (`AUTH_DISABLED=true`) is rejected for all commercial endpoints.
+- Write endpoints read the active season from existing application settings and fail closed until its counters and tanks are provisioned.
+- Supplier and olive receiving/staging location APIs are available. Commercial purchase, production, and quality commands are wrapped by the existing `run_transaction` helper.
+- Read APIs expose tanks, locations, suppliers, lots, stock balances, purchases, production runs, and quality assessments.
