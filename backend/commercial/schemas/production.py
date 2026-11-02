@@ -28,7 +28,7 @@ class ProductionInputLine(BaseModel):
 class CommercialProductionDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    production_date: str = Field(min_length=10, max_length=10, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    production_date: date
     inputs: tuple[ProductionInputLine, ...] = Field(min_length=1, max_length=100)
     actual_oil_output_kg: QuantityKg
     output_tank_id: str = Field(min_length=1, max_length=100)
