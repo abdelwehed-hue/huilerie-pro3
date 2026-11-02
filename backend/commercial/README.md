@@ -12,7 +12,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
 - Quality analyses and independent release controls are required.
 - All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, AVO, CIN, CUS, and CAP.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, AVO, CIN, CUS, CAP, and REV.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
