@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from datetime import date, datetime, timezone
@@ -137,6 +138,82 @@ async def test_insufficient_olive_stock_rolls_back_entire_production_command():
         )
         assert prod_counter["last_sequence"] == 0
         assert lot_counter["last_sequence"] == 2
+    finally:
+        await client.drop_database(name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_productions_cannot_consume_the_same_olive_stock_twice():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "commercial_concurrent_" + uuid.uuid4().hex
+    db = client[name]
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("PROD", "LOT", "MVT")
+        ])
+        await db.commercial_tanks.insert_one({"id": "tank-01", "active": True})
+        await db.commercial_locations.insert_one({
+            "id": "yard-1", "active": True, "kind": "OLIVE_STORAGE"
+        })
+        await db.commercial_lots.insert_one({
+            "id": "shared-olive-lot", "season_code": "2627",
+            "document_number": "2627LOT0001", "product_kind": "OLIVE",
+            "owner": {"kind": "MILL"}, "status": "OPEN",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "shared-olive-lot",
+            "owner": {"kind": "MILL"}, "location_id": "yard-1",
+            "quantity_kg": Decimal128("500"),
+        })
+
+        async def attempt(run_id: str, key: str):
+            draft = CommercialProductionDraft(
+                production_date=date(2026, 11, 2),
+                inputs=[{
+                    "olive_lot_id": "shared-olive-lot",
+                    "source_location_id": "yard-1",
+                    "owner": {"kind": "MILL"},
+                    "quantity_kg": "500",
+                }],
+                actual_oil_output_kg="100",
+                output_tank_id="tank-01",
+                idempotency_key=key,
+            )
+            async with await client.start_session() as session:
+                return await session.with_transaction(
+                    lambda active: complete_commercial_production(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        production_id=run_id,
+                        created_at=datetime.now(timezone.utc),
+                        session=active,
+                    )
+                )
+
+        outcomes = await asyncio.gather(
+            attempt("concurrent-run-a", "concurrent-production-key-a"),
+            attempt("concurrent-run-b", "concurrent-production-key-b"),
+            return_exceptions=True,
+        )
+        successes = [item for item in outcomes if isinstance(item, dict)]
+        failures = [item for item in outcomes if isinstance(item, Exception)]
+        assert len(successes) == 1, outcomes
+        assert len(failures) == 1, outcomes
+        assert isinstance(failures[0], ValueError)
+        assert await db.commercial_production_runs.count_documents({"status": "COMPLETED"}) == 1
+        assert await db.commercial_stock_movements.count_documents({}) == 2
+        olive = await db.commercial_stock_balances.find_one(
+            {"product_kind": "OLIVE", "lot_id": "shared-olive-lot"}, {"_id": 0}
+        )
+        assert olive["quantity_kg"].to_decimal() == Decimal("0")
+        oil = await db.commercial_stock_balances.find_one(
+            {"product_kind": "OIL"}, {"_id": 0}
+        )
+        assert oil["quantity_kg"].to_decimal() == Decimal("100")
     finally:
         await client.drop_database(name)
         client.close()
