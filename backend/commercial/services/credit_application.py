@@ -98,6 +98,30 @@ async def apply_buyer_credit_to_invoice(
     if (gross < 0 or credited < 0 or paid < 0 or applied_before < 0
             or net != expected_net or outstanding_before != expected_outstanding):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before applying credit")
+
+    invoice_payments = await db["commercial_sale_payments"].find(
+        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
+    ).to_list(10000)
+    invoice_reversals = await db["commercial_payment_reversals"].find(
+        {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
+    ).to_list(10000)
+    ledger_cash_paid = _money(
+        sum((_decimal(item["amount_dt"]) for item in invoice_payments), Decimal("0.000"))
+        - sum((_decimal(item["amount_dt"]) for item in invoice_reversals), Decimal("0.000"))
+    )
+    if ledger_cash_paid != paid:
+        raise ValueError("Invoice cash-paid amount does not reconcile to PAY and REV documents")
+
+    prior_applications = await applications.find(
+        {"target_invoice_id": invoice_id, "status": "APPLIED"},
+        {"_id": 0, "amount_dt": 1}, session=session,
+    ).to_list(10000)
+    ledger_applied_credit = _money(sum(
+        (_decimal(item["amount_dt"]) for item in prior_applications), Decimal("0.000")
+    ))
+    if ledger_applied_credit != applied_before:
+        raise ValueError("Invoice applied-credit amount does not reconcile to CAP documents")
+
     amount = _money(draft.amount_dt)
     if amount <= 0 or amount > outstanding_before:
         raise ValueError("Credit application must not exceed the invoice outstanding balance")
