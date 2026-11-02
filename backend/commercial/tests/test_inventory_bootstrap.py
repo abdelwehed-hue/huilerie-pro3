@@ -113,3 +113,22 @@ async def test_default_counter_bootstrap_creates_every_document_type_once():
     assert created == len(expected)
     assert {document_type for _, document_type in db.counters.rows} == expected
     assert all(row["last_sequence"] == 0 for row in db.counters.rows.values())
+
+
+@pytest.mark.asyncio
+async def test_counter_bootstrap_rejects_duplicate_or_unregistered_document_types():
+    from commercial.inventory_bootstrap import provision_commercial_counters
+
+    class CounterCollection:
+        async def create_indexes(self, indexes):
+            return None
+
+    class CounterDatabase:
+        def __getitem__(self, name):
+            return CounterCollection()
+
+    db = CounterDatabase()
+    with pytest.raises(ValueError, match="unique"):
+        await provision_commercial_counters(db, "2627", ("LOT", "LOT"))
+    with pytest.raises(ValueError, match="Unsupported"):
+        await provision_commercial_counters(db, "2627", ("2026",))
