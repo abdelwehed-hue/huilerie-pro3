@@ -139,3 +139,96 @@ async def test_quality_release_audit_failure_rolls_back_assessment_and_lot_state
     finally:
         await client.drop_database(db_name)
         client.close()
+
+@pytest.mark.asyncio
+async def test_purchase_approval_audit_failure_rolls_back_lots_receipts_and_counters():
+    from decimal import Decimal
+    from uuid import NAMESPACE_URL, uuid5
+
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.purchases import ApproveOlivePurchaseCommand
+    from commercial.services.purchase_approval import approve_olive_purchase
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "purchase_approval_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    purchase_id = "purchase-rollback-001"
+    approval_key = "purchase-approval-rollback-key-001"
+    approval_audit_id = str(uuid5(
+        NAMESPACE_URL,
+        f"oroverde:purchase-approval-audit:{purchase_id}:{approval_key}",
+    ))
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "LOT", "last_sequence": 4},
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+        ])
+        await db.commercial_locations.insert_one({
+            "id": "olive-yard-rollback", "active": True, "kind": "OLIVE_STORAGE"
+        })
+        await db.commercial_olive_purchases.insert_one({
+            "id": purchase_id,
+            "season_code": "2627",
+            "document_type": "ACH",
+            "document_number": "2627ACH0001",
+            "supplier_id": "supplier-rollback",
+            "lines": [{
+                "variety_id": "chemlali",
+                "quantity_kg": Decimal128("1250.000"),
+                "unit_price_dt": Decimal128("2.500"),
+                "line_total_dt": Decimal128("3125.000"),
+            }],
+            "status": "DRAFT",
+            "version": 1,
+        })
+        # Force the final purchase-approval audit write to fail after the
+        # approval, lot creation, receipt movement and balance update.
+        await db.commercial_audit_events.insert_one({
+            "id": approval_audit_id,
+            "entity_type": "test_conflict",
+            "entity_id": "preexisting",
+            "action": "PREEXISTING",
+            "actor_user_id": "integration-admin",
+            "created_at": datetime(2026, 11, 2, tzinfo=timezone.utc),
+            "details": {},
+        })
+        command = ApproveOlivePurchaseCommand(
+            expected_version=1,
+            receiving_location_id="olive-yard-rollback",
+            idempotency_key=approval_key,
+        )
+        with pytest.raises(DuplicateKeyError):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: approve_olive_purchase(
+                        db, purchase_id, command,
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
+                        session=active,
+                    )
+                )
+
+        purchase = await db.commercial_olive_purchases.find_one(
+            {"id": purchase_id}, {"_id": 0}
+        )
+        assert purchase["status"] == "DRAFT"
+        assert purchase["version"] == 1
+        assert "lot_ids" not in purchase
+        assert await db.commercial_lots.count_documents({}) == 0
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        assert await db.commercial_stock_balances.count_documents({}) == 0
+        assert await db.commercial_audit_events.count_documents({}) == 1
+        lot_counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "LOT"}, {"_id": 0}
+        )
+        movement_counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "MVT"}, {"_id": 0}
+        )
+        assert lot_counter["last_sequence"] == 4
+        assert movement_counter["last_sequence"] == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
