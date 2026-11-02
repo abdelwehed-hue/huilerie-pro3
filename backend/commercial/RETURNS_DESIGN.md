@@ -1,6 +1,6 @@
 # Approved Sale Returns, Quarantine, and Credit Notes — Design
 
-Status: partial implementation in PR #147. Empty-tank role assignment, atomic physical return intake into quarantine, commercial acceptance, AVO credit notes, invoice net-receivable updates, buyer-credit accrual, CAP buyer-credit application, and REV payment reversal are implemented on the feature branch. Cash refunds, return rejection/re-dispatch, and full browser acceptance remain unimplemented or unvalidated.
+Status: partial implementation in PR #147. Empty-tank role assignment, atomic physical return intake into quarantine, commercial acceptance, AVO credit notes, invoice net-receivable updates, buyer-credit accrual, CAP buyer-credit application, REV payment reversal, and RJT return rejection/re-dispatch are implemented on the feature branch. Cash refunds and full browser acceptance remain unimplemented or unvalidated.
 
 ## Invariants
 
@@ -38,7 +38,7 @@ The backend:
 - creates a `RET` record and posts a `RECEIPT` movement into the quarantine tank;
 - writes audit events and links the movement, return, and new lot in one MongoDB transaction.
 
-A physically received return counts against the sale's remaining returnable quantity even while awaiting inspection. It is not silently voided. If goods must be sent back to the buyer after a rejected return, that requires a separate, explicit outbound movement workflow.
+A physically received return counts against the sale's remaining returnable quantity even while awaiting inspection. It is not silently voided. If goods must be sent back to the buyer after a rejected return, the separate RJT workflow creates a rejection document and a DISPATCH movement from quarantine. It requires a buyer receipt reference, closes the returned lot, reverses the sale's active returned-quantity accumulator, and creates no credit note or cash refund.
 
 ## Quarantine tank control
 
@@ -85,8 +85,9 @@ MongoDB replica-set integration coverage now exercises atomic quarantine receipt
 - Credit note cannot exceed accepted return quantity or original invoice value.
 - Credit note against unpaid, partially paid, and fully paid invoices calculates receivable/customer credit correctly.
 - Payment records remain immutable; credit note does not trigger a cash refund.
+- Rejected return dispatch requires an approved RJT source document, matching return/lot/tank/quantity, sufficient quarantined stock, and buyer receipt evidence; the full transaction rolls back on failure.
 - Arabic/French UI and desktop/mobile acceptance tests cover return intake, quality reinspection, credit note, and account summary.
 
 ## Operational release gate
 
-Before production use, an administrator must physically designate at least one empty tank as quarantine and verify the tank's identity/label on site. Complete desktop/mobile browser acceptance, verify tax/legal treatment and credit-note templates with the relevant accountant, and complete backup/restore rehearsal plus production security review. Cash refunds and rejected-return outbound movement remain disabled until their own audited workflows are implemented. CAP and REV are available as separate audited accounting workflows, subject to release and browser acceptance. No production bootstrap, stock posting, or deployment is part of this design work.
+Before production use, an administrator must physically designate at least one empty tank as quarantine and verify the tank's identity/label on site. Complete desktop/mobile browser acceptance, verify tax/legal treatment and credit-note templates with the relevant accountant, and complete backup/restore rehearsal plus production security review. Cash refunds remain disabled until their own audited workflow is implemented. CAP, REV, and RJT are available as separate audited workflows, subject to release and browser acceptance. No production bootstrap, stock posting, or deployment is part of this design work.
