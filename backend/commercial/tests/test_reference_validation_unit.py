@@ -137,3 +137,41 @@ async def test_customer_oil_release_rejects_quantity_different_from_release_docu
     })
     with pytest.raises(ValueError, match="Customer oil custody release does not match"):
         await validate_stock_references(db, customer_release_movement("14.000"), session=object())
+
+
+def customer_release_owner_movement():
+    return StockMovementDraft(
+        movement_kind="DISPATCH",
+        product_kind="OIL",
+        lot_id="customer-oil-lot",
+        quantity_kg=Decimal("15.000"),
+        source_location_id="tank-1",
+        source_owner=OwnerRef(kind="CUSTOMER", customer_id="cust-1"),
+        source_document_type="CUS",
+        source_document_id="release-1",
+        idempotency_key="customer-release-owner-validation-001",
+        reason="Validate customer lot ownership",
+    )
+
+
+@pytest.mark.asyncio
+async def test_customer_oil_release_rejects_lot_owned_by_another_customer():
+    db = FakeDatabase({
+        "commercial_lots": FakeCollection([
+            {"id": "customer-oil-lot", "product_kind": "OIL"},
+            {
+                "id": "customer-oil-lot", "product_kind": "OIL", "status": "OPEN",
+                "quality_status": "RELEASED",
+                "owner": {"kind": "CUSTOMER", "customer_id": "cust-2"},
+            },
+        ]),
+        "commercial_tanks": FakeCollection([{"id": "tank-1", "role": "NORMAL"}]),
+        "commercial_custody_owners": FakeCollection([{"id": "cust-1"}]),
+        "commercial_customer_custody_releases": FakeCollection([{
+            "id": "release-1", "status": "APPROVED",
+            "oil_lot_id": "customer-oil-lot", "customer_id": "cust-1",
+            "source_tank_id": "tank-1", "quantity_kg": Decimal("15.000"),
+        }]),
+    })
+    with pytest.raises(ValueError, match="owned by the releasing customer"):
+        await validate_stock_references(db, customer_release_owner_movement(), session=object())
