@@ -1,6 +1,6 @@
 # Approved Sale Returns, Quarantine, and Credit Notes — Design
 
-Status: partial implementation in PR #147. Empty-tank role assignment, atomic physical return intake into quarantine, commercial acceptance, AVO credit notes, invoice net-receivable updates, and buyer-credit accrual are implemented on the feature branch. Cash refunds, buyer-credit settlement/application, return rejection/re-dispatch, and full browser acceptance remain unimplemented or unvalidated.
+Status: partial implementation in PR #147. Empty-tank role assignment, atomic physical return intake into quarantine, commercial acceptance, AVO credit notes, invoice net-receivable updates, buyer-credit accrual, CAP buyer-credit application, and REV payment reversal are implemented on the feature branch. Cash refunds, return rejection/re-dispatch, and full browser acceptance remain unimplemented or unvalidated.
 
 ## Invariants
 
@@ -65,7 +65,7 @@ Physical receipt and commercial acceptance are separate. An administrator explic
 
 On acceptance, issue an append-only `AVO` credit note linked to the return, sale, buyer, and original invoice. Its amount is server-calculated from the accepted quantity multiplied by the original sale's frozen unit price. The client cannot set the amount. Cumulative credited quantity and value may never exceed the original dispatched quantity and invoice amount.
 
-Credit notes reduce the invoice's net receivable, but never rewrite or delete payments. If payments already exceed the revised net invoice, the excess becomes a buyer credit balance; it is not automatically refunded as cash. A separate, audited refund/credit-settlement workflow is required before money can be paid back or the credit balance applied elsewhere.
+Credit notes reduce the invoice's net receivable, but never rewrite or delete payments. If payments already exceed the revised net invoice, the excess becomes a buyer credit balance; it is not automatically refunded as cash. A separate, audited cash-refund workflow is required before money can be paid back. Applying an existing buyer-credit balance to another invoice is implemented as a separate CAP document; it does not create a cash payment. Reversing a PAY is implemented as an immutable REV document, with source-credit reconciliation.
 
 Tax treatment remains `NOT_CONFIGURED`; the credit note is an internal commercial record until tax rules and legally compliant templates are approved.
 
