@@ -7,12 +7,12 @@ This package is an isolated commercial domain. It must not change existing olive
 - Finished-oil purchases are excluded from the first release.
 - Commercial olive purchases and commercial production are distinct from customer-owned olive pressing services.
 - Bulk sales only in the first release.
-- Oil ownership supports mill-owned and customer-custody/consignment stock.
+- Oil ownership supports mill-owned and customer-custody stock. Consignment sales and owner settlement are excluded until separately approved.
 - Nine tanks are provisioned with zero opening balance.
 - Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
 - Quality analyses and independent release controls are required.
 - All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, and AVO.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, AVO, CIN, and CUS.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
@@ -41,6 +41,15 @@ This package is an isolated commercial domain. It must not change existing olive
 - Olive purchase drafts validate supplier, registered varieties, Decimal quantities/prices, and idempotency. Totals are calculated server-side.
 - Admin approval creates one olive LOT per purchase line and posts each receipt to a configured olive storage/staging location in one MongoDB transaction.
 - Supplier, location, variety, and buyer creation are audited transactionally.
+
+### Customer-owned custody
+
+- Customer-owned olive intake is recorded as a CIN custody receipt, not a purchase. It creates a CUSTOMER-owned olive lot and posts the receipt to an olive storage location without creating supplier debt or mill-owned stock.
+- The custody owner has a stable commercial owner ID linked to the legacy client phone; customer-owned stock never uses the phone itself as the ledger identity.
+- Customer-owned oil pickup is recorded as a CUS custody release. It requires the matching owner ID, a released quality decision, a normal active tank, sufficient stock, and a customer acknowledgement reference.
+- CIN/CUS documents, their MVT ledger entries, balances, and audit events commit atomically. Customer pickup is not a sale, creates no invoice, and does not change lot ownership.
+- Customer-owned oil remains excluded from mill wholesale sale selectors and server-side sale dispatch validation.
+- Customer-authorized transfer to MILL ownership, custody statements, owner payout, and consignment sales are not implemented.
 
 ### Production and inventory
 
@@ -78,7 +87,7 @@ This package is an isolated commercial domain. It must not change existing olive
 
 - Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
 - Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
-- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, buyer account summaries with net receivable/credit balance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake and commercial acceptance/credit notes, invoice, and payment workflows.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, customer-owned olive custody intake and oil pickup, production, quality review, worker permission assignment, wholesale buyer maintenance, buyer account summaries with net receivable/credit balance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake and commercial acceptance/credit notes, invoice, and payment workflows.
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
@@ -94,7 +103,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Controlled buyer duplicate/merge process.
 - Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal, credit application, and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
-- Customer pickup, authorized ownership transfer, custody statements, and owner payout/consignment accounting. Design constraints are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
+- Authorized ownership transfer, customer custody statements, and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
 
