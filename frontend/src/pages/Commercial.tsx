@@ -263,6 +263,14 @@ export default function Commercial() {
   const totalOlives = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OLIVE").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const totalOil = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
+  const availableOliveBalances: AnyRecord[] = (balances.data ?? []).filter((balance: AnyRecord) =>
+    balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
+    && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
+  );
+  const productionInputTotal = productionInputs.reduce((sum, line) => sum + (Number(line.quantity_kg) || 0), 0);
+  const productionRate = productionInputTotal > 0 && Number(productionOutputKg) >= 0
+    ? (Number(productionOutputKg) / productionInputTotal) * 100 : 0;
+
 
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
