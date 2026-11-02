@@ -3,7 +3,7 @@ const API=(import.meta.env.VITE_CMS_API_URL||'').replace(/\/$/,'');
 const blank={fr:{},ar:{},en:{}};
 async function call(path,{token,...opts}={}){const r=await fetch(API+path,{...opts,headers:{...(opts?.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(token?{Authorization:'Bearer '+token}:{}),...opts?.headers}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Erreur serveur');return data}
 export default function App(){const[token,T]=useState(localStorage.getItem('ov_admin_token')||''),[email,E]=useState(''),[password,P]=useState(''),[setupKey,K]=useState(''),[mode,M]=useState('login'),[tab,B]=useState('content'),[busy,Q]=useState(false),[error,Err]=useState(''),[notice,N]=useState(''),[translations,Tr]=useState(blank),[raw,R]=useState(''),[editingLang,EL]=useState('fr'),[langRaw,LR]=useState('{}'),[items,I]=useState([]),[mediaItems,MI]=useState([]),[draft,D]=useState(''),[itemJson,J]=useState('');const authed=!!token;
-useEffect(()=>{if(token){loadContent();loadItems(tab);if(tab==='news'||tab==='products')loadMedia()}},[token,tab]);
+useEffect(()=>{if(token)loadContent()},[token]);useEffect(()=>{if(token&&tab!=='content')loadItems(tab);if(token&&(tab==='news'||tab==='products'))loadMedia()},[token,tab]);
 async function loadContent(){try{const d=await call('/api/admin/content',{token});const v=d.translations||blank;Tr(v);R(JSON.stringify(v,null,2));EL('fr');LR(JSON.stringify(v.fr||{},null,2))}catch(e){Err(e.message);logout()}}
 async function loadItems(which){if(which==='content')return;try{I(await call('/api/admin/'+which,{token}))}catch(e){Err(e.message)}}
 async function loadMedia(){try{MI(await call('/api/admin/media',{token}))}catch(e){Err(e.message)}}
