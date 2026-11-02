@@ -98,8 +98,10 @@ async def _active_season_code() -> tuple[str, str]:
 async def _require_commercial_ready() -> tuple[str, str]:
     season, season_code = await _active_season_code()
     tanks = await db.commercial_tanks.count_documents({})
-    counters = await db.commercial_counters.count_documents({"season_code": season_code})
-    if tanks != 9 or counters < 6:
+    counter_docs = await db.commercial_counters.find({"season_code": season_code}, {"_id": 0, "document_type": 1}).to_list(20)
+    required_types = {"ACH", "PROD", "LOT", "MVT", "FAC", "VTE"}
+    counter_types = {item.get("document_type") for item in counter_docs}
+    if tanks != 9 or not required_types.issubset(counter_types):
         raise HTTPException(503, "commercial_domain_not_bootstrapped")
     return season, season_code
 
@@ -110,14 +112,17 @@ async def commercial_status(user: dict = Depends(current_user)):
     season, season_code = await _active_season_code()
     tanks = await db.commercial_tanks.count_documents({})
     locations = await db.commercial_locations.count_documents({"active": True})
-    counters = await db.commercial_counters.count_documents({"season_code": season_code})
+    counter_docs = await db.commercial_counters.find({"season_code": season_code}, {"_id": 0, "document_type": 1}).to_list(20)
+    required_types = {"ACH", "PROD", "LOT", "MVT", "FAC", "VTE"}
+    counter_types = {item.get("document_type") for item in counter_docs}
+    counters = len(required_types.intersection(counter_types))
     return {
         "active_season": season,
         "season_code": season_code,
         "tanks_provisioned": tanks,
         "active_olive_locations": locations,
         "season_counters_provisioned": counters,
-        "ready": tanks == 9 and counters >= 6,
+        "ready": tanks == 9 and counters == len(required_types),
     }
 
 
