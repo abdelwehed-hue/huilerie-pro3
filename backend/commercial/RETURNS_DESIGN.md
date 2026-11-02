@@ -71,7 +71,7 @@ Tax treatment remains `NOT_CONFIGURED`; the credit note is an internal commercia
 
 ## Validation coverage and remaining tests
 
-MongoDB replica-set integration coverage now exercises atomic quarantine receipt, idempotent retries, cumulative return limits, AVO numbering, paid-in-full buyer-credit accrual, and partial-payment receivable recalculation. The full remaining list below is not yet complete.
+MongoDB replica-set integration coverage now exercises atomic quarantine receipt, idempotent retries, cumulative return limits including concurrent over-return attempts, AVO numbering, paid-in-full buyer-credit accrual, and partial-payment receivable recalculation. The full remaining list below is not yet complete.
 
 - Return quantity exactly equal to remaining returnable quantity succeeds.
 - Partial returns accumulate correctly; over-return fails.
