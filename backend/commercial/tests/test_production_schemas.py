@@ -76,3 +76,14 @@ def test_production_rejects_duplicate_input_lot_lines():
             output_tank_id="tank-01",
             idempotency_key="production-run-0005",
         )
+
+
+def test_production_rejects_impossible_calendar_date():
+    with pytest.raises(ValidationError):
+        CommercialProductionDraft(
+            production_date="2026-02-30",
+            inputs=[_input("olive-lot-1")],
+            actual_oil_output_kg="175",
+            output_tank_id="tank-01",
+            idempotency_key="production-run-invalid-date",
+        )
