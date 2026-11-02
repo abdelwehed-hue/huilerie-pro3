@@ -92,6 +92,7 @@ This package is an isolated commercial domain. It must not change existing olive
 
 - Controlled buyer duplicate/merge process.
 - Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow. The proposed invariants, document flow, quarantine controls, credit-note accounting, and required tests are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md); this is a design specification, not an implemented workflow.
+- Tank roles now support admin-only, version-checked `NORMAL`/`QUARANTINE` assignment on empty tanks, with an audit event. Transactional stock validation locks each tank document to serialize role changes against stock postings; ordinary receipts/production cannot enter quarantine, and quarantined oil can leave only by a `TRANSFER` after its lot is `RELEASED`. Return intake remains unavailable until its dedicated workflow is implemented.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
