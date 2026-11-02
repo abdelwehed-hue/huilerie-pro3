@@ -98,6 +98,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - `POST /api/commercial/v1/customer-custody/releases` — admin-only CUS pickup of customer-owned, quality-released oil.
 - `GET /api/commercial/v1/customer-custody/releases?customer_id={id}` — read pickup history by stable owner ID.
 - `GET /api/commercial/v1/customer-custody/owners` — read stable owner IDs linked to legacy clients.
+- `GET /api/commercial/v1/customer-custody/owners/{customer_id}/statement` — read the reconciled customer-owned olive/oil ledger and current balances.
 
 CIN and CUS each have their own season-scoped counter and each stock posting creates a separate MVT number. Neither endpoint creates a purchase, sale, invoice, supplier payable, or buyer receivable.
 
