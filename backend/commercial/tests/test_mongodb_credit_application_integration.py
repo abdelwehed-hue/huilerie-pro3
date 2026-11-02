@@ -228,3 +228,97 @@ async def test_credit_application_rejects_amount_above_outstanding_or_available_
     finally:
         await client.drop_database(name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_credit_application_fails_closed_when_invoice_cash_paid_does_not_reconcile_to_pay_and_rev():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "buyer_credit_cash_ledger_mismatch_" + uuid.uuid4().hex
+    db = client[name]
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "CAP", "last_sequence": 0
+        })
+        await db.commercial_buyers.insert_one({
+            "id": "buyer-a", "name": "Buyer A",
+            "credit_balance_dt": Decimal128("0.000"), "version": 1,
+        })
+        await db.commercial_sales_invoices.insert_one({
+            "id": "invoice-target", "buyer_id": "buyer-a",
+            "total_amount_dt": Decimal128("100.000"),
+            "credited_amount_dt": Decimal128("0.000"),
+            "net_amount_dt": Decimal128("100.000"),
+            "paid_amount_dt": Decimal128("5.000"),
+            "applied_credit_amount_dt": Decimal128("0.000"),
+            "outstanding_amount_dt": Decimal128("95.000"), "version": 1,
+        })
+        draft = BuyerCreditApplicationDraft(
+            amount_dt=Decimal("1.000"), expected_invoice_version=1,
+            reason="Check immutable payment reconciliation",
+            idempotency_key="buyer-credit-payment-ledger-check-01",
+        )
+        with pytest.raises(ValueError, match="does not reconcile to PAY and REV"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: apply_buyer_credit_to_invoice(
+                        db, "invoice-target", draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        application_id="cash-ledger-application",
+                        audit_event_id="cash-ledger-audit",
+                        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
+                        session=active,
+                    )
+                )
+        assert await db.commercial_buyer_credit_applications.count_documents({}) == 0
+    finally:
+        await client.drop_database(name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_credit_application_fails_closed_when_invoice_applied_credit_does_not_reconcile_to_cap_documents():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "buyer_credit_cap_ledger_mismatch_" + uuid.uuid4().hex
+    db = client[name]
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "CAP", "last_sequence": 0
+        })
+        await db.commercial_buyers.insert_one({
+            "id": "buyer-a", "name": "Buyer A",
+            "credit_balance_dt": Decimal128("0.000"), "version": 1,
+        })
+        await db.commercial_sales_invoices.insert_one({
+            "id": "invoice-target", "buyer_id": "buyer-a",
+            "total_amount_dt": Decimal128("100.000"),
+            "credited_amount_dt": Decimal128("0.000"),
+            "net_amount_dt": Decimal128("100.000"),
+            "paid_amount_dt": Decimal128("0.000"),
+            "applied_credit_amount_dt": Decimal128("5.000"),
+            "outstanding_amount_dt": Decimal128("95.000"), "version": 1,
+        })
+        draft = BuyerCreditApplicationDraft(
+            amount_dt=Decimal("1.000"), expected_invoice_version=1,
+            reason="Check immutable credit application reconciliation",
+            idempotency_key="buyer-credit-cap-ledger-check-001",
+        )
+        with pytest.raises(ValueError, match="does not reconcile to CAP documents"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: apply_buyer_credit_to_invoice(
+                        db, "invoice-target", draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        application_id="cap-ledger-application",
+                        audit_event_id="cap-ledger-audit",
+                        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
+                        session=active,
+                    )
+                )
+        assert await db.commercial_buyer_credit_applications.count_documents({}) == 0
+    finally:
+        await client.drop_database(name)
+        client.close()
