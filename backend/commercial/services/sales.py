@@ -16,7 +16,7 @@ from commercial.schemas.sales import (
     ApproveWholesaleSaleCommand, SalePaymentDraft, WholesaleSaleDraft,
 )
 from commercial.services.numbering import reserve_document_number
-from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
+from commercial.services.payment_ledger import assert_invoice_receivable_fields_reconcile
 from commercial.services.stock_ledger import post_stock_movement
 
 
@@ -222,7 +222,7 @@ async def record_sale_payment(
         return prior
     if invoice.get("payment_status") == "PAID" or invoice.get("version") != draft.expected_invoice_version:
         raise ValueError("Invoice is already paid or its version has changed")
-    await assert_invoice_cash_paid_reconciles(db, invoice_id, invoice["paid_amount_dt"].to_decimal(), session=session)
+    await assert_invoice_receivable_fields_reconcile(db, invoice, session=session)
     outstanding = invoice["outstanding_amount_dt"].to_decimal()
     amount = _money(draft.amount_dt)
     if amount > outstanding:
