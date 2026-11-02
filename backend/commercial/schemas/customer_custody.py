@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class CustomerOliveCustodyReceiptDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    customer_phone: str = Field(min_length=5, max_length=20, pattern=r"^\+?[0-9]{5,20}$")
+    customer_phone: str = Field(min_length=5, max_length=40)
     receipt_date: date
     variety_id: str = Field(min_length=1, max_length=100)
     quantity_kg: Decimal = Field(gt=Decimal("0"), max_digits=18, decimal_places=3)
@@ -22,7 +22,14 @@ class CustomerOliveCustodyReceiptDraft(BaseModel):
     @field_validator("customer_phone", mode="before")
     @classmethod
     def normalize_customer_phone(cls, value):
-        return re.sub(r"\s+", "", value) if isinstance(value, str) else value
+        if not isinstance(value, str):
+            return value
+        normalized = re.sub(r"\s+", "", value)
+        if not re.fullmatch(r"\+?[0-9().-]{5,40}", normalized):
+            raise ValueError("Customer phone contains unsupported characters")
+        if len(re.sub(r"\D", "", normalized)) < 5:
+            raise ValueError("Customer phone must contain at least five digits")
+        return normalized
 
 
 class CustomerOilCustodyReleaseDraft(BaseModel):
