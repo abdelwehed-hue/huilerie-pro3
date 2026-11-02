@@ -6,6 +6,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from bson.decimal128 import Decimal128
+
 from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.inventory import StockMovementDraft
 from commercial.services.stock_ledger import post_stock_movement
@@ -48,7 +50,7 @@ async def create_internal_movement(
         "movement_kind": draft.movement_kind,
         "product_kind": draft.product_kind,
         "lot_id": draft.lot_id,
-        "quantity_kg": draft.quantity_kg,
+        "quantity_kg": Decimal128(draft.quantity_kg),
         "source_location_id": draft.source_location_id,
         "destination_location_id": draft.destination_location_id,
         "source_owner": draft.source_owner.model_dump(),
