@@ -268,10 +268,18 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
             or _quantity(source.get("quantity_kg")) != _quantity(draft.quantity_kg)
         ):
             raise ValueError("Customer oil custody release does not match its source document")
-        lot_quality = await db["commercial_lots"].find_one(
-            {"id": draft.lot_id}, {"_id": 0, "quality_status": 1}, session=session
+        customer_oil_lot = await db["commercial_lots"].find_one(
+            {"id": draft.lot_id},
+            {"_id": 0, "product_kind": 1, "status": 1, "owner": 1, "quality_status": 1},
+            session=session,
         )
-        if not lot_quality or lot_quality.get("quality_status") != "RELEASED":
-            raise ValueError("Customer oil pickup requires a released quality decision")
+        if (
+            not customer_oil_lot
+            or customer_oil_lot.get("product_kind") != "OIL"
+            or customer_oil_lot.get("status") != "OPEN"
+            or customer_oil_lot.get("quality_status") != "RELEASED"
+            or not _owner_matches(draft.source_owner, customer_oil_lot.get("owner"))
+        ):
+            raise ValueError("Customer oil pickup requires an open, released lot owned by the releasing customer")
     elif source.get("status") not in {"APPROVED", "COMPLETED"}:
         raise ValueError("Source document is not approved for stock posting")
