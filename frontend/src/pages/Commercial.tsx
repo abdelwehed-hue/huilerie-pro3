@@ -556,6 +556,8 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "credit-notes"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -594,6 +596,8 @@ export default function Commercial() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
@@ -617,6 +621,8 @@ export default function Commercial() {
       setPaymentAmount(""); setPaymentReference("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "sale-payments", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
@@ -644,7 +650,8 @@ export default function Commercial() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "credit-applications", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
