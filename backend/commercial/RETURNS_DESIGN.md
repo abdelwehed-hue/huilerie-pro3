@@ -69,7 +69,9 @@ Credit notes reduce the invoice's net receivable, but never rewrite or delete pa
 
 Tax treatment remains `NOT_CONFIGURED`; the credit note is an internal commercial record until tax rules and legally compliant templates are approved.
 
-## Required tests before implementation is considered complete
+## Validation coverage and remaining tests
+
+MongoDB replica-set integration coverage now exercises atomic quarantine receipt, idempotent retries, cumulative return limits, AVO numbering, paid-in-full buyer-credit accrual, and partial-payment receivable recalculation. The full remaining list below is not yet complete.
 
 - Return quantity exactly equal to remaining returnable quantity succeeds.
 - Partial returns accumulate correctly; over-return fails.
@@ -85,6 +87,6 @@ Tax treatment remains `NOT_CONFIGURED`; the credit note is an internal commercia
 - Payment records remain immutable; credit note does not trigger a cash refund.
 - Arabic/French UI and desktop/mobile acceptance tests cover return intake, quality reinspection, credit note, and account summary.
 
-## Release gate
+## Operational release gate
 
-Do not enable return intake until at least one real tank has been physically designated as quarantine and the tank-role restrictions are deployed. Do not enable credit-note issuance until the invoice receivable and buyer-credit ledger behavior is implemented and tested. No production bootstrap, stock posting, or deployment is part of this design work.
+Before production use, an administrator must physically designate at least one empty tank as quarantine and verify the tank's identity/label on site. Complete desktop/mobile browser acceptance, verify tax/legal treatment and credit-note templates with the relevant accountant, and complete backup/restore rehearsal plus production security review. Refund, buyer-credit application/settlement, and rejected-return outbound movement remain disabled until their own audited workflows are implemented. No production bootstrap, stock posting, or deployment is part of this design work.
