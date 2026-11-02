@@ -118,7 +118,7 @@ async def test_quality_release_audit_failure_rolls_back_assessment_and_lot_state
             decision_reason="Release decision used only to exercise rollback behavior.",
             idempotency_key=idempotency_key,
         )
-        with pytest.raises(Exception):
+        with pytest.raises(DuplicateKeyError):
             async with await client.start_session() as session:
                 await session.with_transaction(
                     lambda active: record_oil_quality_assessment(
