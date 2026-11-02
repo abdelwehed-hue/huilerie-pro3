@@ -21,7 +21,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations";
 
 const labels = {
   fr: {
