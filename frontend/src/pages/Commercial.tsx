@@ -589,6 +589,32 @@ export default function Commercial() {
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
 
+  const applyBuyerCredit = useMutation({
+    mutationFn: () => {
+      if (!selectedSalesInvoice) throw new Error("Invoice is no longer available");
+      return apiPost<AnyRecord>(
+        "/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications",
+        {
+          amount_dt: creditApplicationAmount,
+          expected_invoice_version: selectedSalesInvoice.version,
+          reason: creditApplicationReason.trim(),
+          idempotency_key: creditApplicationKey,
+        },
+      );
+    },
+    onSuccess: async () => {
+      toast.success(salesText.creditApplied);
+      setCreditApplicationAmount(""); setCreditApplicationReason("");
+      setCreditApplicationKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "credit-applications", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const receiveCustomerCustody = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", {
       customer_phone: custodyCustomerPhone,
