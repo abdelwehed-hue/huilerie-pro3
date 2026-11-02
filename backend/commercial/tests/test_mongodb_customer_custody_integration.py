@@ -121,7 +121,7 @@ async def test_customer_oil_pickup_debits_only_matching_customer_stock():
             "location_id": "tank-01", "quantity_kg": Decimal128("50.000"),
         })
         draft = CustomerOilCustodyReleaseDraft(
-            customer_phone="21612345678",
+            customer_id="custody-owner-a",
             release_date=date(2026, 11, 2),
             oil_lot_id="customer-oil-lot-a",
             source_tank_id="tank-01",
@@ -230,7 +230,7 @@ async def test_customer_pickup_cannot_release_pending_quality_oil():
             "quality_status": "PENDING", "status": "OPEN",
         })
         draft = CustomerOilCustodyReleaseDraft(
-            customer_phone="21612345678", release_date=date(2026, 11, 2),
+            customer_id="custody-owner-a", release_date=date(2026, 11, 2),
             oil_lot_id="pending-customer-oil", source_tank_id="tank-01",
             quantity_kg=Decimal("1.000"), customer_acknowledgement_reference="ACK-002",
             reason="Attempt pickup before quality release", idempotency_key="pending-quality-pickup-001",
