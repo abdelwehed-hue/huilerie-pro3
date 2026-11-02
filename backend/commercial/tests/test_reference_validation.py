@@ -13,6 +13,16 @@ class Collection:
     async def find_one(self, query, projection=None, session=None):
         return next((row for row in self.rows if all(row.get(k) == v for k, v in query.items())), None)
 
+    async def update_one(self, query, update, session=None):
+        row = await self.find_one(query, session=session)
+        if row is None:
+            from types import SimpleNamespace
+            return SimpleNamespace(matched_count=0)
+        for key, value in update.get("$inc", {}).items():
+            row[key] = row.get(key, 0) + value
+        from types import SimpleNamespace
+        return SimpleNamespace(matched_count=1)
+
 
 class Database:
     def __init__(self, collections):
