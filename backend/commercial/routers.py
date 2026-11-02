@@ -40,6 +40,7 @@ from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCom
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.varieties import CommercialVarietyDraft
+from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft, CustomerOilCustodyReleaseDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft
@@ -49,6 +50,7 @@ from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
+from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
@@ -1031,6 +1033,100 @@ async def create_internal_stock_movement(
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
+
+
+@router.post("/customer-custody/receipts", status_code=201)
+async def receive_customer_custody_olives(
+    draft: CustomerOliveCustodyReceiptDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_custody")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.receipt_date.isoformat()) != season:
+        raise HTTPException(422, "custody_receipt_date_outside_active_season")
+    receipt_id, owner_id, lot_id, movement_id, audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()),
+        str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: receive_customer_olive_custody(
+                db, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], receipt_id=receipt_id,
+                custody_owner_id=owner_id, olive_lot_id=lot_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/customer-custody/receipts")
+async def list_customer_custody_receipts(
+    customer_phone: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"customer_phone": customer_phone} if customer_phone else {}
+    docs = await db.commercial_customer_custody_receipts.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/customer-custody/releases", status_code=201)
+async def release_customer_custody_oil(
+    draft: CustomerOilCustodyReleaseDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_custody")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.release_date.isoformat()) != season:
+        raise HTTPException(422, "custody_release_date_outside_active_season")
+    release_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: release_customer_oil_custody(
+                db, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], release_id=release_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/customer-custody/releases")
+async def list_customer_custody_releases(
+    customer_phone: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"customer_phone": customer_phone} if customer_phone else {}
+    docs = await db.commercial_customer_custody_releases.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.get("/customer-custody/owners")
+async def list_customer_custody_owners(
+    limit: int = Query(default=500, ge=1, le=1000),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_custody_owners.find(
+        {}, {"_id": 0}
+    ).sort("client_name", 1).to_list(limit)
+    return _safe(docs)
 
 
 @router.get("/stock-balances")
