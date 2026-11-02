@@ -818,3 +818,54 @@ async def test_wholesale_sale_approval_audit_failure_rolls_back_invoice_dispatch
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buyer_history(monkeypatch):
+    from bson.decimal128 import Decimal128
+    from commercial import routers
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "buyer_account_summary_" + uuid.uuid4().hex
+    test_db = client[db_name]
+    monkeypatch.setattr(routers, "db", test_db)
+    monkeypatch.setattr(routers, "_authorize", lambda user, permission: None)
+    try:
+        await test_db.commercial_buyers.insert_one({
+            "id": "buyer-summary-1", "name": "Historical Buyer", "active": False,
+        })
+        await test_db.commercial_sales_invoices.insert_many([
+            {
+                "id": "invoice-summary-1", "buyer_id": "buyer-summary-1",
+                "total_amount_dt": Decimal128("100.000"),
+                "paid_amount_dt": Decimal128("25.000"),
+                "outstanding_amount_dt": Decimal128("75.000"),
+                "payment_status": "PARTIALLY_PAID",
+            },
+            {
+                "id": "invoice-summary-2", "buyer_id": "buyer-summary-1",
+                "total_amount_dt": Decimal128("50.500"),
+                "paid_amount_dt": Decimal128("50.500"),
+                "outstanding_amount_dt": Decimal128("0.000"),
+                "payment_status": "PAID",
+            },
+        ])
+        result = await routers.get_commercial_buyer_account_summary(
+            "buyer-summary-1", {"id": "reader-1"}
+        )
+        assert result["buyer"]["active"] is False
+        assert result["summary"]["invoice_count"] == 2
+        assert result["summary"]["total_amount_dt"] == "150.500"
+        assert result["summary"]["paid_amount_dt"] == "75.500"
+        assert result["summary"]["outstanding_amount_dt"] == "75.000"
+        assert result["summary"]["unpaid_invoice_count"] == 0
+        assert result["summary"]["partially_paid_invoice_count"] == 1
+        assert result["summary"]["paid_invoice_count"] == 1
+
+        empty = await routers.get_commercial_buyer_account_summary(
+            "buyer-summary-1", {"id": "reader-1"}
+        )
+        assert empty["summary"]["invoice_count"] == 2
+    finally:
+        await client.drop_database(db_name)
+        client.close()
