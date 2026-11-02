@@ -37,3 +37,24 @@ loads, reception numbering, or service invoices.
   closed rather than silently creating an unexpected sequence.
 - The active season must come from validated season configuration; the
   four-digit formatter alone does not decide which season is active.
+
+
+## Current implemented foundation
+
+- schemas/purchases.py validates olive purchase drafts using Decimal quantities and DT/kg prices; totals are never accepted from clients.
+- services/purchases.py creates a DRAFT olive purchase with an ACH season number, supplier validation, idempotency fingerprint, Decimal128 line values, and audit event. The caller must supply an active MongoDB transaction session.
+- services/purchase_approval.py approves a draft with an expected-version check, creates one LOT per variety line, and posts each olive receipt to an explicitly configured olive storage/staging location in the same transaction.
+- Oil tanks and olive staging locations are distinct. Olive intake cannot be silently placed in one of the nine oil tanks.
+- services/reference_validation.py recognizes only ACH as a registered source document type. A movement is rejected unless its purchase source is approved and its lot and location references exist.
+- permissions.py currently grants commercial write permissions to administrators only; workers are read-only until a separate permission design is implemented.
+
+## Not yet implemented
+
+- Supplier CRUD/API and user interface.
+- Configuration UI/API for olive receiving and staging locations.
+- Purchase cancellation/reversal after approval.
+- Commercial production batches, oil-lot creation, lab analysis and quality release.
+- Bulk sales, payments, and customer-custody settlement.
+- API routes, frontend screens, and end-to-end transaction tests against a MongoDB replica set.
+
+A service function that accepts a MongoDB session is not by itself proof of transaction safety: its caller must wrap the full command in run_transaction, and this integration still requires replica-set tests.
