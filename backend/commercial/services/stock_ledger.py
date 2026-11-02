@@ -117,7 +117,7 @@ async def post_stock_movement(
         return prior
 
     number = await reserve_document_number(
-        db["commercial_counters"], season_code, "LOT", session=session
+        db["commercial_counters"], season_code, "MVT", session=session
     )
     quantity = _decimal128(draft.quantity_kg)
 
@@ -138,7 +138,7 @@ async def post_stock_movement(
     record = {
         "id": movement_id,
         "season_code": season_code,
-        "document_type": "LOT",
+        "document_type": "MVT",
         "document_number": number,
         "movement_kind": draft.movement_kind,
         "product_kind": draft.product_kind,
