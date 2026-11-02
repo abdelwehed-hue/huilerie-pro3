@@ -11,6 +11,7 @@ from bson.decimal128 import Decimal128
 from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.inventory import StockMovementDraft
 from commercial.services.stock_ledger import post_stock_movement
+from commercial.services.numbering import reserve_document_number
 from commercial.permissions import require_commercial_permission
 
 
@@ -43,10 +44,14 @@ async def create_internal_movement(
         return prior
 
     now = created_at.astimezone(timezone.utc)
+    document_number = await reserve_document_number(
+        db["commercial_counters"], season_code, "INT", session=session
+    )
     document = {
         "id": movement_document_id,
         "season_code": season_code,
         "document_type": "INT",
+        "document_number": document_number,
         "movement_kind": draft.movement_kind,
         "product_kind": draft.product_kind,
         "lot_id": draft.lot_id,
