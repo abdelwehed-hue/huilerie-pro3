@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
-  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban,
 } from "lucide-react";
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -441,6 +441,20 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const cancelSale = useMutation({
+    mutationFn: ({ sale, reason }: { sale: AnyRecord; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/cancel`, {
+        expected_version: sale.version, reason, idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: async () => {
+      toast.success(salesText.saleCancelled);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const approveSale = useMutation({
     mutationFn: (sale: AnyRecord) => apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/approve`, {
       expected_version: sale.version, idempotency_key: crypto.randomUUID(),
@@ -874,7 +888,10 @@ export default function Commercial() {
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{salesText.saleHistory}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.saleDate}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.selectOilLot}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
-            <TableBody>{(sales.data ?? []).map((sale) => <TableRow key={sale.id}><TableCell className="font-mono text-xs">{value(sale.document_number)}</TableCell><TableCell>{date(sale.sale_date)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === sale.buyer_id)?.name, sale.buyer_id)}</TableCell><TableCell>{value((lots.data ?? []).find((lot) => lot.id === sale.oil_lot_id)?.document_number, sale.oil_lot_id)}</TableCell><TableCell>{number(sale.quantity_kg)}</TableCell><TableCell>{number(sale.total_amount_dt)} DT</TableCell><TableCell>{value(sale.status)}</TableCell><TableCell>{isAdmin && sale.status === "DRAFT" ? <Button size="sm" disabled={approveSale.isPending} onClick={() => approveSale.mutate(sale)}>{salesText.approveSale}</Button> : value((salesInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number)}</TableCell></TableRow>)}{(!sales.isLoading && !(sales.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
+            <TableBody>{(sales.data ?? []).map((sale) => <TableRow key={sale.id}><TableCell className="font-mono text-xs">{value(sale.document_number)}</TableCell><TableCell>{date(sale.sale_date)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === sale.buyer_id)?.name, sale.buyer_id)}</TableCell><TableCell>{value((lots.data ?? []).find((lot) => lot.id === sale.oil_lot_id)?.document_number, sale.oil_lot_id)}</TableCell><TableCell>{number(sale.quantity_kg)}</TableCell><TableCell>{number(sale.total_amount_dt)} DT</TableCell><TableCell>{value(sale.status)}</TableCell><TableCell>{isAdmin && sale.status === "DRAFT" ? <div className="flex flex-wrap gap-1">
+              <Button size="sm" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => approveSale.mutate(sale)}>{salesText.approveSale}</Button>
+              <Button size="sm" variant="outline" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => { const reason = window.prompt(salesText.cancelSalePrompt); if (reason && reason.trim().length >= 5) cancelSale.mutate({ sale, reason: reason.trim() }); else if (reason !== null) toast.error(lang === "ar" ? "سبب الإلغاء يجب أن يكون 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}><Ban className="size-3.5" />{salesText.cancelSale}</Button>
+            </div> : value((salesInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number)}</TableCell></TableRow>)}{(!sales.isLoading && !(sales.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.invoice}</CardTitle><CardDescription>{salesText.taxNotice}</CardDescription></CardHeader><CardContent>
