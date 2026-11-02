@@ -959,7 +959,6 @@ async def test_buyer_profile_lifecycle_is_versioned_and_audited(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_draft_sale_cancellation_is_atomic_and_never_reverses_approved_sale():
-    from fastapi import HTTPException
     from commercial.inventory_bootstrap import ensure_inventory_indexes
     from commercial.schemas.sales import CancelWholesaleSaleCommand
     from commercial.services.sales import cancel_wholesale_sale_draft
@@ -975,10 +974,12 @@ async def test_draft_sale_cancellation_is_atomic_and_never_reverses_approved_sal
             {
                 "id": "sale-draft-cancel", "document_number": "2627VTE0001",
                 "status": "DRAFT", "version": 1,
+                "idempotency_scope": "test:admin", "idempotency_key": "sale-draft-create-key",
             },
             {
                 "id": "sale-approved-protected", "document_number": "2627VTE0002",
                 "status": "APPROVED", "version": 2,
+                "idempotency_scope": "test:admin", "idempotency_key": "sale-approved-create-key",
             },
         ])
         command = CancelWholesaleSaleCommand(
