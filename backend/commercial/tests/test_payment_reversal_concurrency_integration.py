@@ -1,4 +1,42 @@
+import os
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
+
 import pytest
+from bson.decimal128 import Decimal128
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from commercial.inventory_bootstrap import ensure_inventory_indexes
+from commercial.schemas.payment_reversal import PaymentReversalDraft
+from commercial.services.payment_reversal import reverse_sale_payment
+
+
+def _invoice(invoice_id, *, gross, credited, paid, applied="0.000", version=1):
+    net = Decimal(gross) - Decimal(credited)
+    outstanding = max(Decimal("0.000"), net - Decimal(paid) - Decimal(applied))
+    return {
+        "id": invoice_id, "season_code": "2627", "document_number": "2627FAC0001",
+        "sale_id": "sale-" + invoice_id, "buyer_id": "buyer-a",
+        "total_amount_dt": Decimal128(gross), "credited_amount_dt": Decimal128(credited),
+        "net_amount_dt": Decimal128(str(net)), "paid_amount_dt": Decimal128(paid),
+        "applied_credit_amount_dt": Decimal128(applied),
+        "outstanding_amount_dt": Decimal128(str(outstanding)),
+        "payment_status": "PAID" if outstanding == 0 else "PARTIALLY_PAID",
+        "version": version,
+    }
+
+
+def _payment(payment_id, invoice_id, amount):
+    return {
+        "id": payment_id, "season_code": "2627", "document_type": "PAY",
+        "document_number": "2627PAY0001", "invoice_id": invoice_id,
+        "sale_id": "sale-" + invoice_id, "amount_dt": Decimal128(amount),
+        "payment_date": "2026-10-20", "method": "CASH",
+        "created_at": datetime(2026, 10, 20, tzinfo=timezone.utc),
+    }
+
+
 @pytest.mark.asyncio
 async def test_concurrent_payment_reversals_cannot_over_reverse_the_same_payment():
     import asyncio
