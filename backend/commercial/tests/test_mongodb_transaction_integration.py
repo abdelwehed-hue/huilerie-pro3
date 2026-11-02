@@ -357,8 +357,8 @@ async def test_internal_transfer_document_and_ledger_post_atomically():
             "season_code": "2627", "document_type": "MVT", "last_sequence": 0,
         })
         await db.commercial_locations.insert_many([
-            {"id": "storage-a", "active": True, "kind": "OLIVE_STORAGE"},
-            {"id": "storage-b", "active": True, "kind": "STAGING"},
+            {"id": "storage-a", "code": "STORAGE-A", "active": True, "kind": "OLIVE_STORAGE"},
+            {"id": "storage-b", "code": "STORAGE-B", "active": True, "kind": "STAGING"},
         ])
         await db.commercial_lots.insert_one({
             "id": "olive-lot-transfer", "product_kind": "OLIVE", "status": "OPEN",
