@@ -196,11 +196,15 @@ async def provision_commercial_counters(db, season_code, document_types=COMMERCI
     Existing counters are never reset or decremented.
     """
     validate_numbering_components(season_code, "LOT")
+    document_types = tuple(document_types)
+    if len(document_types) != len(set(document_types)):
+        raise ValueError("Commercial document types must be unique")
+    for document_type in document_types:
+        if not isinstance(document_type, str) or document_type not in COMMERCIAL_DOCUMENT_TYPES:
+            raise ValueError(f"Unsupported commercial document type: {document_type!r}")
     collection = db["commercial_counters"]
     await collection.create_indexes(INVENTORY_INDEXES["commercial_counters"])
     for document_type in document_types:
-        if not isinstance(document_type, str) or not document_type.isalpha() or not document_type.isupper():
-            raise ValueError(f"Invalid commercial document type: {document_type!r}")
         await collection.update_one(
             {"season_code": season_code, "document_type": document_type},
             {"$setOnInsert": {
