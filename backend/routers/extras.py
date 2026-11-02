@@ -832,6 +832,14 @@ async def list_client_options(
                 {"$project": {"_id": 0, "phone": 1, "client_name": 1, "created_at": 1}},
             ],
         }},
+        # Older manually imported client records may not have created_at, or
+        # may contain a non-date value. Normalize it before sorting/grouping so
+        # ClientSummary.last_visit is always a real datetime.
+        {"$set": {"created_at": {"$cond": [
+            {"$eq": [{"$type": "$created_at"}, "date"]},
+            "$created_at",
+            datetime(1970, 1, 1, tzinfo=timezone.utc),
+        ]}}},
         {"$sort": {"created_at": -1, "phone": 1}},
         {"$group": {
             "_id": "$phone",
