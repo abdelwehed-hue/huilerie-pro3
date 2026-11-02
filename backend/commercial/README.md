@@ -12,7 +12,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
 - Quality analyses and independent release controls are required.
 - All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, and INT.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, and RET.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
@@ -92,7 +92,7 @@ This package is an isolated commercial domain. It must not change existing olive
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow. The proposed invariants, document flow, quarantine controls, credit-note accounting, and required tests are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md); this is a design specification, not an implemented workflow.
+- Commercial acceptance of received returns, credit notes, buyer-credit balances/refunds, and return rejection/re-dispatch. The proposed invariants and remaining design requirements are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Tank roles now support admin-only, version-checked `NORMAL`/`QUARANTINE` assignment on empty tanks, with an audit event. Transactional stock validation locks each tank document to serialize role changes against stock postings; ordinary receipts/production cannot enter quarantine, and quarantined oil can leave only by a `TRANSFER` after its lot is `RELEASED`. Return intake remains unavailable until its dedicated workflow is implemented.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
