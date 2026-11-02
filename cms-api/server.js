@@ -20,6 +20,19 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/admin/setup', rateLimit({ windowMs: 60 * 60 * 1000, limit: 3, standardHeaders: true, legacyHeaders: false }));
 
+// Express 4 does not automatically forward rejected promises from async route handlers.
+for (const method of ['get', 'post', 'put', 'delete']) {
+  const register = app[method].bind(app);
+  app[method] = (...args) => {
+    const index = args.length - 1;
+    const handler = args[index];
+    if (typeof handler === 'function' && handler.constructor?.name === 'AsyncFunction') {
+      args[index] = (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+    }
+    return register(...args);
+  };
+}
+
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db('oroverde_cms');
@@ -203,6 +216,15 @@ app.get('/api/public/media/:id', async (req, res) => {
   res.set('Content-Type', file.contentType || 'application/octet-stream');
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
   bucket.openDownloadStream(_id).pipe(res);
+});
+
+app.use((error, req, res, next) => {
+  console.error('CMS request failed', { method: req.method, path: req.path, message: error?.message });
+  if (res.headersSent) return next(error);
+  const status = error?.name === 'MulterError'
+    ? (error.code === 'LIMIT_FILE_SIZE' ? 413 : 400)
+    : 500;
+  res.status(status).json({ error: status === 413 ? 'Fichier trop volumineux (8 Mo maximum)' : status === 400 ? 'Requête invalide' : 'Erreur interne du serveur' });
 });
 
 const port = Number(process.env.PORT || 10000);
