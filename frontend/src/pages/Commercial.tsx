@@ -105,7 +105,7 @@ export default function Commercial() {
   const { lang } = useI18n();
   const l = labels[lang === "ar" ? "ar" : "fr"];
   const salesText = lang === "ar" ? {
-    buyers: "الحرفاء التجاريون", buyerName: "اسم الحريف", buyerContact: "اسم المسؤول",
+    buyers: "الحرفاء التجاريون", account: "الحساب التجاري", accountInvoices: "عدد الفواتير", grossTotal: "إجمالي الفواتير", creditNotesTotal: "الإشعارات الدائنة", netReceivable: "الصافي المستحق", buyerCreditBalance: "رصيد الحريف الدائن", buyerName: "اسم الحريف", buyerContact: "اسم المسؤول",
     buyerPhone: "الهاتف", buyerTax: "المعرّف الجبائي", buyerAddress: "العنوان",
     addBuyer: "إضافة حريف", buyerSaved: "تم تسجيل الحريف", buyerEmail: "البريد الإلكتروني",
     editBuyer: "تعديل الحريف", saveBuyer: "حفظ التعديلات", cancelEdit: "إلغاء",
@@ -125,7 +125,7 @@ export default function Commercial() {
     saleCancelled: "تم إلغاء مسودة البيع", returnIntake: "تسجيل مرتجع زيت", returnSale: "عملية البيع الأصلية", returnQty: "الكمية المرتجعة (كغ)", quarantineTank: "خزان الحجر", returnReason: "سبب الإرجاع", returnSaved: "تم استلام المرتجع في خزان الحجر", returnHistory: "سجل المرتجعات", acceptReturn: "قبول المرتجع وإصدار إشعار دائن", returnAccepted: "تم قبول المرتجع وإصدار الإشعار الدائن", returnAcceptancePrompt: "اذكر سبب القبول التجاري (5 أحرف على الأقل):", creditNote: "الإشعار الدائن", creditedAmount: "المبلغ الدائن", noQuarantineTank: "يجب تعيين خزان فارغ للحجر أولاً من تبويب الخزانات.", remainingReturnable: "الكمية المتبقية للإرجاع", ackRef: "مرجع إقرار الحريف", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
     noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
   } : {
-    buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
+    buyers: "Acheteurs", account: "Compte commercial", accountInvoices: "Nombre de factures", grossTotal: "Total brut facturé", creditNotesTotal: "Avoirs", netReceivable: "Net à recevoir", buyerCreditBalance: "Crédit de l’acheteur", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
     buyerPhone: "Téléphone", buyerTax: "Identifiant fiscal", buyerAddress: "Adresse",
     addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", buyerEmail: "E-mail",
     editBuyer: "Modifier l’acheteur", saveBuyer: "Enregistrer les modifications", cancelEdit: "Annuler",
@@ -185,6 +185,7 @@ export default function Commercial() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [editingBuyerId, setEditingBuyerId] = useState("");
+  const [selectedBuyerAccountId, setSelectedBuyerAccountId] = useState("");
   const [buyerContact, setBuyerContact] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerTaxId, setBuyerTaxId] = useState("");
@@ -227,6 +228,7 @@ export default function Commercial() {
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/olive-purchases?limit=500"), enabled: ready && tab === "purchases" });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/production-runs?limit=500"), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/buyers"), enabled: ready && (tab === "buyers" || tab === "sales") });
+  const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
   const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales?limit=500"), enabled: ready && tab === "sales" });
   const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices?limit=500"), enabled: ready && tab === "sales" });
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
@@ -928,17 +930,29 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{salesText.buyers}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead><TableHead>{l.status}</TableHead>{isAdmin && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader>
+          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead><TableHead>{l.status}</TableHead><TableHead>{salesText.account}</TableHead>{isAdmin && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader>
             <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}>
               <TableCell className="font-semibold">{value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell>
               <TableCell><span className={buyer.active ? "text-emerald-700" : "text-muted-foreground"}>{buyer.active ? salesText.activeBuyer : salesText.inactiveBuyer}</span></TableCell>
+              <TableCell><Button size="sm" variant="outline" onClick={() => setSelectedBuyerAccountId(buyer.id)}><Wallet className="size-3.5" />{salesText.account}</Button></TableCell>
               {isAdmin && <TableCell><div className="flex flex-wrap gap-1">
                 <Button size="sm" variant="outline" onClick={() => { setEditingBuyerId(buyer.id); setBuyerName(buyer.name ?? ""); setBuyerContact(buyer.contact_name ?? ""); setBuyerPhone(buyer.phone ?? ""); setBuyerEmail(buyer.email ?? ""); setBuyerTaxId(buyer.tax_identifier ?? ""); setBuyerAddress(buyer.address ?? ""); }}><Pencil className="size-3.5" />{salesText.editBuyer}</Button>
                 <Button size="sm" variant="outline" disabled={changeBuyerStatus.isPending} onClick={() => changeBuyerStatus.mutate(buyer)}>{buyer.active ? <UserX className="size-3.5" /> : <UserCheck className="size-3.5" />}{buyer.active ? salesText.deactivateBuyer : salesText.reactivateBuyer}</Button>
               </div></TableCell>}
-            </TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={isAdmin ? 7 : 6} text={l.noRows} />}</TableBody>
+            </TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={isAdmin ? 8 : 7} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
+        {selectedBuyerAccountId && <Card><CardHeader><CardTitle>{salesText.account} · {value(buyerAccountSummary.data?.buyer?.name)}</CardTitle></CardHeader><CardContent>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.accountInvoices}</p><p className="text-xl font-semibold">{buyerAccountSummary.data?.summary?.invoice_count ?? "—"}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.grossTotal}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.gross_invoiced_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.creditNotesTotal}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.credited_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.netReceivable}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.total_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.paidAmount}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.paid_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.outstanding}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.outstanding_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.buyerCreditBalance}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.buyer_credit_balance_dt)} DT</p></div>
+          </div>
+        </CardContent></Card>}
       </div>}
 
       {tab === "sales" && <div className="space-y-4">
