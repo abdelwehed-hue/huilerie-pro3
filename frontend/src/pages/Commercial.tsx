@@ -122,6 +122,7 @@ export default function Commercial() {
     paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
     paymentSaved: "تم تسجيل الخلاص", cash: "نقداً", bank: "تحويل بنكي", cheque: "صك",
     outstanding: "الباقي", total: "المجموع", paidAmount: "المبلغ المدفوع",
+    saleCancelled: "تم إلغاء مسودة البيع", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
     noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
   } : {
     buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
@@ -141,6 +142,7 @@ export default function Commercial() {
     paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
     paymentSaved: "Paiement enregistré", cash: "Espèces", bank: "Virement", cheque: "Chèque",
     outstanding: "Solde dû", total: "Total", paidAmount: "Payé",
+    saleCancelled: "Brouillon de vente annulé", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
     noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
   };
   const me = useMe();
