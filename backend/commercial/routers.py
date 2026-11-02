@@ -152,7 +152,7 @@ async def commercial_status(user: dict = Depends(current_user)):
     tanks = await db.commercial_tanks.count_documents({})
     locations = await db.commercial_locations.count_documents({"active": True})
     counter_docs = await db.commercial_counters.find({"season_code": season_code}, {"_id": 0, "document_type": 1}).to_list(20)
-    required_types = {"ACH", "PROD", "LOT", "MVT", "FAC", "VTE", "PAY", "RET", "AVO"}
+    required_types = set(COMMERCIAL_DOCUMENT_TYPES)
     counter_types = {item.get("document_type") for item in counter_docs}
     counters = len(required_types.intersection(counter_types))
     return {
