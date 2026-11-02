@@ -26,6 +26,10 @@ jobs:
           node-version: 20
       - name: Check API JavaScript syntax
         run: node --check cms-api/server.js
+      - name: Run CMS unit tests
+        run: |
+          cd cms-api
+          npm test
 
   admin-build:
     runs-on: ubuntu-latest
