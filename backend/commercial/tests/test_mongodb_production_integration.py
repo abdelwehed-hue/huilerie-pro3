@@ -70,3 +70,73 @@ async def test_production_posts_olive_and_oil_balances_atomically():
     finally:
         await client.drop_database(name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_insufficient_olive_stock_rolls_back_entire_production_command():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "commercial_rollback_" + uuid.uuid4().hex
+    db = client[name]
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind,
+             "last_sequence": 2 if kind == "LOT" else 0}
+            for kind in ("PROD", "LOT", "MVT")
+        ])
+        await db.commercial_tanks.insert_one({"id": "tank-01", "active": True})
+        await db.commercial_locations.insert_one({
+            "id": "yard-1", "active": True, "kind": "OLIVE_STORAGE"
+        })
+        await db.commercial_lots.insert_many([
+            {"id": "olive-1", "season_code": "2627", "document_number": "2627LOT0001",
+             "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            {"id": "olive-2", "season_code": "2627", "document_number": "2627LOT0002",
+             "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+        ])
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "olive-1",
+            "owner": {"kind": "MILL"}, "location_id": "yard-1",
+            "quantity_kg": Decimal128("500"),
+        })
+        draft = CommercialProductionDraft(
+            production_date=date(2026, 11, 2),
+            inputs=[
+                {"olive_lot_id": lot, "source_location_id": "yard-1",
+                 "owner": {"kind": "MILL"}, "quantity_kg": "500"}
+                for lot in ("olive-1", "olive-2")
+            ],
+            actual_oil_output_kg="180.500", output_tank_id="tank-01",
+            idempotency_key="real-mongo-production-rollback-0001",
+        )
+        with pytest.raises(ValueError, match="Insufficient stock"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: complete_commercial_production(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        production_id="production-rollback-integration",
+                        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
+                        session=active,
+                    )
+                )
+        assert await db.commercial_production_runs.count_documents({}) == 0
+        assert await db.commercial_lots.count_documents({"product_kind": "OIL"}) == 0
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        assert await db.commercial_audit_events.count_documents({}) == 0
+        balance = await db.commercial_stock_balances.find_one(
+            {"product_kind": "OLIVE", "lot_id": "olive-1"}, {"_id": 0}
+        )
+        assert balance["quantity_kg"].to_decimal() == Decimal("500")
+        prod_counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "PROD"}, {"_id": 0}
+        )
+        lot_counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "LOT"}, {"_id": 0}
+        )
+        assert prod_counter["last_sequence"] == 0
+        assert lot_counter["last_sequence"] == 2
+    finally:
+        await client.drop_database(name)
+        client.close()
