@@ -303,13 +303,10 @@ async def release_customer_oil_custody(
         raise ValueError("Customer custody account does not exist")
     lot = await db["commercial_lots"].find_one(
         {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
-        {"_id": 0, "id": 1, "owner": 1, "quality_status": 1}, session=session,
+        {"_id": 0, "id": 1, "quality_status": 1}, session=session,
     )
     if not lot:
         raise ValueError("Customer oil lot does not exist or is closed")
-    expected_owner = {"kind": "CUSTOMER", "customer_id": owner["id"]}
-    if lot.get("owner") != expected_owner:
-        raise ValueError("Selected oil lot does not belong to this customer")
     if lot.get("quality_status") != "RELEASED":
         raise ValueError("Customer oil cannot be picked up before independent quality release")
     tank = await db["commercial_tanks"].find_one(
