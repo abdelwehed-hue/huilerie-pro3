@@ -48,6 +48,7 @@ async def test_provision_nine_empty_tanks():
     assert len(rows) == 9
     assert len(TANKS) == 9
     assert all(row["capacity_kg"] is None for row in rows)
+    assert all(row["role"] == "NORMAL" and row["version"] == 1 for row in rows)
     assert all("opening_balance_kg" not in row for row in rows)
 
 
