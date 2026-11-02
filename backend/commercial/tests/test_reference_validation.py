@@ -70,3 +70,30 @@ async def test_inactive_tank_is_rejected():
     })
     with pytest.raises(ValueError, match="Unknown or inactive commercial tank"):
         await validate_stock_references(db, Draft(), session=object())
+
+
+@pytest.mark.asyncio
+async def test_quarantine_tank_rejects_ordinary_stock_receipt():
+    draft = Draft()
+    db = Database({
+        "commercial_lots": Collection([{"id": "lot-1", "quality_status": "PENDING"}]),
+        "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
+    })
+    with pytest.raises(ValueError, match="dedicated return workflow"):
+        await validate_stock_references(db, draft, session=object())
+
+
+@pytest.mark.asyncio
+async def test_quarantine_tank_rejects_dispatch_without_reinspection():
+    draft = Draft()
+    draft.destination_location_id = None
+    draft.destination_owner = None
+    draft.source_location_id = "tank-01"
+    draft.source_owner = Owner("MILL")
+    draft.movement_kind = "DISPATCH"
+    db = Database({
+        "commercial_lots": Collection([{"id": "lot-1", "quality_status": "PENDING"}]),
+        "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
+    })
+    with pytest.raises(ValueError, match="only by transfer after quality release"):
+        await validate_stock_references(db, draft, session=object())
