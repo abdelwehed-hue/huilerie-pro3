@@ -710,6 +710,7 @@ export default function Commercial() {
     { id: "varieties", label: l.varietiesTab, icon: Boxes },
     { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
     { id: "production", label: l.productionTab, icon: Factory },
+    { id: "custody", label: l.custodyTab, icon: ClipboardList },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     ...(isAdmin ? [{ id: "permissions" as const, label: l.permissionsTab, icon: ShieldCheck }] : []),
