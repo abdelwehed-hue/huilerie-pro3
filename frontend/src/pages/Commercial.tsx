@@ -335,6 +335,42 @@ export default function Commercial() {
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{l.varietiesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.varietyCode}</TableHead><TableHead>{l.varietyNameFr}</TableHead><TableHead>{l.varietyNameAr}</TableHead></TableRow></TableHeader><TableBody>{(varieties.data ?? []).map((v) => <TableRow key={v.id}><TableCell className="font-mono">{value(v.code)}</TableCell><TableCell className="font-semibold">{value(v.name_fr)}</TableCell><TableCell dir="rtl">{value(v.name_ar)}</TableCell></TableRow>)}{(!varieties.isLoading && !(varieties.data?.length)) && <EmptyRow colSpan={3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
       </div>}
+
+      {tab === "purchases" && <div className="space-y-4">
+        {isAdmin && <Card><CardHeader><CardTitle>{l.newPurchase}</CardTitle><CardDescription>{l.bootstrapHint}</CardDescription></CardHeader><CardContent>
+          {(suppliers.data?.length ?? 0) === 0 || (varieties.data?.length ?? 0) === 0 ? <p className="mb-3 text-sm text-amber-700">{(suppliers.data?.length ?? 0) === 0 ? l.noSuppliers : l.noVarieties}</p> : null}
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); createPurchase.mutate(); }}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1 text-sm font-medium">{l.supplier}<select required value={purchaseSupplierId} onChange={(e) => setPurchaseSupplierId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(suppliers.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+              <label className="grid gap-1 text-sm font-medium">{l.purchaseDate}<input required type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            </div>
+            <div className="space-y-3">
+              {purchaseLines.map((line, index) => <div key={index} className="grid items-end gap-3 rounded-xl border p-3 md:grid-cols-[1.3fr_1fr_1fr_auto]">
+                <label className="grid gap-1 text-sm font-medium">{l.variety}<select required value={line.variety_id} onChange={(e) => setPurchaseLines((rows) => rows.map((row, i) => i === index ? { ...row, variety_id: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(varieties.data ?? []).map((v) => <option key={v.id} value={v.id}>{v.code} · {lang === "ar" ? (v.name_ar || v.name_fr) : v.name_fr}</option>)}</select></label>
+                <label className="grid gap-1 text-sm font-medium">{l.quantity}<input required type="number" min="0.001" step="0.001" value={line.quantity_kg} onChange={(e) => setPurchaseLines((rows) => rows.map((row, i) => i === index ? { ...row, quantity_kg: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.unitPrice}<input required type="number" min="0" step="0.001" value={line.unit_price_dt} onChange={(e) => setPurchaseLines((rows) => rows.map((row, i) => i === index ? { ...row, unit_price_dt: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <Button type="button" variant="outline" disabled={purchaseLines.length === 1} onClick={() => setPurchaseLines((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
+              </div>)}
+              <Button type="button" variant="outline" onClick={() => setPurchaseLines((rows) => [...rows, { variety_id: "", quantity_kg: "", unit_price_dt: "" }])}>{l.addLine}</Button>
+            </div>
+            <label className="grid gap-1 text-sm font-medium">{l.notes}<input maxLength={1000} value={purchaseNotes} onChange={(e) => setPurchaseNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <Button type="submit" disabled={createPurchase.isPending || !purchaseSupplierId || !(varieties.data?.length) || purchaseLines.some((line) => !line.variety_id || !(Number(line.quantity_kg) > 0) || !(Number(line.unit_price_dt) >= 0))}>{l.createDraft}</Button>
+          </form>
+        </CardContent></Card>}
+        {isAdmin && <Card><CardHeader><CardTitle>{l.receivingLocation}</CardTitle></CardHeader><CardContent><select value={receivingLocationId} onChange={(e) => setReceivingLocationId(e.target.value)} className="h-10 w-full max-w-xl rounded-lg border bg-background px-3"><option value="">—</option>{(locations.data ?? []).map((loc) => <option key={loc.id} value={loc.id}>{loc.code} · {loc.name}</option>)}</select></CardContent></Card>}
+        <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
+          {(purchases.data ?? []).map((purchase) => <TableRow key={purchase.id}>
+            <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell>
+            <TableCell>{value((suppliers.data ?? []).find((s) => s.id === purchase.supplier_id)?.name, purchase.supplier_id)}</TableCell>
+            <TableCell>{date(purchase.purchase_date)}</TableCell>
+            <TableCell>{number(purchase.total_quantity_kg)}</TableCell>
+            <TableCell>{number(purchase.total_amount_dt)}</TableCell>
+            <TableCell>{purchase.status === "APPROVED" ? l.approved : l.draft}</TableCell>
+            <TableCell>{isAdmin && purchase.status === "DRAFT" ? <Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button> : "—"}</TableCell>
+          </TableRow>)}
+          {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}
+        </TableBody></Table></CardContent></Card>
+      </div>}
     </div>
   );
 }
