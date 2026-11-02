@@ -31,6 +31,7 @@ def test_payment_reversal_rejects_invalid_amount(amount):
 def test_payment_reversal_rejects_short_reason():
     with pytest.raises(ValidationError):
         PaymentReversalDraft(
+            reversal_date="2026-11-02",
             amount_dt="10.000",
             expected_invoice_version=1,
             reason="bad",
