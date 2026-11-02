@@ -568,6 +568,25 @@ async def test_wholesale_sale_dispatches_only_released_mill_owned_oil_and_tracks
         assert invoice["payment_status"] == "PARTIALLY_PAID"
         assert invoice["outstanding_amount_dt"].to_decimal() == Decimal("62.500")
 
+        overpayment = SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt="62.501", method="CASH",
+            expected_invoice_version=2, idempotency_key="sale-payment-overpay-key-001",
+        )
+        with pytest.raises(ValueError, match="exceeds the outstanding"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: record_sale_payment(
+                        db, "invoice-1", overpayment, season_code="2627",
+                        actor_user=admin, actor_user_id="admin-1",
+                        payment_id="payment-overpay", audit_event_id="payment-overpay-audit",
+                        created_at=now, session=active,
+                    )
+                )
+        assert await db.commercial_sale_payments.count_documents({"invoice_id": "invoice-1"}) == 1
+        invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-1"})
+        assert invoice["version"] == 2
+        assert invoice["outstanding_amount_dt"].to_decimal() == Decimal("62.500")
+
         second_payment = SalePaymentDraft(
             payment_date="2026-11-02", amount_dt="62.500", method="BANK_TRANSFER",
             expected_invoice_version=2, idempotency_key="sale-payment-key-0002",
