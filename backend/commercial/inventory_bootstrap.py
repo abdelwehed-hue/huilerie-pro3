@@ -27,6 +27,24 @@ INVENTORY_INDEXES = {
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_variety_code"),
         IndexModel([("normalized_name_fr", ASCENDING)], unique=True, name="uq_commercial_variety_name_fr"),
     ],
+    "commercial_custody_owners": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_custody_owner_id"),
+        IndexModel([("client_phone", ASCENDING)], unique=True, name="uq_custody_owner_client_phone"),
+        IndexModel([("active", ASCENDING), ("client_name", ASCENDING)], name="custody_owner_active_name"),
+    ],
+    "commercial_customer_custody_receipts": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_customer_custody_receipt_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_customer_custody_receipt_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_customer_custody_receipt_idempotency"),
+        IndexModel([("customer_id", ASCENDING), ("receipt_date", DESCENDING)], name="customer_custody_receipt_customer_date"),
+    ],
+    "commercial_customer_custody_releases": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_customer_custody_release_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_customer_custody_release_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_customer_custody_release_idempotency"),
+        IndexModel([("customer_id", ASCENDING), ("release_date", DESCENDING)], name="customer_custody_release_customer_date"),
+        IndexModel([("oil_lot_id", ASCENDING), ("created_at", DESCENDING)], name="customer_custody_release_lot_created"),
+    ],
     "commercial_olive_purchases": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_olive_purchase_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
