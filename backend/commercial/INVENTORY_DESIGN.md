@@ -99,7 +99,7 @@ inside its transaction.
 1. Initializing the nine tanks creates zero balances and no fabricated stock.
 2. A transfer preserves lot and owner and conserves total quantity.
 3. Customer-custody oil is excluded from mill-owned available stock.
-4. A customer-owned lot cannot be sold as mill-owned stock.
+4. A CUSTOMER-owned balance cannot be sold by the mill, while a MILL-owned balance remains sellable even if the lot records a different originating owner.
 5. A movement that would make a balance negative is rejected without partial writes.
 6. Two concurrent withdrawals cannot overspend the same balance.
 7. Repeating an idempotency key cannot duplicate a movement.
@@ -123,7 +123,7 @@ inside its transaction.
 9. Only then connect purchases, production, transfers, and bulk sales.
 
 
-## 9. Lot ownership provenance versus current stock ownership
+## 10. Lot ownership provenance versus current stock ownership
 
 The `commercial_lots.owner` field records the lot's originating/initial owner
 for traceability; it is not a live ownership register. A lot may be split across
