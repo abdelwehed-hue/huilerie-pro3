@@ -64,6 +64,7 @@ async def _increment_balance(
     collection: Any,
     identity: dict[str, Any],
     quantity: Decimal128,
+    created_at: datetime,
     session: Any,
 ) -> None:
     # Unique balance identity index protects concurrent first-time creation.
@@ -133,7 +134,7 @@ async def post_stock_movement(
             draft.product_kind, draft.lot_id, draft.destination_owner,
             draft.destination_location_id,
         )
-        await _increment_balance(balances, destination_identity, quantity, session)
+        await _increment_balance(balances, destination_identity, quantity, created_at, session)
 
     record = {
         "id": movement_id,
