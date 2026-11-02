@@ -9,7 +9,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from commercial.inventory_bootstrap import ensure_inventory_indexes
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
+from commercial.schemas.sales import SalePaymentDraft
 from commercial.services.credit_application import apply_buyer_credit_to_invoice
+from commercial.services.sales import record_sale_payment
 
 
 @pytest.mark.asyncio
@@ -20,9 +22,10 @@ async def test_credit_application_allocates_oldest_credit_notes_and_updates_invo
     now = datetime(2026, 11, 2, tzinfo=timezone.utc)
     try:
         await ensure_inventory_indexes(db)
-        await db.commercial_counters.insert_one({
-            "season_code": "2627", "document_type": "CAP", "last_sequence": 0
-        })
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "CAP", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "PAY", "last_sequence": 0},
+        ])
         await db.commercial_buyers.insert_one({
             "id": "buyer-a", "name": "Buyer A", "active": True,
             "credit_balance_dt": Decimal128("75.000"), "version": 1,
@@ -101,6 +104,29 @@ async def test_credit_application_allocates_oldest_credit_notes_and_updates_invo
         assert repeated["id"] == "application-1"
         assert await db.commercial_buyer_credit_applications.count_documents({}) == 1
         assert await db.commercial_buyer_credit_ledger.count_documents({"source_document_type": "CAP"}) == 2
+
+        payment_draft = SalePaymentDraft(
+            payment_date="2026-11-02", amount_dt=Decimal("40.000"),
+            method="CASH", expected_invoice_version=2,
+            idempotency_key="cash-payment-after-credit-0001",
+        )
+        async with await client.start_session() as session:
+            payment = await session.with_transaction(
+                lambda active: record_sale_payment(
+                    db, "invoice-target", payment_draft,
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    payment_id="cash-payment-1", audit_event_id="cash-payment-audit-1",
+                    created_at=now, session=active,
+                )
+            )
+        assert payment["document_number"] == "2627PAY0001"
+        settled_invoice = await db.commercial_sales_invoices.find_one({"id": "invoice-target"}, {"_id": 0})
+        assert settled_invoice["paid_amount_dt"].to_decimal() == Decimal("40.000")
+        assert settled_invoice["applied_credit_amount_dt"].to_decimal() == Decimal("60.000")
+        assert settled_invoice["outstanding_amount_dt"].to_decimal() == Decimal("0.000")
+        assert settled_invoice["payment_status"] == "PAID"
+        assert await db.commercial_sale_payments.count_documents({}) == 1
     finally:
         await client.drop_database(name)
         client.close()
