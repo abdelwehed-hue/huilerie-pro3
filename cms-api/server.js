@@ -18,6 +18,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: (process.env.FRONTEND_ORIGIN || '').split(',').map(v => v.trim()).filter(Boolean), credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/admin/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/admin', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/admin/setup', rateLimit({ windowMs: 60 * 60 * 1000, limit: 3, standardHeaders: true, legacyHeaders: false }));
 
 // Express 4 does not automatically forward rejected promises from async route handlers.
@@ -182,13 +183,15 @@ app.delete('/api/admin/media/:id', auth, async (req, res) => {
   const _id = cleanId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Identifiant invalide' });
   const idText = _id.toString();
-  const [newsUse, productUse] = await Promise.all([
+  const [newsUse, productUse, file] = await Promise.all([
     news.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
-    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] })
+    products.countDocuments({ $or: [{ imageId: _id }, { imageUrl: { $regex: idText } }] }),
+    db.collection('site_media.files').findOne({ _id }, { projection: { _id: 1 } })
   ]);
+  if (!file) return res.status(404).json({ error: 'Image introuvable' });
   if (newsUse + productUse > 0) return res.status(409).json({ error: 'Cette image est utilisée par un article ou un produit. Remplacez son image avant de la supprimer.' });
-  try { await bucket.delete(_id); res.json({ ok: true }); }
-  catch { res.status(404).json({ error: 'Image introuvable' }); }
+  await bucket.delete(_id);
+  res.json({ ok: true });
 });
 function detectImageType(buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
