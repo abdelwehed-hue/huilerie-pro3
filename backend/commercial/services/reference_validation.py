@@ -8,6 +8,7 @@ from typing import Any
 SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "ACH": "commercial_olive_purchases",
     "PROD": "commercial_production_runs",
+    "INT": "commercial_internal_movements",
 }
 
 
