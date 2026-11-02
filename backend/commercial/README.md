@@ -12,7 +12,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
 - Quality analyses and independent release controls are required.
 - All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, AVO, CIN, and CUS.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, AVO, CIN, CUS, and CAP.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
@@ -112,9 +112,9 @@ CIN and CUS each have their own season-scoped counter and each stock posting cre
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal, credit application, and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
+- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual and non-cash buyer-credit application are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
-- Authorized ownership transfer, customer custody statements, and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
+- Authorized ownership transfer and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
 
