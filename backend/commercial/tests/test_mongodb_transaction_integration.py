@@ -1177,18 +1177,22 @@ async def test_return_acceptance_issues_credit_note_and_tracks_buyer_credit_with
              "active": True, "version": 1, "credit_balance_dt": Decimal128("0.000")},
         ])
         await db.commercial_sales.insert_many([
-            {"id": "sale-credit-paid", "status": "APPROVED", "buyer_id": "buyer-credit-paid",
+            {"id": "sale-credit-paid", "season_code": "2627", "document_number": "2627VTE0001",
+             "status": "APPROVED", "buyer_id": "buyer-credit-paid",
              "unit_price_dt": Decimal128("5.000"), "idempotency_scope": "test:credit",
              "idempotency_key": "sale-credit-paid-key"},
-            {"id": "sale-credit-partial", "status": "APPROVED", "buyer_id": "buyer-credit-partial",
+            {"id": "sale-credit-partial", "season_code": "2627", "document_number": "2627VTE0002",
+             "status": "APPROVED", "buyer_id": "buyer-credit-partial",
              "unit_price_dt": Decimal128("5.000"), "idempotency_scope": "test:credit",
              "idempotency_key": "sale-credit-partial-key"},
         ])
         await db.commercial_sales_invoices.insert_many([
-            {"id": "invoice-credit-paid", "sale_id": "sale-credit-paid", "buyer_id": "buyer-credit-paid",
+            {"id": "invoice-credit-paid", "season_code": "2627", "document_number": "2627FAC0001",
+             "sale_id": "sale-credit-paid", "buyer_id": "buyer-credit-paid",
              "total_amount_dt": Decimal128("500.000"), "paid_amount_dt": Decimal128("500.000"),
              "outstanding_amount_dt": Decimal128("0.000"), "payment_status": "PAID", "version": 1},
-            {"id": "invoice-credit-partial", "sale_id": "sale-credit-partial", "buyer_id": "buyer-credit-partial",
+            {"id": "invoice-credit-partial", "season_code": "2627", "document_number": "2627FAC0002",
+             "sale_id": "sale-credit-partial", "buyer_id": "buyer-credit-partial",
              "total_amount_dt": Decimal128("500.000"), "paid_amount_dt": Decimal128("200.000"),
              "outstanding_amount_dt": Decimal128("300.000"), "payment_status": "PARTIALLY_PAID", "version": 1},
         ])
