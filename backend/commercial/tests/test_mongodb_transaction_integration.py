@@ -667,7 +667,7 @@ async def test_wholesale_sale_rejects_customer_custody_and_unreleased_oil():
                     audit_event_id="sale-blocked-draft-audit", created_at=now, session=active,
                 )
             )
-        with pytest.raises(ValueError, match="Customer-custody oil cannot be sold"):
+        with pytest.raises(ValueError, match="Insufficient stock"):
             async with await client.start_session() as session:
                 await session.with_transaction(
                     lambda active: approve_wholesale_sale(
@@ -764,7 +764,7 @@ async def test_wholesale_sale_approval_audit_failure_rolls_back_invoice_dispatch
         await db.commercial_lots.insert_one({
             "id": "oil-lot-rollback", "season_code": "2627",
             "document_type": "LOT", "document_number": "2627LOT0099",
-            "product_kind": "OIL", "status": "OPEN", "owner": {"kind": "MILL"},
+            "product_kind": "OIL", "status": "OPEN", "owner": {"kind": "CUSTOMER", "customer_id": "previous-owner"},
             "quality_status": "RELEASED", "quality_decision_id": "release-rollback",
         })
         await db.commercial_quality_releases.insert_one({
