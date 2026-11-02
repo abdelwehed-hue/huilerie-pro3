@@ -237,11 +237,15 @@ async def update_commercial_tank_role(
 
 
 @router.get("/locations")
-async def list_commercial_locations(user: dict = Depends(current_user)):
+async def list_commercial_locations(
+    limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
     _authorize(user, "commercial.read")
     docs = await db.commercial_locations.find(
         {"active": True}, {"_id": 0}
-    ).sort("code", 1).to_list(500)
+    ).sort([("code", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
