@@ -38,7 +38,7 @@ const labels = {
     bootstrapHint: "Cette action crée les neuf cuves et les compteurs de la saison. Elle ne crée aucun stock et ne modifie pas les données de trituration.",
     bootstrapSuccess: "Module commercial initialisé", bootstrapError: "Impossible d'initialiser le module commercial",
     tank: "Cuve", capacity: "Capacité", flexible: "Flexible — capacité non définie", active: "Active",
-    product: "Produit", document: "Document", owner: "Propriétaire", quantity: "Quantité (kg)",
+    product: "Produit", document: "Document", owner: "Propriétaire actuel", quantity: "Quantité (kg)",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
     source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts internes", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
     refresh: "Actualiser", adminOnly: "Initialisation réservée à l'administrateur",
@@ -63,7 +63,7 @@ const labels = {
     bootstrapHint: "تنشئ هذه العملية الخزانات التسعة وعدادات الموسم. لا تضيف أي مخزون ولا تغيّر بيانات العصر.",
     bootstrapSuccess: "تمت تهيئة الوحدة التجارية", bootstrapError: "تعذرت تهيئة الوحدة التجارية",
     tank: "الخزان", capacity: "السعة", flexible: "مرنة — السعة غير محددة", active: "نشط",
-    product: "المنتج", document: "الوثيقة", owner: "المالك", quantity: "الكمية (كغ)",
+    product: "المنتج", document: "الوثيقة", owner: "المالك الحالي", quantity: "الكمية (كغ)",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
     source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات الداخلية", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
     refresh: "تحديث", adminOnly: "التهيئة متاحة للمدير فقط",
@@ -856,6 +856,19 @@ export default function Commercial() {
   });
   const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
 
+  const currentOwnersForLot = (lot: AnyRecord) => {
+    const owners = Array.from(new Map((balances.data ?? [])
+      .filter((balance) => balance.lot_id === lot.id && Number(balance.quantity_kg) > 0)
+      .map((balance) => [ownerIdentity(balance.owner), ownerLabel(balance.owner, l)])).values());
+    return owners.length ? owners.join(" / ") : l.unknown;
+  };
+
+  const availableMillOilLots = (lots.data ?? []).filter((lot) =>
+    lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED"
+    && (balances.data ?? []).some((balance) => balance.product_kind === "OIL" && balance.lot_id === lot.id
+      && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0)
+  );
+
   const availableOliveBalances: AnyRecord[] = (balances.data ?? []).filter((balance: AnyRecord) =>
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
@@ -981,7 +994,7 @@ export default function Commercial() {
 
       {tab === "tanks" && <Card><CardHeader><CardTitle>{l.tanks}</CardTitle><CardDescription>{l.capacity}: {l.flexible}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.tank}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.capacity}</TableHead><TableHead>{lang === "ar" ? "الدور" : "Rôle"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>{(tanks.data ?? []).map((tank) => { const quantity = (balances.data ?? []).filter((b) => b.location_id === tank.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0); return <TableRow key={tank.id}><TableCell className="font-semibold">{value(tank.code)} · {value(tank.name)}</TableCell><TableCell>{number(quantity)} kg</TableCell><TableCell>{tank.capacity_kg == null ? l.flexible : number(tank.capacity_kg)}</TableCell><TableCell>{(tank.role ?? "NORMAL") === "QUARANTINE" ? (lang === "ar" ? "حجر" : "Quarantaine") : (lang === "ar" ? "عادي" : "Normal")}</TableCell><TableCell>{tank.active ? l.active : l.closed}</TableCell><TableCell>{isAdmin && <select aria-label={lang === "ar" ? "دور الخزان" : "Rôle de la cuve"} value={tank.role ?? "NORMAL"} disabled={quantity > 0 || changeTankRole.isPending} onChange={(e) => { const role = e.target.value as "NORMAL" | "QUARANTINE"; if (window.confirm(lang === "ar" ? "تأكيد تغيير دور الخزان؟" : "Confirmer le changement de rôle de la cuve ?")) changeTankRole.mutate({ tank, role }); }} className="h-9 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"><option value="NORMAL">{lang === "ar" ? "عادي" : "Normal"}</option><option value="QUARANTINE">{lang === "ar" ? "حجر" : "Quarantaine"}</option></select>}</TableCell></TableRow>; })}{(!tanks.isLoading && !(tanks.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
-      {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => <TableRow key={lot.id}><TableCell className="font-mono text-xs">{value(lot.document_number)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{ownerLabel(lot.owner, l)}</TableCell><TableCell>{number(lot.quantity_received_kg ?? lot.quantity_kg)}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>)}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => <TableRow key={lot.id}><TableCell className="font-mono text-xs">{value(lot.document_number)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(lot.quantity_received_kg ?? lot.quantity_kg)}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>)}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
       {tab === "transfers" && canPostStock && <div className="space-y-4">
         <Card>
@@ -1052,8 +1065,8 @@ export default function Commercial() {
                 <TableCell>{value(movement.movement_kind)}</TableCell>
                 <TableCell>{movement.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell>
                 <TableCell>{number(movement.quantity_kg)} kg</TableCell>
-                <TableCell>{value(movement.source_location_id)}</TableCell>
-                <TableCell>{value(movement.destination_location_id)}</TableCell>
+                <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.source_location_id)?.code ?? movement.source_location_id)}</TableCell>
+                <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.destination_location_id)?.code ?? movement.destination_location_id)}</TableCell>
                 <TableCell>{ownerLabel(movement.source_owner, l)} → {ownerLabel(movement.destination_owner, l)}</TableCell>
                 <TableCell>{date(movement.created_at)}</TableCell>
               </TableRow>;
@@ -1068,7 +1081,7 @@ export default function Commercial() {
         {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
-              <select required value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {ownerLabel(lot.owner, l)} · v{lot.version ?? 1}</option>)}</select>
+              <select required value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · v{lot.version ?? 1}</option>)}</select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={sampleReference} onChange={(e) => setSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
@@ -1369,7 +1382,7 @@ export default function Commercial() {
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => setSaleBuyerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED" && lot.owner?.kind === "MILL").map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {lot.quality_status}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{availableMillOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {lot.quality_status}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => setSaleTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(balances.data ?? []).filter((balance) => balance.product_kind === "OIL" && balance.lot_id === saleLotId && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0 && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && (tank.role ?? "NORMAL") === "NORMAL")).map((balance) => { const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.location_id} value={balance.location_id}>{tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => setSaleQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.salePrice}<input required type="number" min="0.001" step="0.001" value={saleUnitPrice} onChange={(e) => setSaleUnitPrice(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
