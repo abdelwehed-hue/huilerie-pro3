@@ -560,6 +560,7 @@ async def get_commercial_buyer_account_summary(
         "credited_invoice_count": 0,
     }
     summary.pop("_id", None)
+    summary["buyer_credit_balance_dt"] = buyer.get("credit_balance_dt", Decimal128("0.000"))
     return _safe({"buyer": buyer, "summary": summary})
 
 
