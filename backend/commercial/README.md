@@ -91,7 +91,7 @@ This package is an isolated commercial domain. It must not change existing olive
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow.
+- Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow. The proposed invariants, document flow, quarantine controls, credit-note accounting, and required tests are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md); this is a design specification, not an implemented workflow.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
