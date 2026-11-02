@@ -90,14 +90,16 @@ async def accept_sale_return_and_issue_credit_note(
 
     gross = _decimal(invoice["total_amount_dt"])
     paid = _decimal(invoice.get("paid_amount_dt", Decimal128("0.000")))
+    applied_credit = _decimal(invoice.get("applied_credit_amount_dt", Decimal128("0.000")))
     previous_credited = _decimal(invoice.get("credited_amount_dt", Decimal128("0.000")))
     previous_net = _decimal(invoice.get("net_amount_dt", gross - previous_credited))
     expected_previous_net = gross - previous_credited
-    expected_previous_outstanding = max(Decimal("0.000"), expected_previous_net - paid)
+    expected_previous_outstanding = max(Decimal("0.000"), expected_previous_net - paid - applied_credit)
     stored_previous_outstanding = _decimal(
         invoice.get("outstanding_amount_dt", Decimal128(expected_previous_outstanding))
     )
-    if (gross < 0 or paid < 0 or previous_credited < 0 or paid > gross
+    if (gross < 0 or paid < 0 or applied_credit < 0 or previous_credited < 0
+            or paid + applied_credit > gross
             or previous_net != expected_previous_net
             or stored_previous_outstanding != expected_previous_outstanding):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before issuing a credit note")
@@ -106,8 +108,8 @@ async def accept_sale_return_and_issue_credit_note(
     if credit_amount <= 0 or new_credited > gross:
         raise ValueError("Credit note would exceed the original invoice amount")
     new_net = gross - new_credited
-    previous_excess = max(Decimal("0.000"), paid - previous_net)
-    new_excess = max(Decimal("0.000"), paid - new_net)
+    previous_excess = max(Decimal("0.000"), paid + applied_credit - previous_net)
+    new_excess = max(Decimal("0.000"), paid + applied_credit - new_net)
     credit_balance_delta = new_excess - previous_excess
     if credit_balance_delta < 0:
         raise ValueError("Buyer credit balance calculation is inconsistent")
@@ -115,13 +117,14 @@ async def accept_sale_return_and_issue_credit_note(
     if buyer_credit_before < 0:
         raise ValueError("Buyer credit balance is negative; reconcile before issuing a credit note")
     buyer_credit_after = buyer_credit_before + credit_balance_delta
-    outstanding = max(Decimal("0.000"), new_net - paid)
+    outstanding = max(Decimal("0.000"), new_net - paid - applied_credit)
 
-    if new_net == Decimal("0.000") and paid == Decimal("0.000"):
+    total_settled = paid + applied_credit
+    if new_net == Decimal("0.000") and total_settled == Decimal("0.000"):
         payment_status = "CREDITED"
     elif outstanding == Decimal("0.000"):
         payment_status = "PAID"
-    elif paid == Decimal("0.000"):
+    elif total_settled == Decimal("0.000"):
         payment_status = "UNPAID"
     else:
         payment_status = "PARTIALLY_PAID"
