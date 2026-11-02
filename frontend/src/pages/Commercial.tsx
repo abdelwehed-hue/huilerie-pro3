@@ -21,10 +21,11 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production";
 
 const labels = {
   fr: {
+    productionTab: "Production", newProduction: "Nouvelle production", productionDate: "Date de production", inputLots: "Lots d’olives consommés", chooseOliveBalance: "Lot · emplacement · propriétaire", inputQuantity: "Quantité consommée (kg)", outputQuantity: "Huile réellement obtenue (kg)", outputTank: "Cuve de réception", extractionRate: "Rendement réel", completeProduction: "Enregistrer la production", productionSaved: "Production enregistrée et stock mis à jour", productionHistory: "Historique de production", ownerMill: "Maâsra", ownerCustomer: "Client", addInput: "Ajouter un lot", totalInput: "Total olives consommées (kg)", noOliveStock: "Aucun stock d’olives disponible pour la production.", selectTank: "Sélectionnez une cuve.",
     actions: "Actions",
     title: "Oro Verde — Gestion commerciale",
     subtitle: "Stocks, lots, production et contrôle qualité, indépendamment des opérations de trituration.",
@@ -47,6 +48,7 @@ const labels = {
     varietiesTab: "Variétés d’olives", varietyCode: "Code variété", varietyNameFr: "Nom en français", varietyNameAr: "Nom en arabe", addVariety: "Ajouter une variété", varietySaved: "Variété ajoutée",     purchasesTab: "Achats d’olives", newPurchase: "Nouvel achat", purchaseDate: "Date d’achat", supplier: "Fournisseur", variety: "Variété", unitPrice: "Prix unitaire (DT/kg)", addLine: "Ajouter une ligne", removeLine: "Retirer", createDraft: "Créer le brouillon", purchaseCreated: "Brouillon d’achat créé", approve: "Approuver et réceptionner", receivingLocation: "Emplacement de réception", totalAmount: "Montant total (DT)", totalQuantity: "Quantité totale (kg)", draft: "Brouillon", approved: "Approuvé", noSuppliers: "Créez d’abord un fournisseur.", noVarieties: "Créez d’abord les variétés commerciales.",     suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", notes: "Notes",
   },
   ar: {
+    productionTab: "الإنتاج", newProduction: "إنتاج جديد", productionDate: "تاريخ الإنتاج", inputLots: "دفعات الزيتون المستهلكة", chooseOliveBalance: "الدفعة · الموقع · المالك", inputQuantity: "الكمية المستهلكة (كغ)", outputQuantity: "كمية الزيت الفعلية الناتجة (كغ)", outputTank: "خزان الاستلام", extractionRate: "المردودية الفعلية", completeProduction: "تسجيل الإنتاج", productionSaved: "تم تسجيل الإنتاج وتحيين المخزون", productionHistory: "سجل الإنتاج", ownerMill: "المعصرة", ownerCustomer: "الحريف", addInput: "إضافة دفعة", totalInput: "مجموع الزيتون المستهلك (كغ)", noOliveStock: "لا يوجد مخزون زيتون متاح للإنتاج.", selectTank: "يرجى اختيار خزان.",
     actions: "الإجراءات",
     title: "Oro Verde — التسيير التجاري",
     subtitle: "المخزون والدفعات والإنتاج ومراقبة الجودة، بصورة مستقلة عن عمليات العصر.",
@@ -114,6 +116,11 @@ export default function Commercial() {
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [purchaseLines, setPurchaseLines] = useState([{ variety_id: "", quantity_kg: "", unit_price_dt: "" }]);
   const [receivingLocationId, setReceivingLocationId] = useState("");
+  const [productionDate, setProductionDate] = useState(new Date().toISOString().slice(0, 10));
+  const [productionInputs, setProductionInputs] = useState([{ balance_key: "", quantity_kg: "" }]);
+  const [productionOutputKg, setProductionOutputKg] = useState("");
+  const [productionTankId, setProductionTankId] = useState("");
+  const [productionNotes, setProductionNotes] = useState("");
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -130,6 +137,7 @@ export default function Commercial() {
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && (tab === "varieties" || tab === "purchases") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/olive-purchases?limit=500"), enabled: ready && tab === "purchases" });
+  const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/production-runs?limit=500"), enabled: ready && tab === "production" });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
       name: supplierName.trim(), phone: supplierPhone.trim() || null,
@@ -203,6 +211,42 @@ export default function Commercial() {
     },
     onError: () => toast.error(l.warning),
   });
+  const completeProduction = useMutation({
+    mutationFn: () => {
+      const inputLines = productionInputs.map((line) => {
+        const balance = (balances.data ?? []).find((b) => `${b.lot_id}::${b.location_id}` === line.balance_key);
+        const lot = (lots.data ?? []).find((item) => item.id === balance?.lot_id);
+        if (!balance || !lot) throw new Error("Selected olive balance is no longer available");
+        return {
+          olive_lot_id: lot.id,
+          source_location_id: balance.location_id,
+          owner: balance.owner,
+          quantity_kg: line.quantity_kg,
+        };
+      });
+      return apiPost<AnyRecord>("/commercial/v1/production-runs", {
+        production_date: productionDate,
+        inputs: inputLines,
+        actual_oil_output_kg: productionOutputKg,
+        output_tank_id: productionTankId,
+        notes: productionNotes.trim() || null,
+        idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.productionSaved);
+      setProductionInputs([{ balance_key: "", quantity_kg: "" }]);
+      setProductionOutputKg(""); setProductionNotes("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "production-runs"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(`${l.warning} ${error instanceof Error ? error.message : ""}`),
+  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
@@ -227,6 +271,7 @@ export default function Commercial() {
     { id: "locations", label: l.locationsTab, icon: Warehouse },
     { id: "varieties", label: l.varietiesTab, icon: Boxes },
     { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
+    { id: "production", label: l.productionTab, icon: Factory },
   ];
 
   return (
