@@ -139,7 +139,7 @@ async def approve_olive_purchase(
         lot_ids.append(lot_id)
         movement_ids.append(movement_id)
 
-    await purchases.update_one(
+    final_update = await purchases.update_one(
         {"id": purchase_id, "status": "APPROVED", "version": command.expected_version + 1},
         {
             "$set": {
@@ -150,6 +150,8 @@ async def approve_olive_purchase(
         },
         session=session,
     )
+    if final_update.matched_count != 1:
+        raise ValueError("Approved purchase changed before its receipt links were saved")
     await db["commercial_audit_events"].insert_one(
         {
             "id": _stable_id("purchase-approval-audit", f"{purchase_id}:{expected_key}"),
