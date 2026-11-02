@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request
 from passlib.hash import pbkdf2_sha256
 
 from lib.db import db
+from lib.security_config import initial_admin_credentials, is_production
 
 COOKIE = "olive_session"
 JWT_SECRET = os.environ["JWT_SECRET"]
@@ -58,12 +59,12 @@ async def require_admin(user: dict = Depends(current_user)) -> dict:
 
 
 async def seed_defaults() -> None:
-    """Idempotent: default admin + demo worker + price setting."""
+    """Idempotent user seeding; production never receives known demo passwords."""
     now = datetime.now(timezone.utc)
-    defaults = [
-        ("admin", "Administrateur", "admin123", "admin"),
-        ("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"),
-    ]
+    admin_username, admin_name, admin_password = initial_admin_credentials()
+    defaults = [(admin_username, admin_name, admin_password, "admin")]
+    if not is_production():
+        defaults.append(("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"))
     if await db.users.count_documents({}) == 0:
         for username, name, pw, role in defaults:
             await db.users.insert_one({
