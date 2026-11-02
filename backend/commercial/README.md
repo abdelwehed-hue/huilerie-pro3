@@ -91,6 +91,16 @@ This package is an isolated commercial domain. It must not change existing olive
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
+## Customer custody API
+
+- `POST /api/commercial/v1/customer-custody/receipts` — admin-only CIN intake of customer-owned olives.
+- `GET /api/commercial/v1/customer-custody/receipts?customer_id={id}` — read receipt history by stable owner ID.
+- `POST /api/commercial/v1/customer-custody/releases` — admin-only CUS pickup of customer-owned, quality-released oil.
+- `GET /api/commercial/v1/customer-custody/releases?customer_id={id}` — read pickup history by stable owner ID.
+- `GET /api/commercial/v1/customer-custody/owners` — read stable owner IDs linked to legacy clients.
+
+CIN and CUS each have their own season-scoped counter and each stock posting creates a separate MVT number. Neither endpoint creates a purchase, sale, invoice, supplier payable, or buyer receivable.
+
 ## Validation
 
 - GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
