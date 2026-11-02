@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -58,6 +58,6 @@ async def test_purchase_draft_rejects_unregistered_or_inactive_variety_before_nu
             actor_user={"active": True, "role": "admin"},
             actor_user_id="admin-1", purchase_id="purchase-1",
             audit_event_id="audit-1",
-            created_at=__import__("datetime").datetime(2026, 11, 2, tzinfo=__import__("datetime").timezone.utc),
+            created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
             session=object(),
         )
