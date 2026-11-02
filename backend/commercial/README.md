@@ -92,7 +92,7 @@ This package is an isolated commercial domain. It must not change existing olive
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. The proposed invariants and remaining design requirements are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
+- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal, credit application, and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
