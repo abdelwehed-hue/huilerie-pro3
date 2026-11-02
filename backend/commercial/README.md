@@ -1,95 +1,101 @@
 # Oro Verde Commercial Domain
 
-This package is a new, isolated domain. It must not change existing olive-press
-loads, reception numbering, or service invoices.
+This package is an isolated commercial domain. It must not change existing olive-press loads, reception numbering, or service invoices.
 
 ## Fixed scope decisions
 
 - Finished-oil purchases are excluded from the first release.
-- Commercial olive purchases and commercial production are distinct from
-  customer-owned olive pressing services.
+- Commercial olive purchases and commercial production are distinct from customer-owned olive pressing services.
 - Bulk sales only in the first release.
-- Oil ownership supports mill-owned and custody/consignment stock.
+- Oil ownership supports mill-owned and customer-custody/consignment stock.
 - Nine tanks are provisioned with zero opening balance.
-- Tank capacities remain undefined until explicitly configured.
-- Quality analyses and release controls are required.
-- All commercial document numbers use the four-digit season code, never the
-  calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, and PAY.
+- Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
+- Quality analyses and independent release controls are required.
+- All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, and INT.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
 
 1. No commercial stock or financial posting from frontend calculations.
-2. Every stock/financial posting is performed by a backend service.
+2. Every stock/financial posting is performed by a backend domain service.
 3. Critical multi-document writes require MongoDB transaction support.
 4. Idempotency and optimistic version checks protect retried/concurrent writes.
-5. Corrections use reversal/correction records; posted documents are immutable.
-6. No production deployment until backup restoration and acceptance tests pass.
+5. Posted documents and ledger events are immutable; corrections must use compensating records.
+6. No production deployment until backup restoration, security configuration, and acceptance tests pass.
 
-## Numbering
+## Numbering and activation
 
-- `services/numbering.py` formats numbers and atomically increments a
-  pre-initialized counter using the caller's MongoDB transaction session.
-- `bootstrap.py` creates the unique `(season_code, document_type)` index and
-  initializes missing counters for explicitly configured seasons.
-- Counter allocation deliberately does not upsert. A missing counter fails
-  closed rather than silently creating an unexpected sequence.
-- The active season must come from validated season configuration; the
-  four-digit formatter alone does not decide which season is active.
+- `services/numbering.py` formats numbers and atomically increments a pre-initialized counter using the caller's MongoDB transaction session.
+- Critical unique indexes protect season/document counters, document identifiers, idempotency keys, and audit identifiers.
+- Counter allocation deliberately does not upsert. A missing counter fails closed rather than silently creating an unexpected sequence.
+- The active season comes from validated application settings; the client cannot choose a season for a new document.
+- `POST /api/commercial/v1/bootstrap` is an explicit admin operation. It verifies replica-set/sharded transaction topology, creates critical indexes, provisions nine empty oil tanks, and initializes counters. It does not create opening stock and does not run automatically at startup.
+- Production startup security checks require `APP_ENV=production`, `AUTH_DISABLED=false`, explicit non-wildcard `CORS_ORIGINS`, and secure initial admin credentials when the user collection is empty. Known demo credentials are rejected.
 
+## Implemented backend workflows
 
-## Current implemented foundation
+### Master data and purchasing
 
-- schemas/purchases.py validates olive purchase drafts using Decimal quantities and DT/kg prices; totals are never accepted from clients.
-- services/purchases.py creates a DRAFT olive purchase with an ACH season number, supplier validation, idempotency fingerprint, Decimal128 line values, and audit event. The caller must supply an active MongoDB transaction session.
-- services/purchase_approval.py approves a draft with an expected-version check, creates one LOT per variety line, and posts each olive receipt to an explicitly configured olive storage/staging location in the same transaction.
-- Oil tanks and olive staging locations are distinct. Olive intake cannot be silently placed in one of the nine oil tanks.
-- services/reference_validation.py recognizes ACH and PROD as registered source document types. A movement is rejected unless its source document is approved/completed and its lot and location references exist.
-- permissions.py keeps legacy worker access read-only by default. An administrator can explicitly assign a worker `commercial.lab_record` or `commercial.quality_release`; purchase, production, sales, stock, and payment writes remain admin-only.
+- Separate commercial suppliers, olive varieties, receiving/staging locations, and wholesale buyers; legacy pressing customers and varieties are not silently reused.
+- Olive purchase drafts validate supplier, registered varieties, Decimal quantities/prices, and idempotency. Totals are calculated server-side.
+- Admin approval creates one olive LOT per purchase line and posts each receipt to a configured olive storage/staging location in one MongoDB transaction.
+- Supplier, location, variety, and buyer creation are audited transactionally.
 
-## Not yet implemented
+### Production and inventory
 
-- Frontend screens and user workflows.
-- Purchase cancellation/reversal after approval.
-- Bulk sales, payments, and customer-custody settlement.
-- Quality specification catalog and approval policy catalog.
-- End-to-end transaction tests against a MongoDB replica set.
+- Production consumes actual olive quantities and records actual oil output; no fixed yield assumptions are used.
+- A production run cannot mix MILL-owned and CUSTOMER-owned olive lots, including different customer owners.
+- Olive consumption, production record, oil LOT creation, output receipt, and audit event commit atomically.
+- Output oil begins with quality status PENDING.
+- Stock ledger quantities use Decimal128 and reject negative balances. Movements are append-only and idempotent.
+- Internal location transfers and ownership changes use a dedicated INT document. The INT document, MVT ledger entry, balance deltas, and audit event commit in one transaction.
+- Generic public stock writes are blocked. Purchase receipts, production consumption/output, internal transfers, and wholesale dispatch can only be posted by their owning workflows.
 
-A service function that accepts a MongoDB session is not by itself proof of transaction safety: its caller must wrap the full command in run_transaction, and this integration still requires replica-set tests.
+### Quality and permissions
 
+- Laboratory submission records sample metadata, specification reference, and measurements only; it cannot decide RELEASED or REJECTED.
+- A separate reviewer command records the final quality decision. The service rejects self-approval, stale lot versions, superseded assessments, and repeat final decisions.
+- Release/rejection, lot status, release record, and audit event commit in one transaction.
+- Admins retain all commercial permissions. Workers are read-only by default; admins may assign narrowly scoped lab recording, quality release, and audit viewing permissions. Assignments are audited.
+- Effective permissions are checked by the backend, not trusted from frontend role claims.
 
-## API and activation
+### Wholesale sales, invoices, and payments
 
-- Authenticated commercial API routes are mounted under `/api/commercial/v1`.
-- `POST /api/commercial/v1/bootstrap` is an explicit admin operation; it checks transaction-capable MongoDB topology, creates critical indexes, provisions nine empty oil tanks, and initializes active-season counters.
-- Public-auth mode (`AUTH_DISABLED=true`) is rejected for all commercial endpoints.
-- Write endpoints read the active season from existing application settings and fail closed until its counters and tanks are provisioned.
-- Supplier and olive receiving/staging location APIs are available. Commercial purchase, production, and quality commands are wrapped by the existing `run_transaction` helper.
-- Read APIs expose tanks, locations, suppliers, buyers, lots, stock balances, purchases, production runs, quality assessments, wholesale sales, invoices, and payment history. `GET /api/commercial/v1/buyers/{buyer_id}/account-summary` returns invoice count, total invoiced, paid, outstanding, and payment-status counts aggregated from commercial invoices; it includes inactive buyers so historical receivables remain visible.
+- Wholesale buyer records are separate from legacy pressing clients.
+- Sale drafts receive season-scoped VTE numbers. Approval requires an active buyer, an open MILL-owned oil lot, a persisted RELEASED quality decision, an active source tank, and sufficient stock.
+- Customer-custody oil and pending/rejected oil cannot be sold by the mill.
+- Sale approval creates the commercial FAC invoice and DISPATCH MVT movement in the same MongoDB transaction.
+- Payments receive season-scoped PAY numbers. Payment posting is idempotent, version-checked, and rejects overpayment. Partial/full payment status is maintained on the invoice.
+- Bank transfers and cheques require a traceable reference; cash payments may omit it.
+- The buyer account summary endpoint `GET /api/commercial/v1/buyers/{buyer_id}/account-summary` aggregates invoice count, invoiced amount, paid amount, outstanding amount, and invoice counts by payment status. It includes inactive buyers so historical receivables remain visible.
+- Tax treatment is explicitly marked `NOT_CONFIGURED`. These records are internal commercial records and are not represented as legally compliant tax invoices.
 
+## Frontend
 
-## Quality separation of duties
+- Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
+- Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer, sales, invoice, and payment workflows.
+- Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
+- Frontend forms do not authoritatively calculate stock or financial balances.
 
-- Laboratory submission uses `POST /api/commercial/v1/quality-assessments` and requires `commercial.lab_record`.
-- Submission stores measurements and a specification reference only. It cannot set `RELEASED` or `REJECTED`; the oil lot remains unavailable for sale.
-- Independent review uses `POST /api/commercial/v1/quality-assessments/release` and requires `commercial.quality_release`.
-- The service rejects self-approval, stale lot versions, superseded assessments, and repeat final decisions. Release/rejection, lot status, release record, and audit event commit in one MongoDB transaction.
-- Admins retain all commercial permissions. Workers receive no commercial write permission by default. An admin assigns only scoped laboratory/reviewer permissions through `POST /api/commercial/v1/users/{user_id}/commercial-permissions`; assignments are audited.
-- The reviewer must be a different user ID from the laboratory submitter. This is enforced server-side, not merely by hiding a button in the UI.
+## Validation
 
+- GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
+- The latest confirmed full run on branch head `07e502471fbd83d6c0e531a096eddd93f789457d` is run `41510576759`; all five jobs succeeded.
+- The MongoDB replica-set integration suite on that head contains 14 passing tests, including transaction rollback for production, quality release, purchase approval, sale approval, and payment-related workflows.
+- A passing CI run does not replace browser-based operational acceptance, backup restoration verification, or production security configuration review.
 
-## Internal stock movements
+## Not yet implemented / blockers before operational release
 
-- Internal location transfers and ownership changes use a dedicated `INT` document collection. The INT document, MVT ledger entry, balance deltas, and audit event commit in one transaction.
-- A location transfer must preserve the same owner and change location. An ownership transfer must preserve location and change owner.
-- The public generic stock-write endpoint is closed. Purchase receipts, production consumption/output, internal transfers, and wholesale dispatch are posted only by their owning domain services.
+- Buyer edit/deactivation workflow and controlled duplicate/merge process.
+- Draft sale cancellation.
+- Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow.
+- Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
+- Customer-custody oil settlement and owner payout accounting.
+- Approved quality-specification catalog and governed tax configuration/invoice templates.
+- End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
 
-## Wholesale sales and payments
+## Production safety status
 
-- Wholesale buyer records are separate from legacy pressing clients; no automatic identity mapping is assumed.
-- A sale draft receives a season-scoped `VTE` number. Approval requires an open oil lot owned by the mill, a persisted RELEASED quality decision, an active source tank, and sufficient stock.
-- Approval creates a `FAC` commercial invoice and a `DISPATCH` MVT movement in the same MongoDB transaction. Customer-custody oil and pending/rejected oil cannot be sold.
-- Payments receive season-scoped `PAY` numbers. Payment posting is idempotent, version-checked, and rejects amounts greater than the outstanding invoice balance. Partial and full payment states are maintained on the invoice. Bank transfers and cheques require a traceable reference; cash payments may omit it.
-- Tax treatment is explicitly marked `NOT_CONFIGURED`; these records are not represented as legally compliant tax invoices. Configure and validate the applicable tax rules and invoice format before operational tax invoicing.
-- Sale correction, cancellation, return, dispatch reversal, buyer update/deactivation, payment reversal, and tax configuration are not yet implemented. Approved sales and payments must not be edited directly in MongoDB.
+PR #147 remains Draft and unmerged. No Render deployment, live commercial bootstrap, production migration, or live stock/financial posting has been performed. Do not merge or deploy until the remaining blockers and acceptance checks are closed.
