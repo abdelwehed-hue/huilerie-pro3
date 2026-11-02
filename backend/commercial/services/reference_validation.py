@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from decimal import Decimal
+from bson.decimal128 import Decimal128
+
 # Register only document types backed by real commercial collections/services.
 # Legacy pressing loads and service invoices are intentionally excluded.
 SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
@@ -13,7 +16,12 @@ SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "RET": "commercial_sale_returns",
     "CIN": "commercial_customer_custody_receipts",
     "CUS": "commercial_customer_custody_releases",
+    "RJT": "commercial_sale_return_rejections",
 }
+
+
+def _quantity(value: Any) -> Decimal:
+    return value.to_decimal() if isinstance(value, Decimal128) else Decimal(str(value or "0"))
 
 
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
@@ -50,8 +58,17 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
                 lot_quality = await db["commercial_lots"].find_one(
                     {"id": draft.lot_id}, {"_id": 0, "quality_status": 1}, session=session
                 )
-                if draft.movement_kind != "TRANSFER" or not lot_quality or lot_quality.get("quality_status") != "RELEASED":
-                    raise ValueError("Quarantined oil can leave only by transfer after quality release")
+                quality_released_transfer = (
+                    draft.movement_kind == "TRANSFER"
+                    and lot_quality
+                    and lot_quality.get("quality_status") == "RELEASED"
+                )
+                rejected_return_dispatch = (
+                    draft.movement_kind == "DISPATCH"
+                    and draft.source_document_type == "RJT"
+                )
+                if not quality_released_transfer and not rejected_return_dispatch:
+                    raise ValueError("Quarantined oil can leave only by quality-released transfer or approved return rejection")
             # Serialize stock postings against tank-role changes. Both operations
             # write this same tank document in their transaction, so MongoDB
             # detects a concurrent role-change/stock-posting write conflict.
@@ -81,7 +98,8 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         {"id": draft.source_document_id},
         {"_id": 0, "id": 1, "status": 1, "returned_oil_lot_id": 1, "quarantine_tank_id": 1,
          "customer_id": 1, "olive_lot_id": 1, "receiving_location_id": 1,
-         "oil_lot_id": 1, "source_tank_id": 1},
+         "oil_lot_id": 1, "source_tank_id": 1, "return_id": 1,
+         "quantity_kg": 1, "quarantine_tank_id": 1},
         session=session,
     )
     if not source:
@@ -100,6 +118,23 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
                 or source.get("customer_id") != (draft.destination_owner.customer_id if draft.destination_owner else None)
                 or source.get("receiving_location_id") != draft.destination_location_id):
             raise ValueError("Customer olive custody receipt does not match its source document")
+    elif draft.source_document_type == "RJT":
+        if (source.get("status") != "APPROVED"
+                or draft.movement_kind != "DISPATCH"
+                or draft.product_kind != "OIL"
+                or source.get("oil_lot_id") != draft.lot_id
+                or source.get("quarantine_tank_id") != draft.source_location_id
+                or _quantity(source.get("quantity_kg")) != _quantity(draft.quantity_kg)):
+            raise ValueError("Return rejection dispatch does not match its approved rejection document")
+        returned = await db["commercial_sale_returns"].find_one(
+            {"id": source.get("return_id"), "status": "RECEIVED",
+             "commercial_acceptance_status": "PENDING",
+             "returned_oil_lot_id": draft.lot_id,
+             "quarantine_tank_id": draft.source_location_id},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        if not returned:
+            raise ValueError("Return rejection does not match a pending received return")
     elif draft.source_document_type == "CUS":
         if (source.get("status") != "APPROVED"
                 or draft.movement_kind != "DISPATCH"
