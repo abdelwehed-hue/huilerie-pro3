@@ -297,7 +297,7 @@ export default function Commercial() {
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
-  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots") });
+  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/receipts?limit=500"), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/releases?limit=500"), enabled: ready && tab === "custody" });
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
@@ -867,16 +867,15 @@ export default function Commercial() {
   });
   const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
 
+  const displayOwnerLabel = (owner: AnyRecord | undefined) => {
+    if (owner?.kind !== "CUSTOMER") return ownerLabel(owner, l);
+    const custodyOwner = (custodyOwners.data ?? []).find((item) => item.id === owner.customer_id);
+    return `${l.customer}: ${custodyOwner?.client_name ?? owner.customer_id}`;
+  };
   const currentOwnersForLot = (lot: AnyRecord) => {
     const owners = Array.from(new Map<string, string>((balances.data ?? [])
       .filter((balance) => balance.lot_id === lot.id && Number(balance.quantity_kg) > 0)
-      .map((balance): [string, string] => {
-        const custodyOwner = (custodyOwners.data ?? []).find((item) => item.id === balance.owner?.customer_id);
-        const label = balance.owner?.kind === "CUSTOMER"
-          ? `${l.customer}: ${custodyOwner?.client_name ?? balance.owner.customer_id}`
-          : ownerLabel(balance.owner, l);
-        return [ownerIdentity(balance.owner), label];
-      })).values());
+      .map((balance): [string, string] => [ownerIdentity(balance.owner), displayOwnerLabel(balance.owner)])).values());
     return owners.length ? owners.join(" / ") : "—";
   };
   const currentStockQuantityForLot = (lot: AnyRecord) => (balances.data ?? [])
@@ -1043,7 +1042,7 @@ export default function Commercial() {
                       ? (tanks.data ?? []).find((item) => item.id === balance.location_id)
                       : (locations.data ?? []).find((item) => item.id === balance.location_id);
                     const key = [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::");
-                    return <option key={key} value={key}>{lot?.document_number ?? balance.lot_id} · {location?.code ?? balance.location_id} · {ownerLabel(balance.owner, l)} · {number(balance.quantity_kg)} kg</option>;
+                    return <option key={key} value={key}>{lot?.document_number ?? balance.lot_id} · {location?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
                   })}
                 </select>
               </label>
@@ -1087,7 +1086,7 @@ export default function Commercial() {
                 <TableCell>{number(movement.quantity_kg)} kg</TableCell>
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.source_location_id)?.code ?? movement.source_location_id)}</TableCell>
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.destination_location_id)?.code ?? movement.destination_location_id)}</TableCell>
-                <TableCell>{ownerLabel(movement.source_owner, l)} → {ownerLabel(movement.destination_owner, l)}</TableCell>
+                <TableCell>{displayOwnerLabel(movement.source_owner)} → {displayOwnerLabel(movement.destination_owner)}</TableCell>
                 <TableCell>{date(movement.created_at)}</TableCell>
               </TableRow>;
             })}{(!internalMovementDocuments.isLoading && !(internalMovementDocuments.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
@@ -1264,7 +1263,7 @@ export default function Commercial() {
                         {availableOliveBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
                           const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
                           const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
-                          return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {ownerLabel(balance.owner, l)} · {number(balance.quantity_kg)} kg</option>;
+                          return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
                         })}
                       </select>
                     </label>
