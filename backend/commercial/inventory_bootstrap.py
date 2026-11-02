@@ -155,7 +155,7 @@ async def provision_nine_tanks(db):
 
 
 async def provision_commercial_counters(db, season_code, document_types=(
-    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY"
+    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY", "RET"
 )):
     """Initialize zero-based counters for one validated four-digit season.
 
