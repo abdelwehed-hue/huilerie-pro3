@@ -1,0 +1,72 @@
+import os
+import uuid
+from datetime import date, datetime, timezone
+from decimal import Decimal
+
+import pytest
+from bson.decimal128 import Decimal128
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from commercial.inventory_bootstrap import ensure_inventory_indexes
+from commercial.schemas.production import CommercialProductionDraft
+from commercial.services.production import complete_commercial_production
+
+
+@pytest.mark.asyncio
+async def test_production_posts_olive_and_oil_balances_atomically():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "commercial_production_" + uuid.uuid4().hex
+    db = client[name]
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("PROD", "LOT", "MVT")
+        ])
+        await db.commercial_tanks.insert_one({"id": "tank-01", "active": True})
+        await db.commercial_locations.insert_one({
+            "id": "yard-1", "active": True, "kind": "OLIVE_STORAGE"
+        })
+        await db.commercial_lots.insert_many([
+            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+        ])
+        await db.commercial_stock_balances.insert_many([
+            {"product_kind": "OLIVE", "lot_id": lot, "owner": {"kind": "MILL"},
+             "location_id": "yard-1", "quantity_kg": Decimal128("500")}
+            for lot in ("olive-1", "olive-2")
+        ])
+        draft = CommercialProductionDraft(
+            production_date=date(2026, 11, 2),
+            inputs=[
+                {"olive_lot_id": lot, "source_location_id": "yard-1",
+                 "owner": {"kind": "MILL"}, "quantity_kg": "500"}
+                for lot in ("olive-1", "olive-2")
+            ],
+            actual_oil_output_kg="180.500", output_tank_id="tank-01",
+            idempotency_key="real-mongo-production-post-0001",
+        )
+        async with await client.start_session() as session:
+            result = await session.with_transaction(
+                lambda active: complete_commercial_production(
+                    db, draft, season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    production_id="production-integration-1",
+                    created_at=datetime(2026, 11, 2, tzinfo=timezone.utc),
+                    session=active,
+                )
+            )
+        assert result["document_number"] == "2627PROD0001"
+        assert await db.commercial_stock_movements.count_documents({}) == 3
+        olive = await db.commercial_stock_balances.find(
+            {"product_kind": "OLIVE"}, {"_id": 0}
+        ).to_list(10)
+        assert all(row["quantity_kg"].to_decimal() == Decimal("0") for row in olive)
+        oil = await db.commercial_stock_balances.find_one(
+            {"product_kind": "OIL"}, {"_id": 0}
+        )
+        assert oil["quantity_kg"].to_decimal() == Decimal("180.500")
+    finally:
+        await client.drop_database(name)
+        client.close()
