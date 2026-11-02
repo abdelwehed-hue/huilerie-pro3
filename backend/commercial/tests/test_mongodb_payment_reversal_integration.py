@@ -227,3 +227,56 @@ async def test_payment_reversal_is_blocked_when_source_credit_was_already_applie
     finally:
         await client.drop_database(name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_payment_reversal_rejects_invoice_credit_snapshot_without_cap_ledger():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "payment_reversal_cap_snapshot_mismatch_" + uuid.uuid4().hex
+    db = client[name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "REV", "last_sequence": 0
+        })
+        invoice = _invoice(
+            "invoice-cap-mismatch", gross="100.000", credited="0.000",
+            paid="20.000", applied="10.000",
+        )
+        await db.commercial_sales_invoices.insert_one(invoice)
+        await db.commercial_sale_payments.insert_one(
+            _payment("payment-cap-mismatch", "invoice-cap-mismatch", "20.000")
+        )
+        draft = PaymentReversalDraft(
+            reversal_date="2026-11-02",
+            amount_dt=Decimal("5.000"),
+            expected_invoice_version=1,
+            reason="Reject unreconciled applied credit snapshot",
+            idempotency_key="payment-reversal-cap-mismatch-001",
+        )
+        with pytest.raises(ValueError, match="applied-credit amount does not reconcile"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: reverse_sale_payment(
+                        db, "payment-cap-mismatch", draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        reversal_id="reversal-cap-mismatch",
+                        audit_event_id="reversal-cap-mismatch-audit",
+                        created_at=now, session=active,
+                    )
+                )
+        stored = await db.commercial_sales_invoices.find_one(
+            {"id": "invoice-cap-mismatch"}, {"_id": 0}
+        )
+        assert stored["paid_amount_dt"].to_decimal() == Decimal("20.000")
+        assert stored["outstanding_amount_dt"].to_decimal() == Decimal("70.000")
+        assert await db.commercial_payment_reversals.count_documents({}) == 0
+        counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "REV"}, {"_id": 0}
+        )
+        assert counter["last_sequence"] == 0
+    finally:
+        await client.drop_database(name)
+        client.close()
