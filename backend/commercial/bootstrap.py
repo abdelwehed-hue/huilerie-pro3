@@ -3,14 +3,11 @@ import logging
 from pymongo import ASCENDING
 from pymongo.errors import DuplicateKeyError
 
+from commercial.inventory_bootstrap import COMMERCIAL_DOCUMENT_TYPES
+
 logger = logging.getLogger(__name__)
 
 # Document types have independent counters for every season.
-COMMERCIAL_DOCUMENT_TYPES = (
-    "ACH", "PROD", "LOT", "FAC", "VTE", "PAY", "TRF", "BLEND", "ANA"
-)
-
-
 async def ensure_commercial_numbering(db, season_codes: list[str]) -> None:
     """Create the unique counter index and missing counters for configured seasons.
 
@@ -26,8 +23,8 @@ async def ensure_commercial_numbering(db, season_codes: list[str]) -> None:
     )
 
     for season_code in season_codes:
-        if not isinstance(season_code, str) or len(season_code) != 4 or not season_code.isdigit():
-            raise ValueError("Configured season codes must contain exactly four digits")
+        from commercial.services.numbering import validate_numbering_components
+        validate_numbering_components(season_code, "LOT")
         for document_type in COMMERCIAL_DOCUMENT_TYPES:
             key = {"season_code": season_code, "document_type": document_type}
             try:
