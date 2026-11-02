@@ -16,10 +16,10 @@ def _money(value: Decimal) -> Decimal:
 async def cash_paid_from_ledger(db: Any, invoice_id: str, *, session: Any) -> Decimal:
     payments = await db["commercial_sale_payments"].find(
         {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
-    ).to_list(10000)
+    ).to_list(None)
     reversals = await db["commercial_payment_reversals"].find(
         {"invoice_id": invoice_id}, {"_id": 0, "amount_dt": 1}, session=session
-    ).to_list(10000)
+    ).to_list(None)
     return _money(
         sum((_decimal(item["amount_dt"]) for item in payments), Decimal("0.000"))
         - sum((_decimal(item["amount_dt"]) for item in reversals), Decimal("0.000"))
