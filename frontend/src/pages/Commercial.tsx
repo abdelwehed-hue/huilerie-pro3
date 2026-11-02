@@ -264,6 +264,61 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(`${l.warning} ${error instanceof Error ? error.message : ""}`),
   });
+  const submitQualityAssessment = useMutation({
+    mutationFn: () => {
+      const lot = (lots.data ?? []).find((item) => item.id === qualityLotId);
+      if (!lot) throw new Error("Oil lot is no longer available");
+      return apiPost<AnyRecord>("/commercial/v1/quality-assessments", {
+        oil_lot_id: qualityLotId,
+        expected_lot_version: lot.version ?? 1,
+        sample_reference: sampleReference.trim(),
+        sample_date: sampleDate,
+        tested_date: testedDate,
+        laboratory_name: laboratoryName.trim(),
+        specification_reference: specificationReference.trim(),
+        measurements: measurements.map((item) => ({
+          code: item.code.trim().toUpperCase(),
+          value: item.value,
+          unit: item.unit.trim(),
+        })),
+        idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.assessmentSaved);
+      setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
+      setMeasurements([{ code: "", value: "", unit: "" }]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const releaseQualityAssessment = useMutation({
+    mutationFn: () => {
+      const assessment = (quality.data ?? []).find((item) => item.id === reviewAssessmentId);
+      if (!assessment) throw new Error("Quality assessment is no longer available");
+      return apiPost<AnyRecord>("/commercial/v1/quality-assessments/release", {
+        assessment_id: assessment.id,
+        expected_lot_version: assessment.lot_version_after_submission,
+        decision: reviewDecision,
+        decision_reason: reviewReason.trim(),
+        idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.decisionSaved);
+      setReviewAssessmentId(""); setReviewReason("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
@@ -276,6 +331,17 @@ export default function Commercial() {
   const totalOlives = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OLIVE").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const totalOil = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
+  const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
+  const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
+  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && ["PENDING", "REJECTED"].includes(lot.quality_status));
+  const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
+    const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
+    return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
+      && assessment.created_by !== me.data?.id
+      && lot?.last_quality_assessment_id === assessment.id
+      && lot?.version === assessment.lot_version_after_submission;
+  });
+
   const availableOliveBalances: AnyRecord[] = (balances.data ?? []).filter((balance: AnyRecord) =>
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
