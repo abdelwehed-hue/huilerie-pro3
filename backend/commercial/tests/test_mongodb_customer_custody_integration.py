@@ -187,7 +187,7 @@ async def test_customer_oil_pickup_rejects_other_customer_and_pending_quality():
             "location_id": "tank-01", "quantity_kg": Decimal128("10.000"),
         })
         draft = CustomerOilCustodyReleaseDraft(
-            customer_phone="21612345678", release_date=date(2026, 11, 2),
+            customer_id="custody-owner-a", release_date=date(2026, 11, 2),
             oil_lot_id="customer-oil-lot-b", source_tank_id="tank-01",
             quantity_kg=Decimal("1.000"), customer_acknowledgement_reference="ACK-001",
             reason="Attempt cross-customer pickup", idempotency_key="cross-customer-pickup-001",
