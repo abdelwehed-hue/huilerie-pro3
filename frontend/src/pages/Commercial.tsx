@@ -203,6 +203,7 @@ export default function Commercial() {
   const [returnReason, setReturnReason] = useState("");
   const [returnAcknowledgement, setReturnAcknowledgement] = useState("");
   const [returnIdempotencyKey, setReturnIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [returnAcceptanceKeys, setReturnAcceptanceKeys] = useState<Record<string, string>>({});
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -496,14 +497,15 @@ export default function Commercial() {
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const acceptSaleReturn = useMutation({
-    mutationFn: ({ item, reason }: { item: AnyRecord; reason: string }) =>
+    mutationFn: ({ item, reason, idempotencyKey }: { item: AnyRecord; reason: string; idempotencyKey: string }) =>
       apiPost<AnyRecord>(`/commercial/v1/sale-returns/${encodeURIComponent(item.id)}/accept`, {
         expected_return_version: item.version ?? 1,
         reason,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: idempotencyKey,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_result, variables) => {
       toast.success(salesText.returnAccepted);
+      setReturnAcceptanceKeys((current) => { const next = { ...current }; delete next[variables.item.id]; return next; });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sale-returns"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "credit-notes"] }),
@@ -992,7 +994,7 @@ export default function Commercial() {
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.returnHistory}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.returnSale}</TableHead><TableHead>{salesText.returnQty}</TableHead><TableHead>{salesText.quarantineTank}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead><TableHead>{salesText.creditNote}</TableHead><TableHead>{salesText.creditedAmount}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
-            <TableBody>{(saleReturns.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{value((sales.data ?? []).find((sale) => sale.id === item.sale_id)?.document_number, item.sale_id)}</TableCell><TableCell>{number(item.quantity_kg)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.quarantine_tank_id)?.code, item.quarantine_tank_id)}</TableCell><TableCell>{value(item.quality_status)}</TableCell><TableCell>{value(item.commercial_acceptance_status)}</TableCell><TableCell>{value((creditNotes.data ?? []).find((note) => note.id === item.credit_note_id)?.document_number)}</TableCell><TableCell>{number((creditNotes.data ?? []).find((note) => note.id === item.credit_note_id)?.amount_dt)} DT</TableCell><TableCell>{isAdmin && item.status === "RECEIVED" && item.commercial_acceptance_status === "PENDING" ? <Button size="sm" disabled={acceptSaleReturn.isPending} onClick={() => { const reason = window.prompt(salesText.returnAcceptancePrompt); if (reason && reason.trim().length >= 5) acceptSaleReturn.mutate({ item, reason: reason.trim() }); else if (reason !== null) toast.error(lang === "ar" ? "يجب أن يحتوي السبب على 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}>{salesText.acceptReturn}</Button> : "—"}</TableCell></TableRow>)}{(!saleReturns.isLoading && !(saleReturns.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}</TableBody>
+            <TableBody>{(saleReturns.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{value((sales.data ?? []).find((sale) => sale.id === item.sale_id)?.document_number, item.sale_id)}</TableCell><TableCell>{number(item.quantity_kg)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.quarantine_tank_id)?.code, item.quarantine_tank_id)}</TableCell><TableCell>{value(item.quality_status)}</TableCell><TableCell>{value(item.commercial_acceptance_status)}</TableCell><TableCell>{value((creditNotes.data ?? []).find((note) => note.id === item.credit_note_id)?.document_number)}</TableCell><TableCell>{number((creditNotes.data ?? []).find((note) => note.id === item.credit_note_id)?.amount_dt)} DT</TableCell><TableCell>{isAdmin && item.status === "RECEIVED" && item.commercial_acceptance_status === "PENDING" ? <Button size="sm" disabled={acceptSaleReturn.isPending} onClick={() => { const reason = window.prompt(salesText.returnAcceptancePrompt); if (reason && reason.trim().length >= 5) { const idempotencyKey = returnAcceptanceKeys[item.id] ?? crypto.randomUUID(); setReturnAcceptanceKeys((current) => ({ ...current, [item.id]: idempotencyKey })); acceptSaleReturn.mutate({ item, reason: reason.trim(), idempotencyKey }); } else if (reason !== null) toast.error(lang === "ar" ? "يجب أن يحتوي السبب على 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}>{salesText.acceptReturn}</Button> : "—"}</TableCell></TableRow>)}{(!saleReturns.isLoading && !(saleReturns.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.invoice}</CardTitle><CardDescription>{salesText.taxNotice}</CardDescription></CardHeader><CardContent>
