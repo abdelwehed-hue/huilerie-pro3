@@ -78,7 +78,7 @@ This package is an isolated commercial domain. It must not change existing olive
 
 - Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
 - Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
-- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, invoice, and payment workflows.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake, invoice, and payment workflows.
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
