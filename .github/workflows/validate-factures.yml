@@ -126,7 +126,7 @@ jobs:
           replica.close()
           PY
       - name: Verify transaction rollback on a real replica set
-        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py
+        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py commercial/tests/test_mongodb_production_integration.py
 
   frontend-build:
     runs-on: ubuntu-latest
