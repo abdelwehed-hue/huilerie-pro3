@@ -39,6 +39,28 @@ INVENTORY_INDEXES = {
                    unique=True, name="uq_commercial_production_idempotency"),
         IndexModel([("production_date", DESCENDING)], name="commercial_production_date"),
     ],
+    "commercial_buyers": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_buyer_id"),
+        IndexModel([("normalized_name", ASCENDING)], unique=True, name="uq_commercial_buyer_normalized_name"),
+        IndexModel([("active", ASCENDING), ("name", ASCENDING)], name="commercial_buyer_active_name"),
+    ],
+    "commercial_sales": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sale_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sale_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_commercial_sale_idempotency"),
+        IndexModel([("buyer_id", ASCENDING), ("sale_date", DESCENDING)], name="commercial_sale_buyer_date"),
+    ],
+    "commercial_sales_invoices": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_document"),
+        IndexModel([("sale_id", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_sale"),
+    ],
+    "commercial_sale_payments": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sale_payment_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sale_payment_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_commercial_sale_payment_idempotency"),
+        IndexModel([("invoice_id", ASCENDING), ("payment_date", DESCENDING)], name="commercial_sale_payment_invoice_date"),
+    ],
     "commercial_locations": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_location_id"),
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_location_code"),
@@ -124,7 +146,7 @@ async def provision_nine_tanks(db):
 
 
 async def provision_commercial_counters(db, season_code, document_types=(
-    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE"
+    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY"
 )):
     """Initialize zero-based counters for one validated four-digit season.
 
