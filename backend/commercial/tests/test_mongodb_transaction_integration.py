@@ -839,7 +839,9 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
                 "id": "invoice-summary-1", "buyer_id": "buyer-summary-1",
                 "total_amount_dt": Decimal128("100.000"),
                 "paid_amount_dt": Decimal128("25.000"),
-                "outstanding_amount_dt": Decimal128("75.000"),
+                "outstanding_amount_dt": Decimal128("65.000"),
+                "net_amount_dt": Decimal128("90.000"),
+                "credited_amount_dt": Decimal128("10.000"),
                 "payment_status": "PARTIALLY_PAID",
             },
             {
@@ -855,9 +857,12 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
         )
         assert result["buyer"]["active"] is False
         assert result["summary"]["invoice_count"] == 2
-        assert result["summary"]["gross_invoiced_amount_dt"] == "150.500"\n        assert result["summary"]["total_amount_dt"] == "140.500"\n        assert result["summary"]["credited_amount_dt"] == "10.000"
+        assert result["summary"]["gross_invoiced_amount_dt"] == "150.500"
+        assert result["summary"]["total_amount_dt"] == "140.500"
+        assert result["summary"]["credited_amount_dt"] == "10.000"
         assert result["summary"]["paid_amount_dt"] == "75.500"
-        assert result["summary"]["outstanding_amount_dt"] == "65.000"\n        assert result["summary"]["buyer_credit_balance_dt"] == "12.500"
+        assert result["summary"]["outstanding_amount_dt"] == "65.000"
+        assert result["summary"]["buyer_credit_balance_dt"] == "12.500"
         assert result["summary"]["unpaid_invoice_count"] == 0
         assert result["summary"]["partially_paid_invoice_count"] == 1
         assert result["summary"]["paid_invoice_count"] == 1
