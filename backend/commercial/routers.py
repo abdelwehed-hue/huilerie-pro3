@@ -22,7 +22,7 @@ from commercial.inventory_bootstrap import (
     provision_nine_tanks,
 )
 from commercial.permissions import require_commercial_permission
-from commercial.schemas.inventory import CommercialLocationDraft
+from commercial.schemas.inventory import CommercialLocationDraft, StockMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
@@ -34,6 +34,7 @@ from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment
+from commercial.services.stock_ledger import post_stock_movement
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
 from lib.season import active_season, season_of, season_prefix, valid_season
@@ -369,6 +370,30 @@ async def list_commercial_lots(
         query, {"_id": 0}
     ).sort("created_at", -1).to_list(limit)
     return _safe(docs)
+
+
+@router.post("/stock-movements", status_code=201)
+async def create_stock_movement(
+    draft: StockMovementDraft,
+    user: dict = Depends(current_user),
+):
+    """Post a validated stock movement atomically; never accept client balances."""
+    _authorize(user, "commercial.post_stock")
+    _, season_code = await _require_commercial_ready()
+    movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: post_stock_movement(
+                db, draft, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                movement_id=movement_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.get("/stock-balances")
