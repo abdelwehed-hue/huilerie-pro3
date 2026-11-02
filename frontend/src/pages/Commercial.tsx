@@ -122,7 +122,7 @@ export default function Commercial() {
     paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
     paymentSaved: "تم تسجيل الخلاص", cash: "نقداً", bank: "تحويل بنكي", cheque: "صك",
     outstanding: "الباقي", total: "المجموع", paidAmount: "المبلغ المدفوع",
-    saleCancelled: "تم إلغاء مسودة البيع", returnIntake: "تسجيل مرتجع زيت", returnSale: "عملية البيع الأصلية", returnQty: "الكمية المرتجعة (كغ)", quarantineTank: "خزان الحجر", returnReason: "سبب الإرجاع", returnSaved: "تم استلام المرتجع في خزان الحجر", returnHistory: "سجل المرتجعات", noQuarantineTank: "يجب تعيين خزان فارغ للحجر أولاً من تبويب الخزانات.", remainingReturnable: "الكمية المتبقية للإرجاع", ackRef: "مرجع إقرار الحريف", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
+    saleCancelled: "تم إلغاء مسودة البيع", returnIntake: "تسجيل مرتجع زيت", returnSale: "عملية البيع الأصلية", returnQty: "الكمية المرتجعة (كغ)", quarantineTank: "خزان الحجر", returnReason: "سبب الإرجاع", returnSaved: "تم استلام المرتجع في خزان الحجر", returnHistory: "سجل المرتجعات", acceptReturn: "قبول المرتجع وإصدار إشعار دائن", returnAccepted: "تم قبول المرتجع وإصدار الإشعار الدائن", returnAcceptancePrompt: "اذكر سبب القبول التجاري (5 أحرف على الأقل):", creditNote: "الإشعار الدائن", creditedAmount: "المبلغ الدائن", noQuarantineTank: "يجب تعيين خزان فارغ للحجر أولاً من تبويب الخزانات.", remainingReturnable: "الكمية المتبقية للإرجاع", ackRef: "مرجع إقرار الحريف", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
     noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
   } : {
     buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
@@ -142,7 +142,7 @@ export default function Commercial() {
     paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
     paymentSaved: "Paiement enregistré", cash: "Espèces", bank: "Virement", cheque: "Chèque",
     outstanding: "Solde dû", total: "Total", paidAmount: "Payé",
-    saleCancelled: "Brouillon de vente annulé", returnIntake: "Réception d’un retour d’huile", returnSale: "Vente d’origine", returnQty: "Quantité retournée (kg)", quarantineTank: "Cuve de quarantaine", returnReason: "Motif du retour", returnSaved: "Retour reçu en quarantaine", returnHistory: "Historique des retours", noQuarantineTank: "Désignez d’abord une cuve vide comme quarantaine dans l’onglet Cuves.", remainingReturnable: "Quantité encore retournable", ackRef: "Référence d’accusé de l’acheteur", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
+    saleCancelled: "Brouillon de vente annulé", returnIntake: "Réception d’un retour d’huile", returnSale: "Vente d’origine", returnQty: "Quantité retournée (kg)", quarantineTank: "Cuve de quarantaine", returnReason: "Motif du retour", returnSaved: "Retour reçu en quarantaine", returnHistory: "Historique des retours", acceptReturn: "Accepter le retour et émettre l’avoir", returnAccepted: "Retour accepté et avoir émis", returnAcceptancePrompt: "Motif de l’acceptation commerciale (5 caractères minimum) :", creditNote: "Avoir", creditedAmount: "Montant crédité", noQuarantineTank: "Désignez d’abord une cuve vide comme quarantaine dans l’onglet Cuves.", remainingReturnable: "Quantité encore retournable", ackRef: "Référence d’accusé de l’acheteur", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
     noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
   };
   const me = useMe();
@@ -230,6 +230,7 @@ export default function Commercial() {
   const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales?limit=500"), enabled: ready && tab === "sales" });
   const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices?limit=500"), enabled: ready && tab === "sales" });
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
+  const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/credit-notes?limit=500"), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
@@ -485,6 +486,25 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const acceptSaleReturn = useMutation({
+    mutationFn: ({ item, reason }: { item: AnyRecord; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/sale-returns/${encodeURIComponent(item.id)}/accept`, {
+        expected_return_version: item.version ?? 1,
+        reason,
+        idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: async () => {
+      toast.success(salesText.returnAccepted);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sale-returns"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "credit-notes"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -955,13 +975,13 @@ export default function Commercial() {
           </Table>
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.returnHistory}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.returnSale}</TableHead><TableHead>{salesText.returnQty}</TableHead><TableHead>{salesText.quarantineTank}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader>
-            <TableBody>{(saleReturns.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{value((sales.data ?? []).find((sale) => sale.id === item.sale_id)?.document_number, item.sale_id)}</TableCell><TableCell>{number(item.quantity_kg)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.quarantine_tank_id)?.code, item.quarantine_tank_id)}</TableCell><TableCell>{value(item.quality_status)}</TableCell><TableCell>{value(item.commercial_acceptance_status)}</TableCell></TableRow>)}{(!saleReturns.isLoading && !(saleReturns.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.returnSale}</TableHead><TableHead>{salesText.returnQty}</TableHead><TableHead>{salesText.quarantineTank}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead><TableHead>{salesText.creditNote}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+            <TableBody>{(saleReturns.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{value((sales.data ?? []).find((sale) => sale.id === item.sale_id)?.document_number, item.sale_id)}</TableCell><TableCell>{number(item.quantity_kg)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.quarantine_tank_id)?.code, item.quarantine_tank_id)}</TableCell><TableCell>{value(item.quality_status)}</TableCell><TableCell>{value(item.commercial_acceptance_status)}</TableCell><TableCell>{value((creditNotes.data ?? []).find((note) => note.id === item.credit_note_id)?.document_number)}</TableCell><TableCell>{isAdmin && item.status === "RECEIVED" && item.commercial_acceptance_status === "PENDING" ? <Button size="sm" disabled={acceptSaleReturn.isPending} onClick={() => { const reason = window.prompt(salesText.returnAcceptancePrompt); if (reason && reason.trim().length >= 5) acceptSaleReturn.mutate({ item, reason: reason.trim() }); else if (reason !== null) toast.error(lang === "ar" ? "يجب أن يحتوي السبب على 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}>{salesText.acceptReturn}</Button> : "—"}</TableCell></TableRow>)}{(!saleReturns.isLoading && !(saleReturns.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{salesText.invoice}</CardTitle><CardDescription>{salesText.taxNotice}</CardDescription></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{salesText.invoiceNo}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{salesText.paidAmount}</TableHead><TableHead>{salesText.outstanding}</TableHead><TableHead>{salesText.paymentStatus}</TableHead></TableRow></TableHeader>
-            <TableBody>{(salesInvoices.data ?? []).map((invoice) => <TableRow key={invoice.id} className={selectedInvoiceId === invoice.id ? "bg-muted/60" : ""} onClick={() => setSelectedInvoiceId(invoice.id)}><TableCell className="font-mono text-xs">{value(invoice.document_number)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === invoice.buyer_id)?.name, invoice.buyer_id)}</TableCell><TableCell>{number(invoice.total_amount_dt)} DT</TableCell><TableCell>{number(invoice.paid_amount_dt)} DT</TableCell><TableCell>{number(invoice.outstanding_amount_dt)} DT</TableCell><TableCell>{value(invoice.payment_status)}</TableCell></TableRow>)}{(!salesInvoices.isLoading && !(salesInvoices.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+            <TableBody>{(salesInvoices.data ?? []).map((invoice) => <TableRow key={invoice.id} className={selectedInvoiceId === invoice.id ? "bg-muted/60" : ""} onClick={() => setSelectedInvoiceId(invoice.id)}><TableCell className="font-mono text-xs">{value(invoice.document_number)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === invoice.buyer_id)?.name, invoice.buyer_id)}</TableCell><TableCell>{number(invoice.net_amount_dt ?? invoice.total_amount_dt)} DT</TableCell><TableCell>{number(invoice.paid_amount_dt)} DT</TableCell><TableCell>{number(invoice.outstanding_amount_dt)} DT</TableCell><TableCell>{value(invoice.payment_status)}</TableCell></TableRow>)}{(!salesInvoices.isLoading && !(salesInvoices.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
           </Table>
           {selectedInvoiceId && <div className="mt-4 space-y-3 rounded-xl border p-4">
             <h3 className="font-semibold">{salesText.recordPayment}</h3>
