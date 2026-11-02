@@ -209,6 +209,21 @@ export default function Commercial() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
+  const [custodyCustomerPhone, setCustodyCustomerPhone] = useState("");
+  const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
+  const [custodyVarietyId, setCustodyVarietyId] = useState("");
+  const [custodyReceiptQuantity, setCustodyReceiptQuantity] = useState("");
+  const [custodyReceivingLocationId, setCustodyReceivingLocationId] = useState("");
+  const [custodyReceiptAck, setCustodyReceiptAck] = useState("");
+  const [custodySourceReference, setCustodySourceReference] = useState("");
+  const [custodyReceiptKey, setCustodyReceiptKey] = useState(() => crypto.randomUUID());
+  const [pickupCustomerId, setPickupCustomerId] = useState("");
+  const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10));
+  const [pickupBalanceKey, setPickupBalanceKey] = useState("");
+  const [pickupQuantity, setPickupQuantity] = useState("");
+  const [pickupAck, setPickupAck] = useState("");
+  const [pickupReason, setPickupReason] = useState("");
+  const [pickupKey, setPickupKey] = useState(() => crypto.randomUUID());
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -236,6 +251,10 @@ export default function Commercial() {
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/credit-notes?limit=500"), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
+  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && tab === "custody" });
+  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/receipts?limit=500"), enabled: ready && tab === "custody" });
+  const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/releases?limit=500"), enabled: ready && tab === "custody" });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
       name: supplierName.trim(), phone: supplierPhone.trim() || null,
@@ -554,6 +573,61 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+
+  const receiveCustomerCustody = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", {
+      customer_phone: custodyCustomerPhone,
+      receipt_date: custodyReceiptDate,
+      variety_id: custodyVarietyId,
+      quantity_kg: custodyReceiptQuantity,
+      receiving_location_id: custodyReceivingLocationId,
+      customer_acknowledgement_reference: custodyReceiptAck.trim(),
+      source_reference: custodySourceReference.trim() || null,
+      idempotency_key: custodyReceiptKey,
+    }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم استلام زيتون الحريف وتسجيله كأمانة" : "Olives du client reçues en garde");
+      setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference("");
+      setCustodyReceiptKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-receipts"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-owners"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const releaseCustomerCustody = useMutation({
+    mutationFn: () => {
+      const owner = (custodyOwners.data ?? []).find((item) => item.id === pickupCustomerId);
+      const balance = (balances.data ?? []).find((item) => item.lot_id + "::" + item.location_id === pickupBalanceKey);
+      if (!owner || !balance) throw new Error("Customer or stock balance is no longer available");
+      return apiPost<AnyRecord>("/commercial/v1/customer-custody/releases", {
+        customer_phone: owner.client_phone,
+        release_date: pickupDate,
+        oil_lot_id: balance.lot_id,
+        source_tank_id: balance.location_id,
+        quantity_kg: pickupQuantity,
+        customer_acknowledgement_reference: pickupAck.trim(),
+        reason: pickupReason.trim(),
+        idempotency_key: pickupKey,
+      });
+    },
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تسليم زيت الحريف وتخفيض المخزون" : "Huile du client restituée et stock débité");
+      setPickupQuantity(""); setPickupAck(""); setPickupReason(""); setPickupBalanceKey("");
+      setPickupKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-releases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const saveWorkerPermissions = useMutation({
     mutationFn: () => apiPost<AnyRecord>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
       permissions: ["commercial.read", ...assignedPermissions],
@@ -610,6 +684,15 @@ export default function Commercial() {
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
   );
+
+  const selectedPickupOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId);
+  const availableCustomerOilBalances = (balances.data ?? []).filter((balance) =>
+    balance.product_kind === "OIL" && Number(balance.quantity_kg) > 0
+    && balance.owner?.kind === "CUSTOMER" && balance.owner?.customer_id === pickupCustomerId
+    && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && tank.active && (tank.role ?? "NORMAL") === "NORMAL")
+    && (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.status === "OPEN" && lot.quality_status === "RELEASED")
+  );
+  const selectedPickupBalance = availableCustomerOilBalances.find((balance) => balance.lot_id + "::" + balance.location_id === pickupBalanceKey);
   const productionInputTotal = productionInputs.reduce((sum, line) => sum + (Number(line.quantity_kg) || 0), 0);
   const productionRate = productionInputTotal > 0 && Number(productionOutputKg) >= 0
     ? (Number(productionOutputKg) / productionInputTotal) * 100 : 0;
