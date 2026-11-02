@@ -338,3 +338,133 @@ async def test_concurrent_stock_consumption_cannot_overspend_same_balance():
     finally:
         await client.drop_database(db_name)
         client.close()
+
+@pytest.mark.asyncio
+async def test_internal_transfer_document_and_ledger_post_atomically():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.internal_movements import InternalMovementDraft
+    from commercial.services.internal_movements import create_internal_movement
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "internal_transfer_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "MVT", "last_sequence": 0,
+        })
+        await db.commercial_locations.insert_many([
+            {"id": "storage-a", "active": True, "kind": "OLIVE_STORAGE"},
+            {"id": "storage-b", "active": True, "kind": "STAGING"},
+        ])
+        await db.commercial_lots.insert_one({
+            "id": "olive-lot-transfer", "product_kind": "OLIVE", "status": "OPEN",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "olive-lot-transfer",
+            "owner": {"kind": "MILL"}, "location_id": "storage-a",
+            "quantity_kg": Decimal128("100.000"), "created_at": now,
+        })
+        draft = InternalMovementDraft(
+            movement_kind="TRANSFER", product_kind="OLIVE",
+            lot_id="olive-lot-transfer", quantity_kg=Decimal("25.000"),
+            source_location_id="storage-a", destination_location_id="storage-b",
+            source_owner={"kind": "MILL"}, destination_owner={"kind": "MILL"},
+            idempotency_key="internal-transfer-test-key-001",
+            reason="Move olives to staging",
+        )
+        async with await client.start_session() as session:
+            result = await session.with_transaction(
+                lambda active: create_internal_movement(
+                    db, draft, season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    movement_document_id="internal-doc-1",
+                    stock_movement_id="stock-movement-1",
+                    audit_event_id="internal-audit-1",
+                    created_at=now, session=active,
+                )
+            )
+        assert result["status"] == "APPROVED"
+        assert result["stock_movement_id"] == "stock-movement-1"
+        source = await db.commercial_stock_balances.find_one({"location_id": "storage-a"})
+        destination = await db.commercial_stock_balances.find_one({"location_id": "storage-b"})
+        assert source["quantity_kg"].to_decimal() == Decimal("75.000")
+        assert destination["quantity_kg"].to_decimal() == Decimal("25.000")
+        movement = await db.commercial_stock_movements.find_one({"id": "stock-movement-1"})
+        assert movement["source_document_type"] == "INT"
+        assert movement["source_document_id"] == "internal-doc-1"
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_internal_movement_audit_failure_rolls_back_document_and_balances():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from pymongo.errors import DuplicateKeyError
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.internal_movements import InternalMovementDraft
+    from commercial.services.internal_movements import create_internal_movement
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "internal_transfer_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_one({
+            "season_code": "2627", "document_type": "MVT", "last_sequence": 0,
+        })
+        await db.commercial_locations.insert_many([
+            {"id": "storage-a", "active": True, "kind": "OLIVE_STORAGE"},
+            {"id": "storage-b", "active": True, "kind": "STAGING"},
+        ])
+        await db.commercial_lots.insert_one({
+            "id": "olive-lot-transfer", "product_kind": "OLIVE", "status": "OPEN",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "olive-lot-transfer",
+            "owner": {"kind": "MILL"}, "location_id": "storage-a",
+            "quantity_kg": Decimal128("100.000"), "created_at": now,
+        })
+        await db.commercial_audit_events.insert_one({
+            "id": "internal-audit-conflict", "entity_type": "test",
+            "entity_id": "existing", "action": "EXISTING",
+            "actor_user_id": "integration-admin", "created_at": now, "details": {},
+        })
+        draft = InternalMovementDraft(
+            movement_kind="TRANSFER", product_kind="OLIVE",
+            lot_id="olive-lot-transfer", quantity_kg=Decimal("25.000"),
+            source_location_id="storage-a", destination_location_id="storage-b",
+            source_owner={"kind": "MILL"}, destination_owner={"kind": "MILL"},
+            idempotency_key="internal-transfer-rollback-key-001",
+            reason="Move olives to staging",
+        )
+        with pytest.raises(DuplicateKeyError):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: create_internal_movement(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        movement_document_id="internal-doc-rollback",
+                        stock_movement_id="stock-movement-rollback",
+                        audit_event_id="internal-audit-conflict",
+                        created_at=now, session=active,
+                    )
+                )
+        assert await db.commercial_internal_movements.count_documents({}) == 0
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        source = await db.commercial_stock_balances.find_one({"location_id": "storage-a"})
+        assert source["quantity_kg"].to_decimal() == Decimal("100.000")
+        assert await db.commercial_stock_balances.count_documents({"location_id": "storage-b"}) == 0
+        counter = await db.commercial_counters.find_one({"document_type": "MVT"})
+        assert counter["last_sequence"] == 0
+    finally:
+        await client.drop_database(db_name)
+        client.close()
