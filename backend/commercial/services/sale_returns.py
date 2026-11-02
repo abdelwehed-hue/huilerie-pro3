@@ -115,7 +115,7 @@ async def receive_wholesale_sale_return(
         "quantity_kg": Decimal128(draft.quantity_kg),
         "reason": draft.reason,
         "buyer_acknowledgement_reference": draft.buyer_acknowledgement_reference,
-        "status": "RECEIVED", "commercial_acceptance_status": "PENDING",
+        "status": "RECEIVED", "version": 1, "commercial_acceptance_status": "PENDING",
         "quality_status": "PENDING",
         "idempotency_scope": scope, "idempotency_key": draft.idempotency_key,
         "request_fingerprint": fingerprint,
