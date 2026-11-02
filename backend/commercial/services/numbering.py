@@ -16,6 +16,12 @@ _DOCUMENT_TYPE_RE = re.compile(r"^[A-Z]{2,8}$")
 def validate_numbering_components(season_code: str, document_type: str) -> None:
     if not isinstance(season_code, str) or not _SEASON_RE.fullmatch(season_code):
         raise ValueError("season_code must contain exactly four digits")
+    # A season is two consecutive two-digit years (e.g. 2627), not a
+    # calendar year such as 2026. Handle the century rollover (e.g. 9900).
+    start_year = int(season_code[:2])
+    end_year = int(season_code[2:])
+    if end_year != (start_year + 1) % 100:
+        raise ValueError("season_code must represent two consecutive years (YYZZ)")
     if not isinstance(document_type, str) or not _DOCUMENT_TYPE_RE.fullmatch(document_type):
         raise ValueError("document_type must contain 2 to 8 uppercase letters")
 
