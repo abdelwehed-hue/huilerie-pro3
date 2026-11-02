@@ -15,6 +15,7 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 from lib.db import client, db, ensure_indexes
 from lib.auth import COOKIE, JWT_SECRET, seed_defaults
+from lib.security_config import auth_is_disabled, cors_origins, is_production, validate_runtime_security
 from lib.reminders import reminder_loop
 from lib.season import migrate_season_ids
 from commercial import routers as commercial_router
@@ -23,6 +24,7 @@ from routers import auth as auth_router, loads as loads_router, lab as lab_route
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_runtime_security()
     app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_defaults()
     await migrate_season_ids()
@@ -56,12 +58,15 @@ async def broadcast_data_change(resource: str) -> None:
 @app.websocket("/api/realtime")
 async def realtime_updates(websocket: WebSocket):
     origin = websocket.headers.get("origin")
-    allowed_origins = [item.strip() for item in os.environ.get("CORS_ORIGINS", "*").split(",")]
-    if origin and "*" not in allowed_origins and origin not in allowed_origins:
+    allowed_origins = cors_origins()
+    if not origin or origin not in allowed_origins:
         await websocket.close(code=4403)
         return
 
-    auth_disabled = os.environ.get("AUTH_DISABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    auth_disabled = auth_is_disabled()
+    if auth_disabled and is_production():
+        await websocket.close(code=4403)
+        return
     if not auth_disabled:
         token = websocket.cookies.get(COOKIE)
         if not token:
@@ -124,7 +129,7 @@ api_router.include_router(commercial_router.router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
