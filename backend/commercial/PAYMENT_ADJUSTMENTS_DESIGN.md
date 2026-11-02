@@ -1,6 +1,6 @@
 # Commercial Payment Reversals and Buyer-Credit Settlement — Design
 
-Status: design only. No payment reversal, cash refund, or buyer-credit application endpoint is implemented.
+Status: **partially implemented**. Non-cash buyer-credit application (CAP) is implemented with source-credit allocation, invoice/buyer version checks, and transactional ledger updates. Payment reversal (REV) and cash refund are not implemented.
 
 ## Non-negotiable invariants
 
@@ -38,6 +38,24 @@ Example: invoice gross 500 DT; payments 500 DT; AVO credit note 100 DT; net rece
 
 This is why buyer credit entries must be attributable to source invoice and source document, not only to buyer. The ledger should be append-only and its running balance reconcilable to all entries.
 
+## Implemented buyer-credit application — CAP
+
+The CAP endpoint is POST /api/commercial/v1/sales-invoices/{invoice_id}/credit-applications. It requires an administrator, a current invoice version, a positive amount, a reason, and an idempotency key.
+
+The service:
+- verifies invoice receivable fields reconcile before writing;
+- verifies buyer credit balance equals the remaining source credit-note ledger balances;
+- allocates the requested amount FIFO across issued AVO credit notes;
+- verifies each source credit note belongs to the same buyer;
+- creates a CAP document and one append-only CREDIT_APPLICATION ledger adjustment per source credit note;
+- decreases buyer credit balance and target invoice outstanding atomically;
+- increments invoice applied_credit_amount_dt without changing cash paid amount or PAY records;
+- records source allocations, reason, actor, and audit event;
+- rejects amount above available buyer credit or invoice outstanding;
+- uses a separate season-scoped CAP counter.
+
+The invoice payment_status now represents settlement status (cash paid plus applied credit), while paid_amount_dt remains cash only. Buyer account summaries expose cash paid, applied credit, total settled, outstanding, and buyer credit balance separately.
+
 ## Buyer-credit application
 
 Applying buyer credit to a new invoice is not a cash payment and must not create a PAY document. It should create a separate credit-application document (proposed type CAP) linked to:
@@ -57,16 +75,17 @@ A cash refund is a separate bank/cash disbursement workflow, not an invoice paym
 ## Required indexes and tests
 
 - Unique season/document number and idempotency keys for REV and CAP documents.
+- CAP source-credit allocation indexes and append-only ledger adjustment uniqueness.
 - Source-link indexes from REV to PAY and CAP to source credit/target invoice.
 - Multiple partial reversals cannot exceed a payment; concurrent reversals cannot over-reverse.
 - Reversal of a payment after an AVO credit note reduces invoice-attributed buyer credit correctly.
 - Reversal fails if required buyer credit has already been consumed/refunded.
 - Reversal does not mutate the original PAY document or create a cash refund.
-- CAP is restricted to the same buyer and cannot exceed credit balance or invoice outstanding.
+- CAP is restricted to the same buyer and cannot exceed credit balance or invoice outstanding; FIFO source allocation, idempotency, ledger mismatch, and transaction rollback are integration-tested.
 - CAP leaves cash-paid amount and PAY records unchanged.
 - Cash refund requires separate authorization and reconciliation; duplicate requests are idempotent.
 - All failure paths roll back document, invoice, buyer-credit ledger, and audit writes together.
 
 ## Release gate
 
-Keep REV, CAP, and cash-refund actions disabled until their service, ledger indexes, concurrent transaction tests, bilingual UI, bank/cash reconciliation, and approval controls are complete. This design does not authorize production financial postings.
+Keep REV and cash-refund actions disabled until their service, ledger indexes, concurrent transaction tests, bilingual UI, bank/cash reconciliation, and approval controls are complete. CAP is implemented but must still pass the full release and browser-acceptance gates before production deployment. This design does not authorize production financial postings.
