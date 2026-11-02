@@ -64,6 +64,18 @@ INVENTORY_INDEXES = {
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_document"),
         IndexModel([("sale_id", ASCENDING)], unique=True, name="uq_commercial_sales_invoice_sale"),
     ],
+    "commercial_credit_notes": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_credit_note_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
+                   unique=True, name="uq_commercial_credit_note_document"),
+        IndexModel([("return_id", ASCENDING)], unique=True, name="uq_commercial_credit_note_return"),
+    ],
+    "commercial_buyer_credit_ledger": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_buyer_credit_entry_id"),
+        IndexModel([("credit_note_id", ASCENDING)], unique=True, name="uq_buyer_credit_entry_credit_note"),
+        IndexModel([("buyer_id", ASCENDING), ("created_at", DESCENDING)],
+                   name="buyer_credit_ledger_buyer_created"),
+    ],
     "commercial_sale_payments": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_sale_payment_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_commercial_sale_payment_document"),
@@ -155,7 +167,7 @@ async def provision_nine_tanks(db):
 
 
 async def provision_commercial_counters(db, season_code, document_types=(
-    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY", "RET"
+    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY", "RET", "AVO"
 )):
     """Initialize zero-based counters for one validated four-digit season.
 
