@@ -1278,3 +1278,85 @@ async def test_return_acceptance_issues_credit_note_and_tracks_buyer_credit_with
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_sale_returns_cannot_over_return_same_dispatch():
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.returns import SaleReturnDraft
+    from commercial.services.sale_returns import receive_wholesale_sale_return
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "sale_return_concurrency_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    admin = {"active": True, "role": "admin"}
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "RET", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "LOT", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+        ])
+        await db.commercial_tanks.insert_one({
+            "id": "tank-concurrent-quarantine", "active": True,
+            "role": "QUARANTINE", "version": 1,
+        })
+        await db.commercial_lots.insert_one({
+            "id": "original-concurrent-lot", "product_kind": "OIL",
+            "owner": {"kind": "MILL"}, "status": "OPEN", "quality_status": "RELEASED",
+        })
+        await db.commercial_sales.insert_one({
+            "id": "sale-concurrent-return", "season_code": "2627",
+            "document_number": "2627VTE0099", "status": "APPROVED", "version": 2,
+            "invoice_id": "invoice-concurrent-return", "buyer_id": "buyer-concurrent-return",
+            "oil_lot_id": "original-concurrent-lot", "quantity_kg": Decimal128("100.000"),
+            "unit_price_dt": Decimal128("5.000"), "total_amount_dt": Decimal128("500.000"),
+            "returned_quantity_kg": Decimal128("0.000"),
+            "idempotency_scope": "concurrency:sale", "idempotency_key": "concurrent-sale-key",
+        })
+        await db.commercial_sales_invoices.insert_one({
+            "id": "invoice-concurrent-return", "sale_id": "sale-concurrent-return",
+            "buyer_id": "buyer-concurrent-return", "season_code": "2627",
+            "document_number": "2627FAC0099", "total_amount_dt": Decimal128("500.000"),
+            "paid_amount_dt": Decimal128("0.000"), "outstanding_amount_dt": Decimal128("500.000"),
+            "payment_status": "UNPAID", "version": 1,
+        })
+
+        async def receive(index: int):
+            draft = SaleReturnDraft(
+                expected_sale_version=2, quantity_kg=Decimal("60.000"),
+                quarantine_tank_id="tank-concurrent-quarantine",
+                reason=f"Concurrent return attempt {index}",
+                idempotency_key=f"concurrent-return-key-{index:02d}",
+            )
+            async with await client.start_session() as session:
+                return await session.with_transaction(
+                    lambda active: receive_wholesale_sale_return(
+                        db, "sale-concurrent-return", draft, season_code="2627",
+                        actor_user=admin, actor_user_id="concurrent-admin",
+                        return_id=f"return-concurrent-{index}",
+                        returned_lot_id=f"lot-concurrent-{index}",
+                        stock_movement_id=f"movement-concurrent-{index}",
+                        audit_event_id=f"audit-concurrent-{index}",
+                        created_at=now, session=active,
+                    )
+                )
+
+        results = await asyncio.gather(receive(1), receive(2), return_exceptions=True)
+        successes = [result for result in results if isinstance(result, dict)]
+        failures = [result for result in results if isinstance(result, Exception)]
+        assert len(successes) == 1
+        assert len(failures) == 1
+        sale = await db.commercial_sales.find_one({"id": "sale-concurrent-return"})
+        assert sale["returned_quantity_kg"].to_decimal() == Decimal("60.000")
+        assert sale["version"] == 3
+        assert await db.commercial_sale_returns.count_documents({}) == 1
+        assert await db.commercial_stock_movements.count_documents({
+            "source_document_type": "RET",
+        }) == 1
+    finally:
+        await client.drop_database(db_name)
+        client.close()
