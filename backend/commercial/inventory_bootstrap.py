@@ -2,6 +2,11 @@
 from pymongo import ASCENDING, DESCENDING, IndexModel
 from commercial.services.numbering import validate_numbering_components
 
+COMMERCIAL_DOCUMENT_TYPES = (
+    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO"
+)
+
+
 TANKS = tuple(
     {"id": f"tank-{n:02d}", "code": f"T{n:02d}", "name": f"Cuve {n:02d}",
      "active": True, "role": "NORMAL", "version": 1, "capacity_kg": None}
@@ -166,9 +171,7 @@ async def provision_nine_tanks(db):
     return result
 
 
-async def provision_commercial_counters(db, season_code, document_types=(
-    "LOT", "MVT", "FAC", "ACH", "PROD", "VTE", "PAY", "RET", "AVO", "AVO"
-)):
+async def provision_commercial_counters(db, season_code, document_types=COMMERCIAL_DOCUMENT_TYPES):
     """Initialize zero-based counters for one validated four-digit season.
 
     This is an explicit bootstrap operation, not part of document issuance.
