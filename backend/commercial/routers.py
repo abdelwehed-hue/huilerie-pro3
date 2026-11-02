@@ -37,6 +37,7 @@ from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
 )
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
+from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
@@ -45,6 +46,7 @@ from commercial.services.quality import record_oil_quality_assessment, release_o
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
+from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
@@ -593,6 +595,48 @@ async def cancel_wholesale_sale_route(
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
+
+
+@router.post("/sales/{sale_id}/returns", status_code=201)
+async def receive_sale_return(
+    sale_id: str,
+    draft: SaleReturnDraft,
+    user: dict = Depends(require_admin),
+):
+    """Receive an approved sale return into quarantine; no credit note is issued here."""
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    return_id, returned_lot_id, movement_id, audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: receive_wholesale_sale_return(
+                db, sale_id, draft, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                return_id=return_id, returned_lot_id=returned_lot_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sale-returns")
+async def list_sale_returns(
+    sale_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"sale_id": sale_id} if sale_id else {}
+    docs = await db.commercial_sale_returns.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
 
 
 @router.get("/sales")
