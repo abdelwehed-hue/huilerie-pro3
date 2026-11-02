@@ -1,4 +1,7 @@
 name: Validate Factures branch
+concurrency:
+  group: commercial-foundation-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
