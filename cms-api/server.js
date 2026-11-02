@@ -97,6 +97,20 @@ app.post('/api/admin/login', async (req, res) => {
   res.json({ token: tokenFor(admin), email: admin.email });
 });
 app.get('/api/admin/me', auth, async (req, res) => res.json({ email: req.admin.email, role: 'admin' }));
+app.get('/api/admin/dashboard', auth, async (_req, res) => {
+  const [newsPublished, newsDraft, productsPublished, productsDraft, mediaCount] = await Promise.all([
+    news.countDocuments({ status: 'published' }),
+    news.countDocuments({ status: 'draft' }),
+    products.countDocuments({ status: 'published' }),
+    products.countDocuments({ status: 'draft' }),
+    db.collection('site_media.files').countDocuments({})
+  ]);
+  res.json({
+    news: { published: newsPublished, draft: newsDraft, total: newsPublished + newsDraft },
+    products: { published: productsPublished, draft: productsDraft, total: productsPublished + productsDraft },
+    media: { total: mediaCount }
+  });
+});
 app.put('/api/admin/password', auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
