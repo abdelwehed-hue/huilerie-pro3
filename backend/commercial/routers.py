@@ -695,30 +695,12 @@ async def create_stock_movement(
     draft: StockMovementDraft,
     user: dict = Depends(current_user),
 ):
-    """Post a validated stock movement atomically; never accept client balances."""
+    """Reject direct ledger writes; movements must originate in their domain workflow."""
     _authorize(user, "commercial.post_stock")
-    if draft.source_document_type == "INT":
-        raise HTTPException(422, "internal_movement_sources_must_use_the_internal_movement_workflow")
-    if draft.movement_kind == "RECEIPT":
-        raise HTTPException(
-            422,
-            "stock_receipts_must_be_created_by_approved_purchase_or_production_workflows",
-        )
-    _, season_code = await _require_commercial_ready()
-    movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
-    try:
-        result = await run_transaction(
-            lambda session: post_stock_movement(
-                db, draft, season_code=season_code,
-                actor_user=user, actor_user_id=user["id"],
-                movement_id=movement_id, audit_event_id=audit_id,
-                created_at=now, session=session,
-            )
-        )
-        return _safe(result)
-    except Exception as exc:
-        _raise_domain_error(exc)
+    raise HTTPException(
+        422,
+        "stock_movements_must_be_posted_by_the_owning_purchase_production_internal_or_sales_workflow",
+    )
 
 
 @router.post("/internal-movements", status_code=201)
