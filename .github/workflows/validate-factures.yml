@@ -62,6 +62,8 @@ jobs:
         working-directory: backend
     env:
       MONGO_URL: mongodb://127.0.0.1:27017/?replicaSet=rs0
+      DB_NAME: commercial_integration_test
+      JWT_SECRET: integration-test-only-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
