@@ -175,6 +175,9 @@ INVENTORY_INDEXES = {
     ],
     "commercial_internal_movements": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_internal_movement_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
+                   unique=True, partialFilterExpression={"document_number": {"$type": "string"}},
+                   name="uq_internal_movement_document"),
         IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)],
                    unique=True, name="uq_internal_movement_idempotency"),
         IndexModel([("season_code", ASCENDING), ("created_at", DESCENDING)],
