@@ -38,6 +38,7 @@ from commercial.schemas.buyers import (
 )
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
 from commercial.schemas.returns import SaleReturnDraft
+from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
@@ -47,6 +48,7 @@ from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
+from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
@@ -515,7 +517,8 @@ async def get_commercial_buyer_account_summary(
     """Return a read-only receivables summary across this buyer's commercial invoices."""
     _authorize(user, "commercial.read")
     buyer = await db.commercial_buyers.find_one(
-        {"id": buyer_id}, {"_id": 0, "id": 1, "name": 1, "active": 1}
+        {"id": buyer_id}, {"_id": 0, "id": 1, "name": 1, "active": 1,
+                           "credit_balance_dt": 1}
     )
     if not buyer:
         raise HTTPException(404, "commercial_buyer_not_found")
@@ -525,7 +528,9 @@ async def get_commercial_buyer_account_summary(
         {"$group": {
             "_id": None,
             "invoice_count": {"$sum": 1},
-            "total_amount_dt": {"$sum": "$total_amount_dt"},
+            "gross_invoiced_amount_dt": {"$sum": "$total_amount_dt"},
+            "total_amount_dt": {"$sum": {"$ifNull": ["$net_amount_dt", "$total_amount_dt"]}},
+            "credited_amount_dt": {"$sum": {"$ifNull": ["$credited_amount_dt", Decimal128("0.000")]}},
             "paid_amount_dt": {"$sum": "$paid_amount_dt"},
             "outstanding_amount_dt": {"$sum": "$outstanding_amount_dt"},
             "unpaid_invoice_count": {
@@ -537,16 +542,22 @@ async def get_commercial_buyer_account_summary(
             "paid_invoice_count": {
                 "$sum": {"$cond": [{"$eq": ["$payment_status", "PAID"]}, 1, 0]}
             },
+            "credited_invoice_count": {
+                "$sum": {"$cond": [{"$eq": ["$payment_status", "CREDITED"]}, 1, 0]}
+            },
         }},
     ]).to_list(length=1)
     summary = rows[0] if rows else {
         "invoice_count": 0,
+        "gross_invoiced_amount_dt": Decimal128("0.000"),
         "total_amount_dt": Decimal128("0.000"),
+        "credited_amount_dt": Decimal128("0.000"),
         "paid_amount_dt": Decimal128("0.000"),
         "outstanding_amount_dt": Decimal128("0.000"),
         "unpaid_invoice_count": 0,
         "partially_paid_invoice_count": 0,
         "paid_invoice_count": 0,
+        "credited_invoice_count": 0,
     }
     summary.pop("_id", None)
     return _safe({"buyer": buyer, "summary": summary})
@@ -634,6 +645,48 @@ async def list_sale_returns(
     _authorize(user, "commercial.read")
     query = {"sale_id": sale_id} if sale_id else {}
     docs = await db.commercial_sale_returns.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/sale-returns/{return_id}/accept", status_code=201)
+async def accept_sale_return(
+    return_id: str,
+    command: AcceptSaleReturnCommand,
+    user: dict = Depends(require_admin),
+):
+    """Accept a physical return commercially and issue an AVO credit note."""
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    credit_note_id, buyer_entry_id, audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: accept_sale_return_and_issue_credit_note(
+                db, return_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                credit_note_id=credit_note_id,
+                buyer_credit_entry_id=buyer_entry_id,
+                audit_event_id=audit_id, decided_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/credit-notes")
+async def list_commercial_credit_notes(
+    return_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"return_id": return_id} if return_id else {}
+    docs = await db.commercial_credit_notes.find(
         query, {"_id": 0}
     ).sort("created_at", -1).to_list(limit)
     return _safe(docs)
