@@ -120,7 +120,7 @@ export default function Clients() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <StatCard tone="rose" testId="client-history-visits" label={t("visits")} value={h.loads_count} icon={<Layers />} />
                 <StatCard tone="olive" testId="client-history-olive" label={t("olive_kg")} value={fmtNum(h.olive_kg)} unit={t("kg")} icon={<Sprout />} />
-                <StatCard tone="gold" testId="client-history-oil" label={t("oil_kg")} value={fmtNum(h.oil_kg)} unit={t("kg")} icon={<Droplet />} />
+                <StatCard tone="gold" testId="client-history-oil" label={t("oil_kg")} value={fmtNum(h.oil_kg)} unit={t("liter")} icon={<Droplet />} />
                 <StatCard tone="sky" label={t("avg_yield")} value={h.avg_yield != null ? fmtNum(h.avg_yield, 2) : "—"} unit="%" icon={<Percent />} />
                 {h.amount != null && <StatCard tone="violet" testId="client-history-amount" label={t("amount")} value={fmtMoney(h.amount)} unit={t("dt")} icon={<Wallet />} />}
               </div>

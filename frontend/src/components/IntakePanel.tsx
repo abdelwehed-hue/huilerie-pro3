@@ -268,7 +268,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                   <li key={l.id} className="flex items-center justify-between gap-2 py-1.5" data-testid={`intake-history-load-${l.code}`}>
                     <span className="font-mono text-xs text-stone-600" dir="ltr">{l.code}</span>
                     <span className="text-lime-800">{fmtNum(l.olive_kg)} kg</span>
-                    <span className="text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg)} kg` : "—"}</span>
+                    <span className="text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg)} Li` : "—"}</span>
                     <span className="text-sky-700" dir="ltr">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</span>
                     <StatusPill status={l.status} />
                   </li>

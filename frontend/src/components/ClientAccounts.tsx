@@ -59,7 +59,7 @@ export default function ClientAccounts() {
     search: "Rechercher par nom, téléphone ou code reçu", select: "Sélectionner le client",
     season: "Saison", all: "Toutes les saisons", custom: "Période personnalisée", from: "Du", to: "Au",
     print: "Imprimer / PDF", close: "Fermer", noClient: "Aucun client trouvé",
-    date: "Date", receipt: "N° reçu", olives: "Olives (kg)", varieties: "Variétés", oil: "Huile (kg)",
+    date: "Date", receipt: "N° reçu", olives: "Olives (kg)", varieties: "Variétés", oil: "Huile (Li)",
     invoice: "N° facture", total: "Total", paid: "Payé", remaining: "Reste",
     cancelled: "Annulée", noInvoice: "Sans facture", cancelledNote: "L’annulation seule ne crée pas d’écriture financière",
     opening: "Solde initial", debits: "Total débit", credits: "Total crédit",
