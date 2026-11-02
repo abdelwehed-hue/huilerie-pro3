@@ -2,6 +2,7 @@ import pytest
 
 from commercial.services.numbering import (
     format_document_number,
+    reserve_document_number,
     validate_numbering_components,
 )
 
@@ -34,3 +35,34 @@ def test_rejects_invalid_numbering_components(season, document_type):
 def test_rejects_invalid_sequences(sequence):
     with pytest.raises(ValueError):
         format_document_number("2627", "LOT", sequence)
+
+
+@pytest.mark.asyncio
+async def test_reserve_uses_atomic_increment_and_transaction_session():
+    class CounterCollection:
+        async def find_one_and_update(
+            self, query, update, *, projection, return_document, session
+        ):
+            assert query == {"season_code": "2627", "document_type": "LOT"}
+            assert update == {"$inc": {"last_sequence": 1}}
+            assert projection == {"last_sequence": 1}
+            assert session is marker_session
+            return {"last_sequence": 3}
+
+    marker_session = object()
+    result = await reserve_document_number(
+        CounterCollection(), "2627", "LOT", session=marker_session
+    )
+    assert result == "2627LOT0003"
+
+
+@pytest.mark.asyncio
+async def test_reserve_fails_closed_when_counter_is_missing():
+    class MissingCounterCollection:
+        async def find_one_and_update(self, *args, **kwargs):
+            return None
+
+    with pytest.raises(RuntimeError, match="Missing commercial counter"):
+        await reserve_document_number(
+            MissingCounterCollection(), "2627", "LOT", session=object()
+        )
