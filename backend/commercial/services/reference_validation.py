@@ -48,6 +48,16 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
                 )
                 if draft.movement_kind != "TRANSFER" or not lot_quality or lot_quality.get("quality_status") != "RELEASED":
                     raise ValueError("Quarantined oil can leave only by transfer after quality release")
+            # Serialize stock postings against tank-role changes. Both operations
+            # write this same tank document in their transaction, so MongoDB
+            # detects a concurrent role-change/stock-posting write conflict.
+            guard = await db["commercial_tanks"].update_one(
+                {"id": location_id, "active": True},
+                {"$inc": {"stock_guard_version": 1}},
+                session=session,
+            )
+            if guard.matched_count != 1:
+                raise ValueError("Commercial tank changed during stock validation")
 
     for owner in (draft.source_owner, draft.destination_owner):
         if owner is None or owner.kind != "CUSTOMER":
