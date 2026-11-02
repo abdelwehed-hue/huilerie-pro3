@@ -160,6 +160,9 @@ async def approve_wholesale_sale(
         "sale_date": sale["sale_date"], "quantity_kg": sale["quantity_kg"],
         "unit_price_dt": sale["unit_price_dt"], "total_amount_dt": sale["total_amount_dt"],
         "paid_amount_dt": Decimal128("0.000"),
+        "applied_credit_amount_dt": Decimal128("0.000"),
+        "credited_amount_dt": Decimal128("0.000"),
+        "net_amount_dt": sale["total_amount_dt"],
         "outstanding_amount_dt": sale["total_amount_dt"],
         "payment_status": "UNPAID", "version": 1,
         "tax_treatment_status": "NOT_CONFIGURED",
@@ -240,8 +243,11 @@ async def record_sale_payment(
     }
     await payments.insert_one(payment, session=session)
     paid = invoice["paid_amount_dt"].to_decimal() + amount
+    applied_credit = invoice.get("applied_credit_amount_dt", Decimal128("0.000")).to_decimal()
     remaining = outstanding - amount
-    status = "PAID" if remaining == Decimal("0.000") else "PARTIALLY_PAID"
+    status = "PAID" if remaining == Decimal("0.000") else (
+        "PARTIALLY_PAID" if paid + applied_credit > Decimal("0.000") else "UNPAID"
+    )
     update = await invoices.update_one(
         {"id": invoice_id, "version": draft.expected_invoice_version,
          "outstanding_amount_dt": invoice["outstanding_amount_dt"]},
