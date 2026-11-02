@@ -467,6 +467,7 @@ export default function Commercial() {
       setBuyerTaxId(""); setBuyerAddress(""); setEditingBuyerId("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -480,6 +481,7 @@ export default function Commercial() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
