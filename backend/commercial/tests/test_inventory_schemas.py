@@ -86,3 +86,19 @@ def test_quantity_must_be_positive_and_at_most_three_decimals(quantity):
 def test_unknown_fields_are_rejected():
     with pytest.raises(ValidationError):
         draft(available_balance=1000)
+
+
+def test_olive_location_schema_accepts_storage_and_staging_only():
+    from commercial.schemas.inventory import CommercialLocationDraft
+
+    storage = CommercialLocationDraft(code="OLV-A", name="Olive warehouse", kind="OLIVE_STORAGE")
+    staging = CommercialLocationDraft(code="STG-A", name="Reception staging", kind="STAGING")
+    assert storage.kind == "OLIVE_STORAGE"
+    assert staging.kind == "STAGING"
+
+
+def test_olive_location_schema_rejects_oil_tank_kind():
+    from commercial.schemas.inventory import CommercialLocationDraft
+
+    with pytest.raises(ValidationError):
+        CommercialLocationDraft(code="T01", name="Oil tank", kind="OIL_TANK")
