@@ -874,3 +874,78 @@ async def test_buyer_account_summary_aggregates_invoices_and_keeps_inactive_buye
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_buyer_profile_lifecycle_is_versioned_and_audited(monkeypatch):
+    from fastapi import HTTPException
+    from commercial import routers
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.buyers import CommercialBuyerUpdate, CommercialBuyerStatusCommand
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "buyer_lifecycle_" + uuid.uuid4().hex
+    test_db = client[db_name]
+    monkeypatch.setattr(routers, "db", test_db)
+    monkeypatch.setattr(routers, "_authorize", lambda user, permission: None)
+
+    async def ready():
+        return {"active_season": "2627"}, "2627"
+
+    monkeypatch.setattr(routers, "_require_commercial_ready", ready)
+    admin = {"id": "buyer-admin", "role": "admin", "active": True}
+    try:
+        await ensure_inventory_indexes(test_db)
+        await test_db.commercial_buyers.insert_one({
+            "id": "buyer-lifecycle-1", "name": "Buyer One",
+            "normalized_name": "buyer one", "active": True, "version": 1,
+        })
+        updated = await routers.update_commercial_buyer(
+            "buyer-lifecycle-1",
+            CommercialBuyerUpdate(
+                expected_version=1, name="Buyer One Updated",
+                contact_name="Purchasing", phone="12345",
+                email=None, tax_identifier=None, address=None,
+            ),
+            admin,
+        )
+        assert updated["name"] == "Buyer One Updated"
+        assert updated["version"] == 2
+
+        with pytest.raises(HTTPException) as stale:
+            await routers.update_commercial_buyer(
+                "buyer-lifecycle-1",
+                CommercialBuyerUpdate(
+                    expected_version=1, name="Stale Name",
+                    contact_name=None, phone=None, email=None,
+                    tax_identifier=None, address=None,
+                ),
+                admin,
+            )
+        assert stale.value.status_code == 409
+
+        inactive = await routers.set_commercial_buyer_status(
+            "buyer-lifecycle-1",
+            CommercialBuyerStatusCommand(expected_version=2, active=False),
+            admin,
+        )
+        assert inactive["active"] is False
+        assert inactive["version"] == 3
+
+        reactivated = await routers.set_commercial_buyer_status(
+            "buyer-lifecycle-1",
+            CommercialBuyerStatusCommand(expected_version=3, active=True),
+            admin,
+        )
+        assert reactivated["active"] is True
+        assert reactivated["version"] == 4
+
+        events = await test_db.commercial_audit_events.find(
+            {"entity_id": "buyer-lifecycle-1"}, {"_id": 0}
+        ).to_list(10)
+        assert [event["action"] for event in events] == [
+            "BUYER_UPDATED", "BUYER_DEACTIVATED", "BUYER_REACTIVATED"
+        ]
+    finally:
+        await client.drop_database(db_name)
+        client.close()
