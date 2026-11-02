@@ -43,6 +43,7 @@ from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft, CustomerOilCustodyReleaseDraft
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
+from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft
@@ -54,6 +55,7 @@ from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
 from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody, get_customer_custody_statement
 from commercial.services.credit_application import apply_buyer_credit_to_invoice
+from commercial.services.payment_reversal import reverse_sale_payment
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
@@ -753,6 +755,45 @@ async def list_commercial_sales_invoices(
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_sales_invoices.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/sale-payments/{payment_id}/reversals", status_code=201)
+async def reverse_wholesale_sale_payment(
+    payment_id: str,
+    draft: PaymentReversalDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    reversal_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: reverse_sale_payment(
+                db, payment_id, draft, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                reversal_id=reversal_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/sales-invoices/{invoice_id}/payment-reversals")
+async def list_invoice_payment_reversals(
+    invoice_id: str,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_payment_reversals.find(
+        {"invoice_id": invoice_id},
+        {"_id": 0, "id": 1, "document_number": 1, "payment_id": 1,
+         "original_payment_number": 1, "amount_dt": 1, "reason": 1,
+         "status": 1, "remaining_reversible_dt": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(500)
     return _safe(docs)
 
 
