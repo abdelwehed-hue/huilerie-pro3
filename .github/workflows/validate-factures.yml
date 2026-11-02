@@ -121,8 +121,16 @@ jobs:
           replica.close()
           PY
       - name: Verify commercial transaction and custody/accounting invariants on a real replica set
-        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py commercial/tests/test_mongodb_production_integration.py commercial/tests/test_mongodb_quality_separation.py commercial/tests/test_mongodb_customer_custody_integration.py commercial/tests/test_mongodb_credit_application_integration.py commercial/tests/test_mongodb_payment_reversal_integration.py commercial/tests/test_payment_reversal_concurrency_integration.py
-          commercial/tests/test_mongodb_return_rejection_integration.py
+        run: |
+          python -m pytest -o addopts= \
+            commercial/tests/test_mongodb_transaction_integration.py \
+            commercial/tests/test_mongodb_production_integration.py \
+            commercial/tests/test_mongodb_quality_separation.py \
+            commercial/tests/test_mongodb_customer_custody_integration.py \
+            commercial/tests/test_mongodb_credit_application_integration.py \
+            commercial/tests/test_mongodb_payment_reversal_integration.py \
+            commercial/tests/test_payment_reversal_concurrency_integration.py \
+            commercial/tests/test_mongodb_return_rejection_integration.py
 
   frontend-build:
     runs-on: ubuntu-latest
