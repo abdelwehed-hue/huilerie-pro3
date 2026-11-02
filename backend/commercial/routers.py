@@ -319,20 +319,28 @@ async def create_commercial_supplier(
 
 
 @router.get("/suppliers")
-async def list_commercial_suppliers(user: dict = Depends(current_user)):
+async def list_commercial_suppliers(
+    limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
     _authorize(user, "commercial.read")
     docs = await db.commercial_suppliers.find(
         {"active": True}, {"_id": 0}
-    ).sort("name", 1).to_list(1000)
+    ).sort([("name", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
 @router.get("/varieties")
-async def list_commercial_varieties(user: dict = Depends(current_user)):
+async def list_commercial_varieties(
+    limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
     _authorize(user, "commercial.read")
     docs = await db.commercial_varieties.find(
         {"active": True}, {"_id": 0}
-    ).sort("code", 1).to_list(500)
+    ).sort([("code", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -403,10 +411,14 @@ async def create_commercial_buyer(
 
 
 @router.get("/buyers")
-async def list_commercial_buyers(user: dict = Depends(current_user)):
+async def list_commercial_buyers(
+    limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
     _authorize(user, "commercial.read")
     # Keep inactive buyers visible for historical invoices and account follow-up.
-    docs = await db.commercial_buyers.find({}, {"_id": 0}).sort("name", 1).to_list(1000)
+    docs = await db.commercial_buyers.find({}, {"_id": 0}).sort([("name", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -963,12 +975,13 @@ async def create_olive_purchase(
 @router.get("/olive-purchases")
 async def list_olive_purchases(
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_olive_purchases.find(
         {}, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1020,12 +1033,13 @@ async def create_production_run(
 @router.get("/production-runs")
 async def list_production_runs(
     limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_production_runs.find(
         {}, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
