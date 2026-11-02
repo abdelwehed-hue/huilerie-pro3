@@ -15,7 +15,7 @@ from typing import Any
 from bson.decimal128 import Decimal128
 
 from commercial.schemas.inventory import StockMovementDraft
-from backend.commercial.services.numbering import reserve_document_number
+from commercial.services.numbering import reserve_document_number
 
 
 def _decimal128(value: Decimal) -> Decimal128:
@@ -71,7 +71,7 @@ async def _increment_balance(
         identity,
         {
             "$inc": {"quantity_kg": quantity},
-            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+            "$setOnInsert": {"created_at": created_at.astimezone(timezone.utc)},
         },
         upsert=True,
         session=session,
