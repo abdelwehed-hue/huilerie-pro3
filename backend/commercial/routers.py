@@ -264,6 +264,7 @@ async def approve_purchase(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_purchases")
+    await _require_commercial_ready()
     now = datetime.now(timezone.utc)
     try:
         result = await run_transaction(
