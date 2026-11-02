@@ -96,6 +96,14 @@ export default function Commercial() {
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("overview");
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierPhone, setSupplierPhone] = useState("");
+  const [supplierTaxId, setSupplierTaxId] = useState("");
+  const [supplierNotes, setSupplierNotes] = useState("");
+  const [locationCode, setLocationCode] = useState("");
+  const [locationName, setLocationName] = useState("");
+  const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
+  const [locationNotes, setLocationNotes] = useState("");
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
