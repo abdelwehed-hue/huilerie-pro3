@@ -914,12 +914,11 @@ export default function Commercial() {
   const internalDestinationLocations = internalProductKind === "OIL"
     ? (tanks.data ?? []).filter((item) => item.active && (item.role ?? "NORMAL") === "NORMAL")
     : (locations.data ?? []).filter((item) => item.active);
-  const internalDestinationOwnerOptions = [
-    ...(selectedInternalBalance?.owner?.kind !== "MILL" ? [{ key: "MILL", label: l.mill }] : []),
-    ...(custodyOwners.data ?? [])
-      .filter((owner) => owner.active !== false && owner.id !== selectedInternalBalance?.owner?.customer_id)
-      .map((owner) => ({ key: "CUSTOMER:" + owner.id, label: l.customer + ": " + owner.client_name + " · " + owner.client_phone })),
-  ];
+  const internalDestinationOwnerOptions = selectedInternalBalance?.owner?.kind === "CUSTOMER"
+    ? [{ key: "MILL", label: l.mill }]
+    : (custodyOwners.data ?? [])
+      .filter((owner) => owner.active !== false)
+      .map((owner) => ({ key: "CUSTOMER:" + owner.id, label: l.customer + ": " + owner.client_name + " · " + owner.client_phone }));
 
   const availableCustomerOilBalances = (balances.data ?? []).filter((balance) =>
     balance.product_kind === "OIL" && Number(balance.quantity_kg) > 0
