@@ -75,3 +75,41 @@ def test_production_collection_has_unique_id_document_and_idempotency_indexes():
         "commercial_production_date",
     }
     assert all(index.document.get("unique") for index in indexes[:3])
+
+
+@pytest.mark.asyncio
+async def test_default_counter_bootstrap_creates_every_document_type_once():
+    from commercial.inventory_bootstrap import (
+        COMMERCIAL_DOCUMENT_TYPES,
+        provision_commercial_counters,
+    )
+
+    class CounterCollection:
+        def __init__(self):
+            self.rows = {}
+
+        async def create_indexes(self, indexes):
+            return None
+
+        async def update_one(self, query, update, upsert=False):
+            key = (query["season_code"], query["document_type"])
+            if key not in self.rows and upsert:
+                self.rows[key] = dict(update["$setOnInsert"])
+
+    class CounterDatabase:
+        def __init__(self):
+            self.counters = CounterCollection()
+
+        def __getitem__(self, name):
+            assert name == "commercial_counters"
+            return self.counters
+
+    db = CounterDatabase()
+    created = await provision_commercial_counters(db, "2627")
+
+    expected = {"LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO"}
+    assert set(COMMERCIAL_DOCUMENT_TYPES) == expected
+    assert len(COMMERCIAL_DOCUMENT_TYPES) == len(expected)
+    assert created == len(expected)
+    assert {document_type for _, document_type in db.counters.rows} == expected
+    assert all(row["last_sequence"] == 0 for row in db.counters.rows.values())
