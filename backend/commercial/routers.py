@@ -33,7 +33,9 @@ from commercial.schemas.purchases import (
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft
-from commercial.schemas.buyers import CommercialBuyerDraft
+from commercial.schemas.buyers import (
+    CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
+)
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft
 from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.services.production import complete_commercial_production
@@ -335,7 +337,7 @@ async def create_commercial_buyer(
     normalized_name = " ".join(draft.name.casefold().split())
     doc = {
         "id": str(uuid.uuid4()), **draft.model_dump(),
-        "normalized_name": normalized_name, "active": True,
+        "normalized_name": normalized_name, "active": True, "version": 1,
         "created_by": user["id"], "created_at": datetime.now(timezone.utc),
     }
     audit_id = str(uuid.uuid4())
@@ -359,8 +361,117 @@ async def create_commercial_buyer(
 @router.get("/buyers")
 async def list_commercial_buyers(user: dict = Depends(current_user)):
     _authorize(user, "commercial.read")
-    docs = await db.commercial_buyers.find({"active": True}, {"_id": 0}).sort("name", 1).to_list(1000)
+    # Keep inactive buyers visible for historical invoices and account follow-up.
+    docs = await db.commercial_buyers.find({}, {"_id": 0}).sort("name", 1).to_list(1000)
     return _safe(docs)
+
+
+@router.put("/buyers/{buyer_id}")
+async def update_commercial_buyer(
+    buyer_id: str,
+    draft: CommercialBuyerUpdate,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    normalized_name = " ".join(draft.name.casefold().split())
+    fields = draft.model_dump(exclude={"expected_version"})
+    audit_id = str(uuid.uuid4())
+
+    async def update_buyer(session):
+        existing = await db.commercial_buyers.find_one(
+            {"id": buyer_id}, {"_id": 0}, session=session
+        )
+        if not existing:
+            raise HTTPException(404, "commercial_buyer_not_found")
+        current_version = int(existing.get("version", 1))
+        if current_version != draft.expected_version:
+            raise HTTPException(409, "commercial_buyer_version_conflict")
+        version_filter = {"version": draft.expected_version}
+        if draft.expected_version == 1 and "version" not in existing:
+            version_filter = {"version": {"$exists": False}}
+        update = await db.commercial_buyers.update_one(
+            {"id": buyer_id, **version_filter},
+            {"$set": {
+                **fields, "normalized_name": normalized_name,
+                "updated_at": now, "updated_by": user["id"],
+            }, "$inc": {"version": 1}},
+            session=session,
+        )
+        if update.matched_count != 1:
+            raise HTTPException(409, "commercial_buyer_version_conflict")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_buyer",
+            "entity_id": buyer_id, "action": "BUYER_UPDATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {
+                "changed_fields": sorted(fields.keys()),
+                "previous_name": existing.get("name"),
+                "new_name": draft.name,
+                "version": current_version + 1,
+            },
+        }, session=session)
+        return await db.commercial_buyers.find_one(
+            {"id": buyer_id}, {"_id": 0}, session=session
+        )
+
+    try:
+        return _safe(await run_transaction(update_buyer))
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "commercial_buyer_name_exists") from exc
+
+
+@router.post("/buyers/{buyer_id}/status")
+async def set_commercial_buyer_status(
+    buyer_id: str,
+    command: CommercialBuyerStatusCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_sales")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    audit_id = str(uuid.uuid4())
+
+    async def change_status(session):
+        existing = await db.commercial_buyers.find_one(
+            {"id": buyer_id}, {"_id": 0}, session=session
+        )
+        if not existing:
+            raise HTTPException(404, "commercial_buyer_not_found")
+        current_version = int(existing.get("version", 1))
+        if existing.get("active", True) == command.active:
+            return existing
+        if current_version != command.expected_version:
+            raise HTTPException(409, "commercial_buyer_version_conflict")
+        version_filter = {"version": command.expected_version}
+        if command.expected_version == 1 and "version" not in existing:
+            version_filter = {"version": {"$exists": False}}
+        update = await db.commercial_buyers.update_one(
+            {"id": buyer_id, **version_filter},
+            {"$set": {
+                "active": command.active, "updated_at": now,
+                "updated_by": user["id"],
+            }, "$inc": {"version": 1}},
+            session=session,
+        )
+        if update.matched_count != 1:
+            raise HTTPException(409, "commercial_buyer_version_conflict")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_buyer",
+            "entity_id": buyer_id,
+            "action": "BUYER_REACTIVATED" if command.active else "BUYER_DEACTIVATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {
+                "previous_active": existing.get("active", True),
+                "active": command.active, "version": current_version + 1,
+            },
+        }, session=session)
+        return await db.commercial_buyers.find_one(
+            {"id": buyer_id}, {"_id": 0}, session=session
+        )
+
+    return _safe(await run_transaction(change_status))
 
 
 @router.get("/buyers/{buyer_id}/account-summary")
