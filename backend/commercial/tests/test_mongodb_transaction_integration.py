@@ -353,9 +353,10 @@ async def test_internal_transfer_document_and_ledger_post_atomically():
     now = datetime(2026, 11, 2, tzinfo=timezone.utc)
     try:
         await ensure_inventory_indexes(db)
-        await db.commercial_counters.insert_one({
-            "season_code": "2627", "document_type": "MVT", "last_sequence": 0,
-        })
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "INT", "last_sequence": 0},
+        ])
         await db.commercial_locations.insert_many([
             {"id": "storage-a", "code": "STORAGE-A", "active": True, "kind": "OLIVE_STORAGE"},
             {"id": "storage-b", "code": "STORAGE-B", "active": True, "kind": "STAGING"},
@@ -389,7 +390,12 @@ async def test_internal_transfer_document_and_ledger_post_atomically():
                 )
             )
         assert result["status"] == "APPROVED"
+        assert result["document_number"] == "2627INT0001"
         assert result["stock_movement_id"] == "stock-movement-1"
+        int_counter = await db.commercial_counters.find_one(
+            {"season_code": "2627", "document_type": "INT"}, {"_id": 0}
+        )
+        assert int_counter["last_sequence"] == 1
         source = await db.commercial_stock_balances.find_one({"location_id": "storage-a"})
         destination = await db.commercial_stock_balances.find_one({"location_id": "storage-b"})
         assert source["quantity_kg"].to_decimal() == Decimal("75.000")
@@ -417,9 +423,10 @@ async def test_internal_movement_audit_failure_rolls_back_document_and_balances(
     now = datetime(2026, 11, 2, tzinfo=timezone.utc)
     try:
         await ensure_inventory_indexes(db)
-        await db.commercial_counters.insert_one({
-            "season_code": "2627", "document_type": "MVT", "last_sequence": 0,
-        })
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": "MVT", "last_sequence": 0},
+            {"season_code": "2627", "document_type": "INT", "last_sequence": 0},
+        ])
         await db.commercial_locations.insert_many([
             {"id": "storage-a", "code": "STORAGE-A", "active": True, "kind": "OLIVE_STORAGE"},
             {"id": "storage-b", "code": "STORAGE-B", "active": True, "kind": "STAGING"},
@@ -465,6 +472,8 @@ async def test_internal_movement_audit_failure_rolls_back_document_and_balances(
         assert await db.commercial_stock_balances.count_documents({"location_id": "storage-b"}) == 0
         counter = await db.commercial_counters.find_one({"document_type": "MVT"})
         assert counter["last_sequence"] == 0
+        int_counter = await db.commercial_counters.find_one({"document_type": "INT"})
+        assert int_counter["last_sequence"] == 0
     finally:
         await client.drop_database(db_name)
         client.close()
