@@ -29,6 +29,7 @@ INVENTORY_INDEXES = {
     ],
     "commercial_custody_owners": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_custody_owner_id"),
+        IndexModel([("legacy_client_id", ASCENDING)], unique=True, name="uq_custody_owner_legacy_client"),
         IndexModel([("client_phone", ASCENDING)], unique=True, name="uq_custody_owner_client_phone"),
         IndexModel([("active", ASCENDING), ("client_name", ASCENDING)], name="custody_owner_active_name"),
     ],
