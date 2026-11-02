@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 
 
 @pytest.mark.asyncio
