@@ -149,7 +149,8 @@ async def test_customer_oil_pickup_debits_only_matching_customer_stock():
         await db.commercial_lots.insert_one({
             "id": "customer-oil-lot-a", "season_code": "2627",
             "document_type": "LOT", "document_number": "2627LOT0001",
-            "product_kind": "OIL", "owner": {"kind": "CUSTOMER", "customer_id": "custody-owner-a"},
+            # The lot records its origin; the balance is currently customer-owned after an ownership transfer.
+            "product_kind": "OIL", "owner": {"kind": "MILL"},
             "quality_status": "RELEASED", "status": "OPEN", "version": 1,
         })
         await db.commercial_stock_balances.insert_one({
