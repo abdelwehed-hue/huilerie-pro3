@@ -61,11 +61,11 @@ async def require_admin(user: dict = Depends(current_user)) -> dict:
 async def seed_defaults() -> None:
     """Idempotent user seeding; production never receives known demo passwords."""
     now = datetime.now(timezone.utc)
-    admin_username, admin_name, admin_password = initial_admin_credentials()
-    defaults = [(admin_username, admin_name, admin_password, "admin")]
-    if not is_production():
-        defaults.append(("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"))
     if await db.users.count_documents({}) == 0:
+        admin_username, admin_name, admin_password = initial_admin_credentials()
+        defaults = [(admin_username, admin_name, admin_password, "admin")]
+        if not is_production():
+            defaults.append(("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"))
         for username, name, pw, role in defaults:
             await db.users.insert_one({
                 "id": str(uuid.uuid4()), "username": username, "full_name": name,
