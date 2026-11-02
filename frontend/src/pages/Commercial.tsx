@@ -162,6 +162,8 @@ export default function Commercial() {
     { id: "movements", label: l.movements, icon: RefreshCw },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "audit", label: l.audit, icon: ClipboardList },
+    { id: "suppliers", label: l.suppliers, icon: Boxes },
+    { id: "locations", label: l.locationsTab, icon: Warehouse },
   ];
 
   return (
