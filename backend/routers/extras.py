@@ -814,6 +814,49 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
     return out
 
 
+@router.get("/clients/options", response_model=list[ClientSummary])
+async def list_client_options(
+    limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
+    """Return a stable, globally deduplicated client selector without the legacy 300-row cap."""
+    pipeline = [
+        {"$match": {"cancelled": {"$ne": True}, "phone": {"$type": "string", "$ne": ""}}},
+        {"$sort": {"created_at": -1, "id": 1}},
+        {"$project": {"_id": 0, "phone": 1, "client_name": 1, "created_at": 1}},
+        {"$unionWith": {
+            "coll": "clients",
+            "pipeline": [
+                {"$match": {"phone": {"$type": "string", "$ne": ""}}},
+                {"$project": {"_id": 0, "phone": 1, "client_name": 1, "created_at": 1}},
+            ],
+        }},
+        {"$sort": {"created_at": -1, "phone": 1}},
+        {"$group": {
+            "_id": "$phone",
+            "client_name": {"$first": "$client_name"},
+            "last_visit": {"$first": "$created_at"},
+        }},
+        {"$sort": {"client_name": 1, "_id": 1}},
+        {"$skip": skip},
+        {"$limit": limit},
+    ]
+    is_admin = user["role"] == "admin"
+    return [
+        ClientSummary(
+            phone=row["_id"],
+            client_name=row.get("client_name") or row["_id"],
+            loads_count=0,
+            olive_kg=0,
+            oil_kg=0,
+            last_visit=_aware(row["last_visit"]) if row.get("last_visit") else None,
+            amount=0 if is_admin else None,
+        )
+        async for row in db.loads.aggregate(pipeline)
+    ]
+
+
 @router.post("/clients", response_model=ClientSummary)
 async def create_client(body: ClientCreate, user: dict = Depends(current_user)):
     phone = re.sub(r"\s+", "", body.phone)
