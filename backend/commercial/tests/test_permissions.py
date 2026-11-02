@@ -8,6 +8,7 @@ def test_admin_has_commercial_quality_permissions():
     require_commercial_permission(admin, "commercial.lab_record")
     require_commercial_permission(admin, "commercial.quality_release")
     require_commercial_permission(admin, "commercial.post_stock")
+    require_commercial_permission(admin, "commercial.manage_custody")
 
 
 def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
@@ -22,6 +23,8 @@ def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
         require_commercial_permission(reviewer, "commercial.lab_record")
     with pytest.raises(PermissionError):
         require_commercial_permission(reviewer, "commercial.post_stock")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(reviewer, "commercial.manage_custody")
 
 
 @pytest.mark.parametrize("user", [
