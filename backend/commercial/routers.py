@@ -36,7 +36,7 @@ from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
-from lib.season import active_season, season_prefix
+from lib.season import active_season, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
 
@@ -85,12 +85,23 @@ def _raise_domain_error(exc: Exception) -> None:
 async def _active_season_code() -> tuple[str, str]:
     season = await active_season()
     try:
+        if not valid_season(season):
+            raise ValueError("Invalid active season")
         code = season_prefix(season)
     except (AttributeError, ValueError) as exc:
         raise HTTPException(503, "active_season_configuration_invalid") from exc
     if len(code) != 4 or not code.isdigit():
         raise HTTPException(503, "active_season_configuration_invalid")
     return season, code
+
+
+async def _require_commercial_ready() -> tuple[str, str]:
+    season, season_code = await _active_season_code()
+    tanks = await db.commercial_tanks.count_documents({})
+    counters = await db.commercial_counters.count_documents({"season_code": season_code})
+    if tanks != 9 or counters < 6:
+        raise HTTPException(503, "commercial_domain_not_bootstrapped")
+    return season, season_code
 
 
 @router.get("/status")
@@ -118,7 +129,7 @@ async def bootstrap_commercial_domain(user: dict = Depends(require_admin)):
         hello = await client.admin.command("hello")
     except Exception as exc:
         raise HTTPException(503, "mongodb_topology_check_failed") from exc
-    if not hello.get("setName") and not hello.get("msg") == "isdbgrid":
+    if (not hello.get("setName") and hello.get("msg") != "isdbgrid") or not hello.get("logicalSessionTimeoutMinutes"):
         raise HTTPException(503, "commercial_requires_mongodb_replica_set")
     season, season_code = await _active_season_code()
     try:
@@ -158,6 +169,7 @@ async def create_commercial_location(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_tanks")
+    await _require_commercial_ready()
     now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()),
@@ -179,6 +191,7 @@ async def create_commercial_supplier(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_purchases")
+    await _require_commercial_ready()
     now = datetime.now(timezone.utc)
     normalized_name = " ".join(draft.name.casefold().split())
     existing = await db.commercial_suppliers.find_one(
@@ -216,7 +229,7 @@ async def create_olive_purchase(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_purchases")
-    season, season_code = await _active_season_code()
+    season, season_code = await _require_commercial_ready()
     purchase_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
@@ -270,7 +283,7 @@ async def create_production_run(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_production")
-    _, season_code = await _active_season_code()
+    _, season_code = await _require_commercial_ready()
     production_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
@@ -304,7 +317,7 @@ async def create_quality_assessment(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_quality")
-    _, season_code = await _active_season_code()
+    _, season_code = await _require_commercial_ready()
     assessment_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
