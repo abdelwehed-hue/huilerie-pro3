@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
-  RefreshCw, ShieldCheck, Warehouse,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet,
 } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -21,7 +21,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "permissions";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -104,6 +104,39 @@ function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
 export default function Commercial() {
   const { lang } = useI18n();
   const l = labels[lang === "ar" ? "ar" : "fr"];
+  const salesText = lang === "ar" ? {
+    buyers: "الحرفاء التجاريون", buyerName: "اسم الحريف", buyerContact: "اسم المسؤول",
+    buyerPhone: "الهاتف", buyerTax: "المعرّف الجبائي", buyerAddress: "العنوان",
+    addBuyer: "إضافة حريف", buyerSaved: "تم تسجيل الحريف", sales: "البيع بالجملة",
+    saleDate: "تاريخ البيع", selectBuyer: "اختر الحريف", selectOilLot: "دفعة الزيت",
+    selectTank: "الخزان", saleQty: "الكمية المباعة (كغ)", salePrice: "سعر الكغ (د.ت)",
+    createSale: "إنشاء مسودة بيع", saleSaved: "تم إنشاء مسودة البيع",
+    approveSale: "اعتماد البيع وإخراج الكمية", saleApproved: "تم اعتماد البيع وإصدار الفاتورة",
+    saleHistory: "سجل عمليات البيع", invoice: "الفاتورة", invoiceNo: "رقم الفاتورة",
+    paymentStatus: "حالة الخلاص", unpaid: "غير خالصة", partial: "خلاص جزئي", paid: "خالصة",
+    taxNotice: "المعالجة الجبائية غير مضبوطة بعد؛ هذه فاتورة تجارية داخلية وليست فاتورة جبائية جاهزة.",
+    chooseInvoice: "اختر الفاتورة", paymentAmount: "مبلغ الخلاص (د.ت)",
+    paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
+    paymentSaved: "تم تسجيل الخلاص", cash: "نقداً", bank: "تحويل بنكي", cheque: "صك",
+    outstanding: "الباقي", total: "المجموع", paidAmount: "المبلغ المدفوع",
+    noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
+  } : {
+    buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
+    buyerPhone: "Téléphone", buyerTax: "Identifiant fiscal", buyerAddress: "Adresse",
+    addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", sales: "Vente en gros",
+    saleDate: "Date de vente", selectBuyer: "Choisir l’acheteur", selectOilLot: "Lot d’huile",
+    selectTank: "Cuve", saleQty: "Quantité vendue (kg)", salePrice: "Prix/kg (DT)",
+    createSale: "Créer le brouillon", saleSaved: "Brouillon de vente créé",
+    approveSale: "Valider et expédier", saleApproved: "Vente validée et facture créée",
+    saleHistory: "Historique des ventes", invoice: "Facture", invoiceNo: "N° facture",
+    paymentStatus: "Paiement", unpaid: "Impayée", partial: "Partiellement payée", paid: "Payée",
+    taxNotice: "Traitement fiscal non configuré : document commercial interne, pas encore une facture fiscale prête à émettre.",
+    chooseInvoice: "Choisir la facture", paymentAmount: "Montant reçu (DT)",
+    paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
+    paymentSaved: "Paiement enregistré", cash: "Espèces", bank: "Virement", cheque: "Chèque",
+    outstanding: "Solde dû", total: "Total", paidAmount: "Payé",
+    noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
+  };
   const me = useMe();
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
@@ -141,6 +174,22 @@ export default function Commercial() {
   const [reviewReason, setReviewReason] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [assignedPermissions, setAssignedPermissions] = useState<string[]>([]);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerContact, setBuyerContact] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [buyerTaxId, setBuyerTaxId] = useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
+  const [saleBuyerId, setSaleBuyerId] = useState("");
+  const [saleLotId, setSaleLotId] = useState("");
+  const [saleTankId, setSaleTankId] = useState("");
+  const [saleQuantity, setSaleQuantity] = useState("");
+  const [saleUnitPrice, setSaleUnitPrice] = useState("");
+  const [saleNotes, setSaleNotes] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -161,6 +210,10 @@ export default function Commercial() {
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/varieties"), enabled: ready && (tab === "varieties" || tab === "purchases") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/olive-purchases?limit=500"), enabled: ready && tab === "purchases" });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/production-runs?limit=500"), enabled: ready && tab === "production" });
+  const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/buyers"), enabled: ready && (tab === "buyers" || tab === "sales") });
+  const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales?limit=500"), enabled: ready && tab === "sales" });
+  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices?limit=500"), enabled: ready && tab === "sales" });
+  const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
       name: supplierName.trim(), phone: supplierPhone.trim() || null,
@@ -325,6 +378,70 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const addBuyer = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/buyers", {
+      name: buyerName.trim(), contact_name: buyerContact.trim() || null,
+      phone: buyerPhone.trim() || null, tax_identifier: buyerTaxId.trim() || null,
+      address: buyerAddress.trim() || null,
+    }),
+    onSuccess: async () => {
+      toast.success(salesText.buyerSaved);
+      setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerTaxId(""); setBuyerAddress("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const createSale = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/sales", {
+      sale_date: saleDate, buyer_id: saleBuyerId, oil_lot_id: saleLotId,
+      source_tank_id: saleTankId, quantity_kg: saleQuantity,
+      unit_price_dt: saleUnitPrice, notes: saleNotes.trim() || null,
+      idempotency_key: crypto.randomUUID(),
+    }),
+    onSuccess: async () => {
+      toast.success(salesText.saleSaved);
+      setSaleQuantity(""); setSaleUnitPrice(""); setSaleNotes("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const approveSale = useMutation({
+    mutationFn: (sale: AnyRecord) => apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/approve`, {
+      expected_version: sale.version, idempotency_key: crypto.randomUUID(),
+    }),
+    onSuccess: async () => {
+      toast.success(salesText.saleApproved);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const recordPayment = useMutation({
+    mutationFn: () => {
+      const invoice = (salesInvoices.data ?? []).find((item) => item.id === selectedInvoiceId);
+      if (!invoice) throw new Error("Invoice is no longer available");
+      return apiPost<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, {
+        payment_date: paymentDate, amount_dt: paymentAmount, method: paymentMethod,
+        expected_invoice_version: invoice.version, idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(salesText.paymentSaved);
+      setPaymentAmount("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sale-payments", selectedInvoiceId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const saveWorkerPermissions = useMutation({
     mutationFn: () => apiPost<AnyRecord>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
       permissions: ["commercial.read", ...assignedPermissions],
@@ -384,6 +501,8 @@ export default function Commercial() {
     { id: "varieties", label: l.varietiesTab, icon: Boxes },
     { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
     { id: "production", label: l.productionTab, icon: Factory },
+    { id: "buyers", label: salesText.buyers, icon: UserRound },
+    { id: "sales", label: salesText.sales, icon: ShoppingCart },
     ...(isAdmin ? [{ id: "permissions" as const, label: l.permissionsTab, icon: ShieldCheck }] : []),
   ];
 
@@ -410,7 +529,7 @@ export default function Commercial() {
         <Card><CardHeader className="pb-1"><CardDescription>{l.season}</CardDescription><CardTitle className="text-2xl" dir="ltr">{value(status.data?.season_code)}</CardTitle></CardHeader></Card>
         <Card><CardHeader className="pb-1"><CardDescription>{l.tanksCount}</CardDescription><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle></CardHeader></Card>
         <Card><CardHeader className="pb-1"><CardDescription>{l.locations}</CardDescription><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="pb-1"><CardDescription>{l.counters}</CardDescription><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/6</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-1"><CardDescription>{l.counters}</CardDescription><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/7</CardTitle></CardHeader></Card>
       </div>
 
       {!ready && (
@@ -670,6 +789,60 @@ export default function Commercial() {
               <TableCell>{value((tanks.data ?? []).find((tank) => tank.id === run.output_tank_id)?.code, run.output_tank_id)}</TableCell>
             </TableRow>)}{(!productionRuns.isLoading && !(productionRuns.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
           </Table>
+        </CardContent></Card>
+      </div>}
+
+      {tab === "buyers" && <div className="space-y-4">
+        {isAdmin && <Card><CardHeader><CardTitle>{salesText.addBuyer}</CardTitle></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); addBuyer.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{salesText.buyerName}<input required minLength={2} maxLength={160} value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.buyerContact}<input maxLength={120} value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.buyerPhone}<input maxLength={40} value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.buyerTax}<input maxLength={80} value={buyerTaxId} onChange={(e) => setBuyerTaxId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.buyerAddress}<input maxLength={500} value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <Button type="submit" disabled={addBuyer.isPending || !buyerName.trim()}><UserRound className="size-4" />{salesText.addBuyer}</Button>
+          </form>
+        </CardContent></Card>}
+        <Card><CardHeader><CardTitle>{salesText.buyers}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead></TableRow></TableHeader>
+            <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}><TableCell className="font-semibold">{value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell></TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={5} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+      </div>}
+
+      {tab === "sales" && <div className="space-y-4">
+        {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => setSaleBuyerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED" && lot.owner?.kind === "MILL").map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {lot.quality_status}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => setSaleTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(balances.data ?? []).filter((balance) => balance.product_kind === "OIL" && balance.lot_id === saleLotId && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0).map((balance) => { const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.location_id} value={balance.location_id}>{tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => setSaleQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.salePrice}<input required type="number" min="0.001" step="0.001" value={saleUnitPrice} onChange={(e) => setSaleUnitPrice(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-3">{l.notes}<input maxLength={1000} value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <p className="text-xs text-amber-700 md:col-span-3">{salesText.taxNotice}</p>
+            <Button type="submit" disabled={createSale.isPending || !saleBuyerId || !saleLotId || !saleTankId || !(Number(saleQuantity) > 0) || !(Number(saleUnitPrice) > 0)}><ShoppingCart className="size-4" />{salesText.createSale}</Button>
+          </form>
+        </CardContent></Card>}
+        <Card><CardHeader><CardTitle>{salesText.saleHistory}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.saleDate}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.selectOilLot}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+            <TableBody>{(sales.data ?? []).map((sale) => <TableRow key={sale.id}><TableCell className="font-mono text-xs">{value(sale.document_number)}</TableCell><TableCell>{date(sale.sale_date)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === sale.buyer_id)?.name, sale.buyer_id)}</TableCell><TableCell>{value((lots.data ?? []).find((lot) => lot.id === sale.oil_lot_id)?.document_number, sale.oil_lot_id)}</TableCell><TableCell>{number(sale.quantity_kg)}</TableCell><TableCell>{number(sale.total_amount_dt)} DT</TableCell><TableCell>{value(sale.status)}</TableCell><TableCell>{isAdmin && sale.status === "DRAFT" ? <Button size="sm" disabled={approveSale.isPending} onClick={() => approveSale.mutate(sale)}>{salesText.approveSale}</Button> : value(sale.invoice_id)}</TableCell></TableRow>)}{(!sales.isLoading && !(sales.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+        <Card><CardHeader><CardTitle>{salesText.invoice}</CardTitle><CardDescription>{salesText.taxNotice}</CardDescription></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{salesText.invoiceNo}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{salesText.paidAmount}</TableHead><TableHead>{salesText.outstanding}</TableHead><TableHead>{salesText.paymentStatus}</TableHead></TableRow></TableHeader>
+            <TableBody>{(salesInvoices.data ?? []).map((invoice) => <TableRow key={invoice.id} className={selectedInvoiceId === invoice.id ? "bg-muted/60" : ""} onClick={() => setSelectedInvoiceId(invoice.id)}><TableCell className="font-mono text-xs">{value(invoice.document_number)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === invoice.buyer_id)?.name, invoice.buyer_id)}</TableCell><TableCell>{number(invoice.total_amount_dt)} DT</TableCell><TableCell>{number(invoice.paid_amount_dt)} DT</TableCell><TableCell>{number(invoice.outstanding_amount_dt)} DT</TableCell><TableCell>{value(invoice.payment_status)}</TableCell></TableRow>)}{(!salesInvoices.isLoading && !(salesInvoices.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+          </Table>
+          {selectedInvoiceId && <div className="mt-4 space-y-3 rounded-xl border p-4">
+            <h3 className="font-semibold">{salesText.recordPayment}</h3>
+            {isAdmin && <form className="grid gap-3 md:grid-cols-4" onSubmit={(e) => { e.preventDefault(); recordPayment.mutate(); }}>
+              <label className="grid gap-1 text-sm font-medium">{salesText.paymentDate}<input required type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.paymentAmount}<input required type="number" min="0.001" step="0.001" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.paymentMethod}<select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="CASH">{salesText.cash}</option><option value="BANK_TRANSFER">{salesText.bank}</option><option value="CHEQUE">{salesText.cheque}</option></select></label>
+              <div className="flex items-end"><Button type="submit" disabled={recordPayment.isPending || !(Number(paymentAmount) > 0) || (salesInvoices.data ?? []).find((i) => i.id === selectedInvoiceId)?.payment_status === "PAID"}><Wallet className="size-4" />{salesText.recordPayment}</Button></div>
+            </form>}
+            <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.paymentDate}</TableHead><TableHead>{salesText.paymentAmount}</TableHead><TableHead>{salesText.paymentMethod}</TableHead></TableRow></TableHeader><TableBody>{(salePayments.data ?? []).map((payment) => <TableRow key={payment.id}><TableCell>{value(payment.document_number)}</TableCell><TableCell>{date(payment.payment_date)}</TableCell><TableCell>{number(payment.amount_dt)} DT</TableCell><TableCell>{value(payment.method)}</TableCell></TableRow>)}{(!salePayments.isLoading && !(salePayments.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table>
+          </div>}
         </CardContent></Card>
       </div>}
 
