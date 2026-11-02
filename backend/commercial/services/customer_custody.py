@@ -41,7 +41,7 @@ async def _find_legacy_client(db: Any, phone: str, session: Any) -> dict[str, An
 
 
 async def _get_or_create_custody_owner(
-    db: Any, phone: str, owner_id: str, *, session: Any
+    db: Any, phone: str, owner_id: str, *, created_at: datetime, session: Any
 ) -> dict[str, Any]:
     existing = await db["commercial_custody_owners"].find_one(
         {"client_phone": phone}, {"_id": 0}, session=session
@@ -63,7 +63,7 @@ async def _get_or_create_custody_owner(
         "client_phone": phone,
         "client_name": name,
         "active": True,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": created_at.astimezone(timezone.utc),
     }
     await db["commercial_custody_owners"].insert_one(owner, session=session)
     return owner
@@ -104,7 +104,7 @@ async def receive_customer_olive_custody(
         return prior
 
     owner = await _get_or_create_custody_owner(
-        db, draft.customer_phone, custody_owner_id, session=session
+        db, draft.customer_phone, custody_owner_id, created_at=created_at, session=session
     )
     variety = await db["commercial_varieties"].find_one(
         {"id": draft.variety_id, "active": True}, {"_id": 0, "id": 1}, session=session
