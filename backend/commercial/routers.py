@@ -36,7 +36,7 @@ from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
-from lib.season import active_season, season_prefix, valid_season
+from lib.season import active_season, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
 
@@ -235,6 +235,8 @@ async def create_olive_purchase(
 ):
     _authorize(user, "commercial.manage_purchases")
     season, season_code = await _require_commercial_ready()
+    if season_of(draft.purchase_date.isoformat()) != season:
+        raise HTTPException(422, "purchase_date_outside_active_season")
     purchase_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
@@ -289,7 +291,9 @@ async def create_production_run(
     user: dict = Depends(require_admin),
 ):
     _authorize(user, "commercial.manage_production")
-    _, season_code = await _require_commercial_ready()
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.production_date.isoformat()) != season:
+        raise HTTPException(422, "production_date_outside_active_season")
     production_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     try:
