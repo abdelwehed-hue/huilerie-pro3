@@ -671,6 +671,7 @@ export default function Commercial() {
       setReversalKey(crypto.randomUUID());
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "sales-invoices"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sale-payments", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
