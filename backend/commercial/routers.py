@@ -795,7 +795,7 @@ async def list_invoice_payment_reversals(
         {"_id": 0, "id": 1, "document_number": 1, "payment_id": 1,
          "original_payment_number": 1, "amount_dt": 1, "reason": 1,
          "status": 1, "remaining_reversible_dt": 1, "created_at": 1},
-    ).sort("created_at", -1).to_list(500)
+    ).sort("created_at", -1).to_list(5000)
     return _safe(docs)
 
 
@@ -871,6 +871,22 @@ async def list_sale_payments(
     docs = await db.commercial_sale_payments.find(
         {"invoice_id": invoice_id}, {"_id": 0}
     ).sort("created_at", -1).to_list(limit)
+    payment_ids = [doc["id"] for doc in docs]
+    reversal_totals = {}
+    if payment_ids:
+        totals = await db.commercial_payment_reversals.aggregate([
+            {"$match": {"payment_id": {"$in": payment_ids}}},
+            {"$group": {"_id": "$payment_id", "total": {"$sum": "$amount_dt"}}},
+        ]).to_list(None)
+        reversal_totals = {
+            item["_id"]: item["total"].to_decimal() if hasattr(item["total"], "to_decimal") else Decimal(str(item["total"]))
+            for item in totals
+        }
+    for doc in docs:
+        reversed_amount = reversal_totals.get(doc["id"], Decimal("0.000"))
+        original_amount = doc["amount_dt"].to_decimal() if hasattr(doc["amount_dt"], "to_decimal") else Decimal(str(doc["amount_dt"]))
+        doc["reversed_amount_dt"] = Decimal128(reversed_amount)
+        doc["remaining_reversible_dt"] = Decimal128(max(Decimal("0.000"), original_amount - reversed_amount))
     return _safe(docs)
 
 
