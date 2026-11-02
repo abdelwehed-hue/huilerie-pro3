@@ -46,4 +46,5 @@ def test_commercial_api_router_exposes_quality_submission_and_separate_release(m
     assert "/commercial/v1/production-runs" in paths
     assert "/commercial/v1/quality-assessments" in paths
     assert "/commercial/v1/quality-assessments/release" in paths
+    assert "/commercial/v1/me/permissions" in paths
     assert "/commercial/v1/users/{target_user_id}/commercial-permissions" in paths
