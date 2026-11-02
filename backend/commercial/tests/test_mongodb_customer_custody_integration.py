@@ -202,7 +202,7 @@ async def test_customer_oil_pickup_rejects_other_customer_and_pending_quality():
             for kind in ("CUS", "MVT")
         ])
         await db.commercial_custody_owners.insert_one({
-            "id": "custody-owner-a", "client_phone": "21612345678",
+            "id": "custody-owner-a", "legacy_client_id": "legacy-client-a", "client_phone": "21612345678",
             "client_name": "Customer A", "active": True,
         })
         await db.commercial_tanks.insert_one({
