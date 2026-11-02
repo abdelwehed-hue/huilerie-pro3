@@ -29,12 +29,13 @@ class Owner:
 
 
 class Draft:
-    lot_id = "lot-1"\n    product_kind = "OIL"
+    lot_id = "lot-1"
+    product_kind = "OIL"
     source_location_id = None
     destination_location_id = "tank-01"
     source_owner = None
     destination_owner = Owner("MILL")
-    source_document_type = "ACH"
+    source_document_type = "UNKNOWN"
     source_document_id = "purchase-1"
 
 
@@ -47,7 +48,7 @@ async def test_unknown_lot_is_rejected():
 
 @pytest.mark.asyncio
 async def test_unregistered_source_document_type_is_rejected_closed():
-    assert SOURCE_DOCUMENT_COLLECTIONS == {}
+    assert SOURCE_DOCUMENT_COLLECTIONS == {"ACH": "commercial_olive_purchases"}
     db = Database({
         "commercial_lots": Collection([{"id": "lot-1"}]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
