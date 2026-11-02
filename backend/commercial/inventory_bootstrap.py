@@ -17,6 +17,11 @@ INVENTORY_INDEXES = {
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_supplier_id"),
         IndexModel([("normalized_name", ASCENDING)], unique=True, name="uq_commercial_supplier_normalized_name"),
     ],
+    "commercial_varieties": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_variety_id"),
+        IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_variety_code"),
+        IndexModel([("normalized_name_fr", ASCENDING)], unique=True, name="uq_commercial_variety_name_fr"),
+    ],
     "commercial_olive_purchases": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_olive_purchase_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
