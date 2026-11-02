@@ -1,4 +1,4 @@
-"""Reference validation for stock movements; performs no writes."""
+"""Reference validation for stock movements; serializes tank access transactionally."""
 from __future__ import annotations
 
 from typing import Any
