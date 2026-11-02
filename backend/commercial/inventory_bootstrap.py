@@ -56,6 +56,14 @@ INVENTORY_INDEXES = {
         IndexModel([("oil_lot_id", ASCENDING), ("created_at", DESCENDING)],
                    name="quality_assessment_lot_created"),
     ],
+    "commercial_quality_releases": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_quality_release_id"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)],
+                   unique=True, name="uq_quality_release_idempotency"),
+        IndexModel([("assessment_id", ASCENDING)], unique=True, name="uq_quality_release_assessment"),
+        IndexModel([("oil_lot_id", ASCENDING), ("created_at", DESCENDING)],
+                   name="quality_release_lot_created"),
+    ],
     "commercial_stock_movements": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_stock_movement_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
