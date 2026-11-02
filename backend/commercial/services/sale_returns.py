@@ -69,11 +69,11 @@ async def receive_wholesale_sale_return(
         raise ValueError("Approved sale has no matching commercial invoice")
 
     original_lot = await db["commercial_lots"].find_one(
-        {"id": sale.get("oil_lot_id"), "product_kind": "OIL", "owner.kind": "MILL"},
-        {"_id": 0, "id": 1, "product_kind": 1, "owner": 1}, session=session,
+        {"id": sale.get("oil_lot_id"), "product_kind": "OIL"},
+        {"_id": 0, "id": 1, "product_kind": 1}, session=session,
     )
     if not original_lot:
-        raise ValueError("Original sale oil lot is missing or not mill-owned")
+        raise ValueError("Original sale oil lot is missing or is not an oil lot")
 
     quarantine = await db["commercial_tanks"].find_one(
         {"id": draft.quarantine_tank_id, "active": True, "role": "QUARANTINE"},
