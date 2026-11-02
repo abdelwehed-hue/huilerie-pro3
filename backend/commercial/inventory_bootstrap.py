@@ -26,6 +26,14 @@ INVENTORY_INDEXES = {
         IndexModel([("supplier_id", ASCENDING), ("purchase_date", DESCENDING)],
                    name="olive_purchase_supplier_date"),
     ],
+    "commercial_production_runs": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_production_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
+                   unique=True, name="uq_commercial_production_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)],
+                   unique=True, name="uq_commercial_production_idempotency"),
+        IndexModel([("production_date", DESCENDING)], name="commercial_production_date"),
+    ],
     "commercial_locations": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_location_id"),
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_location_code"),
