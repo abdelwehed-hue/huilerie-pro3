@@ -197,11 +197,11 @@ async def provision_commercial_counters(db, season_code, document_types=COMMERCI
     """
     validate_numbering_components(season_code, "LOT")
     document_types = tuple(document_types)
-    if len(document_types) != len(set(document_types)):
-        raise ValueError("Commercial document types must be unique")
     for document_type in document_types:
         if not isinstance(document_type, str) or document_type not in COMMERCIAL_DOCUMENT_TYPES:
             raise ValueError(f"Unsupported commercial document type: {document_type!r}")
+    if len(document_types) != len(set(document_types)):
+        raise ValueError("Commercial document types must be unique")
     collection = db["commercial_counters"]
     await collection.create_indexes(INVENTORY_INDEXES["commercial_counters"])
     for document_type in document_types:
