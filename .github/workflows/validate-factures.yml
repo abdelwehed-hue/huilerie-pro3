@@ -68,7 +68,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install transaction integration dependencies
-        run: python -m pip install "pydantic>=2" pymongo motor pytest pytest-asyncio pytest-xdist
+        run: python -m pip install "pydantic>=2" pymongo motor fastapi python-dotenv pyjwt passlib pytest pytest-asyncio pytest-xdist
       - name: Start MongoDB replica-set container
         run: docker run -d --name mongo-rs -p 27017:27017 mongo:7.0 mongod --replSet rs0 --bind_ip_all
       - name: Initialize MongoDB replica set
