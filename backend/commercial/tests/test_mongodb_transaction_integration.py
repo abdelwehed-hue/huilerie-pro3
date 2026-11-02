@@ -679,7 +679,8 @@ async def test_wholesale_sale_rejects_customer_custody_and_unreleased_oil():
 
         # A mill-owned oil lot is still unsellable until an explicit quality release exists.
         await db.commercial_lots.insert_one({
-            "id": "oil-lot-pending", "product_kind": "OIL", "status": "OPEN",
+            "id": "oil-lot-pending", "season_code": "2627", "document_type": "LOT",
+            "document_number": "2627LOT0002", "product_kind": "OIL", "status": "OPEN",
             "owner": {"kind": "MILL"}, "quality_status": "PENDING",
         })
         await db.commercial_stock_balances.insert_one({
