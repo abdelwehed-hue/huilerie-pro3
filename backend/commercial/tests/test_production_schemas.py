@@ -66,3 +66,13 @@ def test_customer_owned_production_preserves_customer_owner():
     )
     assert draft.owner.kind == "CUSTOMER"
     assert draft.owner.customer_id == "client-42"
+
+def test_production_rejects_duplicate_input_lot_lines():
+    with pytest.raises(ValidationError, match="only once"):
+        CommercialProductionDraft(
+            production_date="2026-11-02",
+            inputs=[_input("olive-lot-1"), _input("olive-lot-1")],
+            actual_oil_output_kg="175",
+            output_tank_id="tank-01",
+            idempotency_key="production-run-0005",
+        )
