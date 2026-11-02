@@ -1,56 +1,72 @@
-# Customer-Owned Oil Custody and Ownership Settlement — Design
+# Customer-Owned Oil Custody and Ownership Settlement
 
-Status: design only. Customer-owned/consignment ownership is represented in stock balances and production output, but customer pickup, ownership transfer authorization, and owner settlement statements are not yet implemented as a complete workflow.
+Status: **partially implemented**. Customer-owned olive intake (CIN) and customer-owned oil pickup (CUS) are implemented as transactional workflows. Customer-authorized ownership transfer, custody statements, owner payout, and consignment sales remain deferred.
 
 ## Core ownership rules
 
-1. Customer-owned oil remains the customer's property even when physically stored in one of the mill's tanks.
-2. The stock ledger identity includes owner kind and customer ID. Never aggregate customer-owned balances into MILL-owned stock.
-3. A mill wholesale sale may source only MILL-owned oil with a RELEASED quality decision in normal storage.
+1. Customer-owned oil remains the customer's property even when physically stored in a mill tank.
+2. The stock ledger identity includes product, lot, owner kind, stable custody-owner ID, and location. Customer balances never merge into MILL balances.
+3. Mill wholesale sales may source only MILL-owned oil with a RELEASED quality decision in normal storage.
 4. Customer-owned oil cannot be sold by the mill, used to fulfill another buyer's sale, or pledged as mill inventory.
-5. A change from CUSTOMER ownership to MILL ownership requires explicit customer authorization and a separate ownership-transfer document. An internal ledger adjustment alone is not sufficient evidence of consent.
-6. Customer pickup is a custody release, not a sale and not a transfer of ownership.
-7. No service fee, commission, yield guarantee, oil price, or owner compensation formula is assumed by the system. These require explicit commercial policy/contract configuration.
+5. Customer pickup is a custody release, not a sale and not a transfer of ownership.
+6. No service fee, commission, yield guarantee, oil price, or owner compensation formula is assumed. These require explicit commercial policy and contract configuration.
 
-## Customer custody statement
+## Customer identity
 
-For each customer and product lot, the statement should reconcile:
+- Commercial custody uses a stable commercial_custody_owners.id as the stock owner identity.
+- On first custody intake, the backend links the owner record to an existing legacy client by normalized phone and stores a display-name snapshot.
+- The legacy clients and loads records are read-only references; custody workflows do not rewrite or migrate legacy pressing records.
+- Oil pickup uses the stable custody owner ID, not the phone number, so later phone changes do not change the ledger owner identity.
 
-Opening customer-owned quantity
-+ actual production output allocated to that customer
-+ customer-owned transfers received
-- customer pickups
-- customer-authorized transfers to MILL ownership
-= ending customer-owned quantity.
+## Implemented customer olive intake — CIN
 
-All quantities are Decimal128 to 0.001 kg. The statement must be reproducible from append-only source documents and stock ledger movements. It must not depend on mutable UI totals.
-
-## Customer pickup workflow
-
-Proposed document type: CUS (custody release), subject to final naming approval.
+The CIN document records olives physically received from a customer for custody. It is not an olive purchase and creates no supplier payable or mill-owned asset.
 
 Required fields:
-- customer ID;
-- one or more customer-owned oil lots and quantities;
-- source tank for each lot;
-- release date;
-- customer or authorized representative acknowledgement;
-- reason/reference and idempotency key.
+- existing client phone (used only to resolve/create the stable custody-owner record);
+- receipt date in the active season;
+- registered olive variety;
+- quantity in kg to 0.001;
+- active olive storage/staging location;
+- customer acknowledgement reference;
+- optional source reference and notes;
+- idempotency key.
 
-The service must:
-- validate each lot is CUSTOMER-owned by this customer;
-- validate the source tank is active and not quarantine;
-- validate sufficient available balance for each lot;
-- create a CUS release document and outbound stock movements in one transaction;
-- keep lot owner and historical ownership unchanged;
-- audit the actor and customer acknowledgement;
-- reject cross-customer lot IDs and over-pickup.
+The service:
+- resolves or creates the stable custody-owner record;
+- verifies the client, variety, and receiving location;
+- creates a CUSTOMER-owned olive LOT;
+- creates the CIN receipt and posts the MVT receipt movement;
+- writes stock balance and audit events in the same MongoDB transaction;
+- does not create a purchase, supplier debt, or MILL-owned stock.
 
-If the oil is still in quarantine, it cannot be picked up through this ordinary release workflow; it first requires the same independent quality decision and quarantine exit controls.
+## Implemented customer oil pickup — CUS
 
-## Customer-authorized ownership transfer
+The CUS document releases customer-owned oil to its owner. It is not a sale and does not create an invoice.
 
-Proposed document type: OWN (ownership transfer), subject to final naming approval.
+Required fields:
+- stable custody-owner ID;
+- release date in the active season;
+- customer-owned oil lot;
+- active normal source tank (quarantine is forbidden);
+- quantity in kg to 0.001;
+- customer acknowledgement reference;
+- reason and idempotency key.
+
+The service:
+- verifies the selected lot belongs to the exact custody owner;
+- requires the lot's independent quality status to be RELEASED;
+- posts an outbound DISPATCH movement from the selected tank;
+- debits only the matching customer/lot/tank balance;
+- rejects insufficient stock and cross-customer lot IDs;
+- creates the CUS document, MVT ledger entry, and audit events atomically;
+- leaves the lot's customer ownership unchanged.
+
+Frontend tab: **Garde des clients / أمانة الحرفاء**. It provides intake and pickup forms plus receipt/release histories. Only administrators can post these operations; workers can read according to commercial.read.
+
+## Customer-authorized ownership transfer — deferred
+
+Proposed document type: OWN. It is not enabled yet.
 
 Required evidence:
 - customer authorization reference or signed consent record;
@@ -59,38 +75,39 @@ Required evidence:
 - agreed compensation/price only when the contract explicitly requires it;
 - expected lot/balance versions and idempotency key.
 
-The service must:
-- ensure the source owner matches the authorizing customer;
-- debit CUSTOMER balance and credit MILL balance atomically;
-- preserve the original lot identity and full movement history;
-- create an immutable ownership-transfer document and audit event;
-- prevent quantity from exceeding the customer's available balance;
-- keep quality status unchanged; ownership change never releases quality.
+The service must debit CUSTOMER balance and credit MILL balance atomically, preserve lot identity/history, and audit the authorization. If compensation is due, a separate payable/settlement record is required. Do not silently treat ownership transfer as cash payment.
 
-If compensation is due, create a separate payable/settlement record; do not silently treat ownership transfer as cash payment.
+## Custody statement and consignment — deferred
 
-## Consignment / sale-on-behalf-of-owner
+A future customer statement must reconcile:
 
-Do not allow the mill to sell customer-owned oil merely because it is stored on site. If a future consignment agreement permits the mill to sell on the owner's behalf, it needs a separate authorization model and a three-party settlement ledger:
-- buyer receivable and payment;
-- owner proceeds payable;
-- mill commission/fees only as defined by contract;
-- deductions, tax treatment, and payout reconciliation.
+Opening customer-owned quantity
++ actual production output allocated to that customer
++ customer-owned transfers received
+- customer pickups
+- customer-authorized transfers to MILL ownership
+= ending customer-owned quantity.
 
-No consignment sale should reuse the current MILL-owned sale endpoint or relabel customer stock without a documented transfer/agency agreement.
+All quantities must be reproduced from append-only source documents and stock ledger movements, not mutable UI totals.
 
-## Required tests
+Do not allow the mill to sell customer-owned oil merely because it is stored on site. Any future consignment agreement needs a separate three-party settlement ledger for buyer receivable, owner proceeds payable, mill commission/fees, deductions, tax treatment, and payout reconciliation. It must not reuse the MILL-owned sale endpoint.
 
-- Customer A cannot view, release, transfer, or sell Customer B's lot.
-- Customer pickup reduces only the matching customer's stock and does not change owner.
-- Pickup quantity cannot exceed available balance, including concurrent release attempts.
-- Ownership transfer requires explicit authorization and cannot overdraw customer balance.
-- Transfer changes the balance owner atomically but does not change lot quality.
-- Customer-owned and MILL-owned balances for the same lot never collapse into one balance key.
-- Customer custody statements reconcile to ledger source documents for opening, production, transfers, pickup, and ownership changes.
-- Customer-owned stock is excluded from all mill sale selectors and server-side dispatch checks.
-- Any future consignment workflow separately reconciles buyer receipts, owner payable, commission, and payout; no unapproved assumptions are embedded.
+## Tests and release gates
 
-## Release gate
+Implemented automated coverage:
+- customer intake creates a stable custody owner, CUSTOMER-owned olive lot, CIN document, MVT receipt, stock balance, and audit events atomically;
+- repeating the same idempotency key does not duplicate owner, lot, receipt, or stock;
+- customer pickup debits the matching customer balance only;
+- cross-customer pickup is rejected;
+- oil with pending quality cannot be picked up;
+- customer-owned stock remains excluded from mill sale selection and dispatch.
 
-Keep customer pickup, ownership transfer, and consignment sale actions disabled until the document types, authorization evidence, settlement policy, customer statement, transaction tests, bilingual UI, and legal/tax treatment are approved. This design does not authorize stock or financial postings.
+Remaining gates:
+- real browser acceptance on desktop and mobile;
+- customer phone-change/owner-profile maintenance workflow;
+- customer custody statement reconciliation;
+- explicit OWN authorization and compensation policy;
+- owner payout/consignment policy, if ever required;
+- backup restoration and production security review.
+
+No customer-owned stock should be moved, transferred, or settled outside these controlled workflows.
