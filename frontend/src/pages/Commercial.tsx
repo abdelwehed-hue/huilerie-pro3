@@ -224,6 +224,7 @@ export default function Commercial() {
     { id: "suppliers", label: l.suppliers, icon: Boxes },
     { id: "locations", label: l.locationsTab, icon: Warehouse },
     { id: "varieties", label: l.varietiesTab, icon: Boxes },
+    { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
   ];
 
   return (
