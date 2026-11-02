@@ -339,6 +339,24 @@ async def list_production_runs(
     return _safe(docs)
 
 
+@router.get("/users/{target_user_id}/commercial-permissions")
+async def get_commercial_permissions(
+    target_user_id: str,
+    user: dict = Depends(require_admin),
+):
+    _reject_public_auth_mode()
+    target = await db.users.find_one(
+        {"id": target_user_id}, {"_id": 0, "id": 1, "role": 1, "commercial_permissions": 1}
+    )
+    if not target:
+        raise HTTPException(404, "user_not_found")
+    return {
+        "user_id": target_user_id,
+        "role": target.get("role"),
+        "permissions": sorted(set(target.get("commercial_permissions", []))),
+    }
+
+
 @router.post("/users/{target_user_id}/commercial-permissions")
 async def assign_commercial_permissions(
     target_user_id: str,
