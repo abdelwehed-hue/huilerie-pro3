@@ -6,6 +6,7 @@ run_transaction callback. No partial approval or stock receipt is permitted.
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import datetime, timezone
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
@@ -25,6 +26,11 @@ def _stable_id(namespace: str, value: str) -> str:
 
 def _idempotency_key(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _approval_fingerprint(command: ApproveOlivePurchaseCommand) -> str:
+    payload = json.dumps(command.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 async def approve_olive_purchase(
@@ -50,8 +56,9 @@ async def approve_olive_purchase(
         raise ValueError("Olive purchase does not exist")
 
     expected_key = command.idempotency_key
+    approval_fingerprint = _approval_fingerprint(command)
     if purchase.get("status") == "APPROVED":
-        if purchase.get("approval_idempotency_key") != expected_key:
+        if purchase.get("approval_request_fingerprint") != approval_fingerprint:
             raise ValueError("Purchase was already approved with a different request")
         return purchase
 
@@ -74,6 +81,7 @@ async def approve_olive_purchase(
                 "approved_by": actor_user_id,
                 "approved_at": created_at.astimezone(timezone.utc),
                 "approval_idempotency_key": expected_key,
+                "approval_request_fingerprint": approval_fingerprint,
                 "receiving_location_id": command.receiving_location_id,
                 "updated_at": created_at.astimezone(timezone.utc),
             },
