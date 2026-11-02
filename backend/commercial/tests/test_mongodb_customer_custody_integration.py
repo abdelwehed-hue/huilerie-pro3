@@ -16,6 +16,7 @@ from commercial.schemas.customer_custody import (
 from commercial.services.customer_custody import (
     receive_customer_olive_custody,
     release_customer_oil_custody,
+    get_customer_custody_statement,
 )
 
 
@@ -110,6 +111,10 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert updated_owner["client_phone"] == "21698765432"
         assert updated_owner["client_name"] == "Updated Customer Name"
         assert await db.commercial_custody_owners.count_documents({}) == 1
+        statement = await get_customer_custody_statement(db, "custody-owner-1")
+        assert statement["ledger_totals_kg"]["OLIVE"] == Decimal("1350.500")
+        assert statement["current_balances_kg"]["OLIVE"] == Decimal("1350.500")
+        assert statement["movement_count"] == 2
 
         # Same idempotency key returns the original receipt even with new generated IDs.
         repeated = await post("unused-receipt-id", "unused-owner-id", "unused-lot-id", "unused-movement-id", "unused-audit-id")
@@ -184,6 +189,10 @@ async def test_customer_oil_pickup_debits_only_matching_customer_stock():
         )
         assert movement["movement_kind"] == "DISPATCH"
         assert movement["source_owner"]["customer_id"] == "custody-owner-a"
+        statement = await get_customer_custody_statement(db, "custody-owner-a")
+        assert statement["ledger_totals_kg"]["OIL"] == Decimal("30.000")
+        assert statement["current_balances_kg"]["OIL"] == Decimal("30.000")
+        assert statement["movements"][-1]["delta_kg"] == Decimal("-20.000")
         assert await db.commercial_audit_events.count_documents({}) == 2
     finally:
         await client.drop_database(name)
