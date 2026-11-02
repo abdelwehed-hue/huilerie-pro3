@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request
 from passlib.hash import pbkdf2_sha256
 
 from lib.db import db
+from lib.security_config import has_known_demo_password, initial_admin_credentials, is_production
 
 COOKIE = "olive_session"
 JWT_SECRET = os.environ["JWT_SECRET"]
@@ -58,13 +59,25 @@ async def require_admin(user: dict = Depends(current_user)) -> dict:
 
 
 async def seed_defaults() -> None:
-    """Idempotent: default admin + demo worker + price setting."""
+    """Idempotent user seeding; production never receives known demo passwords."""
     now = datetime.now(timezone.utc)
-    defaults = [
-        ("admin", "Administrateur", "admin123", "admin"),
-        ("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"),
-    ]
+    if is_production():
+        legacy_users = await db.users.find(
+            {"username": {"$in": ["admin", "ouvrier"]}},
+            {"_id": 0, "username": 1, "password_hash": 1},
+        ).to_list(10)
+        for legacy_user in legacy_users:
+            if has_known_demo_password(
+                legacy_user.get("username", ""), legacy_user.get("password_hash", "")
+            ):
+                raise RuntimeError(
+                    "A known demo password is still active; rotate that account password before production startup"
+                )
     if await db.users.count_documents({}) == 0:
+        admin_username, admin_name, admin_password = initial_admin_credentials()
+        defaults = [(admin_username, admin_name, admin_password, "admin")]
+        if not is_production():
+            defaults.append(("ouvrier", "Ouvrier Démo", "ouvrier123", "worker"))
         for username, name, pw, role in defaults:
             await db.users.insert_one({
                 "id": str(uuid.uuid4()), "username": username, "full_name": name,
