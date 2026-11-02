@@ -26,10 +26,15 @@ def _quantity(value: Any) -> Decimal:
 
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
     lot = await db["commercial_lots"].find_one(
-        {"id": draft.lot_id}, {"_id": 0, "id": 1}, session=session
+        {"id": draft.lot_id}, {"_id": 0, "id": 1, "product_kind": 1}, session=session
     )
     if not lot:
         raise ValueError("Unknown commercial lot")
+    if lot.get("product_kind") != draft.product_kind:
+        raise ValueError(
+            f"Stock movement product kind {draft.product_kind} does not match "
+            f"lot product kind {lot.get('product_kind')}"
+        )
 
     location_ids = {
         value for value in (draft.source_location_id, draft.destination_location_id)
