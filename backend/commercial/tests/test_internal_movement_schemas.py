@@ -58,6 +58,7 @@ def test_external_receipt_or_dispatch_cannot_be_submitted_as_internal_movement()
 async def test_generic_stock_endpoint_rejects_internal_document_source(monkeypatch):
     monkeypatch.setenv("MONGO_URL", "mongodb://localhost:27017/test")
     monkeypatch.setenv("DB_NAME", "commercial_route_unit_test")
+    monkeypatch.setenv("JWT_SECRET", "unit-test-secret-not-for-production")
     from fastapi import HTTPException
     from commercial.routers import create_stock_movement
     from commercial.schemas.inventory import StockMovementDraft
