@@ -71,29 +71,28 @@ This package is an isolated commercial domain. It must not change existing olive
 - Sale approval creates the commercial FAC invoice and DISPATCH MVT movement in the same MongoDB transaction.
 - Payments receive season-scoped PAY numbers. Payment posting is idempotent, version-checked, and rejects overpayment. Partial/full payment status is maintained on the invoice.
 - Bank transfers and cheques require a traceable reference; cash payments may omit it.
-- The buyer account summary endpoint `GET /api/commercial/v1/buyers/{buyer_id}/account-summary` aggregates invoice count, invoiced amount, paid amount, outstanding amount, and invoice counts by payment status. It includes inactive buyers so historical receivables remain visible.
+- The buyer account summary endpoint `GET /api/commercial/v1/buyers/{buyer_id}/account-summary` aggregates gross invoices, credit notes, net receivable, paid amount, outstanding amount, invoice counts by payment status, and buyer credit balance. It includes inactive buyers so historical receivables remain visible.
 - Tax treatment is explicitly marked `NOT_CONFIGURED`. These records are internal commercial records and are not represented as legally compliant tax invoices.
 
 ## Frontend
 
 - Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
 - Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
-- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake and commercial acceptance/credit notes, invoice, and payment workflows.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, buyer account summaries with net receivable/credit balance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake and commercial acceptance/credit notes, invoice, and payment workflows.
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
 ## Validation
 
 - GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
-- Latest full CI run `41516039108` on commit `8fb84bab3a8667ae8c2faf2abfabb15e466b5cb0` passed all five jobs: invoice unit tests, commercial unit tests, MongoDB replica-set transaction integration, frontend production build, and backend syntax.
-- The run includes buyer lifecycle, draft sale cancellation, and the Arabic/French cancellation-label fix.
+- Full CI run `41520098188` on commit `1b3fa7d61235a48deb0b05a81affbac902884d20` passed all five jobs: invoice unit tests, commercial unit tests, MongoDB replica-set transaction integration, frontend production build, and backend syntax.
+- The validated head includes buyer lifecycle, draft sale cancellation, tank quarantine controls, physical sale return intake, AVO credit notes, net receivable/buyer-credit accounting, and the Arabic/French return workflow UI.
 - A passing CI run does not replace browser-based operational acceptance, backup restoration verification, or production security configuration review.
 
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
 - Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. The proposed invariants and remaining design requirements are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
-- Tank roles now support admin-only, version-checked `NORMAL`/`QUARANTINE` assignment on empty tanks, with an audit event. Transactional stock validation locks each tank document to serialize role changes against stock postings; ordinary receipts/production cannot enter quarantine, and quarantined oil can leave only by a `TRANSFER` after its lot is `RELEASED`. Return intake and commercial credit-note acceptance are implemented; refund/settlement remains separate.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
