@@ -120,8 +120,6 @@ async def approve_wholesale_sale(
     )
     if not lot or lot.get("product_kind") != "OIL" or lot.get("status") != "OPEN":
         raise ValueError("Sale requires an open commercial oil lot")
-    if lot.get("owner") != {"kind": "MILL"}:
-        raise ValueError("Customer-custody oil cannot be sold by the mill")
     if lot.get("quality_status") != "RELEASED":
         raise ValueError("Oil lot has not been released by quality control")
     release = await db["commercial_quality_releases"].find_one(
