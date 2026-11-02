@@ -12,6 +12,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.services.numbering import reserve_document_number
+from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
 
 
 def _decimal(value: Any) -> Decimal:
@@ -90,6 +91,7 @@ async def accept_sale_return_and_issue_credit_note(
 
     gross = _decimal(invoice["total_amount_dt"])
     paid = _decimal(invoice.get("paid_amount_dt", Decimal128("0.000")))
+    await assert_invoice_cash_paid_reconciles(db, invoice_id, paid, session=session)
     applied_credit = _decimal(invoice.get("applied_credit_amount_dt", Decimal128("0.000")))
     previous_credited = _decimal(invoice.get("credited_amount_dt", Decimal128("0.000")))
     previous_net = _decimal(invoice.get("net_amount_dt", gross - previous_credited))
