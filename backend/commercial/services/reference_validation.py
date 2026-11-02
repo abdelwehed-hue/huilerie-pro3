@@ -21,11 +21,19 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         if value is not None
     }
     for location_id in location_ids:
-        tank = await db["commercial_tanks"].find_one(
-            {"id": location_id, "active": True}, {"_id": 0, "id": 1}, session=session
-        )
-        if not tank:
-            raise ValueError(f"Unknown or inactive commercial tank: {location_id}")
+        if draft.product_kind == "OIL":
+            location = await db["commercial_tanks"].find_one(
+                {"id": location_id, "active": True}, {"_id": 0, "id": 1}, session=session
+            )
+            location_label = "commercial tank"
+        else:
+            location = await db["commercial_locations"].find_one(
+                {"id": location_id, "active": True, "kind": {"$in": ["OLIVE_STORAGE", "STAGING"]}},
+                {"_id": 0, "id": 1}, session=session
+            )
+            location_label = "olive storage location"
+        if not location:
+            raise ValueError(f"Unknown or inactive {location_label}: {location_id}")
 
     for owner in (draft.source_owner, draft.destination_owner):
         if owner is None or owner.kind != "CUSTOMER":
