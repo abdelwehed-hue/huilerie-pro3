@@ -164,6 +164,43 @@ export default function Commercial() {
     },
     onError: () => toast.error(l.warning),
   });
+  const createPurchase = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/olive-purchases", {
+      supplier_id: purchaseSupplierId,
+      purchase_date: purchaseDate,
+      lines: purchaseLines.map((line) => ({
+        variety_id: line.variety_id,
+        quantity_kg: line.quantity_kg,
+        unit_price_dt: line.unit_price_dt,
+      })),
+      notes: purchaseNotes.trim() || null,
+      idempotency_key: crypto.randomUUID(),
+    }),
+    onSuccess: async () => {
+      toast.success(l.purchaseCreated);
+      setPurchaseNotes("");
+      setPurchaseLines([{ variety_id: "", quantity_kg: "", unit_price_dt: "" }]);
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "purchases"] });
+    },
+    onError: () => toast.error(l.warning),
+  });
+  const approvePurchase = useMutation({
+    mutationFn: (purchase: AnyRecord) => apiPost<AnyRecord>(`/commercial/v1/olive-purchases/${encodeURIComponent(purchase.id)}/approve`, {
+      expected_version: purchase.version,
+      receiving_location_id: receivingLocationId,
+      idempotency_key: crypto.randomUUID(),
+    }),
+    onSuccess: async () => {
+      toast.success(l.approved);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+      ]);
+    },
+    onError: () => toast.error(l.warning),
+  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
