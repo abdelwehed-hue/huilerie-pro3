@@ -154,6 +154,7 @@ async def complete_commercial_production(
         "owner": owner_doc,
         "quality_status": "PENDING",
         "status": "OPEN",
+        "version": 1,
         "created_by": actor_user_id,
         "created_at": created_utc,
     }
