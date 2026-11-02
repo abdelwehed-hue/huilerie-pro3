@@ -53,8 +53,8 @@ app.get('/api/public/content', async (_req, res) => {
   const doc = await content.findOne({ key: 'main' }, { projection: { _id: 0, key: 0 } });
   res.json(doc || { translations: { fr: {}, ar: {}, en: {} }, updatedAt: null });
 });
-app.get('/api/public/news', async (_req, res) => res.json(await news.find({ status: 'published' }).sort({ publishedAt: -1 }).limit(50).project({ title: 1, summary: 1, body: 1, imageId: 1, publishedAt: 1, translations: 1 }).toArray()));
-app.get('/api/public/products', async (_req, res) => res.json(await products.find({ status: 'published' }).sort({ updatedAt: -1 }).limit(100).project({ name: 1, description: 1, imageId: 1, translations: 1, updatedAt: 1 }).toArray()));
+app.get('/api/public/news', async (_req, res) => res.json(await news.find({ status: 'published' }).sort({ publishedAt: -1 }).limit(50).project({ title: 1, summary: 1, body: 1, imageId: 1, imageUrl: 1, publishedAt: 1, translations: 1 }).toArray()));
+app.get('/api/public/products', async (_req, res) => res.json(await products.find({ status: 'published' }).sort({ updatedAt: -1 }).limit(100).project({ name: 1, description: 1, imageId: 1, imageUrl: 1, translations: 1, updatedAt: 1 }).toArray()));
 
 app.post('/api/admin/setup', async (req, res) => {
   if (await admins.countDocuments({}) > 0) return res.status(403).json({ error: 'Configuration initiale déjà effectuée' });
