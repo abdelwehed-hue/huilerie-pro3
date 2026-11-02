@@ -119,11 +119,21 @@ app.delete('/api/admin/media/:id', auth, async (req, res) => {
   try { await bucket.delete(_id); res.json({ ok: true }); }
   catch { res.status(404).json({ error: 'Media not found' }); }
 });
+function detectImageType(buffer) {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp' && ['avif', 'avis'].includes(buffer.toString('ascii', 8, 12))) return 'image/avif';
+  return null;
+}
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|avif)$/.test(file.mimetype)) });
 app.post('/api/admin/media', auth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image JPEG, PNG, WEBP ou AVIF requise (8 Mo max)' });
+  const verifiedType = detectImageType(req.file.buffer);
+  if (!verifiedType) return res.status(400).json({ error: 'Le contenu du fichier ne correspond pas à une image autorisée' });
   const id = new ObjectId();
-  const stream = bucket.openUploadStreamWithId(id, req.file.originalname, { contentType: req.file.mimetype, metadata: { uploadedBy: req.admin.email } });
+  const safeName = String(req.file.originalname || 'image').replace(/[\\/\\\\\\x00-\\x1f]/g, '_').slice(0, 180);
+  const stream = bucket.openUploadStreamWithId(id, safeName, { contentType: verifiedType, metadata: { uploadedBy: req.admin.email } });
   stream.end(req.file.buffer);
   stream.on('finish', () => res.status(201).json({ id: id.toString(), url: `/api/public/media/${id}` }));
   stream.on('error', () => res.status(500).json({ error: 'Upload failed' }));
