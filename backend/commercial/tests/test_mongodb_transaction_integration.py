@@ -1201,6 +1201,20 @@ async def test_return_acceptance_issues_credit_note_and_tracks_buyer_credit_with
              "total_amount_dt": Decimal128("500.000"), "paid_amount_dt": Decimal128("200.000"),
              "outstanding_amount_dt": Decimal128("300.000"), "payment_status": "PARTIALLY_PAID", "version": 1},
         ])
+        await db.commercial_sale_payments.insert_many([
+            {"id": "payment-credit-paid", "season_code": "2627", "document_type": "PAY",
+             "document_number": "2627PAY0001", "invoice_id": "invoice-credit-paid",
+             "sale_id": "sale-credit-paid", "buyer_id": "buyer-credit-paid",
+             "payment_date": "2026-10-20", "amount_dt": Decimal128("500.000"),
+             "method": "CASH", "idempotency_scope": "2627:test",
+             "idempotency_key": "payment-credit-paid-key", "created_at": now},
+            {"id": "payment-credit-partial", "season_code": "2627", "document_type": "PAY",
+             "document_number": "2627PAY0002", "invoice_id": "invoice-credit-partial",
+             "sale_id": "sale-credit-partial", "buyer_id": "buyer-credit-partial",
+             "payment_date": "2026-10-20", "amount_dt": Decimal128("200.000"),
+             "method": "CASH", "idempotency_scope": "2627:test",
+             "idempotency_key": "payment-credit-partial-key", "created_at": now},
+        ])
         await db.commercial_sale_returns.insert_many([
             {"id": "return-credit-paid", "season_code": "2627", "document_number": "2627RET0001",
              "sale_id": "sale-credit-paid", "invoice_id": "invoice-credit-paid",
