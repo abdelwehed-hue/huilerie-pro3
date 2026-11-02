@@ -1117,6 +1117,8 @@ export default function Commercial() {
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.creditNotesTotal}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.credited_amount_dt)} DT</p></div>
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.netReceivable}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.total_amount_dt)} DT</p></div>
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.paidAmount}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.paid_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.appliedCredit}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.applied_credit_amount_dt)} DT</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.settledAmount}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.settled_amount_dt)} DT</p></div>
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.outstanding}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.outstanding_amount_dt)} DT</p></div>
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.buyerCreditBalance}</p><p className="text-xl font-semibold">{number(buyerAccountSummary.data?.summary?.buyer_credit_balance_dt)} DT</p></div>
           </div>
