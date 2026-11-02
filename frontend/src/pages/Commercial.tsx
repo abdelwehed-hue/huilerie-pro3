@@ -79,7 +79,7 @@ function date(v: unknown) {
   const parsed = new Date(String(v));
   return Number.isNaN(parsed.getTime()) ? String(v) : parsed.toLocaleDateString();
 }
-function ownerLabel(owner: AnyRecord | undefined, l: typeof labels.fr) {
+function ownerLabel(owner: AnyRecord | undefined, l: { mill: string; customer: string; unknown: string }) {
   if (!owner) return l.unknown;
   return owner.kind === "MILL" ? l.mill : owner.kind === "CUSTOMER" ? `${l.customer}: ${value(owner.customer_id)}` : value(owner.kind);
 }
