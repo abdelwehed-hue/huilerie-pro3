@@ -203,7 +203,7 @@ app.post('/api/admin/media', auth, upload.single('file'), async (req, res) => {
   const verifiedType = detectImageType(req.file.buffer);
   if (!verifiedType) return res.status(400).json({ error: 'Le contenu du fichier ne correspond pas à une image autorisée' });
   const id = new ObjectId();
-  const safeName = String(req.file.originalname || 'image').replace(/[\\/\\\\\\x00-\\x1f]/g, '_').slice(0, 180);
+  const safeName = String(req.file.originalname || 'image').replace(/[\/\\\x00-\x1f]/g, '_').slice(0, 180);
   const stream = bucket.openUploadStreamWithId(id, safeName, { contentType: verifiedType, metadata: { uploadedBy: req.admin.email } });
   stream.end(req.file.buffer);
   stream.on('finish', () => res.status(201).json({ id: id.toString(), url: `/api/public/media/${id}` }));
