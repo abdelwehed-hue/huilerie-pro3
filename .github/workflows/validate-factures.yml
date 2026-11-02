@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install commercial domain test dependencies
-        run: python -m pip install "pydantic>=2" pymongo pytest pytest-asyncio
+        run: python -m pip install "pydantic>=2" pymongo pytest pytest-asyncio pytest-xdist
       - name: Test commercial schemas, bootstrap, permissions, and reference validation
         run: python -m pytest -o addopts= commercial/tests
 
