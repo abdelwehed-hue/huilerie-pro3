@@ -29,7 +29,7 @@ class Owner:
 
 
 class Draft:
-    lot_id = "lot-1"
+    lot_id = "lot-1"\n    product_kind = "OIL"
     source_location_id = None
     destination_location_id = "tank-01"
     source_owner = None
