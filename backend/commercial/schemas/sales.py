@@ -33,3 +33,10 @@ class SalePaymentDraft(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
     expected_invoice_version: int = Field(ge=1)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+    
+    @model_validator(mode="after")
+    def validate_payment_reference(self):
+        if self.method in {"BANK_TRANSFER", "CHEQUE"} and not (self.reference or "").strip():
+            raise ValueError("A reference is required for bank transfers and cheques")
+        return self
