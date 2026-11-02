@@ -889,6 +889,12 @@ async def test_buyer_profile_lifecycle_is_versioned_and_audited(monkeypatch):
     monkeypatch.setattr(routers, "db", test_db)
     monkeypatch.setattr(routers, "_authorize", lambda user, permission: None)
 
+    async def run_test_transaction(operation):
+        async with await client.start_session() as session:
+            return await session.with_transaction(operation)
+
+    monkeypatch.setattr(routers, "run_transaction", run_test_transaction)
+
     async def ready():
         return {"active_season": "2627"}, "2627"
 
