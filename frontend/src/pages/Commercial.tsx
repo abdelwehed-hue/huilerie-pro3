@@ -263,13 +263,13 @@ export default function Commercial() {
   const tanks = useQuery({ queryKey: ["commercial", "tanks"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/tanks"), enabled: ready });
   const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/lots", 500), enabled: ready });
   const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-balances", 1000), enabled: ready });
-  const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/stock-movements?limit=500"), enabled: ready && tab === "movements" });
-  const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/internal-movements?limit=500"), enabled: ready && tab === "transfers" });
-  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/quality-assessments?limit=500"), enabled: ready && tab === "quality" });
+  const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
+  const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
+  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
-  const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/audit-events?limit=500"), enabled: ready && tab === "audit" });
+  const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/audit-events", 500), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/locations"), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "varieties" || tab === "purchases" || tab === "custody") });
@@ -277,11 +277,11 @@ export default function Commercial() {
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
-  const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales?limit=500"), enabled: ready && tab === "sales" });
-  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices?limit=500"), enabled: ready && tab === "sales" });
-  const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
-  const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-return-rejections?limit=500"), enabled: ready && tab === "sales" });
-  const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/credit-notes?limit=500"), enabled: ready && tab === "sales" });
+  const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "sales" });
+  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "sales" });
+  const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-returns", 500), enabled: ready && tab === "sales" });
+  const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-return-rejections", 500), enabled: ready && tab === "sales" });
+  const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals"), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const selectedPayment = (salePayments.data ?? []).find((payment) => payment.id === selectedPaymentForReversal);
@@ -297,9 +297,9 @@ export default function Commercial() {
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
-  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
-  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/receipts?limit=500"), enabled: ready && tab === "custody" });
-  const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/releases?limit=500"), enabled: ready && tab === "custody" });
+  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
+  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
+  const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
