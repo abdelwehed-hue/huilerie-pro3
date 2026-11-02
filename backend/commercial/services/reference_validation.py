@@ -10,6 +10,7 @@ SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "PROD": "commercial_production_runs",
     "INT": "commercial_internal_movements",
     "VTE": "commercial_sales",
+    "RET": "commercial_sale_returns",
 }
 
 
@@ -41,7 +42,8 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         if draft.product_kind == "OIL":
             role = location.get("role", "NORMAL")
             if draft.destination_location_id == location_id and role == "QUARANTINE":
-                raise ValueError("Quarantine tanks accept stock only through the dedicated return workflow")
+                if draft.movement_kind != "RECEIPT" or draft.source_document_type != "RET":
+                    raise ValueError("Quarantine tanks accept stock only through the dedicated return workflow")
             if draft.source_location_id == location_id and role == "QUARANTINE":
                 lot_quality = await db["commercial_lots"].find_one(
                     {"id": draft.lot_id}, {"_id": 0, "quality_status": 1}, session=session
