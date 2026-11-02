@@ -27,7 +27,7 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
     for location_id in location_ids:
         if draft.product_kind == "OIL":
             location = await db["commercial_tanks"].find_one(
-                {"id": location_id, "active": True}, {"_id": 0, "id": 1}, session=session
+                {"id": location_id, "active": True}, {"_id": 0, "id": 1, "role": 1}, session=session
             )
             location_label = "commercial tank"
         else:
@@ -38,6 +38,16 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
             location_label = "olive storage location"
         if not location:
             raise ValueError(f"Unknown or inactive {location_label}: {location_id}")
+        if draft.product_kind == "OIL":
+            role = location.get("role", "NORMAL")
+            if draft.destination_location_id == location_id and role == "QUARANTINE":
+                raise ValueError("Quarantine tanks accept stock only through the dedicated return workflow")
+            if draft.source_location_id == location_id and role == "QUARANTINE":
+                lot_quality = await db["commercial_lots"].find_one(
+                    {"id": draft.lot_id}, {"_id": 0, "quality_status": 1}, session=session
+                )
+                if draft.movement_kind != "TRANSFER" or not lot_quality or lot_quality.get("quality_status") != "RELEASED":
+                    raise ValueError("Quarantined oil can leave only by transfer after quality release")
 
     for owner in (draft.source_owner, draft.destination_owner):
         if owner is None or owner.kind != "CUSTOMER":
