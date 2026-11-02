@@ -97,6 +97,24 @@ app.post('/api/admin/login', async (req, res) => {
   res.json({ token: tokenFor(admin), email: admin.email });
 });
 app.get('/api/admin/me', auth, async (req, res) => res.json({ email: req.admin.email, role: 'admin' }));
+app.put('/api/admin/password', auth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir entre 12 et 128 caractères' });
+  }
+  const _id = cleanId(req.admin.sub);
+  if (!_id) return res.status(401).json({ error: 'Session invalide' });
+  const admin = await admins.findOne({ _id });
+  if (!admin || !(await bcrypt.compare(String(currentPassword || ''), admin.passwordHash))) {
+    return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+  }
+  if (await bcrypt.compare(newPassword, admin.passwordHash)) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit être différent de l’ancien' });
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await admins.updateOne({ _id }, { $set: { passwordHash, passwordChangedAt: new Date() } });
+  res.json({ ok: true });
+});
 app.get('/api/admin/content', auth, async (_req, res) => res.json(await content.findOne({ key: 'main' }) || { key: 'main', translations: { fr: {}, ar: {}, en: {} } }));
 app.put('/api/admin/content', auth, async (req, res) => {
   const translations = req.body?.translations;
