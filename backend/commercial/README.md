@@ -12,7 +12,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Tank capacities remain undefined; no capacity limits are enforced until explicitly configured.
 - Quality analyses and independent release controls are required.
 - All commercial document numbers use the four-digit season code, never the calendar year. Examples: `2627LOT0001`, `2627FAC0001`.
-- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, and RET.
+- Each document type has an independent sequence per season: LOT, MVT, ACH, PROD, VTE, FAC, PAY, INT, RET, and AVO.
 - Existing operational and service-invoice identifiers remain unchanged.
 
 ## Implementation rules
@@ -65,7 +65,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Wholesale buyer records are separate from legacy pressing clients.
 - Admins can edit buyer profiles using optimistic version checks and can deactivate/reactivate buyers without deleting history. Each change is audited; inactive buyers remain visible for historical receivables but cannot be selected for new sales.
 - Sale drafts receive season-scoped VTE numbers. Approval requires an active buyer, an open MILL-owned oil lot, a persisted RELEASED quality decision, an active source tank, and sufficient stock.
-- Approved-sale return intake is recorded as a season-scoped RET document. It creates a new MILL-owned oil LOT with quality PENDING and receives it only into an explicitly designated QUARANTINE tank. The original sale's returned quantity is version-checked and cannot exceed the dispatched quantity. Commercial acceptance/credit-note issuance remains a separate pending workflow. The API is `POST /api/commercial/v1/sales/{sale_id}/returns`; the return and LOT counters are initialized by the explicit bootstrap.
+- Approved-sale return intake is recorded as a season-scoped RET document. It creates a new MILL-owned oil LOT with quality PENDING and receives it only into an explicitly designated QUARANTINE tank. The original sale's returned quantity is version-checked and cannot exceed the dispatched quantity. Commercial acceptance is a separate audited action that issues a season-scoped AVO credit note. The AVO amount is calculated from the returned quantity and the original frozen sale price; the original invoice gross amount and payment records remain immutable. Net receivable and buyer credit balance are adjusted transactionally. The APIs are `POST /api/commercial/v1/sales/{sale_id}/returns` and `POST /api/commercial/v1/sale-returns/{return_id}/accept`.
 - Draft sales can be cancelled with a reason, optimistic version check, idempotency key, and audit event. Cancellation does not recycle the reserved VTE number and is forbidden after approval.
 - Customer-custody oil and pending/rejected oil cannot be sold by the mill.
 - Sale approval creates the commercial FAC invoice and DISPATCH MVT movement in the same MongoDB transaction.
@@ -78,7 +78,7 @@ This package is an isolated commercial domain. It must not change existing olive
 
 - Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
 - Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
-- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake, invoice, and payment workflows.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, quarantine tank role management, approved-sale return intake and commercial acceptance/credit notes, invoice, and payment workflows.
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
@@ -92,8 +92,8 @@ This package is an isolated commercial domain. It must not change existing olive
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Commercial acceptance of received returns, credit notes, buyer-credit balances/refunds, and return rejection/re-dispatch. The proposed invariants and remaining design requirements are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
-- Tank roles now support admin-only, version-checked `NORMAL`/`QUARANTINE` assignment on empty tanks, with an audit event. Transactional stock validation locks each tank document to serialize role changes against stock postings; ordinary receipts/production cannot enter quarantine, and quarantined oil can leave only by a `TRANSFER` after its lot is `RELEASED`. Return intake remains unavailable until its dedicated workflow is implemented.
+- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual are implemented; tax treatment remains `NOT_CONFIGURED`. The proposed invariants and remaining design requirements are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
+- Tank roles now support admin-only, version-checked `NORMAL`/`QUARANTINE` assignment on empty tanks, with an audit event. Transactional stock validation locks each tank document to serialize role changes against stock postings; ordinary receipts/production cannot enter quarantine, and quarantined oil can leave only by a `TRANSFER` after its lot is `RELEASED`. Return intake and commercial credit-note acceptance are implemented; refund/settlement remains separate.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
