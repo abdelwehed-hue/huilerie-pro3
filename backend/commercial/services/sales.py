@@ -262,3 +262,53 @@ async def record_sale_payment(
                     "amount_dt": Decimal128(amount), "payment_status": status},
     }, session=session)
     return payment
+
+
+async def cancel_wholesale_sale_draft(
+    db: Any, sale_id: str, command: Any, *,
+    actor_user: dict[str, Any], actor_user_id: str,
+    audit_event_id: str, created_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Cancel a draft only; posted stock/invoice effects are never reversed here."""
+    require_commercial_permission(actor_user, "commercial.manage_sales")
+    if not actor_user_id or not sale_id or not audit_event_id or created_at.tzinfo is None:
+        raise ValueError("Authenticated actor, stable IDs, and timezone-aware timestamp are required")
+    sales = db["commercial_sales"]
+    sale = await sales.find_one({"id": sale_id}, {"_id": 0}, session=session)
+    if not sale:
+        raise ValueError("Wholesale sale does not exist")
+    if sale.get("status") == "CANCELLED":
+        if (sale.get("cancelled_by") == actor_user_id
+                and sale.get("cancellation_idempotency_key") == command.idempotency_key
+                and sale.get("cancellation_reason") == command.reason):
+            return sale
+        raise ValueError("Wholesale sale has already been cancelled")
+    if sale.get("status") != "DRAFT":
+        raise ValueError("Only a draft wholesale sale can be cancelled")
+    if sale.get("version") != command.expected_version:
+        raise ValueError("Wholesale sale version conflict")
+
+    now = created_at.astimezone(timezone.utc)
+    update = await sales.update_one(
+        {"id": sale_id, "status": "DRAFT", "version": command.expected_version},
+        {"$set": {
+            "status": "CANCELLED", "cancellation_reason": command.reason,
+            "cancellation_idempotency_key": command.idempotency_key,
+            "cancelled_by": actor_user_id, "cancelled_at": now, "updated_at": now,
+        }, "$inc": {"version": 1}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Wholesale sale changed concurrently")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id, "entity_type": "commercial_sale", "entity_id": sale_id,
+        "action": "SALE_DRAFT_CANCELLED", "actor_user_id": actor_user_id,
+        "created_at": now,
+        "details": {
+            "sale_number": sale.get("document_number"),
+            "reason": command.reason,
+            "previous_version": command.expected_version,
+            "version": command.expected_version + 1,
+        },
+    }, session=session)
+    return await sales.find_one({"id": sale_id}, {"_id": 0}, session=session)
