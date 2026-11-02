@@ -12,6 +12,19 @@ INVENTORY_INDEXES = {
         IndexModel([("season_code", ASCENDING), ("document_type", ASCENDING)],
                    unique=True, name="uq_commercial_counter_season_type"),
     ],
+    "commercial_suppliers": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_supplier_id"),
+        IndexModel([("name", ASCENDING)], name="commercial_supplier_name"),
+    ],
+    "commercial_olive_purchases": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_olive_purchase_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
+                   unique=True, name="uq_olive_purchase_document"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)],
+                   unique=True, name="uq_olive_purchase_idempotency"),
+        IndexModel([("supplier_id", ASCENDING), ("purchase_date", DESCENDING)],
+                   name="olive_purchase_supplier_date"),
+    ],
     "commercial_tanks": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_tank_id"),
         IndexModel([("code", ASCENDING)], unique=True, name="uq_commercial_tank_code"),
