@@ -1333,12 +1333,13 @@ async def get_customer_custody_statement_route(
 @router.get("/customer-custody/owners")
 async def list_customer_custody_owners(
     limit: int = Query(default=500, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_custody_owners.find(
         {}, {"_id": 0, "id": 1, "client_phone": 1, "client_name": 1, "active": 1, "version": 1}
-    ).sort("client_name", 1).to_list(limit)
+    ).sort([("client_name", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
 
@@ -1382,6 +1383,7 @@ async def list_commercial_audit_events(
     entity_type: str | None = None,
     entity_id: str | None = None,
     limit: int = Query(default=200, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
     _authorize(user, "commercial.view_audit")
@@ -1392,5 +1394,5 @@ async def list_commercial_audit_events(
         query["entity_id"] = entity_id
     docs = await db.commercial_audit_events.find(
         query, {"_id": 0}
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
