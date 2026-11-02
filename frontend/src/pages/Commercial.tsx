@@ -296,7 +296,7 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && tab === "custody" });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
