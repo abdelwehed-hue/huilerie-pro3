@@ -18,3 +18,14 @@ class CommercialBuyerDraft(BaseModel):
         if len(value) < 2:
             raise ValueError("Buyer name is required")
         return value
+
+
+class CommercialBuyerUpdate(CommercialBuyerDraft):
+    """Complete profile replacement guarded by an optimistic version."""
+    expected_version: int = Field(ge=1)
+
+
+class CommercialBuyerStatusCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    expected_version: int = Field(ge=1)
+    active: bool
