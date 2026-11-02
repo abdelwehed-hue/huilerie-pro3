@@ -27,46 +27,82 @@ def _movement_key(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-async def _find_legacy_client(db: Any, phone: str, session: Any) -> dict[str, Any] | None:
-    client = await db["clients"].find_one(
-        {"phone": phone}, {"_id": 0, "phone": 1, "client_name": 1}, session=session
-    )
-    if client:
-        return client
-    return await db["loads"].find_one(
-        {"phone": phone}, {"_id": 0, "phone": 1, "client_name": 1},
-        sort=[("created_at", -1)], session=session,
-    )
-
-
 async def _get_or_create_custody_owner(
     db: Any, phone: str, owner_id: str, *, created_at: datetime, session: Any
 ) -> dict[str, Any]:
-    existing = await db["commercial_custody_owners"].find_one(
-        {"client_phone": phone}, {"_id": 0}, session=session
+    client = await db["clients"].find_one(
+        {"phone": phone}, {"phone": 1, "client_name": 1}, session=session
     )
-    if existing:
-        if not existing.get("active", True):
-            raise ValueError("Customer custody account is inactive")
-        return existing
-
-    client = await _find_legacy_client(db, phone, session)
     if not client:
-        raise ValueError("Customer must exist in the mill client directory before custody intake")
+        legacy_load = await db["loads"].find_one(
+            {"phone": phone}, {"_id": 0, "phone": 1, "client_name": 1},
+            sort=[("created_at", -1)], session=session,
+        )
+        if not legacy_load:
+            raise ValueError("Customer must exist in the mill client directory before custody intake")
+        # Normalize an established legacy customer into the client directory once.
+        inserted = await db["clients"].insert_one(
+            {
+                "phone": phone,
+                "client_name": legacy_load.get("client_name"),
+                "created_at": created_at.astimezone(timezone.utc),
+            },
+            session=session,
+        )
+        client = {
+            "_id": inserted.inserted_id,
+            "phone": phone,
+            "client_name": legacy_load.get("client_name"),
+        }
+
+    legacy_client_id = str(client["_id"])
     name = str(client.get("client_name") or "").strip()
     if not name:
         raise ValueError("Customer record has no valid display name")
 
+    existing = await db["commercial_custody_owners"].find_one(
+        {"legacy_client_id": legacy_client_id}, {"_id": 0}, session=session
+    )
+    if existing:
+        if not existing.get("active", True):
+            raise ValueError("Customer custody account is inactive")
+        if existing.get("client_phone") != phone or existing.get("client_name") != name:
+            await db["commercial_custody_owners"].update_one(
+                {"id": existing["id"], "version": existing.get("version", 1)},
+                {
+                    "$set": {
+                        "client_phone": phone,
+                        "client_name": name,
+                        "updated_at": created_at.astimezone(timezone.utc),
+                    },
+                    "$inc": {"version": 1},
+                },
+                session=session,
+            )
+            existing.update({
+                "client_phone": phone,
+                "client_name": name,
+                "version": existing.get("version", 1) + 1,
+            })
+        return existing
+
+    phone_owner = await db["commercial_custody_owners"].find_one(
+        {"client_phone": phone}, {"_id": 0, "id": 1}, session=session
+    )
+    if phone_owner:
+        raise ValueError("Customer phone is already linked to another custody owner")
+
     owner = {
         "id": owner_id,
+        "legacy_client_id": legacy_client_id,
         "client_phone": phone,
         "client_name": name,
         "active": True,
+        "version": 1,
         "created_at": created_at.astimezone(timezone.utc),
     }
     await db["commercial_custody_owners"].insert_one(owner, session=session)
     return owner
-
 
 async def receive_customer_olive_custody(
     db: Any,
