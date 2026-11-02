@@ -211,6 +211,7 @@ export default function Commercial() {
   const [creditApplicationAmount, setCreditApplicationAmount] = useState("");
   const [creditApplicationReason, setCreditApplicationReason] = useState("");
   const [creditApplicationKey, setCreditApplicationKey] = useState(() => crypto.randomUUID());
+  useEffect(() => { setCreditApplicationAmount(""); setCreditApplicationReason(""); setCreditApplicationKey(crypto.randomUUID()); }, [selectedInvoiceId]);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const [custodyCustomerPhone, setCustodyCustomerPhone] = useState("");
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
