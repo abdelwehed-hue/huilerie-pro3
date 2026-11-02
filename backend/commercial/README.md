@@ -63,7 +63,9 @@ This package is an isolated commercial domain. It must not change existing olive
 ### Wholesale sales, invoices, and payments
 
 - Wholesale buyer records are separate from legacy pressing clients.
+- Admins can edit buyer profiles using optimistic version checks and can deactivate/reactivate buyers without deleting history. Each change is audited; inactive buyers remain visible for historical receivables but cannot be selected for new sales.
 - Sale drafts receive season-scoped VTE numbers. Approval requires an active buyer, an open MILL-owned oil lot, a persisted RELEASED quality decision, an active source tank, and sufficient stock.
+- Draft sales can be cancelled with a reason, optimistic version check, idempotency key, and audit event. Cancellation does not recycle the reserved VTE number and is forbidden after approval.
 - Customer-custody oil and pending/rejected oil cannot be sold by the mill.
 - Sale approval creates the commercial FAC invoice and DISPATCH MVT movement in the same MongoDB transaction.
 - Payments receive season-scoped PAY numbers. Payment posting is idempotent, version-checked, and rejects overpayment. Partial/full payment status is maintained on the invoice.
@@ -75,21 +77,20 @@ This package is an isolated commercial domain. It must not change existing olive
 
 - Bilingual Arabic/French commercial workspace at `/commercial`, including RTL support.
 - Read-only dashboard, tank balances, lots/ownership, movement ledger, quality assessments, and audit views.
-- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer, sales, invoice, and payment workflows.
+- Admin-only bootstrap, supplier/location/variety master data, olive purchase and approval, production, quality review, worker permission assignment, wholesale buyer maintenance, sales draft cancellation/approval, invoice, and payment workflows.
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
 ## Validation
 
 - GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
-- The latest confirmed full run on branch head `07e502471fbd83d6c0e531a096eddd93f789457d` is run `41510576759`; all five jobs succeeded.
-- The MongoDB replica-set integration suite on that head contains 14 passing tests, including transaction rollback for production, quality release, purchase approval, sale approval, and payment-related workflows.
+- The latest confirmed full run before the buyer and sale-cancellation changes was run `41513924645` on commit `2461b788ce1788ecf4ffb574daa47ad2f9ced96d`; all five jobs succeeded (invoice unit tests, commercial unit tests, MongoDB replica-set integration, frontend build, and backend syntax).
+- Buyer lifecycle and draft sale cancellation changes were added after that run and require a fresh full CI pass before they can be considered validated.
 - A passing CI run does not replace browser-based operational acceptance, backup restoration verification, or production security configuration review.
 
 ## Not yet implemented / blockers before operational release
 
-- Buyer edit/deactivation workflow and controlled duplicate/merge process.
-- Draft sale cancellation.
+- Controlled buyer duplicate/merge process.
 - Approved sale correction, credit note, customer return, dispatch reversal, and stock quarantine/reinspection workflow.
 - Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
 - Customer-custody oil settlement and owner payout accounting.
