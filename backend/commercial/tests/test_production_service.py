@@ -150,3 +150,24 @@ async def test_production_rejects_owner_mismatch_before_creating_run():
             created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
         )
     assert db["commercial_production_runs"].rows == []
+
+
+@pytest.mark.asyncio
+async def test_production_rejects_quarantine_output_tank_before_creating_run():
+    db = Database({
+        "commercial_production_runs": Collection(),
+        "commercial_lots": Collection([
+            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+        ]),
+        "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
+        "commercial_audit_events": Collection(),
+    })
+    with pytest.raises(ValueError, match="normal storage tank"):
+        await service.complete_commercial_production(
+            db, make_draft(), season_code="2627",
+            actor_user={"active": True, "role": "admin"},
+            actor_user_id="admin-1", production_id="production-quarantine",
+            created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
+        )
+    assert db["commercial_production_runs"].rows == []
