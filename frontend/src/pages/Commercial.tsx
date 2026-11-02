@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
-  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X,
 } from "lucide-react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,10 @@ export default function Commercial() {
   const salesText = lang === "ar" ? {
     buyers: "الحرفاء التجاريون", buyerName: "اسم الحريف", buyerContact: "اسم المسؤول",
     buyerPhone: "الهاتف", buyerTax: "المعرّف الجبائي", buyerAddress: "العنوان",
-    addBuyer: "إضافة حريف", buyerSaved: "تم تسجيل الحريف", sales: "البيع بالجملة",
+    addBuyer: "إضافة حريف", buyerSaved: "تم تسجيل الحريف", buyerEmail: "البريد الإلكتروني",
+    editBuyer: "تعديل الحريف", saveBuyer: "حفظ التعديلات", cancelEdit: "إلغاء",
+    activeBuyer: "نشط", inactiveBuyer: "معطّل", deactivateBuyer: "تعطيل", reactivateBuyer: "إعادة التفعيل",
+    sales: "البيع بالجملة",
     saleDate: "تاريخ البيع", selectBuyer: "اختر الحريف", selectOilLot: "دفعة الزيت",
     selectTank: "الخزان", saleQty: "الكمية المباعة (كغ)", salePrice: "سعر الكغ (د.ت)",
     createSale: "إنشاء مسودة بيع", saleSaved: "تم إنشاء مسودة البيع",
@@ -123,7 +126,10 @@ export default function Commercial() {
   } : {
     buyers: "Acheteurs", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
     buyerPhone: "Téléphone", buyerTax: "Identifiant fiscal", buyerAddress: "Adresse",
-    addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", sales: "Vente en gros",
+    addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", buyerEmail: "E-mail",
+    editBuyer: "Modifier l’acheteur", saveBuyer: "Enregistrer les modifications", cancelEdit: "Annuler",
+    activeBuyer: "Actif", inactiveBuyer: "Désactivé", deactivateBuyer: "Désactiver", reactivateBuyer: "Réactiver",
+    sales: "Vente en gros",
     saleDate: "Date de vente", selectBuyer: "Choisir l’acheteur", selectOilLot: "Lot d’huile",
     selectTank: "Cuve", saleQty: "Quantité vendue (kg)", salePrice: "Prix/kg (DT)",
     createSale: "Créer le brouillon", saleSaved: "Brouillon de vente créé",
@@ -175,6 +181,8 @@ export default function Commercial() {
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [assignedPermissions, setAssignedPermissions] = useState<string[]>([]);
   const [buyerName, setBuyerName] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [editingBuyerId, setEditingBuyerId] = useState("");
   const [buyerContact, setBuyerContact] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerTaxId, setBuyerTaxId] = useState("");
@@ -379,16 +387,43 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
-  const addBuyer = useMutation({
-    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/buyers", {
-      name: buyerName.trim(), contact_name: buyerContact.trim() || null,
-      phone: buyerPhone.trim() || null, tax_identifier: buyerTaxId.trim() || null,
-      address: buyerAddress.trim() || null,
-    }),
+  const saveBuyer = useMutation({
+    mutationFn: () => {
+      const payload = {
+        name: buyerName.trim(), contact_name: buyerContact.trim() || null,
+        phone: buyerPhone.trim() || null, email: buyerEmail.trim() || null,
+        tax_identifier: buyerTaxId.trim() || null, address: buyerAddress.trim() || null,
+      };
+      if (editingBuyerId) {
+        const buyer = (buyers.data ?? []).find((item) => item.id === editingBuyerId);
+        if (!buyer) throw new Error("Acheteur introuvable ou actualisé");
+        return apiPut<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(editingBuyerId)}`, {
+          ...payload, expected_version: buyer.version ?? 1,
+        });
+      }
+      return apiPost<AnyRecord>("/commercial/v1/buyers", payload);
+    },
     onSuccess: async () => {
       toast.success(salesText.buyerSaved);
-      setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerTaxId(""); setBuyerAddress("");
-      await queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] });
+      setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerEmail("");
+      setBuyerTaxId(""); setBuyerAddress(""); setEditingBuyerId("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const changeBuyerStatus = useMutation({
+    mutationFn: (buyer: AnyRecord) => apiPost<AnyRecord>(
+      `/commercial/v1/buyers/${encodeURIComponent(buyer.id)}/status`,
+      { expected_version: buyer.version ?? 1, active: !buyer.active },
+    ),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
@@ -795,19 +830,30 @@ export default function Commercial() {
       </div>}
 
       {tab === "buyers" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{salesText.addBuyer}</CardTitle></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); addBuyer.mutate(); }}>
+        {isAdmin && <Card><CardHeader><CardTitle>{editingBuyerId ? salesText.editBuyer : salesText.addBuyer}</CardTitle></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); saveBuyer.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.buyerName}<input required minLength={2} maxLength={160} value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.buyerContact}<input maxLength={120} value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.buyerPhone}<input maxLength={40} value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.buyerTax}<input maxLength={80} value={buyerTaxId} onChange={(e) => setBuyerTaxId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.buyerEmail}<input type="email" maxLength={160} value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.buyerAddress}<input maxLength={500} value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <Button type="submit" disabled={addBuyer.isPending || !buyerName.trim()}><UserRound className="size-4" />{salesText.addBuyer}</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={saveBuyer.isPending || !buyerName.trim()}><UserRound className="size-4" />{editingBuyerId ? salesText.saveBuyer : salesText.addBuyer}</Button>
+              {editingBuyerId && <Button type="button" variant="outline" onClick={() => { setEditingBuyerId(""); setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerEmail(""); setBuyerTaxId(""); setBuyerAddress(""); }}><X className="size-4" />{salesText.cancelEdit}</Button>}
+            </div>
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{salesText.buyers}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead></TableRow></TableHeader>
-            <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}><TableCell className="font-semibold">{value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell></TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={5} text={l.noRows} />}</TableBody>
+          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead><TableHead>{l.status}</TableHead>{isAdmin && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader>
+            <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}>
+              <TableCell className="font-semibold">{value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell>
+              <TableCell><span className={buyer.active ? "text-emerald-700" : "text-muted-foreground"}>{buyer.active ? salesText.activeBuyer : salesText.inactiveBuyer}</span></TableCell>
+              {isAdmin && <TableCell><div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="outline" onClick={() => { setEditingBuyerId(buyer.id); setBuyerName(buyer.name ?? ""); setBuyerContact(buyer.contact_name ?? ""); setBuyerPhone(buyer.phone ?? ""); setBuyerEmail(buyer.email ?? ""); setBuyerTaxId(buyer.tax_identifier ?? ""); setBuyerAddress(buyer.address ?? ""); }}><Pencil className="size-3.5" />{salesText.editBuyer}</Button>
+                <Button size="sm" variant="outline" disabled={changeBuyerStatus.isPending} onClick={() => changeBuyerStatus.mutate(buyer)}>{buyer.active ? <UserX className="size-3.5" /> : <UserCheck className="size-3.5" />}{buyer.active ? salesText.deactivateBuyer : salesText.reactivateBuyer}</Button>
+              </div></TableCell>}
+            </TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={isAdmin ? 7 : 6} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
       </div>}
@@ -816,7 +862,7 @@ export default function Commercial() {
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => setSaleBuyerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => setSaleBuyerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED" && lot.owner?.kind === "MILL").map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {lot.quality_status}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => setSaleTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(balances.data ?? []).filter((balance) => balance.product_kind === "OIL" && balance.lot_id === saleLotId && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0).map((balance) => { const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.location_id} value={balance.location_id}>{tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => setSaleQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
