@@ -10,7 +10,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -44,12 +44,18 @@ from commercial.services.purchases import create_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
+from commercial.services.tank_roles import set_tank_role
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
 from lib.season import active_season, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
+
+
+class CommercialTankRoleCommand(BaseModel):
+    role: Literal["NORMAL", "QUARANTINE"]
+    expected_version: int = Field(ge=1)
 
 
 class CommercialPermissionAssignment(BaseModel):
@@ -190,6 +196,31 @@ async def list_commercial_tanks(user: dict = Depends(current_user)):
     _authorize(user, "commercial.read")
     docs = await db.commercial_tanks.find({}, {"_id": 0}).sort("code", 1).to_list(20)
     return _safe(docs)
+
+
+@router.post("/tanks/{tank_id}/role")
+async def update_commercial_tank_role(
+    tank_id: str,
+    command: CommercialTankRoleCommand,
+    user: dict = Depends(require_admin),
+):
+    """Assign NORMAL/QUARANTINE role only to an empty tank; every change is audited."""
+    _authorize(user, "commercial.manage_tanks")
+    await _require_commercial_ready()
+    audit_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: set_tank_role(
+                db, tank_id, role=command.role,
+                expected_version=command.expected_version,
+                actor_user=user, actor_user_id=user["id"],
+                audit_event_id=audit_id, changed_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.get("/locations")
