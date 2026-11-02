@@ -116,7 +116,7 @@ export default function Commercial() {
     createSale: "إنشاء مسودة بيع", saleSaved: "تم إنشاء مسودة البيع",
     approveSale: "اعتماد البيع وإخراج الكمية", saleApproved: "تم اعتماد البيع وإصدار الفاتورة",
     saleHistory: "سجل عمليات البيع", invoice: "الفاتورة", invoiceNo: "رقم الفاتورة",
-    paymentStatus: "حالة التسوية", unpaid: "غير مسددة", partial: "تسوية جزئية", paid: "مسددة", appliedCredit: "رصيد مطبق", settledAmount: "إجمالي المسدد", applyCredit: "تطبيق رصيد الحريف", creditAvailable: "الرصيد الدائن المتاح", creditAmount: "المبلغ المراد تطبيقه (د.ت)", creditReason: "سبب التطبيق", creditApplied: "تم تطبيق الرصيد الدائن", creditApplicationHistory: "سجل تطبيق الأرصدة الدائنة", creditApplicationNumber: "رقم تطبيق الرصيد", creditApplyConfirm: "هل تؤكد خصم هذا الرصيد الدائن من حساب الحريف وتسوية الفاتورة بهذا المبلغ؟ لن يُسجّل ذلك كخلاص نقدي.",
+    paymentStatus: "حالة التسوية", unpaid: "غير مسددة", partial: "تسوية جزئية", paid: "مسددة", appliedCredit: "رصيد مطبق", settledAmount: "إجمالي المسدد", applyCredit: "تطبيق رصيد الحريف", creditAvailable: "الرصيد الدائن المتاح", creditAmount: "المبلغ المراد تطبيقه (د.ت)", creditReason: "سبب التطبيق", creditApplied: "تم تطبيق الرصيد الدائن", creditApplicationHistory: "سجل تطبيق الأرصدة الدائنة", creditApplicationNumber: "رقم تطبيق الرصيد", creditApplyConfirm: "هل تؤكد خصم هذا الرصيد الدائن من حساب الحريف وتسوية الفاتورة بهذا المبلغ؟ لن يُسجّل ذلك كخلاص نقدي.", reversePayment: "عكس الخلاص", reverseAmount: "المبلغ المراد عكسه (د.ت)", reverseReason: "سبب عكس الخلاص", reverseConfirm: "هل تؤكد عكس هذا الخلاص؟ سيتم تسجيل وثيقة REV مستقلة ولن يتم حذف وثيقة PAY الأصلية.", reversalHistory: "سجل عمليات عكس الخلاص", reversalNumber: "رقم وثيقة العكس", remainingReversible: "المبلغ القابل للعكس", selectPayment: "اختر عملية الخلاص أولاً", reversalSaved: "تم تسجيل عكس الخلاص",
     taxNotice: "المعالجة الجبائية غير مضبوطة بعد؛ هذه فاتورة تجارية داخلية وليست فاتورة جبائية جاهزة.",
     chooseInvoice: "اختر الفاتورة", paymentAmount: "مبلغ الخلاص (د.ت)",
     paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
@@ -136,7 +136,7 @@ export default function Commercial() {
     createSale: "Créer le brouillon", saleSaved: "Brouillon de vente créé",
     approveSale: "Valider et expédier", saleApproved: "Vente validée et facture créée",
     saleHistory: "Historique des ventes", invoice: "Facture", invoiceNo: "N° facture",
-    paymentStatus: "Statut du règlement", unpaid: "Non réglée", partial: "Partiellement réglée", paid: "Réglée", appliedCredit: "Crédit appliqué", settledAmount: "Total réglé", applyCredit: "Appliquer le crédit acheteur", creditAvailable: "Crédit disponible", creditAmount: "Montant à appliquer (DT)", creditReason: "Motif de l’application", creditApplied: "Crédit acheteur appliqué", creditApplicationHistory: "Historique des applications de crédit", creditApplicationNumber: "N° application de crédit", creditApplyConfirm: "Confirmer l’application de ce crédit au solde de la facture ? Cette opération réduit le crédit disponible et n’est pas un paiement en espèces.",
+    paymentStatus: "Statut du règlement", unpaid: "Non réglée", partial: "Partiellement réglée", paid: "Réglée", appliedCredit: "Crédit appliqué", settledAmount: "Total réglé", applyCredit: "Appliquer le crédit acheteur", creditAvailable: "Crédit disponible", creditAmount: "Montant à appliquer (DT)", creditReason: "Motif de l’application", creditApplied: "Crédit acheteur appliqué", creditApplicationHistory: "Historique des applications de crédit", creditApplicationNumber: "N° application de crédit", creditApplyConfirm: "Confirmer l’application de ce crédit au solde de la facture ? Cette opération réduit le crédit disponible et n’est pas un paiement en espèces.", reversePayment: "Contrepasser le paiement", reverseAmount: "Montant à contrepasser (DT)", reverseReason: "Motif de contrepassation", reverseConfirm: "Confirmer la contrepassation ? Un document REV sera créé et le document PAY original restera intact.", reversalHistory: "Historique des contrepassations", reversalNumber: "N° de contrepassation", remainingReversible: "Montant encore réversible", selectPayment: "Sélectionnez d’abord un paiement", reversalSaved: "Contrepassation enregistrée",
     taxNotice: "Traitement fiscal non configuré : document commercial interne, pas encore une facture fiscale prête à émettre.",
     chooseInvoice: "Choisir la facture", paymentAmount: "Montant reçu (DT)",
     paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
@@ -211,7 +211,11 @@ export default function Commercial() {
   const [creditApplicationAmount, setCreditApplicationAmount] = useState("");
   const [creditApplicationReason, setCreditApplicationReason] = useState("");
   const [creditApplicationKey, setCreditApplicationKey] = useState(() => crypto.randomUUID());
-  useEffect(() => { setCreditApplicationAmount(""); setCreditApplicationReason(""); setCreditApplicationKey(crypto.randomUUID()); }, [selectedInvoiceId]);
+  const [selectedPaymentForReversal, setSelectedPaymentForReversal] = useState("");
+  const [reversalAmount, setReversalAmount] = useState("");
+  const [reversalReason, setReversalReason] = useState("");
+  const [reversalKey, setReversalKey] = useState(() => crypto.randomUUID());
+  useEffect(() => { setCreditApplicationAmount(""); setCreditApplicationReason(""); setCreditApplicationKey(crypto.randomUUID()); setSelectedPaymentForReversal(""); setReversalAmount(""); setReversalReason(""); setReversalKey(crypto.randomUUID()); }, [selectedInvoiceId]);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const [custodyCustomerPhone, setCustodyCustomerPhone] = useState("");
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
@@ -255,6 +259,8 @@ export default function Commercial() {
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/credit-notes?limit=500"), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals"), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const selectedPayment = (salePayments.data ?? []).find((payment) => payment.id === selectedPaymentForReversal);
   const selectedSalesInvoice = (salesInvoices.data ?? []).find((invoice) => invoice.id === selectedInvoiceId);
   const invoiceBuyerSummary = useQuery({
     queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId],
