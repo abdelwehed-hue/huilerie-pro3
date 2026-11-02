@@ -91,6 +91,13 @@ This package is an isolated commercial domain. It must not change existing olive
 - Worker visibility and write controls follow effective commercial permissions; the backend remains authoritative.
 - Frontend forms do not authoritatively calculate stock or financial balances.
 
+## Payment reversal API
+
+- `POST /api/commercial/v1/sale-payments/{payment_id}/reversals` — admin-only partial or full REV against an original PAY document.
+- `GET /api/commercial/v1/sales-invoices/{invoice_id}/payment-reversals` — read reversal history for an invoice.
+
+REV is append-only. It never edits or deletes the original PAY. If the reversal reduces buyer credit created by an AVO on that same invoice, the service debits only still-available source credit; it blocks the reversal if that credit has already been applied elsewhere. The accounting reversal does not initiate a cash or bank refund.
+
 ## Buyer credit application API
 
 - `POST /api/commercial/v1/sales-invoices/{invoice_id}/credit-applications` — admin-only non-cash application of available AVO buyer credit to an outstanding invoice.
@@ -119,7 +126,7 @@ CIN and CUS each have their own season-scoped counter and each stock posting cre
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Payment reversal, cash refund, return rejection and outbound re-dispatch. Non-cash buyer-credit application is implemented; cash refunds and payment reversals remain disabled until their reconciliation controls are implemented. Existing payment records must never be edited or deleted. Tax treatment remains `NOT_CONFIGURED`. See [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md) and [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
+- Cash refund, return rejection and outbound re-dispatch. Non-cash buyer-credit application and immutable payment reversal are implemented; cash refunds remain disabled until bank/cash reconciliation and approval controls are implemented. Existing PAY records are never edited or deleted. Tax treatment remains `NOT_CONFIGURED`. See [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md) and [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Authorized ownership transfer and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
