@@ -202,11 +202,22 @@ async def create_commercial_location(
         "created_by": user["id"],
         "created_at": now,
     }
+    audit_id = str(uuid.uuid4())
+
+    async def create_location(session):
+        await db.commercial_locations.insert_one(doc, session=session)
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_location",
+            "entity_id": doc["id"], "action": "LOCATION_CREATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"code": doc["code"], "kind": doc["kind"]},
+        }, session=session)
+        return doc
+
     try:
-        await db.commercial_locations.insert_one(doc)
+        return _safe(await run_transaction(create_location))
     except DuplicateKeyError as exc:
         raise HTTPException(409, "commercial_location_code_exists") from exc
-    return _safe(doc)
 
 
 @router.post("/suppliers", status_code=201)
@@ -231,11 +242,22 @@ async def create_commercial_supplier(
         "created_by": user["id"],
         "created_at": now,
     }
+    audit_id = str(uuid.uuid4())
+
+    async def create_supplier(session):
+        await db.commercial_suppliers.insert_one(doc, session=session)
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_supplier",
+            "entity_id": doc["id"], "action": "SUPPLIER_CREATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"name": doc["name"]},
+        }, session=session)
+        return doc
+
     try:
-        await db.commercial_suppliers.insert_one(doc)
+        return _safe(await run_transaction(create_supplier))
     except DuplicateKeyError as exc:
         raise HTTPException(409, "commercial_supplier_name_exists") from exc
-    return _safe(doc)
 
 
 @router.get("/suppliers")
@@ -272,11 +294,22 @@ async def create_commercial_variety(
         "created_by": user["id"],
         "created_at": datetime.now(timezone.utc),
     }
+    audit_id = str(uuid.uuid4())
+
+    async def create_variety(session):
+        await db.commercial_varieties.insert_one(doc, session=session)
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_variety",
+            "entity_id": doc["id"], "action": "VARIETY_CREATED",
+            "actor_user_id": user["id"], "created_at": doc["created_at"],
+            "details": {"code": doc["code"], "name_fr": doc["name_fr"]},
+        }, session=session)
+        return doc
+
     try:
-        await db.commercial_varieties.insert_one(doc)
+        return _safe(await run_transaction(create_variety))
     except DuplicateKeyError as exc:
         raise HTTPException(409, "commercial_variety_code_or_name_exists") from exc
-    return _safe(doc)
 
 
 @router.post("/olive-purchases", status_code=201)
