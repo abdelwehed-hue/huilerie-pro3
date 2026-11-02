@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
+from pydantic import BaseModel, Field, field_validator
+
 from bson.decimal128 import Decimal128
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
@@ -21,25 +23,40 @@ from commercial.inventory_bootstrap import (
     provision_commercial_counters,
     provision_nine_tanks,
 )
-from commercial.permissions import require_commercial_permission
+from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, require_commercial_permission
 from commercial.schemas.inventory import CommercialLocationDraft, StockMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
     OlivePurchaseDraft,
 )
-from commercial.schemas.quality import QualityAssessmentDraft
+from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft
-from commercial.services.quality import record_oil_quality_assessment
+from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
 from lib.season import active_season, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
+
+
+class CommercialPermissionAssignment(BaseModel):
+    permissions: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("permissions")
+    @classmethod
+    def validate_permissions(cls, values):
+        if len(values) != len(set(values)):
+            raise ValueError("Duplicate commercial permissions are not allowed")
+        unknown = set(values) - ASSIGNABLE_COMMERCIAL_PERMISSIONS
+        if unknown:
+            raise ValueError(f"Unsupported assignable commercial permissions: {sorted(unknown)}")
+        return values
+
 
 
 def _reject_public_auth_mode() -> None:
@@ -322,12 +339,42 @@ async def list_production_runs(
     return _safe(docs)
 
 
+@router.post("/users/{target_user_id}/commercial-permissions")
+async def assign_commercial_permissions(
+    target_user_id: str,
+    assignment: CommercialPermissionAssignment,
+    user: dict = Depends(require_admin),
+):
+    """Admin-only assignment of narrowly scoped commercial duties to workers."""
+    _reject_public_auth_mode()
+    target = await db.users.find_one({"id": target_user_id}, {"_id": 0, "id": 1, "role": 1})
+    if not target:
+        raise HTTPException(404, "user_not_found")
+    if target.get("role") != "worker":
+        raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
+    permissions = sorted(set(assignment.permissions))
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(
+        {"id": target_user_id, "role": "worker"},
+        {"$set": {"commercial_permissions": permissions,
+                  "commercial_permissions_updated_by": user["id"],
+                  "commercial_permissions_updated_at": now}},
+    )
+    await db.commercial_audit_events.insert_one({
+        "id": str(uuid.uuid4()), "entity_type": "user",
+        "entity_id": target_user_id, "action": "COMMERCIAL_PERMISSIONS_UPDATED",
+        "actor_user_id": user["id"], "created_at": now,
+        "details": {"permissions": permissions},
+    })
+    return {"user_id": target_user_id, "permissions": permissions}
+
+
 @router.post("/quality-assessments", status_code=201)
 async def create_quality_assessment(
     draft: QualityAssessmentDraft,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
-    _authorize(user, "commercial.manage_quality")
+    _authorize(user, "commercial.lab_record")
     _, season_code = await _require_commercial_ready()
     assessment_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
@@ -336,6 +383,28 @@ async def create_quality_assessment(
             lambda session: record_oil_quality_assessment(
                 db, draft, season_code=season_code, actor_user=user,
                 actor_user_id=user["id"], assessment_id=assessment_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/quality-assessments/release", status_code=201)
+async def release_quality_assessment(
+    command: QualityReleaseCommand,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.quality_release")
+    _, season_code = await _require_commercial_ready()
+    release_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: release_oil_quality_assessment(
+                db, command, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], release_id=release_id,
                 created_at=now, session=session,
             )
         )
