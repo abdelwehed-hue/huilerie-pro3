@@ -57,14 +57,6 @@ jobs:
 
   mongodb-transaction-integration:
     runs-on: ubuntu-latest
-    services:
-      mongo:
-        image: mongo:7.0
-        ports:
-          - 27017:27017
-        options: >-
-          --replSet rs0
-          --bind_ip_all
     defaults:
       run:
         working-directory: backend
@@ -77,6 +69,8 @@ jobs:
           python-version: "3.12"
       - name: Install transaction integration dependencies
         run: python -m pip install pymongo motor pytest pytest-asyncio
+      - name: Start MongoDB replica-set container
+        run: docker run -d --name mongo-rs -p 27017:27017 mongo:7.0 mongod --replSet rs0 --bind_ip_all
       - name: Initialize MongoDB replica set
         run: |
           python - <<'PY'
