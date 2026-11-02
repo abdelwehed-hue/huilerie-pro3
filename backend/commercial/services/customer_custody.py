@@ -421,7 +421,7 @@ async def get_customer_custody_statement(db: Any, customer_id: str) -> dict[str,
          "source_owner": 1, "destination_owner": 1,
          "source_document_type": 1, "source_document_id": 1,
          "reason": 1, "created_at": 1},
-    ).sort([("created_at", 1), ("document_number", 1)]).to_list(10000)
+    ).sort([("created_at", 1), ("document_number", 1)]).to_list(None)
 
     ledger_totals = {"OLIVE": Decimal("0.000"), "OIL": Decimal("0.000")}
     rows = []
@@ -460,7 +460,7 @@ async def get_customer_custody_statement(db: Any, customer_id: str) -> dict[str,
     balances = await db["commercial_stock_balances"].find(
         {"owner.kind": "CUSTOMER", "owner.customer_id": customer_id},
         {"_id": 0, "product_kind": 1, "quantity_kg": 1},
-    ).to_list(10000)
+    ).to_list(None)
     current_totals = {"OLIVE": Decimal("0.000"), "OIL": Decimal("0.000")}
     for balance in balances:
         product = balance["product_kind"]
