@@ -116,7 +116,7 @@ export default function Commercial() {
     createSale: "إنشاء مسودة بيع", saleSaved: "تم إنشاء مسودة البيع",
     approveSale: "اعتماد البيع وإخراج الكمية", saleApproved: "تم اعتماد البيع وإصدار الفاتورة",
     saleHistory: "سجل عمليات البيع", invoice: "الفاتورة", invoiceNo: "رقم الفاتورة",
-    paymentStatus: "حالة الخلاص", unpaid: "غير خالصة", partial: "خلاص جزئي", paid: "خالصة",
+    paymentStatus: "حالة التسوية", unpaid: "غير مسددة", partial: "تسوية جزئية", paid: "مسددة", appliedCredit: "رصيد مطبق", settledAmount: "إجمالي المسدد", applyCredit: "تطبيق رصيد الحريف", creditAvailable: "الرصيد الدائن المتاح", creditAmount: "المبلغ المراد تطبيقه (د.ت)", creditReason: "سبب التطبيق", creditApplied: "تم تطبيق الرصيد الدائن", creditApplicationHistory: "سجل تطبيق الأرصدة الدائنة", creditApplicationNumber: "رقم تطبيق الرصيد",
     taxNotice: "المعالجة الجبائية غير مضبوطة بعد؛ هذه فاتورة تجارية داخلية وليست فاتورة جبائية جاهزة.",
     chooseInvoice: "اختر الفاتورة", paymentAmount: "مبلغ الخلاص (د.ت)",
     paymentMethod: "طريقة الخلاص", paymentDate: "تاريخ الخلاص", recordPayment: "تسجيل الخلاص",
@@ -136,7 +136,7 @@ export default function Commercial() {
     createSale: "Créer le brouillon", saleSaved: "Brouillon de vente créé",
     approveSale: "Valider et expédier", saleApproved: "Vente validée et facture créée",
     saleHistory: "Historique des ventes", invoice: "Facture", invoiceNo: "N° facture",
-    paymentStatus: "Paiement", unpaid: "Impayée", partial: "Partiellement payée", paid: "Payée",
+    paymentStatus: "Statut du règlement", unpaid: "Non réglée", partial: "Partiellement réglée", paid: "Réglée", appliedCredit: "Crédit appliqué", settledAmount: "Total réglé", applyCredit: "Appliquer le crédit acheteur", creditAvailable: "Crédit disponible", creditAmount: "Montant à appliquer (DT)", creditReason: "Motif de l’application", creditApplied: "Crédit acheteur appliqué", creditApplicationHistory: "Historique des applications de crédit", creditApplicationNumber: "N° application de crédit",
     taxNotice: "Traitement fiscal non configuré : document commercial interne, pas encore une facture fiscale prête à émettre.",
     chooseInvoice: "Choisir la facture", paymentAmount: "Montant reçu (DT)",
     paymentMethod: "Mode de paiement", paymentDate: "Date du paiement", recordPayment: "Enregistrer le paiement",
@@ -208,6 +208,9 @@ export default function Commercial() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  const [creditApplicationAmount, setCreditApplicationAmount] = useState("");
+  const [creditApplicationReason, setCreditApplicationReason] = useState("");
+  const [creditApplicationKey, setCreditApplicationKey] = useState(() => crypto.randomUUID());
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const [custodyCustomerPhone, setCustodyCustomerPhone] = useState("");
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
@@ -251,6 +254,17 @@ export default function Commercial() {
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sale-returns?limit=500"), enabled: ready && tab === "sales" });
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/credit-notes?limit=500"), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const selectedSalesInvoice = (salesInvoices.data ?? []).find((invoice) => invoice.id === selectedInvoiceId);
+  const invoiceBuyerSummary = useQuery({
+    queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId],
+    queryFn: () => apiGet<AnyRecord>("/commercial/v1/buyers/" + encodeURIComponent(selectedSalesInvoice!.buyer_id) + "/account-summary"),
+    enabled: ready && tab === "sales" && !!selectedSalesInvoice,
+  });
+  const creditApplications = useQuery({
+    queryKey: ["commercial", "credit-applications", selectedInvoiceId],
+    queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications"),
+    enabled: ready && tab === "sales" && !!selectedInvoiceId,
+  });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGet<AnyRecord[]>("/clients"), enabled: ready && tab === "custody" });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/owners"), enabled: ready && tab === "custody" });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/customer-custody/receipts?limit=500"), enabled: ready && tab === "custody" });
