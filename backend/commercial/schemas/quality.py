@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 MeasurementValue = Annotated[
-    Decimal, Field(ge=Decimal("0"), max_digits=18, decimal_places=6)
+    Decimal, Field(max_digits=18, decimal_places=6)
 ]
 
 
