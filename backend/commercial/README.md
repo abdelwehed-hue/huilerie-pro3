@@ -84,8 +84,8 @@ This package is an isolated commercial domain. It must not change existing olive
 ## Validation
 
 - GitHub Actions validates backend syntax, commercial unit tests, legacy invoice regression tests, frontend production build, and MongoDB replica-set transaction integration.
-- The latest confirmed full run before the buyer and sale-cancellation changes was run `41513924645` on commit `2461b788ce1788ecf4ffb574daa47ad2f9ced96d`; all five jobs succeeded (invoice unit tests, commercial unit tests, MongoDB replica-set integration, frontend build, and backend syntax).
-- Buyer lifecycle and draft sale cancellation changes were added after that run and require a fresh full CI pass before they can be considered validated.
+- Latest full CI run `41516039108` on commit `8fb84bab3a8667ae8c2faf2abfabb15e466b5cb0` passed all five jobs: invoice unit tests, commercial unit tests, MongoDB replica-set transaction integration, frontend production build, and backend syntax.
+- The run includes buyer lifecycle, draft sale cancellation, and the Arabic/French cancellation-label fix.
 - A passing CI run does not replace browser-based operational acceptance, backup restoration verification, or production security configuration review.
 
 ## Not yet implemented / blockers before operational release
