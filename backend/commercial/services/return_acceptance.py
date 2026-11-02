@@ -13,6 +13,7 @@ from commercial.permissions import require_commercial_permission
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.services.numbering import reserve_document_number
 from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
+from commercial.services.payment_ledger import assert_invoice_cash_paid_reconciles
 
 
 def _decimal(value: Any) -> Decimal:
@@ -105,6 +106,58 @@ async def accept_sale_return_and_issue_credit_note(
             or previous_net != expected_previous_net
             or stored_previous_outstanding != expected_previous_outstanding):
         raise ValueError("Invoice receivable fields are inconsistent; reconcile before issuing a credit note")
+    await assert_invoice_cash_paid_reconciles(db, invoice["id"], paid, session=session)
+    prior_applications = await db["commercial_buyer_credit_applications"].find(
+        {"target_invoice_id": invoice["id"], "status": "APPLIED"},
+        {"_id": 0, "amount_dt": 1}, session=session,
+    ).to_list(10000)
+    ledger_applied_credit = _money(sum(
+        (_decimal(item["amount_dt"]) for item in prior_applications), Decimal("0.000")
+    ))
+    if ledger_applied_credit != applied_credit:
+        raise ValueError("Invoice applied-credit amount does not reconcile to CAP documents")
+
+    buyer_credit_before = _decimal(buyer.get("credit_balance_dt", Decimal128("0.000")))
+    if buyer_credit_before < 0:
+        raise ValueError("Buyer credit balance is negative; reconcile before issuing a credit note")
+    source_entries = await db["commercial_buyer_credit_ledger"].find(
+        {"buyer_id": buyer["id"], "entry_kind": "CREDIT_NOTE_ADJUSTMENT"},
+        {"_id": 0, "credit_note_id": 1, "amount_delta_dt": 1},
+        session=session,
+    ).to_list(5000)
+    source_ids = [entry["credit_note_id"] for entry in source_entries if entry.get("credit_note_id")]
+    source_adjustments = []
+    if source_ids:
+        source_adjustments = await db["commercial_buyer_credit_ledger"].find(
+            {"buyer_id": buyer["id"], "source_credit_note_id": {"$in": source_ids}},
+            {"_id": 0, "source_credit_note_id": 1, "amount_delta_dt": 1},
+            session=session,
+        ).to_list(10000)
+    adjustment_totals: dict[str, Decimal] = {}
+    for adjustment in source_adjustments:
+        key = adjustment["source_credit_note_id"]
+        adjustment_totals[key] = adjustment_totals.get(key, Decimal("0.000")) + _decimal(adjustment["amount_delta_dt"])
+    ledger_credit_balance = Decimal("0.000")
+    for entry in source_entries:
+        source_id = entry.get("credit_note_id")
+        if not source_id:
+            continue
+        source_available = _money(
+            _decimal(entry["amount_delta_dt"]) + adjustment_totals.get(source_id, Decimal("0.000"))
+        )
+        if source_available < 0:
+            raise ValueError("Buyer credit source has a negative balance; reconcile before issuing a credit note")
+        if source_available > 0:
+            note = await db["commercial_credit_notes"].find_one(
+                {"id": source_id, "buyer_id": buyer["id"], "status": "ISSUED"},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            if not note:
+                raise ValueError("Buyer credit ledger references a missing or invalid credit note")
+        ledger_credit_balance += source_available
+    if _money(ledger_credit_balance) != _money(buyer_credit_before):
+        raise ValueError("Buyer credit balance does not reconcile to the source credit-note ledger")
+
     credit_amount = _money(_decimal(returned["quantity_kg"]) * _decimal(sale["unit_price_dt"]))
     new_credited = previous_credited + credit_amount
     if credit_amount <= 0 or new_credited > gross:
@@ -115,9 +168,6 @@ async def accept_sale_return_and_issue_credit_note(
     credit_balance_delta = new_excess - previous_excess
     if credit_balance_delta < 0:
         raise ValueError("Buyer credit balance calculation is inconsistent")
-    buyer_credit_before = _decimal(buyer.get("credit_balance_dt", Decimal128("0.000")))
-    if buyer_credit_before < 0:
-        raise ValueError("Buyer credit balance is negative; reconcile before issuing a credit note")
     buyer_credit_after = buyer_credit_before + credit_balance_delta
     outstanding = max(Decimal("0.000"), new_net - paid - applied_credit)
 
