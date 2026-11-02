@@ -112,8 +112,7 @@ CIN and CUS each have their own season-scoped counter and each stock posting cre
 ## Not yet implemented / blockers before operational release
 
 - Controlled buyer duplicate/merge process.
-- Cash refund, buyer-credit application/settlement, return rejection and outbound re-dispatch. Credit-note issuance and buyer credit-balance accrual and non-cash buyer-credit application are implemented; tax treatment remains `NOT_CONFIGURED`. Payment reversal and refund invariants are documented in [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md); return controls are documented in [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
-- Payment reversal/refund and reconciliation workflow. Existing payments must not be edited or deleted.
+- Payment reversal, cash refund, return rejection and outbound re-dispatch. Non-cash buyer-credit application is implemented; cash refunds and payment reversals remain disabled until their reconciliation controls are implemented. Existing payment records must never be edited or deleted. Tax treatment remains `NOT_CONFIGURED`. See [PAYMENT_ADJUSTMENTS_DESIGN.md](./PAYMENT_ADJUSTMENTS_DESIGN.md) and [RETURNS_DESIGN.md](./RETURNS_DESIGN.md).
 - Authorized ownership transfer and owner payout/consignment accounting. Implemented CIN intake and CUS pickup are documented in [CUSTOMER_CUSTODY_DESIGN.md](./CUSTOMER_CUSTODY_DESIGN.md).
 - Approved quality-specification catalog and governed tax configuration/invoice templates.
 - End-to-end browser acceptance on desktop and mobile, backup/restore rehearsal, production environment configuration, and controlled rollout.
