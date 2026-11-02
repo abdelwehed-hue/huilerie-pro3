@@ -102,7 +102,7 @@ async def apply_buyer_credit_to_invoice(
     prior_applications = await applications.find(
         {"target_invoice_id": invoice_id, "status": "APPLIED"},
         {"_id": 0, "amount_dt": 1}, session=session,
-    ).to_list(10000)
+    ).to_list(None)
     ledger_applied_credit = _money(sum(
         (_decimal(item["amount_dt"]) for item in prior_applications), Decimal("0.000")
     ))
@@ -122,7 +122,7 @@ async def apply_buyer_credit_to_invoice(
         {"buyer_id": buyer_id, "entry_kind": "CREDIT_NOTE_ADJUSTMENT"},
         {"_id": 0, "credit_note_id": 1, "invoice_id": 1, "amount_delta_dt": 1, "created_at": 1},
         session=session,
-    ).sort([("created_at", 1), ("credit_note_id", 1)]).to_list(5000)
+    ).sort([("created_at", 1), ("credit_note_id", 1)]).to_list(None)
     source_ids = [entry["credit_note_id"] for entry in source_entries if entry.get("credit_note_id")]
     adjustment_totals: dict[str, Decimal] = {}
     if source_ids:
@@ -130,7 +130,7 @@ async def apply_buyer_credit_to_invoice(
             {"buyer_id": buyer_id, "source_credit_note_id": {"$in": source_ids}},
             {"_id": 0, "source_credit_note_id": 1, "amount_delta_dt": 1},
             session=session,
-        ).to_list(10000)
+        ).to_list(None)
         for adjustment in adjustments:
             key = adjustment["source_credit_note_id"]
             adjustment_totals[key] = adjustment_totals.get(key, Decimal("0.000")) + _decimal(adjustment["amount_delta_dt"])
