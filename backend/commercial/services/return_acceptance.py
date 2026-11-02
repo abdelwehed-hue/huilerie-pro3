@@ -108,7 +108,7 @@ async def accept_sale_return_and_issue_credit_note(
     prior_applications = await db["commercial_buyer_credit_applications"].find(
         {"target_invoice_id": invoice["id"], "status": "APPLIED"},
         {"_id": 0, "amount_dt": 1}, session=session,
-    ).to_list(10000)
+    ).to_list(None)
     ledger_applied_credit = _money(sum(
         (_decimal(item["amount_dt"]) for item in prior_applications), Decimal("0.000")
     ))
@@ -122,7 +122,7 @@ async def accept_sale_return_and_issue_credit_note(
         {"buyer_id": buyer["id"], "entry_kind": "CREDIT_NOTE_ADJUSTMENT"},
         {"_id": 0, "credit_note_id": 1, "amount_delta_dt": 1},
         session=session,
-    ).to_list(5000)
+    ).to_list(None)
     source_ids = [entry["credit_note_id"] for entry in source_entries if entry.get("credit_note_id")]
     source_adjustments = []
     if source_ids:
@@ -130,7 +130,7 @@ async def accept_sale_return_and_issue_credit_note(
             {"buyer_id": buyer["id"], "source_credit_note_id": {"$in": source_ids}},
             {"_id": 0, "source_credit_note_id": 1, "amount_delta_dt": 1},
             session=session,
-        ).to_list(10000)
+        ).to_list(None)
     adjustment_totals: dict[str, Decimal] = {}
     for adjustment in source_adjustments:
         key = adjustment["source_credit_note_id"]
