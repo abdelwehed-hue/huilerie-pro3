@@ -85,6 +85,10 @@ async def reverse_sale_payment(
     if invoice.get("version", 1) != draft.expected_invoice_version:
         raise ValueError("Invoice version conflict; refresh before reversing payment")
 
+    evidence_reference = (draft.evidence_reference or payment.get("reference") or "").strip() or None
+    if payment.get("method") in {"BANK_TRANSFER", "CHEQUE"} and not evidence_reference:
+        raise ValueError("A bank or cheque reversal requires a traceable evidence reference")
+
     original_amount = _decimal(payment["amount_dt"])
     previous_reversals = await reversals.find(
         {"payment_id": payment_id}, {"_id": 0, "amount_dt": 1}, session=session
@@ -214,6 +218,8 @@ async def reverse_sale_payment(
         "invoice_id": invoice_id,
         "buyer_id": invoice["buyer_id"],
         "amount_dt": Decimal128(amount),
+        "reversal_date": draft.reversal_date.isoformat(),
+        "evidence_reference": evidence_reference,
         "payment_method": payment["method"],
         "payment_reference": payment.get("reference"),
         "reason": draft.reason,
