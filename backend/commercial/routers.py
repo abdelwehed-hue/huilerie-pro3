@@ -23,7 +23,7 @@ from commercial.inventory_bootstrap import (
     provision_commercial_counters,
     provision_nine_tanks,
 )
-from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, require_commercial_permission
+from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, effective_commercial_permissions, require_commercial_permission
 from commercial.schemas.inventory import CommercialLocationDraft, StockMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
 from commercial.schemas.purchases import (
