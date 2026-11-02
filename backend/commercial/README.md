@@ -29,6 +29,11 @@ loads, reception numbering, or service invoices.
 
 ## Numbering
 
-`services/numbering.py` formats allocated sequence numbers only. It does not
-allocate counters. Counter allocation must be atomic and transaction-safe,
-with a unique index on `(season_code, document_type)`.
+- `services/numbering.py` formats numbers and atomically increments a
+  pre-initialized counter using the caller's MongoDB transaction session.
+- `bootstrap.py` creates the unique `(season_code, document_type)` index and
+  initializes missing counters for explicitly configured seasons.
+- Counter allocation deliberately does not upsert. A missing counter fails
+  closed rather than silently creating an unexpected sequence.
+- The active season must come from validated season configuration; the
+  four-digit formatter alone does not decide which season is active.
