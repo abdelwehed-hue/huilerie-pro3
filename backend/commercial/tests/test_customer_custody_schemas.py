@@ -20,8 +20,20 @@ def test_customer_olive_custody_receipt_requires_acknowledged_customer_and_posit
     assert draft.quantity_kg == 1250.500
     assert draft.customer_phone == "+21612345678"
 
+def test_customer_phone_is_normalized_before_custody_owner_lookup():
+    draft = CustomerOliveCustodyReceiptDraft(
+        customer_phone="+216 12 345 678",
+        receipt_date="2026-11-02",
+        variety_id="chemlali",
+        quantity_kg="100",
+        receiving_location_id="olive-yard-01",
+        customer_acknowledgement_reference="ACK-RECEIPT-003",
+        idempotency_key="customer-custody-receipt-003",
+    )
+    assert draft.customer_phone == "+21612345678"
 
-@pytest.mark.parametrize("phone", ["", "abc12345", "+216 12 345 678", "123"])
+
+@pytest.mark.parametrize("phone", ["", "abc12345", "123"])
 def test_customer_custody_rejects_invalid_phone(phone):
     with pytest.raises(ValidationError):
         CustomerOliveCustodyReceiptDraft(
