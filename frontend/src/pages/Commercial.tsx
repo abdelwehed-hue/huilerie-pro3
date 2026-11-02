@@ -432,7 +432,61 @@ export default function Commercial() {
 
       {tab === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{value(m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
-      {tab === "quality" && <Card><CardHeader><CardTitle>{l.quality}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(quality.data ?? []).map((q) => <TableRow key={q.id}><TableCell className="font-mono text-xs">{value(q.id)}</TableCell><TableCell>{value(q.laboratory_name)}</TableCell><TableCell>{value(q.status, l.awaiting)}</TableCell><TableCell>{date(q.created_at)}</TableCell></TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      {tab === "quality" && <div className="space-y-4">
+        {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
+            <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
+              <select required value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {ownerLabel(lot.owner, l)} · v{lot.version ?? 1}</option>)}</select>
+            </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={sampleReference} onChange={(e) => setSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required minLength={2} maxLength={160} value={laboratoryName} onChange={(e) => setLaboratoryName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={sampleDate} onChange={(e) => setSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.specification}<input required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            </div>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.measurementCode}</h3><Button type="button" variant="outline" onClick={() => setMeasurements((rows) => [...rows, { code: "", value: "", unit: "" }])}>{l.addMeasurement}</Button></div>
+              {measurements.map((measurement, index) => <div key={index} className="grid gap-3 rounded-xl border p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                <label className="grid gap-1 text-sm font-medium">{l.measurementCode}<input required minLength={2} maxLength={30} pattern="[A-Za-z0-9_]+" value={measurement.code} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, code: e.target.value.toUpperCase() } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.measurementValue}<input required type="number" step="0.000001" value={measurement.value} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, value: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.measurementUnit}<input required maxLength={20} value={measurement.unit} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <Button type="button" variant="outline" disabled={measurements.length === 1} onClick={() => setMeasurements((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
+              </div>)}
+            </div>
+            <Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || measurements.some((item) => item.code.trim().length < 2 || item.value === "" || !item.unit.trim())}>{l.submitAssessment}</Button>
+          </form>
+        </CardContent></Card>}
+        {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
+        {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
+          <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
+              <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{(lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number ?? assessment.oil_lot_id} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
+            </label>
+            <label className="grid max-w-sm gap-1 text-sm font-medium">{l.decision}
+              <select value={reviewDecision} onChange={(e) => setReviewDecision(e.target.value as "RELEASED" | "REJECTED")} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="RELEASED">{l.releaseOil}</option><option value="REJECTED">{l.rejectOil}</option></select>
+            </label>
+            <label className="grid gap-1 text-sm font-medium">{l.decisionReason}
+              <textarea required minLength={10} maxLength={1000} value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} className="min-h-24 rounded-lg border bg-background px-3 py-2 font-normal" />
+            </label>
+            {reviewableAssessments.length === 0 && <p className="text-sm text-muted-foreground">{l.noAssessment}</p>}
+            <Button type="submit" disabled={releaseQualityAssessment.isPending || !reviewAssessmentId || reviewReason.trim().length < 10}>{l.decision}</Button>
+          </form>
+        </CardContent></Card>}
+        {!canReviewQuality && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noReviewPermission}</p>}
+        <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
+            <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
+              <TableCell className="font-mono text-xs">{value((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number, assessment.oil_lot_id)}</TableCell>
+              <TableCell>{value(assessment.sample_reference)}</TableCell>
+              <TableCell>{value(assessment.laboratory_name)}</TableCell>
+              <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
+              <TableCell>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" ? l.awaitingReview : l.reviewed + " · " + value(assessment.decision)}</TableCell>
+              <TableCell>{date(assessment.created_at)}</TableCell>
+            </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+      </div>}
 
       {tab === "audit" && <Card><CardHeader><CardTitle>{l.audit}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.created}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.source}</TableHead></TableRow></TableHeader><TableBody>{(audit.data ?? []).map((a) => <TableRow key={a.id}><TableCell>{date(a.created_at)}</TableCell><TableCell>{value(a.action)}</TableCell><TableCell>{value(a.entity_type)}</TableCell><TableCell className="font-mono text-xs">{value(a.entity_id)}</TableCell></TableRow>)}{(!audit.isLoading && !(audit.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
