@@ -672,6 +672,24 @@ export default function Commercial() {
           </Table>
         </CardContent></Card>
       </div>}
+
+      {tab === "permissions" && isAdmin && <Card>
+        <CardHeader><CardTitle>{l.permissionsTab}</CardTitle><CardDescription>{l.noPermission}</CardDescription></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <label className="grid max-w-xl gap-1 text-sm font-medium">{l.chooseWorker}
+              <select value={selectedWorkerId} onChange={(e) => setSelectedWorkerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(workers.data ?? []).filter((worker) => worker.role === "worker" && worker.active).map((worker) => <option key={worker.id} value={worker.id}>{worker.full_name} · {worker.username}</option>)}</select>
+            </label>
+            {(workers.data ?? []).filter((worker) => worker.role === "worker" && worker.active).length === 0 && <p className="text-sm text-muted-foreground">{l.noWorkers}</p>}
+            {selectedWorkerId && <div className="space-y-3 rounded-xl border p-4">
+              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.lab_record")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.lab_record"] : current.filter((item) => item !== "commercial.lab_record"))} />{l.labPermission}</label>
+              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.quality_release")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.quality_release"] : current.filter((item) => item !== "commercial.quality_release"))} />{l.reviewerPermission}</label>
+              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.view_audit")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.view_audit"] : current.filter((item) => item !== "commercial.view_audit"))} />{l.auditPermission}</label>
+              <Button disabled={saveWorkerPermissions.isPending || targetPermissions.isLoading || targetPermissions.isError} onClick={() => saveWorkerPermissions.mutate()}>{l.savePermissions}</Button>
+            </div>}
+          </div>
+        </CardContent>
+      </Card>}
     </div>
   );
 }
