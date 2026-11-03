@@ -71,6 +71,14 @@ async def record_oil_quality_assessment(
         "tested_date": draft.tested_date.isoformat(),
         "laboratory_name": draft.laboratory_name,
         "specification_reference": draft.specification_reference,
+        "acidity": Decimal128(draft.acidity) if draft.acidity is not None else None,
+        "peroxide": Decimal128(draft.peroxide) if draft.peroxide is not None else None,
+        "k232": Decimal128(draft.k232) if draft.k232 is not None else None,
+        "k270": Decimal128(draft.k270) if draft.k270 is not None else None,
+        "oil_content_pct": Decimal128(draft.oil_content_pct) if draft.oil_content_pct is not None else None,
+        "classification": draft.classification,
+        "oil_type": draft.oil_type.strip() if draft.oil_type else None,
+        "notes": draft.notes,
         "measurements": [
             {"code": item.code, "value": Decimal128(item.value), "unit": item.unit}
             for item in draft.measurements
