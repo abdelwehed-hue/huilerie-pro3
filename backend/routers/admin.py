@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from lib.auth import hash_password, require_admin
+from lib.security_config import has_known_demo_password
 from lib.db import db
 from models.schemas import AppSettings, User, UserCreate, UserUpdate
 
@@ -172,9 +173,12 @@ async def create_user(body: UserCreate, _: dict = Depends(require_admin)):
     username = body.username.strip().lower()
     if await db.users.find_one({"username": username}):
         raise HTTPException(409, "username_taken")
+    password_hash = hash_password(body.password)
+    if has_known_demo_password(username, password_hash):
+        raise HTTPException(400, "demo_password_not_allowed")
     doc = {
         "id": str(uuid.uuid4()), "username": username, "full_name": body.full_name.strip(),
-        "password_hash": hash_password(body.password), "role": body.role, "active": True,
+        "password_hash": password_hash, "role": body.role, "active": True,
         "created_at": datetime.now(timezone.utc),
     }
     await db.users.insert_one(doc)
@@ -183,6 +187,10 @@ async def create_user(body: UserCreate, _: dict = Depends(require_admin)):
 
 @router.patch("/users/{id}", response_model=User)
 async def update_user(id: str, body: UserUpdate, admin: dict = Depends(require_admin)):
+    existing = await db.users.find_one({"id": id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "not_found")
+
     upd: dict = {}
     if body.username is not None:
         uname = body.username.strip().lower()
@@ -197,12 +205,19 @@ async def update_user(id: str, body: UserUpdate, admin: dict = Depends(require_a
         upd["active"] = body.active
     if body.password:
         upd["password_hash"] = hash_password(body.password)
+
+    effective_username = upd.get("username", existing.get("username", ""))
+    effective_active = upd.get("active", existing.get("active", False))
+    effective_hash = upd.get("password_hash", existing.get("password_hash", ""))
+    if effective_active and has_known_demo_password(effective_username, effective_hash):
+        raise HTTPException(400, "demo_password_not_allowed")
+
     if id == admin["id"] and (upd.get("active") is False or upd.get("role") == "worker"):
         raise HTTPException(400, "cannot_demote_self")
     doc = await db.users.find_one_and_update(
-        {"id": id}, {"$set": upd} if upd else {"$set": {}},
+        {"id": id}, {"$set": upd},
         projection={"_id": 0, "password_hash": 0}, return_document=True,
-    ) if upd else await db.users.find_one({"id": id}, {"_id": 0, "password_hash": 0})
+    ) if upd else {key: value for key, value in existing.items() if key != "password_hash"}
     if not doc:
         raise HTTPException(404, "not_found")
     return _user(doc)

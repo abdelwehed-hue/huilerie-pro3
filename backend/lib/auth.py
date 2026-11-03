@@ -63,7 +63,7 @@ async def seed_defaults() -> None:
     now = datetime.now(timezone.utc)
     if is_production():
         legacy_users = await db.users.find(
-            {"username": {"$in": ["admin", "ouvrier"]}},
+            {"username": {"$in": ["admin", "ouvrier"]}, "active": True},
             {"_id": 0, "username": 1, "password_hash": 1},
         ).to_list(10)
         for legacy_user in legacy_users:
