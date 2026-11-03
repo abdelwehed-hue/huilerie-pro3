@@ -48,7 +48,12 @@ from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
-from commercial.services.quality import (\n    record_oil_quality_assessment, release_oil_quality_assessment,\n    update_oil_quality_assessment, delete_oil_quality_assessment,\n)
+from commercial.services.quality import (
+    record_oil_quality_assessment,
+    release_oil_quality_assessment,
+    update_oil_quality_assessment,
+    delete_oil_quality_assessment,
+)
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
