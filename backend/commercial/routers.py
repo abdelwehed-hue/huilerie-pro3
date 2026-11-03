@@ -1615,17 +1615,41 @@ async def list_stock_movements(
 async def list_commercial_audit_events(
     entity_type: str | None = None,
     entity_id: str | None = None,
+    action: str | None = None,
+    actor_user_id: str | None = None,
     limit: int = Query(default=200, ge=1, le=1000),
     skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
+    """Read-only audit journal with server-side filters and resolved actor labels."""
     _authorize(user, "commercial.view_audit")
     query: dict[str, Any] = {}
     if entity_type:
         query["entity_type"] = entity_type
     if entity_id:
         query["entity_id"] = entity_id
+    if action:
+        query["action"] = action
+    if actor_user_id:
+        query["actor_user_id"] = actor_user_id
     docs = await db.commercial_audit_events.find(
         query, {"_id": 0}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+
+    actor_ids = sorted({
+        item.get("actor_user_id") for item in docs if item.get("actor_user_id")
+    })
+    actor_names: dict[str, str] = {}
+    if actor_ids:
+        users = await db.users.find(
+            {"id": {"$in": actor_ids}},
+            {"_id": 0, "id": 1, "full_name": 1, "username": 1},
+        ).to_list(len(actor_ids))
+        actor_names = {
+            item["id"]: (item.get("full_name") or item.get("username") or item["id"])
+            for item in users if item.get("id")
+        }
+    for item in docs:
+        actor_id = item.get("actor_user_id")
+        item["actor_name"] = actor_names.get(actor_id, actor_id or "system")
     return _safe(docs)
