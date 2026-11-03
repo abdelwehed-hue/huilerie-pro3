@@ -27,7 +27,7 @@ type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "laborat
 const labels = {
   fr: {
     permissionsTab: "Droits des employés", chooseWorker: "Choisir un employé", labPermission: "Saisie des analyses laboratoire", reviewerPermission: "Validation indépendante de la qualité", auditPermission: "Consultation du journal d’audit", savePermissions: "Enregistrer les autorisations", permissionsSaved: "Autorisations mises à jour", noWorkers: "Aucun compte employé actif.",
-    labEntry: "Saisie des analyses", laboratoryTab: "Laboratoire", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
+    labEntry: "Analyse de l’huile", oilAnalysis: "Analyse de l’huile", acidity: "Acidité", peroxide: "Indice de peroxyde", k232: "K232", k270: "K270", oilContent: "Teneur en huile (%)", classification: "Classification", autoClassification: "Automatique", extraVirgin: "Extra vierge", virgin: "Vierge", lampante: "Lampante", oilType: "Type d’huile", analysisNotes: "Observations", laboratoryTab: "Laboratoire", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
     productionTab: "Production", newProduction: "Nouvelle production", productionDate: "Date de production", inputLots: "Lots d’olives consommés", chooseOliveBalance: "Lot · emplacement · propriétaire", inputQuantity: "Quantité consommée (kg)", outputQuantity: "Huile réellement obtenue (kg)", outputTank: "Cuve de réception", extractionRate: "Rendement réel", completeProduction: "Enregistrer la production", productionSaved: "Production enregistrée et stock mis à jour", productionHistory: "Historique de production", ownerMill: "Maâsra", ownerCustomer: "Client", addInput: "Ajouter un lot", totalInput: "Total olives consommées (kg)", noOliveStock: "Aucun stock d’olives disponible pour la production.", selectTank: "Sélectionnez une cuve.",
     actions: "Actions",
     title: "Oro Verde — Gestion commerciale",
@@ -52,7 +52,7 @@ const labels = {
   },
   ar: {
     permissionsTab: "صلاحيات العمال", chooseWorker: "اختيار العامل", labPermission: "تسجيل التحاليل المخبرية", reviewerPermission: "المراجعة المستقلة للجودة", auditPermission: "الاطلاع على سجل التدقيق", savePermissions: "حفظ الصلاحيات", permissionsSaved: "تم تحديث الصلاحيات", noWorkers: "لا توجد حسابات عمال نشطة.",
-    labEntry: "تسجيل التحاليل", laboratoryTab: "المخبر", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
+    labEntry: "تحليل الزيت", oilAnalysis: "تحليل الزيت", acidity: "الحموضة", peroxide: "مؤشر البيروكسيد", k232: "K232", k270: "K270", oilContent: "نسبة الزيت (%)", classification: "التصنيف", autoClassification: "آلي", extraVirgin: "بكر ممتاز", virgin: "بكر", lampante: "لامبانتي", oilType: "نوع الزيت", analysisNotes: "ملاحظات", laboratoryTab: "المخبر", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
     productionTab: "الإنتاج", newProduction: "إنتاج جديد", productionDate: "تاريخ الإنتاج", inputLots: "دفعات الزيتون المستهلكة", chooseOliveBalance: "الدفعة · الموقع · المالك", inputQuantity: "الكمية المستهلكة (كغ)", outputQuantity: "كمية الزيت الفعلية الناتجة (كغ)", outputTank: "خزان الاستلام", extractionRate: "المردودية الفعلية", completeProduction: "تسجيل الإنتاج", productionSaved: "تم تسجيل الإنتاج وتحيين المخزون", productionHistory: "سجل الإنتاج", ownerMill: "المعصرة", ownerCustomer: "الحريف", addInput: "إضافة دفعة", totalInput: "مجموع الزيتون المستهلك (كغ)", noOliveStock: "لا يوجد مخزون زيتون متاح للإنتاج.", selectTank: "يرجى اختيار خزان.",
     actions: "الإجراءات",
     title: "Oro Verde — التسيير التجاري",
@@ -189,6 +189,14 @@ export default function Commercial() {
   const [laboratoryName, setLaboratoryName] = useState("");
   const [specificationReference, setSpecificationReference] = useState("");
   const [measurements, setMeasurements] = useState([{ code: "", value: "", unit: "" }]);
+  const [oilAcidity, setOilAcidity] = useState("");
+  const [oilPeroxide, setOilPeroxide] = useState("");
+  const [oilK232, setOilK232] = useState("");
+  const [oilK270, setOilK270] = useState("");
+  const [oilContent, setOilContent] = useState("");
+  const [oilClassification, setOilClassification] = useState<"auto" | "extra_vierge" | "vierge" | "lampante">("auto");
+  const [oilType, setOilType] = useState("");
+  const [analysisNotes, setAnalysisNotes] = useState("");
   const [reviewAssessmentId, setReviewAssessmentId] = useState("");
   const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
   const [reviewReason, setReviewReason] = useState("");
@@ -542,11 +550,20 @@ export default function Commercial() {
         tested_date: testedDate,
         laboratory_name: laboratoryName.trim(),
         specification_reference: specificationReference.trim(),
-        measurements: measurements.map((item) => ({
-          code: item.code.trim().toUpperCase(),
-          value: item.value,
-          unit: item.unit.trim(),
-        })),
+        measurements: [],
+        acidity: oilAcidity,
+        peroxide: oilPeroxide === "" ? null : oilPeroxide,
+        k232: oilK232 === "" ? null : oilK232,
+        k270: oilK270 === "" ? null : oilK270,
+        oil_content_pct: oilContent === "" ? null : oilContent,
+        classification: oilClassification === "auto"
+          ? (Number(oilAcidity) <= 0.8 && (oilPeroxide === "" || Number(oilPeroxide) <= 20) && (oilK232 === "" || Number(oilK232) <= 2.5) && (oilK270 === "" || Number(oilK270) <= 0.22)
+              ? "extra_vierge"
+              : Number(oilAcidity) <= 2 && (oilPeroxide === "" || Number(oilPeroxide) <= 20) && (oilK232 === "" || Number(oilK232) <= 2.6) && (oilK270 === "" || Number(oilK270) <= 0.25)
+                ? "vierge" : "lampante")
+          : oilClassification,
+        oil_type: oilType.trim() || null,
+        notes: analysisNotes.trim(),
         idempotency_key: crypto.randomUUID(),
       });
     },
@@ -554,6 +571,8 @@ export default function Commercial() {
       toast.success(l.assessmentSaved);
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
+      setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
+      setOilClassification("auto"); setOilType(""); setAnalysisNotes("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
@@ -1203,16 +1222,25 @@ export default function Commercial() {
               <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.specification}<input required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.measurementCode}</h3><Button type="button" variant="outline" onClick={() => setMeasurements((rows) => [...rows, { code: "", value: "", unit: "" }])}>{l.addMeasurement}</Button></div>
-              {measurements.map((measurement, index) => <div key={index} className="grid gap-3 rounded-xl border p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                <label className="grid gap-1 text-sm font-medium">{l.measurementCode}<input required minLength={2} maxLength={30} pattern="[A-Za-z0-9_]+" value={measurement.code} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, code: e.target.value.toUpperCase() } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementValue}<input required type="number" step="0.000001" value={measurement.value} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, value: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementUnit}<input required maxLength={20} value={measurement.unit} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <Button type="button" variant="outline" disabled={measurements.length === 1} onClick={() => setMeasurements((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
-              </div>)}
+            <div className="space-y-3 rounded-xl border p-4">
+              <h3 className="font-semibold">{l.oilAnalysis}</h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1 text-sm font-medium">{l.acidity}<input required type="number" min="0" step="0.01" value={oilAcidity} onChange={(e) => setOilAcidity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.peroxide}<input type="number" min="0" step="0.01" value={oilPeroxide} onChange={(e) => setOilPeroxide(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.k232}<input type="number" min="0" step="0.001" value={oilK232} onChange={(e) => setOilK232(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.k270}<input type="number" min="0" step="0.001" value={oilK270} onChange={(e) => setOilK270(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.oilContent}<input type="number" min="0" step="0.1" value={oilContent} onChange={(e) => setOilContent(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.classification}
+                  <select value={oilClassification} onChange={(e) => setOilClassification(e.target.value as typeof oilClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="auto">{l.autoClassification}</option><option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.analysisNotes}<textarea maxLength={2000} value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} className="min-h-20 rounded-lg border bg-background px-3 py-2 font-normal" /></label>
+              </div>
+              <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || measurements.some((item) => item.code.trim().length < 2 || item.value === "" || !item.unit.trim())}>{l.submitAssessment}</Button>
+            <Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{l.submitAssessment}</Button>
           </form>
         </CardContent></Card>}
         {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
