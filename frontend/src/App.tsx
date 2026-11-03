@@ -17,12 +17,13 @@ import TvScreen from "@/pages/TvScreen";
 import TvAdmin from "@/pages/TvAdmin";
 import Factures from "@/pages/Factures";
 import Commercial from "@/pages/Commercial";
+import Login from "@/pages/Login";
 
 export default function App() {
   return (
     <I18nProvider>
       <Routes>
-        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/tv" element={<TvScreen />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
