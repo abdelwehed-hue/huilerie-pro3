@@ -1261,7 +1261,7 @@ export default function Commercial() {
               <TableCell>{date(assessment.created_at)}</TableCell>
             </TableRow>)}{(!oliveQuality.isLoading && !(oliveQuality.data?.length)) && <EmptyRow colSpan={5} text={l.noRows} />}</TableBody>
           </Table>
-        </CardContent></Card>}
+        </CardContent></Card>
         {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
