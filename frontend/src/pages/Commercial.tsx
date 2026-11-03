@@ -1256,6 +1256,14 @@ export default function Commercial() {
                 <p><strong>{l.sampleDate}:</strong> {date(selectedReviewAssessment.sample_date)}</p>
                 <p><strong>{l.testedDate}:</strong> {date(selectedReviewAssessment.tested_date)}</p>
                 <p className="md:col-span-2"><strong>{l.specification}:</strong> {value(selectedReviewAssessment.specification_reference)}</p>
+                <p><strong>{l.acidity}:</strong> {value(selectedReviewAssessment.acidity)}</p>
+                <p><strong>{l.peroxide}:</strong> {value(selectedReviewAssessment.peroxide)}</p>
+                <p><strong>{l.k232}:</strong> {value(selectedReviewAssessment.k232)}</p>
+                <p><strong>{l.k270}:</strong> {value(selectedReviewAssessment.k270)}</p>
+                <p><strong>{l.oilContent}:</strong> {value(selectedReviewAssessment.oil_content_pct)}</p>
+                <p><strong>{l.classification}:</strong> {value(selectedReviewAssessment.classification)}</p>
+                <p><strong>{l.oilType}:</strong> {value(selectedReviewAssessment.oil_type)}</p>
+                <p className="md:col-span-2"><strong>{l.analysisNotes}:</strong> {value(selectedReviewAssessment.notes)}</p>
               </div>
               <Table><TableHeader><TableRow><TableHead>{l.measurementCode}</TableHead><TableHead>{l.measurementValue}</TableHead><TableHead>{l.measurementUnit}</TableHead></TableRow></TableHeader>
                 <TableBody>{(selectedReviewAssessment.measurements ?? []).map((item: AnyRecord, index: number) => <TableRow key={item.code + "-" + index}><TableCell className="font-mono">{value(item.code)}</TableCell><TableCell>{value(item.value)}</TableCell><TableCell>{value(item.unit)}</TableCell></TableRow>)}</TableBody>
