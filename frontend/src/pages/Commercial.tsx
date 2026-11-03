@@ -1117,10 +1117,11 @@ export default function Commercial() {
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-2 shadow-sm">
+      <div className="grid grid-cols-2 gap-3 rounded-2xl border border-[#E2E8DC] bg-[#F7F8F2] p-3 shadow-sm sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {tabs.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => setTab(id)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${tab === id ? "bg-[#1F4D2B] text-white" : "text-stone-600 hover:bg-stone-100"}`}>
-            <Icon className="size-4" />{label}
+          <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className={`group flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-center transition-all duration-200 ${tab === id ? "border-[#294B35] bg-[#294B35] text-white shadow-md shadow-green-950/15" : "border-[#E5E9E0] bg-white text-[#405343] hover:-translate-y-0.5 hover:border-[#9DB58D] hover:bg-[#F0F4EA] hover:shadow-sm"}`}>
+            <span className={`grid size-10 place-items-center rounded-xl ${tab === id ? "bg-white/15 text-white" : "bg-[#EAF0E5] text-[#45643B] group-hover:bg-[#DDE8D4]"}`}><Icon className="size-5" /></span>
+            <span className="text-sm font-semibold leading-tight">{label}</span>
           </button>
         ))}
       </div>
