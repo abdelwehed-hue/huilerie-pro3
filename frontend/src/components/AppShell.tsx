@@ -20,6 +20,7 @@ import {
   Volume2,
   VolumeX,
   Menu,
+  LogOut,
   Sun,
   Moon,
   Monitor,
@@ -34,6 +35,7 @@ import { useMe } from "@/lib/useMe";
 import SeasonSwitcher from "@/components/SeasonSwitcher";
 import { cn } from "@/lib/utils";
 import { ThemeProvider, useTheme } from "@/lib/theme";
+import { endSession } from "@/lib/session";
 
 // Menu-only labels (page titles keep their own wording).
 const MENU_LABEL: Partial<Record<string, "menu_dashboard" | "menu_search" | "menu_sms">> = {
@@ -307,6 +309,19 @@ export default function AppShell() {
                 </Button>
               )}
               <LangToggle />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => { void endSession(); }}
+                title="Fermer la session"
+                aria-label="Fermer la session"
+                data-testid="header-logout"
+                className="h-9 shrink-0 gap-1.5 rounded-xl border-stone-200 bg-white px-2.5 text-stone-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="size-4" />
+                <span className="hidden text-xs font-semibold sm:inline">Fermer la session</span>
+              </Button>
               {user && (
                 <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">
                   <div className="font-semibold text-stone-900">{user.full_name}</div>
