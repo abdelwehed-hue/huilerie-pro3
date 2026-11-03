@@ -130,3 +130,88 @@ async def create_olive_purchase_draft(
         session=session,
     )
     return record
+
+
+async def update_olive_purchase_draft(
+    db: Any,
+    purchase_id: str,
+    draft: Any,
+    *,
+    actor_user: dict[str, Any],
+    actor_user_id: str,
+    audit_event_id: str,
+    updated_at: datetime,
+    session: Any,
+) -> dict[str, Any]:
+    """Update only a DRAFT purchase; approved receipts are immutable."""
+    require_commercial_permission(actor_user, "commercial.manage_purchases")
+    purchases = db["commercial_olive_purchases"]
+    existing = await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
+    if not existing:
+        raise ValueError("Olive purchase does not exist")
+    if existing.get("status") != "DRAFT":
+        raise ValueError("Only draft olive purchases can be edited")
+    if int(existing.get("version", 1)) != draft.expected_version:
+        raise ValueError("Olive purchase version conflict")
+
+    supplier = await db["commercial_suppliers"].find_one(
+        {"id": draft.supplier_id, "active": True}, {"_id": 0, "id": 1}, session=session
+    )
+    if not supplier:
+        raise ValueError("Unknown or inactive commercial supplier")
+    settings_doc = await db["settings"].find_one(
+        {"key": "app"}, {"_id": 0, "varieties": 1}, session=session
+    ) or {}
+    configured = settings_doc.get("varieties") or DEFAULT_VARIETIES
+    active_varieties = {
+        str(name).strip() for name in configured
+        if isinstance(name, str) and str(name).strip()
+    }
+    if not {line.variety_id for line in draft.lines}.issubset(active_varieties):
+        raise ValueError("One or more olive varieties are unknown or inactive")
+
+    lines = [{
+        "variety_id": line.variety_id,
+        "quantity_kg": Decimal128(line.quantity_kg),
+        "unit_price_dt": Decimal128(line.unit_price_dt),
+        "line_total_dt": Decimal128((line.quantity_kg * line.unit_price_dt).quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )),
+    } for line in draft.lines]
+    total_quantity = sum((line.quantity_kg for line in draft.lines), start=Decimal("0"))
+    total_amount = sum((
+        (line.quantity_kg * line.unit_price_dt).quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        ) for line in draft.lines
+    ), start=Decimal("0"))
+    now = updated_at.astimezone(timezone.utc)
+    result = await purchases.update_one(
+        {"id": purchase_id, "status": "DRAFT", "version": draft.expected_version},
+        {"$set": {
+            "supplier_id": draft.supplier_id,
+            "purchase_date": draft.purchase_date.isoformat(),
+            "lines": lines,
+            "total_quantity_kg": Decimal128(total_quantity),
+            "total_amount_dt": Decimal128(total_amount),
+            "notes": draft.notes,
+            "updated_at": now,
+            "updated_by": actor_user_id,
+        }, "$inc": {"version": 1}},
+        session=session,
+    )
+    if result.matched_count != 1:
+        raise ValueError("Olive purchase changed concurrently; reload and retry")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id,
+        "entity_type": "olive_purchase",
+        "entity_id": purchase_id,
+        "action": "DRAFT_UPDATED",
+        "actor_user_id": actor_user_id,
+        "created_at": now,
+        "details": {
+            "previous_version": draft.expected_version,
+            "new_version": draft.expected_version + 1,
+            "document_number": existing.get("document_number"),
+        },
+    }, session=session)
+    return await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)

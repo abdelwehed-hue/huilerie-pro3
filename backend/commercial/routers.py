@@ -31,6 +31,7 @@ from commercial.schemas.production import CommercialProductionDraft
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
     OlivePurchaseDraft,
+    OlivePurchaseUpdate,
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft
@@ -46,7 +47,7 @@ from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
-from commercial.services.purchases import create_olive_purchase_draft
+from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
@@ -962,6 +963,30 @@ async def create_olive_purchase(
                 db, draft, season_code=season_code, actor_user=user,
                 actor_user_id=user["id"], purchase_id=purchase_id,
                 audit_event_id=audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.put("/olive-purchases/{purchase_id}")
+async def update_olive_purchase(
+    purchase_id: str,
+    draft: OlivePurchaseUpdate,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_purchases")
+    season, _ = await _require_commercial_ready()
+    if season_of(draft.purchase_date.isoformat()) != season:
+        raise HTTPException(422, "purchase_date_outside_active_season")
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: update_olive_purchase_draft(
+                db, purchase_id, draft, actor_user=user,
+                actor_user_id=user["id"], audit_event_id=str(uuid.uuid4()),
+                updated_at=now, session=session,
             )
         )
         return _safe(result)
