@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
-  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,
+  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,\n  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,\n  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -1054,21 +1053,23 @@ export default function Commercial() {
     ? (Number(productionOutputKg) / productionInputTotal) * 100 : 0;
 
 
+  // Operational sequence: supplier → olive intake/purchase → lot tracking → pressing → oil storage → quality → movements → delivery/sale.
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
-    { id: "tanks", label: l.tanks, icon: Warehouse },
+    { id: "suppliers", label: l.suppliers, icon: Truck },
+    { id: "purchases", label: l.purchasesTab, icon: ShoppingBasket },
     { id: "lots", label: l.lots, icon: Boxes },
-    { id: "movements", label: l.movements, icon: RefreshCw },
-    { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
-    { id: "quality", label: l.quality, icon: Beaker },
-    { id: "audit", label: l.audit, icon: ClipboardList },
-    { id: "suppliers", label: l.suppliers, icon: Boxes },
-    { id: "locations", label: l.locationsTab, icon: Warehouse },
-    { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
     { id: "production", label: l.productionTab, icon: Factory },
-    { id: "custody", label: l.custodyTab, icon: ClipboardList },
+    { id: "tanks", label: l.tanks, icon: Warehouse },
+    { id: "quality", label: l.quality, icon: Beaker },
+    { id: "movements", label: l.movements, icon: ArrowLeftRight },
+    { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
+    { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
+    // Supporting/setup sections are grouped after the operational flow.
+    { id: "locations", label: l.locationsTab, icon: MapPin },
+    { id: "audit", label: l.audit, icon: ClipboardList },
   ];
   if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
 
