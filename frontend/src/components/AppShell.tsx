@@ -339,11 +339,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {isCommercialWorkspace ? (
-        <NavLink to="/" end aria-label="Retour à l’application originale" title="Retour à l’application originale" data-testid="commercial-return-home" className="no-print fixed bottom-5 right-5 z-50 grid size-14 place-items-center rounded-full border border-[#D7E4D0] bg-[#1F3A24] text-white shadow-xl shadow-green-950/25 transition-transform hover:scale-105 hover:bg-[#294B35] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A8C58E]">
-          <ArrowLeft className="size-6" />
-        </NavLink>
-      ) : <BottomNav isAdmin={isAdmin} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} />}
     </div>
     </ThemeProvider>
   );
