@@ -200,8 +200,14 @@ INVENTORY_INDEXES = {
     ],
     "commercial_audit_events": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_audit_id"),
+        IndexModel([("created_at", DESCENDING), ("id", ASCENDING)],
+                   name="commercial_audit_created"),
         IndexModel([("entity_type", ASCENDING), ("entity_id", ASCENDING),
                     ("created_at", DESCENDING)], name="commercial_audit_entity_created"),
+        IndexModel([("actor_user_id", ASCENDING), ("created_at", DESCENDING)],
+                   name="commercial_audit_actor_created"),
+        IndexModel([("action", ASCENDING), ("created_at", DESCENDING)],
+                   name="commercial_audit_action_created"),
     ],
 }
 
