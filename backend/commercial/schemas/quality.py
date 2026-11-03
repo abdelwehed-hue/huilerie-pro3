@@ -26,7 +26,18 @@ class QualityAssessmentDraft(BaseModel):
     tested_date: date
     laboratory_name: str = Field(min_length=2, max_length=160)
     specification_reference: str = Field(min_length=2, max_length=160)
-    measurements: tuple[QualityMeasurement, ...] = Field(min_length=1, max_length=40)
+    measurements: tuple[QualityMeasurement, ...] = Field(default=(), max_length=40)
+    # Fixed olive-oil analysis fields mirrored from the legacy Laboratory form.
+    # Optional to preserve compatibility with assessments already submitted through
+    # the former generic-measurement interface.
+    acidity: MeasurementValue | None = None
+    peroxide: MeasurementValue | None = None
+    k232: MeasurementValue | None = None
+    k270: MeasurementValue | None = None
+    oil_content_pct: MeasurementValue | None = None
+    classification: Literal["extra_vierge", "vierge", "lampante"] | None = None
+    oil_type: str | None = Field(default=None, max_length=100)
+    notes: str = Field(default="", max_length=2000)
     idempotency_key: str = Field(min_length=16, max_length=128)
 
     @model_validator(mode="after")
@@ -34,6 +45,10 @@ class QualityAssessmentDraft(BaseModel):
         codes = [measurement.code for measurement in self.measurements]
         if len(codes) != len(set(codes)):
             raise ValueError("Measurement codes must be unique within an assessment")
+        if not self.measurements and self.acidity is None:
+            raise ValueError("At least the acidity result or one generic measurement is required")
+        if self.oil_type is not None and not self.oil_type.strip():
+            raise ValueError("Oil type cannot be blank")
         if self.tested_date < self.sample_date:
             raise ValueError("Testing date cannot precede the sample date")
         return self
