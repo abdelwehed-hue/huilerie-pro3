@@ -1,0 +1,93 @@
+import pytest
+from pydantic import ValidationError
+
+from commercial.schemas.internal_movements import InternalMovementDraft
+
+
+def base(**overrides):
+    values = {
+        "movement_kind": "TRANSFER",
+        "product_kind": "OLIVE",
+        "lot_id": "lot-1",
+        "quantity_kg": "125.500",
+        "source_location_id": "olive-a",
+        "destination_location_id": "olive-b",
+        "source_owner": {"kind": "MILL"},
+        "destination_owner": {"kind": "MILL"},
+        "idempotency_key": "internal-movement-key-01",
+        "reason": "Reorganize olive storage",
+    }
+    values.update(overrides)
+    return values
+
+
+def test_internal_transfer_requires_distinct_locations_and_same_owner():
+    draft = InternalMovementDraft(**base())
+    assert draft.movement_kind == "TRANSFER"
+    assert draft.quantity_kg == 125.500
+
+
+def test_internal_transfer_rejects_owner_change():
+    with pytest.raises(ValidationError, match="Invalid locations or owners"):
+        InternalMovementDraft(**base(destination_owner={"kind": "CUSTOMER", "customer_id": "c-1"}))
+
+
+def test_ownership_transfer_requires_same_location_and_different_owner():
+    draft = InternalMovementDraft(**base(
+        movement_kind="OWNERSHIP_TRANSFER",
+        destination_location_id="olive-a",
+        destination_owner={"kind": "CUSTOMER", "customer_id": "c-1"},
+    ))
+    assert draft.destination_owner.kind == "CUSTOMER"
+
+
+def test_ownership_transfer_rejects_different_locations():
+    with pytest.raises(ValidationError, match="Invalid locations or owners"):
+        InternalMovementDraft(**base(
+            movement_kind="OWNERSHIP_TRANSFER",
+            destination_owner={"kind": "CUSTOMER", "customer_id": "c-1"},
+        ))
+
+
+def test_ownership_transfer_rejects_customer_to_customer_reassignment():
+    with pytest.raises(ValidationError, match="Invalid locations or owners"):
+        InternalMovementDraft(**base(
+            movement_kind="OWNERSHIP_TRANSFER",
+            destination_location_id="olive-a",
+            source_owner={"kind": "CUSTOMER", "customer_id": "c-1"},
+            destination_owner={"kind": "CUSTOMER", "customer_id": "c-2"},
+        ))
+
+
+def test_external_receipt_or_dispatch_cannot_be_submitted_as_internal_movement():
+    with pytest.raises(ValidationError):
+        InternalMovementDraft(**base(movement_kind="DISPATCH"))
+
+
+@pytest.mark.asyncio
+async def test_generic_stock_endpoint_rejects_internal_document_source(monkeypatch):
+    monkeypatch.setenv("MONGO_URL", "mongodb://localhost:27017/test")
+    monkeypatch.setenv("DB_NAME", "commercial_route_unit_test")
+    monkeypatch.setenv("JWT_SECRET", "unit-test-secret-not-for-production")
+    from fastapi import HTTPException
+    from commercial.routers import create_stock_movement
+    from commercial.schemas.inventory import StockMovementDraft
+
+    draft = StockMovementDraft(
+        movement_kind="DISPATCH",
+        product_kind="OIL",
+        lot_id="oil-lot-1",
+        quantity_kg="10.000",
+        source_location_id="tank-01",
+        source_owner={"kind": "MILL"},
+        source_document_type="INT",
+        source_document_id="internal-doc-1",
+        idempotency_key="generic-int-reject-key-001",
+        reason="Attempt to bypass internal movement workflow",
+    )
+    with pytest.raises(HTTPException) as error:
+        await create_stock_movement(
+            draft, {"active": True, "role": "admin", "id": "admin-1"}
+        )
+    assert error.value.status_code == 422
+    assert "owning_purchase_production_internal_or_sales_workflow" in error.value.detail

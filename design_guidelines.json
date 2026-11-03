@@ -1,0 +1,313 @@
+{
+  "project_name": "Huilerie Pro - Système de Gestion de المعصرة",
+  "app_type": "dashboard",
+  "emotional_archetype": "Organic & Earthy meets High-Precision Industrial",
+  "theme_preference": "light_mode_primary_with_dark_toggle",
+  "typography": {
+    "font_family_heading": "Outfit, system-ui, -apple-system, sans-serif",
+    "font_family_body": "DM Sans, system-ui, -apple-system, sans-serif",
+    "font_family_mono": "IBM Plex Mono, monospace",
+    "arabic_fallback": "system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif",
+    "css_import": "@import \"@fontsource-variable/outfit\";\n@import \"@fontsource-variable/dm-sans\";\n@import \"@fontsource/ibm-plex-mono\";",
+    "scale_px": {
+      "display": 56,
+      "h1": 40,
+      "h2": 32,
+      "h3": 24,
+      "h4": 20,
+      "body": 16,
+      "caption": 14
+    },
+    "rules": {
+      "headings": "font-bold tracking-tight text-stone-900 dark:text-stone-100",
+      "code_badges": "font-mono font-bold tracking-wider text-amber-900 bg-amber-100 dark:text-amber-200 dark:bg-amber-950/80 px-2 py-1 rounded-md border border-amber-300 dark:border-amber-800",
+      "labels": "text-xs uppercase tracking-wider font-semibold text-stone-600 dark:text-stone-400"
+    }
+  },
+  "colors": {
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#F9F8F3",
+        "on_bg": "#1C1917",
+        "on_bg_muted": "#57534E",
+        "roles": {
+          "link": "#15803D",
+          "error": "#B91C1C",
+          "success": "#15803D",
+          "warning": "#B45309",
+          "olive": "#365314",
+          "gold": "#854D0E",
+          "oil_yield": "#0369A1"
+        }
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#FFFFFF",
+        "on_bg": "#1C1917",
+        "on_bg_muted": "#57534E",
+        "roles": {
+          "border": "#E7E5E4",
+          "hover_bg": "#F5F5F4"
+        }
+      },
+      {
+        "name": "inverse",
+        "kind": "solid",
+        "bg": "#1C1917",
+        "on_bg": "#FAFAF9",
+        "on_bg_muted": "#A8A29E",
+        "roles": {
+          "link": "#86EFAC",
+          "error": "#F87171",
+          "success": "#4ADE80"
+        }
+      },
+      {
+        "name": "sidebar",
+        "kind": "solid",
+        "bg": "#1E291E",
+        "on_bg": "#F4F7F4",
+        "on_bg_muted": "#A1B0A1",
+        "roles": {
+          "active_item": "#2D3E2D",
+          "active_indicator": "#84CC16"
+        }
+      },
+      {
+        "name": "card_olive_intake",
+        "kind": "solid",
+        "bg": "#F2F8EE",
+        "on_bg": "#1E3A14",
+        "on_bg_muted": "#3D5A2F",
+        "roles": {
+          "accent": "#4D7C0F"
+        }
+      },
+      {
+        "name": "card_oil_produced",
+        "kind": "solid",
+        "bg": "#FEFCE8",
+        "on_bg": "#713F12",
+        "on_bg_muted": "#854D0E",
+        "roles": {
+          "accent": "#CA8A04"
+        }
+      },
+      {
+        "name": "card_lab_quality",
+        "kind": "solid",
+        "bg": "#F0FDF4",
+        "on_bg": "#14532D",
+        "on_bg_muted": "#166534",
+        "roles": {
+          "accent": "#16A34A"
+        }
+      },
+      {
+        "name": "card_revenue",
+        "kind": "solid",
+        "bg": "#FAF5FF",
+        "on_bg": "#581C87",
+        "on_bg_muted": "#6B21A8",
+        "roles": {
+          "accent": "#9333EA"
+        }
+      },
+      {
+        "name": "badge_extra_virgin",
+        "kind": "solid",
+        "bg": "#DCFCE7",
+        "on_bg": "#14532D",
+        "on_bg_muted": "#166534"
+      },
+      {
+        "name": "badge_virgin",
+        "kind": "solid",
+        "bg": "#FEF9C3",
+        "on_bg": "#713F12",
+        "on_bg_muted": "#854D0E"
+      },
+      {
+        "name": "badge_lampante",
+        "kind": "solid",
+        "bg": "#FEE2E2",
+        "on_bg": "#7F1D1D",
+        "on_bg_muted": "#991B1B"
+      }
+    ],
+    "accent": "#3F6212",
+    "on_accent": "#FFFFFF",
+    "palette_vibrancy_note": "A rich multi-color palette is implemented deliberately for high scanability: Deep Olive Forest for intake, Warm Golden Amber for extracted oil & yield %, Emerald Green for Extra Virgin oil analysis, Saffron/Yellow for Virgin, Ruby Red for Lampante, Indigo/Cyan for Lab tests, Royal Violet for Admin Revenue"
+  },
+  "entry_surfaces": {
+    "/": "dashboard layout with top KPI metric color-cards, quick batch lookup bar, active pressing line queues, and recent intake table",
+    "/login": "split branded login with olive oil mill photography backdrop on left and credential card with quick role selector on right",
+    "/intake": "fast-entry olive arrival receipt creation panel generating YYMMDDHHMM code with print ticket preview",
+    "/search": "instant code & telephone lookup station returning customer name, olive kg, pressed oil kg, yield %, and lab status",
+    "/loads": "production pressing queue and batch list with inline oil kg entry modal and auto yield % calculator",
+    "/lab": "laboratory analysis console with acidity, peroxide, K232, K270 inputs and automated classification engine",
+    "/admin/settings": "system parameters panel with user CRUD, activation toggles, password reset, and price per kg tariff"
+  },
+  "bilingual_rtl_system": {
+    "default_language": "fr",
+    "supported_languages": [
+      {
+        "code": "fr",
+        "name": "Français",
+        "dir": "ltr",
+        "flag": "🇫🇷"
+      },
+      {
+        "code": "ar",
+        "name": "العربية",
+        "dir": "rtl",
+        "flag": "🇹🇳"
+      }
+    ],
+    "technical_implementation": {
+      "html_dir_sync": "Synchronize document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr' and document.documentElement.lang = lang",
+      "text_alignments": "Use start/end logical properties (e.g. text-start, text-end, ps-4, pe-4, ms-auto, me-auto) instead of hardcoded left/right",
+      "translations_dictionary": "Provide a complete in-app i18n dictionary object with all keys (Dashboard, Nouvelle Réception, Recherche par Code, File des Chargements, Laboratoire, Paramètres, Utilisateurs, Prix par Kg, etc.) with 100% Arabic and French parity"
+    }
+  },
+  "batch_code_generator_rule": {
+    "format": "YYMMDDHHMM",
+    "example": "2503141035 (for 2025-03-14 10:35)",
+    "description": "Formed from 2-digit year (YY), 2-digit month (MM), 2-digit day (DD), 2-digit hour (HH), 2-digit minute (MM). Must be automatically generated upon load creation, editable if backdating, and act as unique reference for customer, phone, olive weight, oil weight, lab test, and receipts."
+  },
+  "role_based_access_rules": {
+    "roles": ["admin", "worker"],
+    "admin_capabilities": [
+      "View total revenue and milling income based on Price/Kg setting",
+      "Configure Milling Price per Kg (Prix de trituration / سعر العصر للكيلوغرام)",
+      "User Management (Create worker accounts, change passwords, activate/deactivate)",
+      "Full access to intake, oil weighing, laboratory analyses, export reports"
+    ],
+    "worker_capabilities": [
+      "Create new olive arrivals and generate customer batch codes",
+      "Look up batches by code or phone number",
+      "Enter finished oil quantity (kg) for ongoing pressings",
+      "Add laboratory test reports (acidity, peroxides, etc.)",
+      "REVENUE AND PRICING HIDDEN: Workers cannot see monetary amounts, unit prices, or total financial turnovers"
+    ]
+  },
+  "laboratory_engine_rules": {
+    "metrics": [
+      {
+        "id": "acidity",
+        "name_fr": "Acidité oléique (%)",
+        "name_ar": "نسبة الحموضة (%)",
+        "normal_extra_virgin": "<= 0.8%",
+        "normal_virgin": "<= 2.0%",
+        "lampante": "> 2.0%"
+      },
+      {
+        "id": "peroxide",
+        "name_fr": "Indice de Peroxyde (meq O2/kg)",
+        "name_ar": "مؤشر البيروكسيد",
+        "normal_extra_virgin": "<= 20",
+        "normal_virgin": "<= 20"
+      },
+      {
+        "id": "k232",
+        "name_fr": "Absorbance UV K232",
+        "name_ar": "امتصاص الأشعة K232",
+        "normal_extra_virgin": "<= 2.50"
+      },
+      {
+        "id": "k270",
+        "name_fr": "Absorbance UV K270",
+        "name_ar": "امتصاص الأشعة K270",
+        "normal_extra_virgin": "<= 0.22"
+      }
+    ],
+    "classification_logic": "Auto-calculate grade based on acidity: Acidity <= 0.8% -> 'Extra Vierge' (بكر ممتاز - Green); Acidity <= 2.0% -> 'Vierge' (بكر - Yellow/Amber); Acidity > 2.0% -> 'Lampante' (وقاد / صناعي - Red/Rose). Display visual gauge and yield percentage (Huile kg / Olive kg * 100)."
+  },
+  "image_urls": [
+    {
+      "category": "hero_and_login",
+      "url": "https://images.unsplash.com/photo-1698775942613-3e9fc114b2a1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwyfHxvbGl2ZSUyMGhhcnZlc3QlMjBncmVlbnxlbnwwfHx8fDE3OTE3Mjc2MjV8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Rich freshly harvested green olives pile for auth screen and header banner"
+    },
+    {
+      "category": "laboratory_analysis",
+      "url": "https://images.unsplash.com/photo-1602928298849-325cec8771c0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwzfHxvbGl2ZSUyMG9pbCUyMGJvdHRsZSUyMGxhYm9yYXRvcnl8ZW58MHx8fHwxNzkxNzI3NjI1fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Pure extra virgin olive oil in laboratory flask for the quality testing module"
+    },
+    {
+      "category": "olive_grove_banner",
+      "url": "https://images.unsplash.com/photo-1565459374854-6fa73a99abf5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwzfHxvbGl2ZSUyMGhhcnZlc3QlMjBncmVlbnxlbnwwfHx8fDE3OTE3Mjc2MjV8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Sunny Mediterranean olive tree branches representing harvest authenticity"
+    }
+  ],
+  "component_structure": {
+    "layout": {
+      "app_shell": "/app/frontend/src/components/layout/AppShell.tsx (Header with FR/AR toggle, User profile badge, Role pill, Quick Code Search bar, and Tabbed/Sidebar Navigation)",
+      "navigation_links": [
+        {"to": "/", "label_fr": "Tableau de Bord", "label_ar": "لوحة القيادة", "icon": "LayoutDashboard"},
+        {"to": "/intake", "label_fr": "Nouvelle Réception", "label_ar": "استلام جديد", "icon": "PlusCircle"},
+        {"to": "/search", "label_fr": "Recherche par Code", "label_ar": "بحث بالكود", "icon": "Search"},
+        {"to": "/loads", "label_fr": "File des Chargements", "label_ar": "قائمة الشحنات", "icon": "Layers"},
+        {"to": "/lab", "label_fr": "Laboratoire & Qualité", "label_ar": "المخبر والتحاليل", "icon": "FlaskConical"},
+        {"to": "/settings", "label_fr": "Paramètres & Tarifs", "label_ar": "الإعدادات والمستخدمين", "icon": "Settings", "admin_only": true}
+      ]
+    },
+    "features": {
+      "code_search_modal": "/app/frontend/src/components/features/CodeSearchModal.tsx",
+      "arrival_ticket_modal": "/app/frontend/src/components/features/ArrivalTicketModal.tsx",
+      "oil_entry_dialog": "/app/frontend/src/components/features/OilEntryDialog.tsx",
+      "lab_analysis_form": "/app/frontend/src/components/features/LabAnalysisForm.tsx",
+      "user_management_table": "/app/frontend/src/components/features/UserManagementTable.tsx",
+      "revenue_kpi_card": "/app/frontend/src/components/features/RevenueKpiCard.tsx"
+    }
+  },
+  "motion_and_interactions": {
+    "transitions": "transition-colors duration-200 ease-in-out, transition-transform duration-150 ease-out",
+    "card_hover": "hover:shadow-md hover:-translate-y-0.5",
+    "button_press": "active:scale-98 active:brightness-95",
+    "code_generation_pulse": "animate-pulse on newly created batch codes",
+    "modal_entrance": "framer-motion opacity and scale fade-in (initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }})"
+  },
+  "accessibility_and_testing": {
+    "data_testids_required": [
+      "lang-toggle-button",
+      "lang-option-fr",
+      "lang-option-ar",
+      "user-role-badge",
+      "quick-code-search-input",
+      "quick-code-search-btn",
+      "nav-dashboard",
+      "nav-intake",
+      "nav-search",
+      "nav-loads",
+      "nav-lab",
+      "nav-settings",
+      "intake-client-name-input",
+      "intake-client-phone-input",
+      "intake-olive-kg-input",
+      "intake-generated-code",
+      "intake-submit-button",
+      "loads-table",
+      "oil-entry-input",
+      "oil-entry-submit-btn",
+      "lab-acidity-input",
+      "lab-classification-badge",
+      "lab-save-button",
+      "admin-price-per-kg-input",
+      "admin-user-create-button",
+      "admin-user-toggle-status",
+      "admin-revenue-metric-card"
+    ],
+    "contrast_standards": "All text tokens meet WCAG AA (>= 4.5:1 for normal copy, >= 3:1 for large display metrics).",
+    "focus_rings": "focus-visible:ring-2 focus-visible:ring-lime-600 focus-visible:ring-offset-2 outline-none"
+  },
+  "instructions_to_main_agent": [
+    "Seed realistic demo data with Tunisian/Mediterranean olive oil mill operations (both Workers and Admin users, arrivals with codes like 2503141035, client names in Arabic and French, phone numbers, olive weights 500kg - 8500kg, oil extracted, laboratory analyses with acidity grades, and milling tariff).",
+    "Include a fast role-switch / mock user switcher in the header or login so any evaluator can immediately test both Worker view (revenue hidden) and Admin view (revenue visible + user settings).",
+    "Implement the exact code generator rule YYMMDDHHMM (2-digit year + 2-digit month + 2-digit day + 2-digit hour + 2-digit minute).",
+    "Ensure complete RTL mirroring when Arabic is selected, with rich multi-color dashboard cards, smooth charts for daily extraction yield %, and print-ready arrival tickets."
+  ]
+}
