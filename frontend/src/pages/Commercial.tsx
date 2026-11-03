@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake,
+  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake, Home,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -158,6 +159,7 @@ export default function Commercial() {
     noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
   };
   const me = useMe();
+  const navigate = useNavigate();
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("overview");
@@ -1117,14 +1119,22 @@ export default function Commercial() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 rounded-2xl border border-[#E2E8DC] bg-[#F7F8F2] p-3 shadow-sm sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className={`group flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-center transition-all duration-200 ${tab === id ? "border-[#294B35] bg-[#294B35] text-white shadow-md shadow-green-950/15" : "border-[#E5E9E0] bg-white text-[#405343] hover:-translate-y-0.5 hover:border-[#9DB58D] hover:bg-[#F0F4EA] hover:shadow-sm"}`}>
-            <span className={`grid size-10 place-items-center rounded-xl ${tab === id ? "bg-white/15 text-white" : "bg-[#EAF0E5] text-[#45643B] group-hover:bg-[#DDE8D4]"}`}><Icon className="size-5" /></span>
-            <span className="text-sm font-semibold leading-tight">{label}</span>
+      
+
+      <nav aria-label="Gestion commerciale" data-testid="commercial-bottom-nav" className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/40 bg-[#1E2B20]/95 shadow-[0_-8px_24px_rgba(20,35,22,0.22)] backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className={`flex min-w-[5.4rem] flex-1 flex-col items-center justify-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
+              <Icon className="size-5 stroke-[1.7]" />
+              <span className="whitespace-nowrap">{label}</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => navigate("/")} aria-label={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} title={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} data-testid="commercial-return-home" className="ml-1 flex min-w-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 border-[#CFE3C4]/40 bg-[#DCE8D3] px-2 py-1.5 text-xs font-bold text-[#1E3A25] hover:bg-white">
+            <Home className="size-5" />
+            <span className="whitespace-nowrap">{lang === "ar" ? "الرئيسية" : "Accueil"}</span>
           </button>
-        ))}
-      </div>
+        </div>
+      </nav>
 
       {tab === "overview" && (
         <div className="space-y-4">
