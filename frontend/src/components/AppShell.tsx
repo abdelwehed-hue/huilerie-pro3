@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, NavLink, Outlet } from "react-router-dom";
+import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   FlaskConical,
   Layers,
@@ -25,6 +25,7 @@ import {
   Moon,
   Monitor,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -179,6 +180,8 @@ function Brand() {
 }
 
 export default function AppShell() {
+  const location = useLocation();
+  const isCommercialWorkspace = location.pathname.startsWith("/commercial");
   const me = useMe();
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -336,7 +339,11 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      <BottomNav isAdmin={isAdmin} />
+      {isCommercialWorkspace ? (
+        <NavLink to="/" end aria-label="Retour à l’application originale" title="Retour à l’application originale" data-testid="commercial-return-home" className="no-print fixed bottom-5 right-5 z-50 grid size-14 place-items-center rounded-full border border-[#D7E4D0] bg-[#1F3A24] text-white shadow-xl shadow-green-950/25 transition-transform hover:scale-105 hover:bg-[#294B35] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A8C58E]">
+          <ArrowLeft className="size-6" />
+        </NavLink>
+      ) : <BottomNav isAdmin={isAdmin} />}
     </div>
     </ThemeProvider>
   );
