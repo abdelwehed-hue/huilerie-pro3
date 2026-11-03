@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,\n  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,\n  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake,
+  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,
+  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
