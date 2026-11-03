@@ -1281,15 +1281,15 @@ export default function Commercial() {
         </CardContent></Card>}
         {!canReviewQuality && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noReviewPermission}</p>}
         <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
+          <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
             <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
               <TableCell className="font-mono text-xs">{value((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number, assessment.oil_lot_id)}</TableCell>
               <TableCell>{value(assessment.sample_reference)}</TableCell>
               <TableCell>{value(assessment.laboratory_name)}</TableCell>
               <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
               <TableCell>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" ? l.awaitingReview : l.reviewed + " · " + value(assessment.decision)}</TableCell>
-              <TableCell>{date(assessment.created_at)}</TableCell>
-            </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+              <TableCell>{date(assessment.created_at)}</TableCell><TableCell><a href={`/commercial/certificate/${encodeURIComponent(assessment.id)}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-700 underline">{l.viewCertificate}</a></TableCell>
+            </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
       </div>}
