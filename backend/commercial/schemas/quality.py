@@ -62,3 +62,7 @@ class QualityReleaseCommand(BaseModel):
     decision: Literal["RELEASED", "REJECTED"]
     decision_reason: str = Field(min_length=10, max_length=1000)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+
+class QualityAssessmentUpdate(QualityAssessmentDraft):
+    """Update command reuses validated measurement fields and lot version."""
