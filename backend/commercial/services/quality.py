@@ -84,6 +84,7 @@ async def record_oil_quality_assessment(
             for item in draft.measurements
         ],
         "status": "AWAITING_INDEPENDENT_REVIEW",
+        "quality_status_before_submission": lot.get("quality_status", "PENDING"),
         "idempotency_scope": scope, "idempotency_key": draft.idempotency_key,
         "request_fingerprint": fingerprint, "created_by": actor_user_id,
         "created_at": created_utc, "lot_version_after_submission": draft.expected_lot_version + 1,
@@ -204,3 +205,133 @@ async def release_oil_quality_assessment(
                     "decision_reason": command.decision_reason},
     }, session=session)
     return await releases.find_one({"id": release_id}, {"_id": 0}, session=session)
+
+
+async def update_oil_quality_assessment(
+    db: Any, assessment_id: str, draft: QualityAssessmentDraft, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    updated_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Edit only the latest assessment while it is still awaiting review."""
+    require_commercial_permission(actor_user, "commercial.lab_record")
+    if not actor_user_id or updated_at.tzinfo is None:
+        raise ValueError("Authenticated actor and timezone-aware timestamp are required")
+    assessments = db["commercial_quality_assessments"]
+    assessment = await assessments.find_one(
+        {"id": assessment_id, "season_code": season_code}, {"_id": 0}, session=session
+    )
+    if not assessment:
+        raise ValueError("Quality assessment does not exist")
+    if assessment.get("status") != "AWAITING_INDEPENDENT_REVIEW":
+        raise ValueError("Reviewed assessments are immutable; create a new assessment instead")
+    if assessment.get("created_by") != actor_user_id and actor_user.get("role") != "admin":
+        raise PermissionError("Only the submitting analyst or an administrator can edit this assessment")
+    if draft.oil_lot_id != assessment.get("oil_lot_id"):
+        raise ValueError("An assessment cannot be moved to another oil lot")
+    lot = await db["commercial_lots"].find_one(
+        {"id": assessment["oil_lot_id"], "product_kind": "OIL", "status": "OPEN"},
+        {"_id": 0}, session=session,
+    )
+    if not lot or lot.get("last_quality_assessment_id") != assessment_id:
+        raise ValueError("Only the latest assessment for an open oil lot can be edited")
+    if lot.get("version", 1) != draft.expected_lot_version:
+        raise ValueError("Oil lot version conflict; reload before editing")
+    if lot.get("quality_status") not in {"PENDING", "REJECTED"}:
+        raise ValueError("The oil lot is no longer awaiting quality review")
+
+    updated_at = updated_at.astimezone(timezone.utc)
+    fields = {
+        "sample_reference": draft.sample_reference,
+        "sample_date": draft.sample_date.isoformat(),
+        "tested_date": draft.tested_date.isoformat(),
+        "laboratory_name": draft.laboratory_name,
+        "specification_reference": draft.specification_reference,
+        "acidity": Decimal128(draft.acidity) if draft.acidity is not None else None,
+        "peroxide": Decimal128(draft.peroxide) if draft.peroxide is not None else None,
+        "k232": Decimal128(draft.k232) if draft.k232 is not None else None,
+        "k270": Decimal128(draft.k270) if draft.k270 is not None else None,
+        "oil_content_pct": Decimal128(draft.oil_content_pct) if draft.oil_content_pct is not None else None,
+        "classification": draft.classification,
+        "oil_type": draft.oil_type.strip() if draft.oil_type else None,
+        "notes": draft.notes,
+        "measurements": [
+            {"code": item.code, "value": Decimal128(item.value), "unit": item.unit}
+            for item in draft.measurements
+        ],
+        "updated_at": updated_at,
+        "updated_by": actor_user_id,
+    }
+    changed = await assessments.update_one(
+        {"id": assessment_id, "status": "AWAITING_INDEPENDENT_REVIEW"},
+        {"$set": fields}, session=session,
+    )
+    if changed.matched_count != 1:
+        raise ValueError("Assessment changed concurrently; reload before editing")
+    lot_update = await db["commercial_lots"].update_one(
+        {"id": lot["id"], "version": draft.expected_lot_version,
+         "last_quality_assessment_id": assessment_id},
+        {"$inc": {"version": 1}, "$set": {"updated_at": updated_at}},
+        session=session,
+    )
+    if lot_update.matched_count != 1:
+        raise ValueError("Oil lot changed concurrently; edit was not applied")
+    await assessments.update_one(
+        {"id": assessment_id}, {"$set": {"lot_version_after_submission": draft.expected_lot_version + 1}},
+        session=session,
+    )
+    await db["commercial_audit_events"].insert_one({
+        "id": _stable_id("quality-edit-audit", f"{assessment_id}:{updated_at.isoformat()}"),
+        "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
+        "action": "QUALITY_ASSESSMENT_UPDATED", "actor_user_id": actor_user_id,
+        "created_at": updated_at,
+        "details": {"assessment_id": assessment_id, "sample_reference": draft.sample_reference},
+    }, session=session)
+    return await assessments.find_one({"id": assessment_id}, {"_id": 0}, session=session)
+
+
+async def delete_oil_quality_assessment(
+    db: Any, assessment_id: str, *, season_code: str, actor_user: dict[str, Any],
+    actor_user_id: str, deleted_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Delete only an unreviewed latest assessment and restore its prior lot state."""
+    require_commercial_permission(actor_user, "commercial.lab_record")
+    if not actor_user_id or deleted_at.tzinfo is None:
+        raise ValueError("Authenticated actor and timezone-aware timestamp are required")
+    assessments = db["commercial_quality_assessments"]
+    assessment = await assessments.find_one(
+        {"id": assessment_id, "season_code": season_code}, {"_id": 0}, session=session
+    )
+    if not assessment:
+        raise ValueError("Quality assessment does not exist")
+    if assessment.get("status") != "AWAITING_INDEPENDENT_REVIEW":
+        raise ValueError("Reviewed assessments cannot be deleted; audit decisions must remain immutable")
+    if assessment.get("created_by") != actor_user_id and actor_user.get("role") != "admin":
+        raise PermissionError("Only the submitting analyst or an administrator can delete this assessment")
+    previous_status = assessment.get("quality_status_before_submission")
+    if previous_status not in {"PENDING", "REJECTED"}:
+        raise ValueError("This legacy assessment has no safe prior quality state; it cannot be deleted")
+    lot = await db["commercial_lots"].find_one(
+        {"id": assessment["oil_lot_id"], "product_kind": "OIL", "status": "OPEN"},
+        {"_id": 0}, session=session,
+    )
+    if not lot or lot.get("last_quality_assessment_id") != assessment_id:
+        raise ValueError("Only the latest assessment for an open oil lot can be deleted")
+    deleted_at = deleted_at.astimezone(timezone.utc)
+    update = await db["commercial_lots"].update_one(
+        {"id": lot["id"], "version": lot.get("version", 1), "last_quality_assessment_id": assessment_id},
+        {"$set": {"quality_status": previous_status, "updated_at": deleted_at},
+         "$unset": {"last_quality_assessment_id": "", "quality_submitted_by": "", "quality_submitted_at": ""},
+         "$pull": {"quality_assessment_ids": assessment_id}, "$inc": {"version": 1}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Oil lot changed concurrently; deletion was not applied")
+    await assessments.delete_one({"id": assessment_id, "status": "AWAITING_INDEPENDENT_REVIEW"}, session=session)
+    await db["commercial_audit_events"].insert_one({
+        "id": _stable_id("quality-delete-audit", f"{assessment_id}:{deleted_at.isoformat()}"),
+        "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
+        "action": "QUALITY_ASSESSMENT_DELETED", "actor_user_id": actor_user_id,
+        "created_at": deleted_at,
+        "details": {"assessment_id": assessment_id, "restored_quality_status": previous_status},
+    }, session=session)
+    return {"id": assessment_id, "deleted": True, "restored_quality_status": previous_status}
