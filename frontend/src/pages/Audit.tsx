@@ -68,7 +68,7 @@ export default function Audit() {
     enabled: !!me.data,
     staleTime: 10_000,
   });
-  const allEvents = events.data?.pages.flat() ?? [];
+  const allEvents = useMemo(() => events.data?.pages.flat() ?? [], [events.data]);
   const entityOptions = useMemo(() => [...new Set(allEvents.map((item) => item.entity_type).filter(Boolean))] as string[], [allEvents]);
   const actionOptions = useMemo(() => [...new Set(allEvents.map((item) => item.action).filter(Boolean))] as string[], [allEvents]);
   const filtered = useMemo(() => {
