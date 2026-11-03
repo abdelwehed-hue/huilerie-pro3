@@ -37,7 +37,7 @@ const labels = {
     notReady: "Initialisation requise", bootstrap: "Initialiser le module commercial", bootstrapping: "Initialisation…",
     bootstrapHint: "Cette action crée les neuf cuves et les compteurs de la saison. Elle ne crée aucun stock et ne modifie pas les données de trituration.",
     bootstrapSuccess: "Module commercial initialisé", bootstrapError: "Impossible d'initialiser le module commercial",
-    tank: "Cuve", capacity: "Capacité", flexible: "Flexible — capacité non définie", active: "Active",
+    tank: "Cuve", capacity: "Capacité max. (kg)", flexible: "Flexible — capacité non définie", active: "Active", saveCapacity: "Enregistrer", clearCapacity: "Vide = flexible", capacitySaved: "Capacité de la cuve mise à jour", capacityError: "Impossible de modifier la capacité",
     product: "Produit", document: "Document", owner: "Propriétaire actuel", quantity: "Quantité (kg)", currentStock: "Stock actuel (kg)",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
     source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts internes", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
@@ -62,7 +62,7 @@ const labels = {
     notReady: "تتطلب التهيئة", bootstrap: "تهيئة الوحدة التجارية", bootstrapping: "جار التهيئة…",
     bootstrapHint: "تنشئ هذه العملية الخزانات التسعة وعدادات الموسم. لا تضيف أي مخزون ولا تغيّر بيانات العصر.",
     bootstrapSuccess: "تمت تهيئة الوحدة التجارية", bootstrapError: "تعذرت تهيئة الوحدة التجارية",
-    tank: "الخزان", capacity: "السعة", flexible: "مرنة — السعة غير محددة", active: "نشط",
+    tank: "الخزان", capacity: "السعة القصوى (كغ)", flexible: "مرنة — دون سعة محددة", active: "نشط", saveCapacity: "حفظ", clearCapacity: "اتركه فارغاً للسعة المرنة", capacitySaved: "تم تحديث سعة الخزان", capacityError: "تعذر تعديل سعة الخزان",
     product: "المنتج", document: "الوثيقة", owner: "المالك الحالي", quantity: "الكمية (كغ)", currentStock: "الرصيد الحالي (كغ)",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
     source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات الداخلية", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
@@ -165,6 +165,7 @@ export default function Commercial() {
   const [supplierTaxId, setSupplierTaxId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
+  const [tankCapacityDrafts, setTankCapacityDrafts] = useState<Record<string, string>>({});
   const [locationCode, setLocationCode] = useState("");
   const [locationName, setLocationName] = useState("");
   const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
@@ -895,6 +896,21 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const changeTankCapacity = useMutation({
+    mutationFn: ({ tank, capacity }: { tank: AnyRecord; capacity: string }) =>
+      apiPut<AnyRecord>(`/commercial/v1/tanks/${encodeURIComponent(tank.id)}/capacity`, {
+        capacity_kg: capacity.trim() === "" ? null : Number(capacity),
+        expected_version: tank.version ?? 1,
+      }),
+    onSuccess: async () => {
+      toast.success(l.capacitySaved);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "tanks"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.capacityError),
+  });
   const changeTankRole = useMutation({
     mutationFn: ({ tank, role }: { tank: AnyRecord; role: "NORMAL" | "QUARANTINE" }) =>
       apiPost<AnyRecord>(`/commercial/v1/tanks/${encodeURIComponent(tank.id)}/role`, {
@@ -1081,7 +1097,11 @@ export default function Commercial() {
         </div>
       )}
 
-      {tab === "tanks" && <Card><CardHeader><CardTitle>{l.tanks}</CardTitle><CardDescription>{l.capacity}: {l.flexible}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.tank}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.capacity}</TableHead><TableHead>{lang === "ar" ? "الدور" : "Rôle"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>{(tanks.data ?? []).map((tank) => { const quantity = (balances.data ?? []).filter((b) => b.location_id === tank.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0); return <TableRow key={tank.id}><TableCell className="font-semibold">{value(tank.code)} · {value(tank.name)}</TableCell><TableCell>{number(quantity)} kg</TableCell><TableCell>{tank.capacity_kg == null ? l.flexible : number(tank.capacity_kg)}</TableCell><TableCell>{(tank.role ?? "NORMAL") === "QUARANTINE" ? (lang === "ar" ? "حجر" : "Quarantaine") : (lang === "ar" ? "عادي" : "Normal")}</TableCell><TableCell>{tank.active ? l.active : l.closed}</TableCell><TableCell>{isAdmin && <select aria-label={lang === "ar" ? "دور الخزان" : "Rôle de la cuve"} value={tank.role ?? "NORMAL"} disabled={quantity > 0 || changeTankRole.isPending} onChange={(e) => { const role = e.target.value as "NORMAL" | "QUARANTINE"; if (window.confirm(lang === "ar" ? "تأكيد تغيير دور الخزان؟" : "Confirmer le changement de rôle de la cuve ?")) changeTankRole.mutate({ tank, role }); }} className="h-9 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"><option value="NORMAL">{lang === "ar" ? "عادي" : "Normal"}</option><option value="QUARANTINE">{lang === "ar" ? "حجر" : "Quarantaine"}</option></select>}</TableCell></TableRow>; })}{(!tanks.isLoading && !(tanks.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      {tab === "tanks" && <Card><CardHeader><CardTitle>{l.tanks}</CardTitle><CardDescription>{l.capacity}: {lang === "ar" ? "حدد السعة لكل خزان؛ اترك الحقل فارغاً لإبقائه مرناً." : "Définissez une capacité par cuve ; laissez le champ vide pour conserver une capacité flexible."}</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.tank}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.capacity}</TableHead><TableHead>{lang === "ar" ? "الدور" : "Rôle"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>{(tanks.data ?? []).map((tank) => { const quantity = (balances.data ?? []).filter((b) => b.location_id === tank.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0); return <TableRow key={tank.id}><TableCell className="font-semibold">{value(tank.code)} · {value(tank.name)}</TableCell><TableCell>{number(quantity)} kg</TableCell><TableCell>{tank.capacity_kg == null ? l.flexible : number(tank.capacity_kg)}</TableCell><TableCell>{(tank.role ?? "NORMAL") === "QUARANTINE" ? (lang === "ar" ? "حجر" : "Quarantaine") : (lang === "ar" ? "عادي" : "Normal")}</TableCell><TableCell>{tank.active ? l.active : l.closed}</TableCell><TableCell>{isAdmin && <div className="flex flex-wrap items-center gap-2">
+            <input aria-label={l.capacity} type="number" min={Math.max(0.001, quantity)} step="0.001" placeholder={l.flexible} value={tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg))} onChange={(e) => setTankCapacityDrafts((current) => ({ ...current, [tank.id]: e.target.value }))} className="h-9 w-32 rounded-lg border bg-background px-2 text-sm" />
+            <Button size="sm" variant="outline" disabled={changeTankCapacity.isPending || (tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg))) !== "" && Number(tankCapacityDrafts[tank.id] ?? tank.capacity_kg) < quantity} onClick={() => changeTankCapacity.mutate({ tank, capacity: tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg)) })}>{l.saveCapacity}</Button>
+            <select aria-label={lang === "ar" ? "دور الخزان" : "Rôle de la cuve"} value={tank.role ?? "NORMAL"} disabled={quantity > 0 || changeTankRole.isPending} onChange={(e) => { const role = e.target.value as "NORMAL" | "QUARANTINE"; if (window.confirm(lang === "ar" ? "تأكيد تغيير دور الخزان؟" : "Confirmer le changement de rôle de la cuve ?")) changeTankRole.mutate({ tank, role }); }} className="h-9 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"><option value="NORMAL">{lang === "ar" ? "عادي" : "Normal"}</option><option value="QUARANTINE">{lang === "ar" ? "حجر" : "Quarantaine"}</option></select>
+          </div>}</TableCell></TableRow>; })}{(!tanks.isLoading && !(tanks.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
       {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => <TableRow key={lot.id}><TableCell className="font-mono text-xs">{value(lot.document_number)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>)}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 

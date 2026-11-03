@@ -135,6 +135,29 @@ async def post_stock_movement(
         await _decrement_balance(balances, source_identity, quantity, session)
 
     if draft.destination_location_id is not None:
+        if draft.product_kind == "OIL":
+            tank = await db["commercial_tanks"].find_one(
+                {"id": draft.destination_location_id, "active": True},
+                {"_id": 0, "capacity_kg": 1, "version": 1}, session=session,
+            )
+            if tank:
+                capacity = tank.get("capacity_kg")
+                if capacity is not None:
+                    current_rows = await balances.aggregate([
+                        {"$match": {"location_id": draft.destination_location_id, "product_kind": "OIL"}},
+                        {"$group": {"_id": None, "quantity": {"$sum": "$quantity_kg"}}},
+                    ], session=session).to_list(1)
+                    current_total = Decimal("0")
+                    if current_rows:
+                        raw_total = current_rows[0]["quantity"]
+                        current_total = raw_total.to_decimal() if hasattr(raw_total, "to_decimal") else Decimal(str(raw_total))
+                    if current_total + draft.quantity_kg > (capacity.to_decimal() if hasattr(capacity, "to_decimal") else Decimal(str(capacity))):
+                        raise ValueError("Tank capacity exceeded")
+                # Serialize concurrent incoming movements to this tank inside MongoDB transactions.
+                await db["commercial_tanks"].update_one(
+                    {"id": draft.destination_location_id, "active": True},
+                    {"$inc": {"version": 1}}, session=session,
+                )
         destination_identity = _balance_identity(
             draft.product_kind, draft.lot_id, draft.destination_owner,
             draft.destination_location_id,

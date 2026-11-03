@@ -71,6 +71,11 @@ class CommercialTankRoleCommand(BaseModel):
     expected_version: int = Field(ge=1)
 
 
+class CommercialTankCapacityCommand(BaseModel):
+    capacity_kg: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+    expected_version: int = Field(ge=1)
+
+
 class CommercialPermissionAssignment(BaseModel):
     permissions: list[str] = Field(default_factory=list, max_length=10)
 
@@ -232,6 +237,62 @@ async def update_commercial_tank_role(
             )
         )
         return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.put("/tanks/{tank_id}/capacity")
+async def update_commercial_tank_capacity(
+    tank_id: str,
+    command: CommercialTankCapacityCommand,
+    user: dict = Depends(require_admin),
+):
+    """Set a tank's maximum oil capacity; null keeps it flexible."""
+    _authorize(user, "commercial.manage_tanks")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    audit_id = str(uuid.uuid4())
+
+    async def operation(session):
+        tanks = db["commercial_tanks"]
+        tank = await tanks.find_one({"id": tank_id, "active": True}, {"_id": 0}, session=session)
+        if not tank:
+            raise ValueError("Unknown or inactive commercial tank")
+        version = int(tank.get("version", 1))
+        if version != command.expected_version:
+            raise ValueError("Tank version conflict; reload before changing its capacity")
+        current = await db["commercial_stock_balances"].aggregate([
+            {"$match": {"location_id": tank_id, "product_kind": "OIL"}},
+            {"$group": {"_id": None, "quantity": {"$sum": "$quantity_kg"}}},
+        ], session=session).to_list(1)
+        current_quantity = Decimal(str(current[0]["quantity"].to_decimal() if hasattr(current[0]["quantity"], "to_decimal") else current[0]["quantity"])) if current else Decimal("0")
+        if command.capacity_kg is not None and command.capacity_kg < current_quantity:
+            raise ValueError("Tank capacity cannot be lower than its current oil stock")
+        updated = await tanks.update_one(
+            {"id": tank_id, "active": True, "version": version},
+            {"$set": {
+                "capacity_kg": Decimal128(command.capacity_kg) if command.capacity_kg is not None else None,
+                "updated_at": now, "updated_by": user["id"],
+            }, "$inc": {"version": 1}},
+            session=session,
+        )
+        if updated.matched_count != 1:
+            raise ValueError("Tank version conflict; reload before changing its capacity")
+        await db["commercial_audit_events"].insert_one({
+            "id": audit_id, "entity_type": "commercial_tank",
+            "entity_id": tank_id, "action": "TANK_CAPACITY_CHANGED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {
+                "previous_capacity_kg": tank.get("capacity_kg"),
+                "capacity_kg": Decimal128(command.capacity_kg) if command.capacity_kg is not None else None,
+                "current_stock_kg": Decimal128(current_quantity),
+                "version": version + 1,
+            },
+        }, session=session)
+        return await tanks.find_one({"id": tank_id}, {"_id": 0}, session=session)
+
+    try:
+        return _safe(await run_transaction(operation))
     except Exception as exc:
         _raise_domain_error(exc)
 
