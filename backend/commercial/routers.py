@@ -33,7 +33,7 @@ from commercial.schemas.purchases import (
     OlivePurchaseDraft,
     OlivePurchaseUpdate,
 )
-from commercial.schemas.quality import QualityAssessmentDraft, OliveQualityAssessmentDraft, QualityReleaseCommand
+from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft, CommercialSupplierUpdate
 from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
@@ -48,7 +48,7 @@ from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
-from commercial.services.quality import record_oil_quality_assessment, record_olive_quality_assessment, release_oil_quality_assessment
+from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
@@ -1289,44 +1289,6 @@ async def assign_commercial_permissions(
         return {"user_id": target_user_id, "permissions": permissions}
 
     return await run_transaction(apply_assignment)
-
-
-@router.post("/olive-quality-assessments", status_code=201)
-async def create_olive_quality_assessment(
-    draft: OliveQualityAssessmentDraft,
-    user: dict = Depends(current_user),
-):
-    """Record olive laboratory results without changing existing quality rules or stock."""
-    _authorize(user, "commercial.lab_record")
-    _, season_code = await _require_commercial_ready()
-    assessment_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
-    try:
-        result = await run_transaction(
-            lambda session: record_olive_quality_assessment(
-                db, draft, season_code=season_code, actor_user=user,
-                actor_user_id=user["id"], assessment_id=assessment_id,
-                created_at=now, session=session,
-            )
-        )
-        return _safe(result)
-    except Exception as exc:
-        _raise_domain_error(exc)
-
-
-@router.get("/olive-quality-assessments")
-async def list_olive_quality_assessments(
-    lot_id: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
-    skip: int = Query(default=0, ge=0),
-    user: dict = Depends(current_user),
-):
-    _authorize(user, "commercial.read")
-    query = {"olive_lot_id": lot_id} if lot_id else {}
-    docs = await db.commercial_olive_quality_assessments.find(
-        query, {"_id": 0}
-    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
-    return _safe(docs)
 
 
 @router.post("/quality-assessments", status_code=201)
