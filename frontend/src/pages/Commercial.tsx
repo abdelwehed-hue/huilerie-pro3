@@ -182,6 +182,7 @@ export default function Commercial() {
   const [productionTankId, setProductionTankId] = useState("");
   const [productionNotes, setProductionNotes] = useState("");
   const [qualityLotId, setQualityLotId] = useState("");
+  const [editingQualityAssessmentId, setEditingQualityAssessmentId] = useState("");
   const [sampleReference, setSampleReference] = useState("");
   const [sampleDate, setSampleDate] = useState(new Date().toISOString().slice(0, 10));
   const [testedDate, setTestedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -541,7 +542,7 @@ export default function Commercial() {
     mutationFn: () => {
       const lot = (lots.data ?? []).find((item) => item.id === qualityLotId);
       if (!lot) throw new Error("Oil lot is no longer available");
-      return apiPost<AnyRecord>("/commercial/v1/quality-assessments", {
+      const payload = {
         oil_lot_id: qualityLotId,
         expected_lot_version: lot.version ?? 1,
         sample_reference: sampleReference.trim(),
@@ -564,14 +565,30 @@ export default function Commercial() {
         oil_type: oilType.trim() || null,
         notes: analysisNotes.trim(),
         idempotency_key: crypto.randomUUID(),
-      });
+      };
+      return editingQualityAssessmentId
+        ? apiPut<AnyRecord>(`/commercial/v1/quality-assessments/${encodeURIComponent(editingQualityAssessmentId)}`, payload)
+        : apiPost<AnyRecord>("/commercial/v1/quality-assessments", payload);
     },
     onSuccess: async () => {
-      toast.success(l.assessmentSaved);
+      toast.success(editingQualityAssessmentId ? (lang === "ar" ? "تم تحديث التحليل" : "Analyse mise à jour") : l.assessmentSaved);
+      setEditingQualityAssessmentId(""); setQualityLotId("");
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
       setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
       setOilClassification("auto"); setOilType(""); setAnalysisNotes("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const deleteQualityAssessment = useMutation({
+    mutationFn: (assessment: AnyRecord) => apiDelete<AnyRecord>(`/commercial/v1/quality-assessments/${encodeURIComponent(assessment.id)}`),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم حذف التحليل" : "Analyse supprimée");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
@@ -1207,10 +1224,10 @@ export default function Commercial() {
 
 
       {tab === "quality" && <div className="space-y-4">
-        {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
+        {canRecordLab && <Card><CardHeader><CardTitle>{editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
-              <select required value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · v{lot.version ?? 1}</option>)}</select>
+              <select required disabled={!!editingQualityAssessmentId} value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · v{lot.version ?? 1}</option>)}</select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={sampleReference} onChange={(e) => setSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
@@ -1237,7 +1254,7 @@ export default function Commercial() {
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{l.submitAssessment}</Button>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{editingQualityAssessmentId && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setOilClassification("auto"); setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
           </form>
         </CardContent></Card>}
         {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
@@ -1280,12 +1297,12 @@ export default function Commercial() {
         <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
             <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
-              <TableCell className="font-mono text-xs">{value((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number, assessment.oil_lot_id)}</TableCell>
+              <TableCell className="font-mono text-xs"><button type="button" className={`underline underline-offset-2 ${assessment.status === "AWAITING_INDEPENDENT_REVIEW" && canRecordLab && (assessment.created_by === me.data?.id || isAdmin) ? "cursor-pointer text-emerald-700 font-semibold" : "cursor-default"}`} disabled={!(assessment.status === "AWAITING_INDEPENDENT_REVIEW" && canRecordLab && (assessment.created_by === me.data?.id || isAdmin))} title={lang === "ar" ? "انقر لتعديل التحليل المعلّق" : "Cliquer pour modifier l’analyse en attente"} onClick={() => { const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id); if (!lot) { toast.error(l.warning); return; } setEditingQualityAssessmentId(assessment.id); setQualityLotId(assessment.oil_lot_id); setSampleReference(value(assessment.sample_reference, "")); setSampleDate(String(assessment.sample_date ?? "").slice(0,10)); setTestedDate(String(assessment.tested_date ?? "").slice(0,10)); setLaboratoryName(value(assessment.laboratory_name, "")); setSpecificationReference(value(assessment.specification_reference, "")); setOilAcidity(assessment.acidity == null ? "" : String(assessment.acidity)); setOilPeroxide(assessment.peroxide == null ? "" : String(assessment.peroxide)); setOilK232(assessment.k232 == null ? "" : String(assessment.k232)); setOilK270(assessment.k270 == null ? "" : String(assessment.k270)); setOilContent(assessment.oil_content_pct == null ? "" : String(assessment.oil_content_pct)); setOilClassification(assessment.classification ?? "auto"); setOilType(value(assessment.oil_type, "")); setAnalysisNotes(value(assessment.notes, "")); window.scrollTo({top:0,behavior:"smooth"}); }}>{value((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.document_number, assessment.oil_lot_id)}</button></TableCell>
               <TableCell>{value(assessment.sample_reference)}</TableCell>
               <TableCell>{value(assessment.laboratory_name)}</TableCell>
               <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
               <TableCell>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" ? l.awaitingReview : l.reviewed + " · " + value(assessment.decision)}</TableCell>
-              <TableCell>{date(assessment.created_at)}</TableCell><TableCell><a href={`/commercial/certificate/${encodeURIComponent(assessment.id)}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-700 underline">{l.viewCertificate}</a></TableCell>
+              <TableCell>{date(assessment.created_at)}</TableCell><TableCell><div className="flex flex-wrap items-center gap-2"><a href={`/commercial/certificate/${encodeURIComponent(assessment.id)}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-700 underline">{l.viewCertificate}</a>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" && canRecordLab && (assessment.created_by === me.data?.id || isAdmin) && <Button type="button" size="sm" variant="destructive" disabled={deleteQualityAssessment.isPending} onClick={() => { if (window.confirm(lang === "ar" ? "هل تؤكد حذف هذا التحليل؟ لا يمكن حذف تحليل تمت مراجعته." : "Confirmer la suppression de cette analyse ? Une analyse déjà revue ne peut pas être supprimée.")) deleteQualityAssessment.mutate(assessment); }}><Trash2 className="mr-1 size-4" />{lang === "ar" ? "حذف" : "Supprimer"}</Button>}</div></TableCell>
             </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
