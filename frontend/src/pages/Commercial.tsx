@@ -1003,14 +1003,13 @@ export default function Commercial() {
     { id: "audit", label: l.audit, icon: ClipboardList },
     { id: "suppliers", label: l.suppliers, icon: Boxes },
     { id: "locations", label: l.locationsTab, icon: Warehouse },
-    { id: "varieties", label: l.varietiesTab, icon: Boxes },
     { id: "purchases", label: l.purchasesTab, icon: ClipboardList },
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "custody", label: l.custodyTab, icon: ClipboardList },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
-    ...(isAdmin ? [{ id: "permissions" as const, label: l.permissionsTab, icon: ShieldCheck }] : []),
   ];
+  if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
