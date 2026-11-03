@@ -70,7 +70,7 @@ export default function Audit() {
   });
   const allEvents = events.data?.pages.flat() ?? [];
   const entityOptions = useMemo(() => [...new Set(allEvents.map((item) => item.entity_type).filter(Boolean))] as string[], [allEvents]);
-  const actionOptions = useMemo(() => [...new Set((events.data ?? []).map((item) => item.action).filter(Boolean))] as string[], [events.data]);
+  const actionOptions = useMemo(() => [...new Set(allEvents.map((item) => item.action).filter(Boolean))] as string[], [allEvents]);
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
     return allEvents.filter((item) => {
