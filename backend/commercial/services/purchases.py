@@ -16,6 +16,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.purchases import OlivePurchaseDraft
 from commercial.services.numbering import reserve_document_number
+from lib.season import DEFAULT_VARIETIES
 
 
 def _fingerprint(draft: OlivePurchaseDraft) -> str:
@@ -50,11 +51,15 @@ async def create_olive_purchase_draft(
         raise ValueError("Unknown or inactive commercial supplier")
 
     variety_ids = sorted({line.variety_id for line in draft.lines})
-    active_varieties = await db["commercial_varieties"].find(
-        {"id": {"$in": variety_ids}, "active": True},
-        {"_id": 0, "id": 1}, session=session,
-    ).to_list(len(variety_ids))
-    if {item["id"] for item in active_varieties} != set(variety_ids):
+    settings_doc = await db["settings"].find_one(
+        {"key": "app"}, {"_id": 0, "varieties": 1}, session=session,
+    ) or {}
+    configured_varieties = settings_doc.get("varieties") or DEFAULT_VARIETIES
+    active_varieties = {
+        str(name).strip() for name in configured_varieties
+        if isinstance(name, str) and str(name).strip()
+    }
+    if not set(variety_ids).issubset(active_varieties):
         raise ValueError("One or more olive varieties are unknown or inactive")
 
     collection = db["commercial_olive_purchases"]

@@ -41,7 +41,6 @@ from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCom
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.return_rejection import RejectSaleReturnCommand
-from commercial.schemas.varieties import CommercialVarietyDraft
 from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft, CustomerOilCustodyReleaseDraft
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.schemas.payment_reversal import PaymentReversalDraft
@@ -61,7 +60,7 @@ from commercial.services.payment_reversal import reverse_sale_payment
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
-from lib.season import active_season, season_of, season_prefix, valid_season
+from lib.season import DEFAULT_VARIETIES, active_season, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
 
@@ -341,46 +340,30 @@ async def list_commercial_varieties(
     skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
+    """Use Paramètres > Tarif as the sole active olive-variety master list.
+
+    Retired commercial variety records remain available as inactive references
+    so historical documents can still be interpreted.
+    """
     _authorize(user, "commercial.read")
-    docs = await db.commercial_varieties.find(
-        {"active": True}, {"_id": 0}
-    ).sort([("code", 1), ("id", 1)]).skip(skip).to_list(limit)
-    return _safe(docs)
-
-
-@router.post("/varieties", status_code=201)
-async def create_commercial_variety(
-    draft: CommercialVarietyDraft,
-    user: dict = Depends(require_admin),
-):
-    _authorize(user, "commercial.manage_purchases")
-    await _require_commercial_ready()
-    normalized_name = " ".join(draft.name_fr.casefold().split())
-    doc = {
-        "id": str(uuid.uuid4()),
-        **draft.model_dump(),
-        "normalized_name_fr": normalized_name,
-        "active": True,
-        "created_by": user["id"],
-        "created_at": datetime.now(timezone.utc),
-    }
-    audit_id = str(uuid.uuid4())
-
-    async def create_variety(session):
-        await db.commercial_varieties.insert_one(doc, session=session)
-        await db.commercial_audit_events.insert_one({
-            "id": audit_id, "entity_type": "commercial_variety",
-            "entity_id": doc["id"], "action": "VARIETY_CREATED",
-            "actor_user_id": user["id"], "created_at": doc["created_at"],
-            "details": {"code": doc["code"], "name_fr": doc["name_fr"]},
-        }, session=session)
-        return doc
-
-    try:
-        return _safe(await run_transaction(create_variety))
-    except DuplicateKeyError as exc:
-        raise HTTPException(409, "commercial_variety_code_or_name_exists") from exc
-
+    settings_doc = await db.settings.find_one(
+        {"key": "app"}, {"_id": 0, "varieties": 1}
+    ) or {}
+    configured = settings_doc.get("varieties") or DEFAULT_VARIETIES
+    active_names = list(dict.fromkeys(
+        str(name).strip() for name in configured
+        if isinstance(name, str) and str(name).strip()
+    ))
+    active_ids = set(active_names)
+    docs = [
+        {"id": name, "code": "", "name_fr": name, "name_ar": None, "active": True}
+        for name in active_names
+    ]
+    legacy = await db.commercial_varieties.find(
+        {}, {"_id": 0}
+    ).sort([("code", 1), ("id", 1)]).to_list(1000)
+    docs.extend({**item, "active": False} for item in legacy if item.get("id") not in active_ids)
+    return _safe(docs[skip:skip + limit])
 
 
 @router.post("/buyers", status_code=201)

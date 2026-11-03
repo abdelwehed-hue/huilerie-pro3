@@ -16,6 +16,7 @@ from commercial.schemas.customer_custody import (
 )
 from commercial.schemas.inventory import OwnerRef, StockMovementDraft
 from commercial.services.numbering import reserve_document_number
+from lib.season import DEFAULT_VARIETIES
 from commercial.services.stock_ledger import post_stock_movement
 
 
@@ -150,11 +151,16 @@ async def receive_customer_olive_custody(
     owner = await _get_or_create_custody_owner(
         db, draft.customer_phone, custody_owner_id, created_at=created_at, session=session
     )
-    variety = await db["commercial_varieties"].find_one(
-        {"id": draft.variety_id, "active": True}, {"_id": 0, "id": 1}, session=session
-    )
-    if not variety:
-        raise ValueError("Unknown or inactive commercial olive variety")
+    settings_doc = await db["settings"].find_one(
+        {"key": "app"}, {"_id": 0, "varieties": 1}, session=session,
+    ) or {}
+    configured_varieties = settings_doc.get("varieties") or DEFAULT_VARIETIES
+    active_varieties = {
+        str(name).strip() for name in configured_varieties
+        if isinstance(name, str) and str(name).strip()
+    }
+    if draft.variety_id not in active_varieties:
+        raise ValueError("Unknown or inactive olive variety from Paramètres > Tarif")
     location = await db["commercial_locations"].find_one(
         {"id": draft.receiving_location_id, "active": True,
          "kind": {"$in": ["OLIVE_STORAGE", "STAGING"]}},
