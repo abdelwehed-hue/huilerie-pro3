@@ -47,3 +47,26 @@ class QualityReleaseCommand(BaseModel):
     decision: Literal["RELEASED", "REJECTED"]
     decision_reason: str = Field(min_length=10, max_length=1000)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+
+
+class OliveQualityAssessmentDraft(BaseModel):
+    """Record laboratory observations for an olive lot without changing stock or release state."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    olive_lot_id: str = Field(min_length=1, max_length=100)
+    sample_reference: str = Field(min_length=1, max_length=100)
+    sample_date: date
+    tested_date: date
+    laboratory_name: str = Field(min_length=2, max_length=160)
+    specification_reference: str = Field(min_length=2, max_length=160)
+    measurements: tuple[QualityMeasurement, ...] = Field(min_length=1, max_length=40)
+    idempotency_key: str = Field(min_length=16, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_olive_measurement_codes_and_dates(self):
+        codes = [measurement.code for measurement in self.measurements]
+        if len(codes) != len(set(codes)):
+            raise ValueError("Measurement codes must be unique within an olive assessment")
+        if self.tested_date < self.sample_date:
+            raise ValueError("Testing date cannot precede the sample date")
+        return self
