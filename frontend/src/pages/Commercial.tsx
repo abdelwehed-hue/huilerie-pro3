@@ -182,13 +182,6 @@ export default function Commercial() {
   const [productionOutputKg, setProductionOutputKg] = useState("");
   const [productionTankId, setProductionTankId] = useState("");
   const [productionNotes, setProductionNotes] = useState("");
-  const [qualityLotId, setQualityLotId] = useState("");
-  const [sampleReference, setSampleReference] = useState("");
-  const [sampleDate, setSampleDate] = useState(new Date().toISOString().slice(0, 10));
-  const [testedDate, setTestedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [laboratoryName, setLaboratoryName] = useState("");
-  const [specificationReference, setSpecificationReference] = useState("");
-  const [measurements, setMeasurements] = useState([{ code: "", value: "", unit: "" }]);
   const [reviewAssessmentId, setReviewAssessmentId] = useState("");
   const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
   const [reviewReason, setReviewReason] = useState("");
@@ -526,38 +519,6 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
-      ]);
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
-  });
-  const submitQualityAssessment = useMutation({
-    mutationFn: () => {
-      const lot = (lots.data ?? []).find((item) => item.id === qualityLotId);
-      if (!lot) throw new Error("Oil lot is no longer available");
-      return apiPost<AnyRecord>("/commercial/v1/quality-assessments", {
-        oil_lot_id: qualityLotId,
-        expected_lot_version: lot.version ?? 1,
-        sample_reference: sampleReference.trim(),
-        sample_date: sampleDate,
-        tested_date: testedDate,
-        laboratory_name: laboratoryName.trim(),
-        specification_reference: specificationReference.trim(),
-        measurements: measurements.map((item) => ({
-          code: item.code.trim().toUpperCase(),
-          value: item.value,
-          unit: item.unit.trim(),
-        })),
-        idempotency_key: crypto.randomUUID(),
-      });
-    },
-    onSuccess: async () => {
-      toast.success(l.assessmentSaved);
-      setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
-      setMeasurements([{ code: "", value: "", unit: "" }]);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
@@ -939,13 +900,11 @@ export default function Commercial() {
   const totalOil = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
   const canPostStock = permissions.data?.permissions.includes("commercial.post_stock") === true;
-  const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
   useEffect(() => {
     setAssignedPermissions(targetPermissions.data?.permissions.filter((permission) => permission !== "commercial.read") ?? []);
   }, [targetPermissions.data, selectedWorkerId]);
 
-  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && ["PENDING", "REJECTED"].includes(lot.quality_status));
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
@@ -1191,31 +1150,6 @@ export default function Commercial() {
       {tab === "laboratory" && <Lab />}
 
       {tab === "quality" && <div className="space-y-4">
-        {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
-          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
-            <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
-              <select required value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · v{lot.version ?? 1}</option>)}</select>
-            </label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={sampleReference} onChange={(e) => setSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required minLength={2} maxLength={160} value={laboratoryName} onChange={(e) => setLaboratoryName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={sampleDate} onChange={(e) => setSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.specification}<input required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.measurementCode}</h3><Button type="button" variant="outline" onClick={() => setMeasurements((rows) => [...rows, { code: "", value: "", unit: "" }])}>{l.addMeasurement}</Button></div>
-              {measurements.map((measurement, index) => <div key={index} className="grid gap-3 rounded-xl border p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                <label className="grid gap-1 text-sm font-medium">{l.measurementCode}<input required minLength={2} maxLength={30} pattern="[A-Za-z0-9_]+" value={measurement.code} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, code: e.target.value.toUpperCase() } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementValue}<input required type="number" step="0.000001" value={measurement.value} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, value: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementUnit}<input required maxLength={20} value={measurement.unit} onChange={(e) => setMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <Button type="button" variant="outline" disabled={measurements.length === 1} onClick={() => setMeasurements((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
-              </div>)}
-            </div>
-            <Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || measurements.some((item) => item.code.trim().length < 2 || item.value === "" || !item.unit.trim())}>{l.submitAssessment}</Button>
-          </form>
-        </CardContent></Card>}
-        {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
         {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
