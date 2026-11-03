@@ -33,7 +33,7 @@ from commercial.schemas.purchases import (
     OlivePurchaseDraft,
     OlivePurchaseUpdate,
 )
-from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
+from commercial.schemas.quality import QualityAssessmentDraft, QualityAssessmentUpdate, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft, CommercialSupplierUpdate
 from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
@@ -48,7 +48,7 @@ from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
-from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
+from commercial.services.quality import (\n    record_oil_quality_assessment, release_oil_quality_assessment,\n    update_oil_quality_assessment, delete_oil_quality_assessment,\n)
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
@@ -1334,6 +1334,48 @@ async def release_quality_assessment(
     except Exception as exc:
         _raise_domain_error(exc)
 
+
+
+
+@router.put("/quality-assessments/{assessment_id}")
+async def update_quality_assessment(
+    assessment_id: str,
+    draft: QualityAssessmentUpdate,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.lab_record")
+    _, season_code = await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: update_oil_quality_assessment(
+                db, assessment_id, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], updated_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.delete("/quality-assessments/{assessment_id}")
+async def delete_quality_assessment(
+    assessment_id: str,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.lab_record")
+    _, season_code = await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: delete_oil_quality_assessment(
+                db, assessment_id, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], deleted_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 @router.get("/quality-assessments")
 async def list_quality_assessments(
