@@ -12,7 +12,7 @@ const fr = {
   search: "Recherche par code",
   loads: "Chargements",
   factures: "Factures",
-  commercial: "Gestion commerciale",
+  commercial: "GS",
   lab: "Laboratoire",
   settings: "Paramètres",
   appearance: "Apparence",
