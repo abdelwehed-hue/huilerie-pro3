@@ -384,6 +384,52 @@ async def update_commercial_supplier(
         raise HTTPException(409, "commercial_supplier_name_exists") from exc
 
 
+@router.delete("/suppliers/{supplier_id}")
+async def deactivate_commercial_supplier(
+    supplier_id: str,
+    user: dict = Depends(require_admin),
+):
+    """Soft-delete a supplier; historical purchases retain their supplier reference."""
+    _authorize(user, "commercial.manage_purchases")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    audit_id = str(uuid.uuid4())
+
+    async def deactivate_supplier(session):
+        existing = await db.commercial_suppliers.find_one(
+            {"id": supplier_id}, {"_id": 0}, session=session
+        )
+        if not existing:
+            raise HTTPException(404, "commercial_supplier_not_found")
+        if existing.get("active") is not True:
+            raise HTTPException(409, "commercial_supplier_already_inactive")
+        version = int(existing.get("version", 1))
+        version_filter = {"version": version}
+        if version == 1 and "version" not in existing:
+            version_filter = {"version": {"$exists": False}}
+        result = await db.commercial_suppliers.update_one(
+            {"id": supplier_id, "active": True, **version_filter},
+            {"$set": {
+                "active": False,
+                "deactivated_at": now,
+                "deactivated_by": user["id"],
+                "updated_at": now,
+            }, "$inc": {"version": 1}},
+            session=session,
+        )
+        if result.matched_count != 1:
+            raise HTTPException(409, "commercial_supplier_version_conflict")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_supplier",
+            "entity_id": supplier_id, "action": "SUPPLIER_DEACTIVATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"name": existing.get("name"), "preserved_history": True},
+        }, session=session)
+        return {"id": supplier_id, "active": False}
+
+    return await run_transaction(deactivate_supplier)
+
+
 @router.get("/suppliers")
 async def list_commercial_suppliers(
     limit: int = Query(default=500, ge=1, le=1000),
