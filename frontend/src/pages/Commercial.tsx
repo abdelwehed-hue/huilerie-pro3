@@ -8,6 +8,7 @@ import {
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
+import Lab from "@/pages/Lab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,12 +22,12 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "laboratory" | "audit" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
     permissionsTab: "Droits des employés", chooseWorker: "Choisir un employé", labPermission: "Saisie des analyses laboratoire", reviewerPermission: "Validation indépendante de la qualité", auditPermission: "Consultation du journal d’audit", savePermissions: "Enregistrer les autorisations", permissionsSaved: "Autorisations mises à jour", noWorkers: "Aucun compte employé actif.",
-    labEntry: "Saisie des analyses", oliveLabEntry: "Analyse laboratoire des olives", oliveLot: "Lot d’olives", oliveAssessmentList: "Analyses des olives enregistrées", oliveAssessmentSaved: "Analyse des olives enregistrée", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
+    labEntry: "Saisie des analyses", laboratoryTab: "Laboratoire", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
     productionTab: "Production", newProduction: "Nouvelle production", productionDate: "Date de production", inputLots: "Lots d’olives consommés", chooseOliveBalance: "Lot · emplacement · propriétaire", inputQuantity: "Quantité consommée (kg)", outputQuantity: "Huile réellement obtenue (kg)", outputTank: "Cuve de réception", extractionRate: "Rendement réel", completeProduction: "Enregistrer la production", productionSaved: "Production enregistrée et stock mis à jour", productionHistory: "Historique de production", ownerMill: "Maâsra", ownerCustomer: "Client", addInput: "Ajouter un lot", totalInput: "Total olives consommées (kg)", noOliveStock: "Aucun stock d’olives disponible pour la production.", selectTank: "Sélectionnez une cuve.",
     actions: "Actions",
     title: "Oro Verde — Gestion commerciale",
@@ -51,7 +52,7 @@ const labels = {
   },
   ar: {
     permissionsTab: "صلاحيات العمال", chooseWorker: "اختيار العامل", labPermission: "تسجيل التحاليل المخبرية", reviewerPermission: "المراجعة المستقلة للجودة", auditPermission: "الاطلاع على سجل التدقيق", savePermissions: "حفظ الصلاحيات", permissionsSaved: "تم تحديث الصلاحيات", noWorkers: "لا توجد حسابات عمال نشطة.",
-    labEntry: "تسجيل التحاليل", oliveLabEntry: "تحاليل الزيتون المخبرية", oliveLot: "دفعة الزيتون", oliveAssessmentList: "تحاليل الزيتون المسجلة", oliveAssessmentSaved: "تم تسجيل تحليل الزيتون", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
+    labEntry: "تسجيل التحاليل", laboratoryTab: "المخبر", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
     productionTab: "الإنتاج", newProduction: "إنتاج جديد", productionDate: "تاريخ الإنتاج", inputLots: "دفعات الزيتون المستهلكة", chooseOliveBalance: "الدفعة · الموقع · المالك", inputQuantity: "الكمية المستهلكة (كغ)", outputQuantity: "كمية الزيت الفعلية الناتجة (كغ)", outputTank: "خزان الاستلام", extractionRate: "المردودية الفعلية", completeProduction: "تسجيل الإنتاج", productionSaved: "تم تسجيل الإنتاج وتحيين المخزون", productionHistory: "سجل الإنتاج", ownerMill: "المعصرة", ownerCustomer: "الحريف", addInput: "إضافة دفعة", totalInput: "مجموع الزيتون المستهلك (كغ)", noOliveStock: "لا يوجد مخزون زيتون متاح للإنتاج.", selectTank: "يرجى اختيار خزان.",
     actions: "الإجراءات",
     title: "Oro Verde — التسيير التجاري",
@@ -182,13 +183,6 @@ export default function Commercial() {
   const [productionTankId, setProductionTankId] = useState("");
   const [productionNotes, setProductionNotes] = useState("");
   const [qualityLotId, setQualityLotId] = useState("");
-  const [oliveQualityLotId, setOliveQualityLotId] = useState("");
-  const [oliveSampleReference, setOliveSampleReference] = useState("");
-  const [oliveSampleDate, setOliveSampleDate] = useState(new Date().toISOString().slice(0, 10));
-  const [oliveTestedDate, setOliveTestedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [oliveLaboratoryName, setOliveLaboratoryName] = useState("");
-  const [oliveSpecificationReference, setOliveSpecificationReference] = useState("");
-  const [oliveMeasurements, setOliveMeasurements] = useState([{ code: "", value: "", unit: "" }]);
   const [sampleReference, setSampleReference] = useState("");
   const [sampleDate, setSampleDate] = useState(new Date().toISOString().slice(0, 10));
   const [testedDate, setTestedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -273,7 +267,6 @@ export default function Commercial() {
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
-  const oliveQuality = useQuery({ queryKey: ["commercial", "olive-quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-quality-assessments", 500), enabled: ready && tab === "quality" });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
@@ -533,37 +526,6 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
-      ]);
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
-  });
-  const submitOliveQualityAssessment = useMutation({
-    mutationFn: () => {
-      if (!(lots.data ?? []).some((item) => item.id === oliveQualityLotId && item.product_kind === "OLIVE" && item.status === "OPEN")) {
-        throw new Error("Olive lot is no longer available");
-      }
-      return apiPost<AnyRecord>("/commercial/v1/olive-quality-assessments", {
-        olive_lot_id: oliveQualityLotId,
-        sample_reference: oliveSampleReference.trim(),
-        sample_date: oliveSampleDate,
-        tested_date: oliveTestedDate,
-        laboratory_name: oliveLaboratoryName.trim(),
-        specification_reference: oliveSpecificationReference.trim(),
-        measurements: oliveMeasurements.map((item) => ({
-          code: item.code.trim().toUpperCase(),
-          value: item.value,
-          unit: item.unit.trim(),
-        })),
-        idempotency_key: crypto.randomUUID(),
-      });
-    },
-    onSuccess: async () => {
-      toast.success(l.oliveAssessmentSaved);
-      setOliveSampleReference(""); setOliveLaboratoryName(""); setOliveSpecificationReference("");
-      setOliveMeasurements([{ code: "", value: "", unit: "" }]);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["commercial", "olive-quality"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
@@ -984,7 +946,6 @@ export default function Commercial() {
   }, [targetPermissions.data, selectedWorkerId]);
 
   const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.status === "OPEN" && ["PENDING", "REJECTED"].includes(lot.quality_status));
-  const qualityOliveLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN");
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
@@ -1065,6 +1026,7 @@ export default function Commercial() {
     { id: "movements", label: l.movements, icon: RefreshCw },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "quality", label: l.quality, icon: Beaker },
+    { id: "laboratory", label: l.laboratoryTab, icon: Beaker },
     { id: "audit", label: l.audit, icon: ClipboardList },
     { id: "suppliers", label: l.suppliers, icon: Boxes },
     { id: "locations", label: l.locationsTab, icon: Warehouse },
@@ -1226,42 +1188,9 @@ export default function Commercial() {
 
       {tab === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{value(m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
+      {tab === "laboratory" && <Lab />}
+
       {tab === "quality" && <div className="space-y-4">
-        {canRecordLab && <Card><CardHeader><CardTitle>{l.oliveLabEntry}</CardTitle><CardDescription>{l.oliveLot}</CardDescription></CardHeader><CardContent>
-          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitOliveQualityAssessment.mutate(); }}>
-            <label className="grid max-w-xl gap-1 text-sm font-medium">{l.oliveLot}
-              <select required value={oliveQualityLotId} onChange={(e) => setOliveQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOliveLots.map((lot) => <option key={lot.id} value={lot.id}>{lot.document_number} · {value(lot.variety_id)} · v{lot.version ?? 1}</option>)}</select>
-            </label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={oliveSampleReference} onChange={(e) => setOliveSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required minLength={2} maxLength={160} value={oliveLaboratoryName} onChange={(e) => setOliveLaboratoryName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={oliveSampleDate} onChange={(e) => setOliveSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={oliveSampleDate} value={oliveTestedDate} onChange={(e) => setOliveTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.specification}<input required minLength={2} maxLength={160} value={oliveSpecificationReference} onChange={(e) => setOliveSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.measurementCode}</h3><Button type="button" variant="outline" onClick={() => setOliveMeasurements((rows) => [...rows, { code: "", value: "", unit: "" }])}>{l.addMeasurement}</Button></div>
-              {oliveMeasurements.map((measurement, index) => <div key={index} className="grid gap-3 rounded-xl border p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                <label className="grid gap-1 text-sm font-medium">{l.measurementCode}<input required minLength={2} maxLength={30} pattern="[A-Za-z0-9_]+" value={measurement.code} onChange={(e) => setOliveMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, code: e.target.value.toUpperCase() } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementValue}<input required type="number" step="0.000001" value={measurement.value} onChange={(e) => setOliveMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, value: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.measurementUnit}<input required maxLength={20} value={measurement.unit} onChange={(e) => setOliveMeasurements((rows) => rows.map((row, i) => i === index ? { ...row, unit: e.target.value } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-                <Button type="button" variant="outline" disabled={oliveMeasurements.length === 1} onClick={() => setOliveMeasurements((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
-              </div>)}
-            </div>
-            <Button type="submit" disabled={submitOliveQualityAssessment.isPending || !oliveQualityLotId || !oliveSampleReference.trim() || !oliveLaboratoryName.trim() || !oliveSpecificationReference.trim() || oliveMeasurements.some((item) => item.code.trim().length < 2 || item.value === "" || !item.unit.trim())}>{l.submitAssessment}</Button>
-          </form>
-        </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{l.oliveAssessmentList}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{l.oliveLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
-            <TableBody>{(oliveQuality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
-              <TableCell className="font-mono text-xs">{value(assessment.olive_lot_number, assessment.olive_lot_id)}</TableCell>
-              <TableCell>{value(assessment.sample_reference)}</TableCell>
-              <TableCell>{value(assessment.laboratory_name)}</TableCell>
-              <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
-              <TableCell>{date(assessment.created_at)}</TableCell>
-            </TableRow>)}{(!oliveQuality.isLoading && !(oliveQuality.data?.length)) && <EmptyRow colSpan={5} text={l.noRows} />}</TableBody>
-          </Table>
-        </CardContent></Card>
         {canRecordLab && <Card><CardHeader><CardTitle>{l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
