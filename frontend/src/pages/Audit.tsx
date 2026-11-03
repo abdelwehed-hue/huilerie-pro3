@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { ClipboardList, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -60,24 +60,27 @@ export default function Audit() {
     noDetails: isArabic ? "لا توجد تفاصيل إضافية" : "Aucun détail supplémentaire",
     denied: isArabic ? "هذا القسم مخصص للمستخدمين المخولين فقط." : "Cette section est réservée aux utilisateurs autorisés.",
   };
-  const events = useQuery({
+  const events = useInfiniteQuery({
     queryKey: ["commercial", "audit", "standalone"],
-    queryFn: () => apiGet<AuditEvent[]>("/commercial/v1/audit-events?limit=1000"),
+    queryFn: ({ pageParam }) => apiGet<AuditEvent[]>(`/commercial/v1/audit-events?limit=200&skip=${pageParam}`),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => lastPage.length === 200 ? lastPageParam + 200 : undefined,
     enabled: !!me.data,
     staleTime: 10_000,
   });
-  const entityOptions = useMemo(() => [...new Set((events.data ?? []).map((item) => item.entity_type).filter(Boolean))] as string[], [events.data]);
+  const allEvents = events.data?.pages.flat() ?? [];
+  const entityOptions = useMemo(() => [...new Set(allEvents.map((item) => item.entity_type).filter(Boolean))] as string[], [allEvents]);
   const actionOptions = useMemo(() => [...new Set((events.data ?? []).map((item) => item.action).filter(Boolean))] as string[], [events.data]);
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
-    return (events.data ?? []).filter((item) => {
+    return allEvents.filter((item) => {
       if (entity !== "all" && item.entity_type !== entity) return false;
       if (action !== "all" && item.action !== action) return false;
       if (!term) return true;
       return [item.action, item.entity_type, item.entity_id, item.actor_name, item.actor_user_id, JSON.stringify(item.details ?? {})]
         .some((value) => String(value ?? "").toLocaleLowerCase().includes(term));
     });
-  }, [events.data, entity, action, search]);
+  }, [allEvents, entity, action, search]);
   const formatDate = (value?: string) => {
     if (!value) return "—";
     const date = new Date(value);
@@ -148,6 +151,7 @@ export default function Audit() {
               </TableBody>
             </Table>
           </div>
+          {events.hasNextPage && <div className="flex justify-center"><Button type="button" variant="outline" onClick={() => void events.fetchNextPage()} disabled={events.isFetchingNextPage}>{events.isFetchingNextPage ? (isArabic ? "جار التحميل…" : "Chargement…") : (isArabic ? "تحميل أحداث أقدم" : "Charger les événements précédents")}</Button></div>}
           <p className="text-xs text-muted-foreground">{isArabic ? "السجل للعرض فقط. لا توجد أزرار لتعديل أو حذف أحداث التدقيق." : "Journal en consultation seule. Aucune action de modification ou de suppression n’est disponible."}</p>
         </CardContent>
       </Card>
