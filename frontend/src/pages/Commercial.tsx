@@ -21,7 +21,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "varieties" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "audit" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -47,7 +47,7 @@ const labels = {
     awaiting: "En attente de revue", unknown: "—", noPermission: "Accès en lecture seule selon vos autorisations.",
     qualityRule: "Un lot d'huile reste bloqué tant qu'un réviseur indépendant n'a pas approuvé son analyse.",
     warning: "Le module commercial n'est pas encore initialisé dans la base de données.",
-    varietiesTab: "Variétés d’olives", varietiesManaged: "Les variétés sont gérées dans Paramètres → Tarif. Cette liste est synchronisée automatiquement.", varietyCode: "Code variété", varietyNameFr: "Nom en français", varietyNameAr: "Nom en arabe", addVariety: "Ajouter une variété", varietySaved: "Variété ajoutée",     purchasesTab: "Achats d’olives", newPurchase: "Nouvel achat", editPurchase: "Modifier l’achat", updateDraft: "Enregistrer les modifications", cancelEdit: "Annuler la modification", purchaseDate: "Date d’achat", supplier: "Fournisseur", variety: "Variété", unitPrice: "Prix unitaire (DT/kg)", addLine: "Ajouter une ligne", removeLine: "Retirer", createDraft: "Créer le brouillon", purchaseCreated: "Brouillon d’achat créé", approve: "Approuver et réceptionner", receivingLocation: "Emplacement de réception", totalAmount: "Montant total (DT)", totalQuantity: "Quantité totale (kg)", draft: "Brouillon", approved: "Approuvé", noSuppliers: "Créez d’abord un fournisseur.", noVarieties: "Créez d’abord les variétés commerciales.",     suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", custodyTab: "Garde des clients", custodyReceiptTitle: "Réception d’olives appartenant au client", custodyReleaseTitle: "Restitution d’huile au propriétaire", custodyCustomer: "Client propriétaire", custodyDate: "Date", custodyVariety: "Variété", custodyQuantity: "Quantité (kg)", custodyLocation: "Emplacement de réception", custodyAck: "Référence de l’accusé client", custodySource: "Référence source (facultative)", custodyReason: "Motif de restitution", receiveCustody: "Enregistrer la réception en garde", releaseCustody: "Restituer l’huile au client", custodyReceipts: "Historique des réceptions en garde", custodyReleases: "Historique des restitutions", custodyOilLot: "Lot d’huile", custodySourceTank: "Cuve de sortie", noCustodyClients: "Aucun client enregistré. Ajoutez d’abord le client dans le carnet.", noCustomerOil: "Aucun lot d’huile de ce client n’est disponible dans une cuve normale après validation qualité.", custodyReceiptNote: "Cette réception enregistre des olives appartenant au client. Elle ne crée ni achat ni dette fournisseur.", custodyReleaseNote: "La restitution n’est pas une vente et ne génère aucune facture.", custodyStatementTitle: "État de garde du client", custodyMovement: "Mouvement", custodyProduct: "Produit", custodyDelta: "Variation", custodyBalance: "Solde après mouvement", custodyRecordedAt: "Date d’enregistrement", selectCustodyOwner: "Choisir le propriétaire pour consulter son état",notes: "Notes",
+    varietiesTab: "Variétés d’olives", varietiesManaged: "Les variétés sont gérées dans Paramètres → Tarif. Cette liste est synchronisée automatiquement.", varietyCode: "Code variété", varietyNameFr: "Nom en français", varietyNameAr: "Nom en arabe", addVariety: "Ajouter une variété", varietySaved: "Variété ajoutée",     purchasesTab: "Achats d’olives", newPurchase: "Nouvel achat", editPurchase: "Modifier l’achat", updateDraft: "Enregistrer les modifications", cancelEdit: "Annuler la modification", purchaseDate: "Date d’achat", supplier: "Fournisseur", variety: "Variété", unitPrice: "Prix unitaire (DT/kg)", addLine: "Ajouter une ligne", removeLine: "Retirer", createDraft: "Créer le brouillon", purchaseCreated: "Brouillon d’achat créé", approve: "Approuver et réceptionner", receivingLocation: "Emplacement de réception", totalAmount: "Montant total (DT)", totalQuantity: "Quantité totale (kg)", draft: "Brouillon", approved: "Approuvé", noSuppliers: "Créez d’abord un fournisseur.", noVarieties: "Créez d’abord les variétés commerciales.",     suppliers: "Fournisseurs", locationsTab: "Emplacements", supplierName: "Nom du fournisseur", supplierPhone: "Téléphone", taxId: "Identifiant fiscal", addSupplier: "Ajouter le fournisseur", supplierSaved: "Fournisseur ajouté", editSupplier: "Modifier le fournisseur", saveSupplierChanges: "Enregistrer les modifications", cancelSupplierEdit: "Annuler", supplierUpdated: "Fournisseur modifié", locationCode: "Code", locationName: "Nom de l’emplacement", locationType: "Type", oliveStorage: "Stockage olives", staging: "Zone de préparation", addLocation: "Ajouter l’emplacement", locationSaved: "Emplacement ajouté", custodyTab: "Garde des clients", custodyReceiptTitle: "Réception d’olives appartenant au client", custodyReleaseTitle: "Restitution d’huile au propriétaire", custodyCustomer: "Client propriétaire", custodyDate: "Date", custodyVariety: "Variété", custodyQuantity: "Quantité (kg)", custodyLocation: "Emplacement de réception", custodyAck: "Référence de l’accusé client", custodySource: "Référence source (facultative)", custodyReason: "Motif de restitution", receiveCustody: "Enregistrer la réception en garde", releaseCustody: "Restituer l’huile au client", custodyReceipts: "Historique des réceptions en garde", custodyReleases: "Historique des restitutions", custodyOilLot: "Lot d’huile", custodySourceTank: "Cuve de sortie", noCustodyClients: "Aucun client enregistré. Ajoutez d’abord le client dans le carnet.", noCustomerOil: "Aucun lot d’huile de ce client n’est disponible dans une cuve normale après validation qualité.", custodyReceiptNote: "Cette réception enregistre des olives appartenant au client. Elle ne crée ni achat ni dette fournisseur.", custodyReleaseNote: "La restitution n’est pas une vente et ne génère aucune facture.", custodyStatementTitle: "État de garde du client", custodyMovement: "Mouvement", custodyProduct: "Produit", custodyDelta: "Variation", custodyBalance: "Solde après mouvement", custodyRecordedAt: "Date d’enregistrement", selectCustodyOwner: "Choisir le propriétaire pour consulter son état",notes: "Notes",
   },
   ar: {
     permissionsTab: "صلاحيات العمال", chooseWorker: "اختيار العامل", labPermission: "تسجيل التحاليل المخبرية", reviewerPermission: "المراجعة المستقلة للجودة", auditPermission: "الاطلاع على سجل التدقيق", savePermissions: "حفظ الصلاحيات", permissionsSaved: "تم تحديث الصلاحيات", noWorkers: "لا توجد حسابات عمال نشطة.",
@@ -72,7 +72,7 @@ const labels = {
     awaiting: "في انتظار المراجعة", unknown: "—", noPermission: "صلاحية العرض فقط حسب أذونات حسابك.",
     qualityRule: "تبقى دفعة الزيت غير متاحة للبيع حتى يعتمد محلل مستقل نتائج التحليل.",
     warning: "لم تتم تهيئة الوحدة التجارية في قاعدة البيانات بعد.",
-    varietiesTab: "أصناف الزيتون", varietiesManaged: "تتم إدارة الأصناف من الإعدادات ← التعريفة، وتُزامَن هذه القائمة تلقائياً.", varietyCode: "رمز الصنف", varietyNameFr: "الاسم بالفرنسية", varietyNameAr: "الاسم بالعربية", addVariety: "إضافة صنف", varietySaved: "تمت إضافة الصنف",     purchasesTab: "شراء الزيتون", newPurchase: "شراء جديد", editPurchase: "تعديل الشراء", updateDraft: "حفظ التعديلات", cancelEdit: "إلغاء التعديل", purchaseDate: "تاريخ الشراء", supplier: "المزوّد", variety: "الصنف", unitPrice: "السعر للوحدة (د.ت/كغ)", addLine: "إضافة سطر", removeLine: "حذف السطر", createDraft: "إنشاء مسودة", purchaseCreated: "تم إنشاء مسودة الشراء", approve: "اعتماد واستلام", receivingLocation: "موقع الاستلام", totalAmount: "المبلغ الجملي (د.ت)", totalQuantity: "الكمية الجملية (كغ)", draft: "مسودة", approved: "معتمد", noSuppliers: "أنشئ مزوّداً أولاً.", noVarieties: "أنشئ أصناف الزيتون التجارية أولاً.",     suppliers: "المزوّدون", locationsTab: "مواقع التخزين", supplierName: "اسم المزوّد", supplierPhone: "الهاتف", taxId: "المعرّف الجبائي", addSupplier: "إضافة المزوّد", supplierSaved: "تمت إضافة المزوّد", locationCode: "الرمز", locationName: "اسم الموقع", locationType: "النوع", oliveStorage: "مخزن الزيتون", staging: "منطقة التحضير", addLocation: "إضافة الموقع", locationSaved: "تمت إضافة الموقع", custodyTab: "أمانة الحرفاء", custodyReceiptTitle: "استلام زيتون مملوك للحريف", custodyReleaseTitle: "إرجاع الزيت إلى مالكه", custodyCustomer: "الحريف المالك", custodyDate: "التاريخ", custodyVariety: "الصنف", custodyQuantity: "الكمية (كغ)", custodyLocation: "مكان الاستلام", custodyAck: "مرجع وصل إقرار الحريف", custodySource: "مرجع المصدر (اختياري)", custodyReason: "سبب التسليم", receiveCustody: "تسجيل استلام الأمانة", releaseCustody: "تسليم الزيت إلى الحريف", custodyReceipts: "سجل استلام الأمانة", custodyReleases: "سجل تسليم الزيت", custodyOilLot: "دفعة الزيت", custodySourceTank: "الخزان المصدر", noCustodyClients: "لا يوجد حرفاء مسجلون. أضف الحريف أولاً إلى دفتر الحرفاء.", noCustomerOil: "لا توجد دفعة زيت مملوكة لهذا الحريف ومتاحة في خزان عادي بعد المصادقة على الجودة.", custodyReceiptNote: "هذا الإجراء يسجل زيتوناً مملوكاً للحريف ولا ينشئ عملية شراء أو ديناً للمزوّد.", custodyReleaseNote: "تسليم الزيت ليس عملية بيع ولا ينشئ فاتورة.", custodyStatementTitle: "كشف أمانة الحريف", custodyMovement: "الحركة", custodyProduct: "المنتج", custodyDelta: "التغيير", custodyBalance: "الرصيد بعد الحركة", custodyRecordedAt: "تاريخ التسجيل", selectCustodyOwner: "اختر المالك لعرض كشف الأمانة",notes: "ملاحظات",
+    varietiesTab: "أصناف الزيتون", varietiesManaged: "تتم إدارة الأصناف من الإعدادات ← التعريفة، وتُزامَن هذه القائمة تلقائياً.", varietyCode: "رمز الصنف", varietyNameFr: "الاسم بالفرنسية", varietyNameAr: "الاسم بالعربية", addVariety: "إضافة صنف", varietySaved: "تمت إضافة الصنف",     purchasesTab: "شراء الزيتون", newPurchase: "شراء جديد", editPurchase: "تعديل الشراء", updateDraft: "حفظ التعديلات", cancelEdit: "إلغاء التعديل", purchaseDate: "تاريخ الشراء", supplier: "المزوّد", variety: "الصنف", unitPrice: "السعر للوحدة (د.ت/كغ)", addLine: "إضافة سطر", removeLine: "حذف السطر", createDraft: "إنشاء مسودة", purchaseCreated: "تم إنشاء مسودة الشراء", approve: "اعتماد واستلام", receivingLocation: "موقع الاستلام", totalAmount: "المبلغ الجملي (د.ت)", totalQuantity: "الكمية الجملية (كغ)", draft: "مسودة", approved: "معتمد", noSuppliers: "أنشئ مزوّداً أولاً.", noVarieties: "أنشئ أصناف الزيتون التجارية أولاً.",     suppliers: "المزوّدون", locationsTab: "مواقع التخزين", supplierName: "اسم المزوّد", supplierPhone: "الهاتف", taxId: "المعرّف الجبائي", addSupplier: "إضافة المزوّد", supplierSaved: "تمت إضافة المزوّد", editSupplier: "تعديل بيانات المزوّد", saveSupplierChanges: "حفظ التعديلات", cancelSupplierEdit: "إلغاء", supplierUpdated: "تم تعديل بيانات المزوّد", locationCode: "الرمز", locationName: "اسم الموقع", locationType: "النوع", oliveStorage: "مخزن الزيتون", staging: "منطقة التحضير", addLocation: "إضافة الموقع", locationSaved: "تمت إضافة الموقع", custodyTab: "أمانة الحرفاء", custodyReceiptTitle: "استلام زيتون مملوك للحريف", custodyReleaseTitle: "إرجاع الزيت إلى مالكه", custodyCustomer: "الحريف المالك", custodyDate: "التاريخ", custodyVariety: "الصنف", custodyQuantity: "الكمية (كغ)", custodyLocation: "مكان الاستلام", custodyAck: "مرجع وصل إقرار الحريف", custodySource: "مرجع المصدر (اختياري)", custodyReason: "سبب التسليم", receiveCustody: "تسجيل استلام الأمانة", releaseCustody: "تسليم الزيت إلى الحريف", custodyReceipts: "سجل استلام الأمانة", custodyReleases: "سجل تسليم الزيت", custodyOilLot: "دفعة الزيت", custodySourceTank: "الخزان المصدر", noCustodyClients: "لا يوجد حرفاء مسجلون. أضف الحريف أولاً إلى دفتر الحرفاء.", noCustomerOil: "لا توجد دفعة زيت مملوكة لهذا الحريف ومتاحة في خزان عادي بعد المصادقة على الجودة.", custodyReceiptNote: "هذا الإجراء يسجل زيتوناً مملوكاً للحريف ولا ينشئ عملية شراء أو ديناً للمزوّد.", custodyReleaseNote: "تسليم الزيت ليس عملية بيع ولا ينشئ فاتورة.", custodyStatementTitle: "كشف أمانة الحريف", custodyMovement: "الحركة", custodyProduct: "المنتج", custodyDelta: "التغيير", custodyBalance: "الرصيد بعد الحركة", custodyRecordedAt: "تاريخ التسجيل", selectCustodyOwner: "اختر المالك لعرض كشف الأمانة",notes: "ملاحظات",
   },
 } as const;
 
@@ -164,6 +164,7 @@ export default function Commercial() {
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierTaxId, setSupplierTaxId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
+  const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
   const [locationCode, setLocationCode] = useState("");
   const [locationName, setLocationName] = useState("");
   const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
@@ -270,7 +271,7 @@ export default function Commercial() {
   const audit = useQuery({ queryKey: ["commercial", "audit"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/audit-events", 500), enabled: ready && tab === "audit" });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "custody" || tab === "transfers") });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "varieties" || tab === "purchases" || tab === "custody") });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "custody") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && tab === "purchases" });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
@@ -311,6 +312,36 @@ export default function Commercial() {
     },
     onError: () => toast.error(l.warning),
   });
+  const updateSupplier = useMutation({
+    mutationFn: () => {
+      if (!editingSupplier) throw new Error("No supplier selected");
+      return apiPut<AnyRecord>(`/commercial/v1/suppliers/${encodeURIComponent(editingSupplier.id)}`, {
+        expected_version: editingSupplier.version ?? 1,
+        name: supplierName.trim(),
+        phone: supplierPhone.trim() || null,
+        tax_identifier: supplierTaxId.trim() || null,
+        notes: supplierNotes.trim() || null,
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.supplierUpdated);
+      setEditingSupplier(null);
+      setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "suppliers"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const beginSupplierEdit = (supplier: AnyRecord) => {
+    setEditingSupplier(supplier);
+    setSupplierName(supplier.name ?? "");
+    setSupplierPhone(supplier.phone ?? "");
+    setSupplierTaxId(supplier.tax_identifier ?? "");
+    setSupplierNotes(supplier.notes ?? "");
+  };
+  const cancelSupplierEdit = () => {
+    setEditingSupplier(null);
+    setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
+  };
   const addLocation = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/locations", {
       code: locationCode.trim().toUpperCase(), name: locationName.trim(),
@@ -1198,16 +1229,16 @@ export default function Commercial() {
       {tab === "audit" && <Card><CardHeader><CardTitle>{l.audit}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.created}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.source}</TableHead></TableRow></TableHeader><TableBody>{(audit.data ?? []).map((a) => <TableRow key={a.id}><TableCell>{date(a.created_at)}</TableCell><TableCell>{value(a.action)}</TableCell><TableCell>{value(a.entity_type)}</TableCell><TableCell className="font-mono text-xs">{value(a.entity_id)}</TableCell></TableRow>)}{(!audit.isLoading && !(audit.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
       {tab === "suppliers" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{l.addSupplier}</CardTitle></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) addSupplier.mutate(); }}>
+        {isAdmin && <Card><CardHeader><CardTitle>{editingSupplier ? l.editSupplier : l.addSupplier}</CardTitle></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) editingSupplier ? updateSupplier.mutate() : addSupplier.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{l.supplierName}<input required minLength={2} maxLength={160} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.supplierPhone}<input maxLength={40} value={supplierPhone} onChange={(e) => setSupplierPhone(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.taxId}<input maxLength={80} value={supplierTaxId} onChange={(e) => setSupplierTaxId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.notes}<input maxLength={1000} value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="md:col-span-2"><Button type="submit" disabled={addSupplier.isPending || supplierName.trim().length < 2}>{l.addSupplier}</Button></div>
+            <div className="md:col-span-2"><div className="flex flex-wrap gap-2"><Button type="submit" disabled={addSupplier.isPending || updateSupplier.isPending || supplierName.trim().length < 2}>{editingSupplier ? l.saveSupplierChanges : l.addSupplier}</Button>{editingSupplier && <Button type="button" variant="outline" onClick={cancelSupplierEdit}>{l.cancelSupplierEdit}</Button>}</div></div>
           </form>
         </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{l.suppliers}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead></TableRow></TableHeader><TableBody>{(suppliers.data ?? []).map((s) => <TableRow key={s.id}><TableCell className="font-semibold">{value(s.name)}</TableCell><TableCell>{value(s.phone)}</TableCell><TableCell>{value(s.tax_identifier)}</TableCell></TableRow>)}{(!suppliers.isLoading && !(suppliers.data?.length)) && <EmptyRow colSpan={3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
+        <Card><CardHeader><CardTitle>{l.suppliers}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead></TableRow></TableHeader><TableBody>{(suppliers.data ?? []).map((s) => <TableRow key={s.id}><TableCell className="font-semibold">{isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => beginSupplierEdit(s)} title={l.editSupplier}>{value(s.name)}</button> : value(s.name)}</TableCell><TableCell>{value(s.phone)}</TableCell><TableCell>{value(s.tax_identifier)}</TableCell></TableRow>)}{(!suppliers.isLoading && !(suppliers.data?.length)) && <EmptyRow colSpan={3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
       </div>}
 
       {tab === "locations" && <div className="space-y-4">
@@ -1221,15 +1252,6 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{l.locationsTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.locationCode}</TableHead><TableHead>{l.locationName}</TableHead><TableHead>{l.locationType}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(locations.data ?? []).map((loc) => <TableRow key={loc.id}><TableCell className="font-mono">{value(loc.code)}</TableCell><TableCell className="font-semibold">{value(loc.name)}</TableCell><TableCell>{loc.kind === "OLIVE_STORAGE" ? l.oliveStorage : l.staging}</TableCell><TableCell>{loc.active ? l.active : l.closed}</TableCell></TableRow>)}{(!locations.isLoading && !(locations.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>
-      </div>}
-
-      {tab === "varieties" && <div className="space-y-4">
-        <Card><CardHeader><CardTitle>{l.varietiesTab}</CardTitle><CardDescription>{l.varietiesManaged}</CardDescription></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{l.varietyNameFr}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>
-            {(varieties.data ?? []).filter((v) => v.active).map((v) => <TableRow key={v.id}><TableCell className="font-semibold">{value(v.name_fr)}</TableCell><TableCell>{l.active}</TableCell></TableRow>)}
-            {(!varieties.isLoading && !(varieties.data ?? []).some((v) => v.active)) && <EmptyRow colSpan={2} text={l.noRows} />}
-          </TableBody></Table>
-        </CardContent></Card>
       </div>}
 
       {tab === "purchases" && <div className="space-y-4">

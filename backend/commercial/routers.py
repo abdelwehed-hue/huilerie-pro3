@@ -34,7 +34,7 @@ from commercial.schemas.purchases import (
     OlivePurchaseUpdate,
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCommand
-from commercial.schemas.suppliers import CommercialSupplierDraft
+from commercial.schemas.suppliers import CommercialSupplierDraft, CommercialSupplierUpdate
 from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
 )
@@ -318,6 +318,68 @@ async def create_commercial_supplier(
 
     try:
         return _safe(await run_transaction(create_supplier))
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "commercial_supplier_name_exists") from exc
+
+
+@router.put("/suppliers/{supplier_id}")
+async def update_commercial_supplier(
+    supplier_id: str,
+    draft: CommercialSupplierUpdate,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_purchases")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    normalized_name = " ".join(draft.name.casefold().split())
+    fields = draft.model_dump(exclude={"expected_version"})
+    audit_id = str(uuid.uuid4())
+
+    async def update_supplier(session):
+        existing = await db.commercial_suppliers.find_one(
+            {"id": supplier_id}, {"_id": 0}, session=session
+        )
+        if not existing:
+            raise HTTPException(404, "commercial_supplier_not_found")
+        current_version = int(existing.get("version", 1))
+        if current_version != draft.expected_version:
+            raise HTTPException(409, "commercial_supplier_version_conflict")
+        duplicate = await db.commercial_suppliers.find_one(
+            {"normalized_name": normalized_name, "id": {"$ne": supplier_id}},
+            {"_id": 1}, session=session,
+        )
+        if duplicate:
+            raise HTTPException(409, "commercial_supplier_name_exists")
+        version_filter = {"version": draft.expected_version}
+        if draft.expected_version == 1 and "version" not in existing:
+            version_filter = {"version": {"$exists": False}}
+        result = await db.commercial_suppliers.update_one(
+            {"id": supplier_id, **version_filter},
+            {"$set": {
+                **fields, "normalized_name": normalized_name,
+                "updated_at": now, "updated_by": user["id"],
+            }, "$inc": {"version": 1}},
+            session=session,
+        )
+        if result.matched_count != 1:
+            raise HTTPException(409, "commercial_supplier_version_conflict")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_supplier",
+            "entity_id": supplier_id, "action": "SUPPLIER_UPDATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {
+                "changed_fields": sorted(fields.keys()),
+                "previous_name": existing.get("name"),
+                "new_name": draft.name,
+                "version": current_version + 1,
+            },
+        }, session=session)
+        return await db.commercial_suppliers.find_one(
+            {"id": supplier_id}, {"_id": 0}, session=session
+        )
+
+    try:
+        return _safe(await run_transaction(update_supplier))
     except DuplicateKeyError as exc:
         raise HTTPException(409, "commercial_supplier_name_exists") from exc
 
