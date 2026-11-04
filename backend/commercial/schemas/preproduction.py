@@ -5,6 +5,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from commercial.schemas.inventory import OwnerRef
+
 QuantityKg = Annotated[Decimal, Field(gt=Decimal("0"), max_digits=18, decimal_places=3)]
 
 
@@ -12,6 +14,7 @@ class PreproductionSampleDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     source_olive_lot_id: str = Field(min_length=1, max_length=100)
     source_location_id: str = Field(min_length=1, max_length=100)
+    owner: OwnerRef
     input_olive_quantity_kg: QuantityKg
     sample_oil_quantity_kg: QuantityKg
     trial_date: date
