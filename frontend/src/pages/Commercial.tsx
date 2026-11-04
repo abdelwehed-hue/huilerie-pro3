@@ -184,6 +184,11 @@ export default function Commercial() {
   const [productionOutputKg, setProductionOutputKg] = useState("");
   const [productionTankId, setProductionTankId] = useState("");
   const [productionNotes, setProductionNotes] = useState("");
+  const [trialBalanceKey, setTrialBalanceKey] = useState("");
+  const [trialInputKg, setTrialInputKg] = useState("");
+  const [trialOilKg, setTrialOilKg] = useState("");
+  const [trialDate, setTrialDate] = useState(new Date().toISOString().slice(0, 10));
+  const [trialNotes, setTrialNotes] = useState("");
   const [qualityLotId, setQualityLotId] = useState("");
   const [editingQualityAssessmentId, setEditingQualityAssessmentId] = useState("");
   const [sampleReference, setSampleReference] = useState("");
@@ -278,11 +283,12 @@ export default function Commercial() {
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
+  const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "custody" || tab === "transfers") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "locations" || tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "custody") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && tab === "purchases" });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
@@ -492,6 +498,30 @@ export default function Commercial() {
       ]);
     },
     onError: (error) => toast.error(`${l.warning} ${error instanceof Error ? error.message : ""}`),
+  });
+  const createPreproductionSample = useMutation({
+    mutationFn: () => {
+      const balance = (balances.data ?? []).find((item) => [item.lot_id, item.location_id].join("::") === trialBalanceKey && item.product_kind === "OLIVE");
+      const lot = (lots.data ?? []).find((item) => item.id === balance?.lot_id);
+      if (!balance || !lot) throw new Error("Selected olive balance is no longer available");
+      return apiPost<AnyRecord>("/commercial/v1/preproduction-samples", {
+        source_olive_lot_id: lot.id, source_location_id: balance.location_id,
+        input_olive_quantity_kg: trialInputKg, sample_oil_quantity_kg: trialOilKg,
+        trial_date: trialDate, notes: trialNotes.trim(), idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تسجيل تجربة العصر وخصم كمية الزيتون" : "Essai enregistré; la quantité d’olives a été déduite");
+      setTrialBalanceKey(""); setTrialInputKg(""); setTrialOilKg(""); setTrialNotes("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "preproduction-samples"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const postInternalMovement = useMutation({
     mutationFn: () => {
@@ -977,13 +1007,14 @@ export default function Commercial() {
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
   const canPostStock = permissions.data?.permissions.includes("commercial.post_stock") === true;
   const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
+  const canCreatePreproductionSample = permissions.data?.permissions.includes("commercial.manage_preproduction_samples") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
   useEffect(() => {
     setAssignedPermissions(targetPermissions.data?.permissions.filter((permission) => permission !== "commercial.read") ?? []);
   }, [targetPermissions.data, selectedWorkerId]);
 
   // Show every oil lot generated by the application in the analysis selector. Only open lots awaiting analysis or re-analysis remain selectable.
-  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL");
+  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE");
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
@@ -1018,6 +1049,10 @@ export default function Commercial() {
   const availableOliveBalances: AnyRecord[] = (balances.data ?? []).filter((balance: AnyRecord) =>
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
+  );
+  const eligibleProductionBalances = availableOliveBalances.filter((balance) =>
+    (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.preproduction_quality_status === "RELEASED"
+      && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id)
   );
 
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
@@ -1237,6 +1272,26 @@ export default function Commercial() {
 
 
       {tab === "quality" && <div className="space-y-4">
+        {canCreatePreproductionSample && <Card>
+          <CardHeader><CardTitle>{lang === "ar" ? "تجربة العصر قبل الإنتاج" : "Essai de trituration avant production"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "اختر دفعة الزيتون في مكان الاستقبال. تُخصم كمية التجربة وتُنشأ دفعة زيت مخصصة للمختبر فقط." : "Choisissez le lot d’olives à l’emplacement de réception. La quantité d’essai est déduite et un lot d’huile réservé au laboratoire est créé."}</CardDescription></CardHeader>
+          <CardContent><form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); createPreproductionSample.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "دفعة الزيتون · مكان الاستقبال" : "Lot d’olives · emplacement de réception"}
+              <select required value={trialBalanceKey} onChange={(e) => { setTrialBalanceKey(e.target.value); setTrialInputKg(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>
+                {availableOliveBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const location = (locations.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id} value={balance.lot_id + "::" + balance.location_id}>{lot?.document_number ?? balance.lot_id} · {location?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "تاريخ التجربة" : "Date de l’essai"}<input required type="date" value={trialDate} onChange={(e) => setTrialDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "كمية الزيتون المستعملة (kg)" : "Olives utilisées (kg)"}
+              <input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => [b.lot_id,b.location_id].join("::") === trialBalanceKey)?.quantity_kg ?? undefined} value={trialInputKg} onChange={(e) => setTrialInputKg(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+            </label>
+            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "كمية زيت العينة الناتجة (kg)" : "Huile obtenue pour l’échantillon (kg)"}
+              <input required type="number" min="0.001" step="0.001" max={trialInputKg || undefined} value={trialOilKg} onChange={(e) => setTrialOilKg(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+            </label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.notes}<input maxLength={1000} value={trialNotes} onChange={(e) => setTrialNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <div className="md:col-span-2"><Button type="submit" disabled={createPreproductionSample.isPending || !trialBalanceKey || !(Number(trialInputKg) > 0) || !(Number(trialOilKg) > 0) || Number(trialOilKg) > Number(trialInputKg)}>{lang === "ar" ? "إنشاء تجربة العصر" : "Créer l’essai de trituration"}</Button></div>
+          </form></CardContent>
+        </Card>}
         {canRecordLab && <Card><CardHeader><CardTitle>{editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
@@ -1395,7 +1450,7 @@ export default function Commercial() {
                 <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.inputLots}</h3><Button type="button" variant="outline" onClick={() => setProductionInputs((rows) => [...rows, { balance_key: "", quantity_kg: "" }])}>{l.addInput}</Button></div>
                 {productionInputs.map((line, index) => {
                   const key = (lotId: string, locationId: string) => lotId + "::" + locationId;
-                  const selectedBalance = availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === line.balance_key);
+                  const selectedBalance = eligibleProductionBalances.find((b) => key(b.lot_id, b.location_id) === line.balance_key);
                   const selectedLot = (lots.data ?? []).find((lot) => lot.id === selectedBalance?.lot_id);
                   const usedKeys = productionInputs.filter((_, i) => i !== index).map((row) => row.balance_key);
                   const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === row.balance_key)?.owner);
@@ -1403,7 +1458,7 @@ export default function Commercial() {
                     <label className="grid gap-1 text-sm font-medium">{l.chooseOliveBalance}
                       <select required value={line.balance_key} onChange={(e) => setProductionInputs((rows) => rows.map((row, i) => i === index ? { ...row, balance_key: e.target.value, quantity_kg: "" } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal">
                         <option value="">—</option>
-                        {availableOliveBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
+                        {eligibleProductionBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
                           const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
                           const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
                           return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
@@ -1418,7 +1473,7 @@ export default function Commercial() {
                     {selectedLot && <p className="text-xs text-muted-foreground md:col-span-3">{l.owner}: {ownerLabel(selectedLot.owner, l)}</p>}
                   </div>;
                 })}
-                {availableOliveBalances.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{l.noOliveStock}</p>}
+                {eligibleProductionBalances.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{lang === "ar" ? "لا توجد دفعات زيتون معتمدة مخبريًا للإنتاج الكامل." : "Aucun lot d’olives n’a encore reçu l’approbation qualité préalable."}</p>}
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <label className="grid gap-1 text-sm font-medium">{l.totalInput}
