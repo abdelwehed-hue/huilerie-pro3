@@ -52,6 +52,7 @@ const ACTION_LABELS: Record<string, { ar: string; fr: string }> = {
   QUALITY_ASSESSMENT_DELETED: { ar: "حذف تقييم الجودة", fr: "Évaluation qualité supprimée" },
   LOAD_CREATED: { ar: "إنشاء استقبال", fr: "Réception créée" },
   LOAD_OIL_RECORDED: { ar: "تسجيل كمية الزيت", fr: "Quantité d’huile enregistrée" },
+  LOAD_OIL_RECORDED: { ar: "تسجيل كمية الزيت", fr: "Quantité d’huile enregistrée" },
   LOAD_STATUS_UPDATED: { ar: "تغيير حالة الاستقبال", fr: "Statut de réception modifié" },
   LOAD_DELIVERED: { ar: "تسليم الاستقبال", fr: "Réception livrée" },
   LOAD_CANCELLED: { ar: "إلغاء الاستقبال", fr: "Réception annulée" },
