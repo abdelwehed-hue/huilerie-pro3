@@ -143,7 +143,7 @@ async def create_preproduction_sample(
     await collection.insert_one(record, session=session)
     sample_lot = {
         "id": oil_lot_id, "season_code": season_code, "document_type": "LOT",
-        "document_number": oil_lot_number, "product_kind": "OIL",
+        "document_number": oil_lot_number, "batch_code": source_lot.get("batch_code"), "product_kind": "OIL",
         "lot_purpose": "PREPRODUCTION_SAMPLE", "source_preproduction_sample_id": sample_id,
         "source_olive_lot_id": draft.source_olive_lot_id,
         "quantity_received_kg": Decimal128(draft.sample_oil_quantity_kg),
