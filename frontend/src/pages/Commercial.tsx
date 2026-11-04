@@ -1066,7 +1066,7 @@ export default function Commercial() {
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
   );
   const availableTrialBalances = availableOliveBalances.filter((balance) =>
-    (locations.data ?? []).some((location) => location.id === balance.location_id && location.active && location.kind === "STAGING")
+    (locations.data ?? []).some((location) => location.id === balance.location_id && location.active && ["OLIVE_STORAGE", "STAGING"].includes(location.kind))
   );
   const eligibleProductionBalances = availableOliveBalances.filter((balance) =>
     (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.preproduction_quality_status === "RELEASED"
