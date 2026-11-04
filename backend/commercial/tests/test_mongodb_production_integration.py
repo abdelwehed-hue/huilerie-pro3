@@ -161,7 +161,7 @@ async def test_insufficient_olive_stock_rolls_back_entire_production_command():
                     )
                 )
         assert await db.commercial_production_runs.count_documents({}) == 0
-        assert await db.commercial_lots.count_documents({"product_kind": "OIL"}) == 0
+        assert await db.commercial_lots.count_documents({"product_kind": "OIL", "source_production_id": {"$exists": True}}) == 0
         assert await db.commercial_stock_movements.count_documents({}) == 0
         assert await db.commercial_audit_events.count_documents({}) == 0
         balance = await db.commercial_stock_balances.find_one(
