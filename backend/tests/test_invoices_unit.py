@@ -40,6 +40,13 @@ class FakeCollection:
                 return SimpleNamespace(modified_count=1, matched_count=1)
         return SimpleNamespace(modified_count=0, matched_count=0)
 
+    async def delete_one(self, query, **kwargs):
+        for index, doc in enumerate(self.docs):
+            if all(doc.get(key) == value for key, value in query.items()):
+                self.docs.pop(index)
+                return SimpleNamespace(deleted_count=1)
+        return SimpleNamespace(deleted_count=0)
+
 
 @pytest.fixture
 def fake_db(monkeypatch):
@@ -273,3 +280,20 @@ async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(f
     assert exc.value.detail == "invoice_changed_retry"
     assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
     assert len(fake_db.invoices.docs[0]["history"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_invoice_records_full_snapshot_in_same_transaction(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0.5},
+        {"username": "admin"},
+    )
+
+    result = await invoice_routes.delete_invoice(created["id"], {"username": "admin"})
+
+    assert result == {"ok": True}
+    assert fake_db.invoices.docs == []
+    event = fake_db.commercial_audit_events.docs[-1]
+    assert event["action"] == "INVOICE_DELETED"
+    assert event["details"]["number"] == "FAC-2627100"
+    assert event["details"]["paid_amount"] == 0.5
