@@ -114,7 +114,9 @@ async def test_first_completion_updates_load_and_creates_invoice_in_same_session
     )
 
     assert result["oil_kg"] == 15.0
-    assert calls == [("load-retry-test", load_env.session)]\n    assert len(load_env.audit.events) == 1\n    assert load_env.audit.events[0]["action"] == "LOAD_OIL_RECORDED"
+    assert calls == [("load-retry-test", load_env.session)]
+    assert len(load_env.audit.events) == 1
+    assert load_env.audit.events[0]["action"] == "LOAD_OIL_RECORDED"
     assert load_env.loads.doc["oil_kg"] == 15.0
 
 
