@@ -119,6 +119,9 @@ async def test_update_recalculates_balance_and_records_history(fake_db):
     assert updated["history"][-1]["action"] == "updated"
     assert updated["history"][-1]["before"]["balance"] == 2.2
     assert updated["history"][-1]["after"]["balance"] == 2.0
+    assert len(fake_db.commercial_audit_events.docs) == 2
+    assert fake_db.commercial_audit_events.docs[-1]["action"] == "INVOICE_UPDATED"
+    assert fake_db.commercial_audit_events.docs[-1]["details"]["previous_values"]["balance"] == 2.2
 
 
 @pytest.mark.asyncio
@@ -224,6 +227,7 @@ async def test_unchanged_invoice_edit_does_not_add_history(fake_db):
     assert updated["total"] == 2.7
     assert updated["balance"] == 2.2
     assert len(updated["history"]) == 1
+    assert len(fake_db.commercial_audit_events.docs) == 1
 
 
 @pytest.mark.asyncio
