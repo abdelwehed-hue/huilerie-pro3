@@ -136,7 +136,8 @@ async def test_rejected_preproduction_trial_cancellation_is_audited_and_closes_s
         }]),
         "commercial_lots": Collection([{
             "id": "oil-sample-rejected", "lot_purpose": "PREPRODUCTION_SAMPLE",
-            "status": "OPEN", "version": 1,
+            "status": "OPEN", "quality_status": "REJECTED",
+            "last_quality_assessment_id": "assessment-rejected", "version": 1,
         }]),
         "commercial_audit_events": Collection(),
     })
