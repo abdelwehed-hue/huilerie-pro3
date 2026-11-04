@@ -91,7 +91,7 @@ async def record_oil_quality_assessment(
     record = {
         "id": assessment_id, "season_code": season_code,
         "oil_lot_id": draft.oil_lot_id,
-        "batch_code": lot.get("batch_code") or lot.get("document_number"),
+        "batch_code": lot.get("batch_code"),
         "lot_purpose": lot.get("lot_purpose"),
         "source_preproduction_sample_id": lot.get("source_preproduction_sample_id"),
         "source_olive_lot_id": lot.get("source_olive_lot_id"),
