@@ -400,7 +400,7 @@ async def release_customer_oil_custody(
         raise ValueError("Customer custody account does not exist")
     lot = await db["commercial_lots"].find_one(
         {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
-        {"_id": 0, "id": 1, "quality_status": 1, "lot_purpose": 1}, session=session,
+        {"_id": 0, "id": 1, "quality_status": 1, "lot_purpose": 1, "batch_code": 1, "document_number": 1}, session=session,
     )
     if not lot:
         raise ValueError("Customer oil lot does not exist or is closed")
@@ -428,6 +428,7 @@ async def release_customer_oil_custody(
         "customer_phone": owner["client_phone"],
         "customer_name": owner["client_name"],
         "oil_lot_id": draft.oil_lot_id,
+        "batch_code": lot.get("batch_code") or lot.get("document_number"),
         "source_tank_id": draft.source_tank_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
         "release_date": draft.release_date.isoformat(),
