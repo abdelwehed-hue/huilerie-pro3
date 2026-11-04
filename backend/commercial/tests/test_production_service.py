@@ -64,7 +64,7 @@ def approved_sample_lot(lot_id):
         "id": f"sample-oil-{lot_id}", "product_kind": "OIL",
         "lot_purpose": "PREPRODUCTION_SAMPLE",
         "source_preproduction_sample_id": f"sample-{lot_id}",
-        "source_olive_lot_id": lot_id, "status": "OPEN",
+        "source_olive_lot_id": lot_id, "status": "OPEN", "owner": {"kind": "MILL"},
     }
 
 
