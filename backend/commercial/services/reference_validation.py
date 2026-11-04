@@ -33,7 +33,9 @@ def _owner_matches(owner: Any, stored: Any) -> bool:
 
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
     lot = await db["commercial_lots"].find_one(
-        {"id": draft.lot_id}, {"_id": 0, "id": 1, "product_kind": 1, "lot_purpose": 1}, session=session
+        {"id": draft.lot_id},
+        {"_id": 0, "id": 1, "product_kind": 1, "lot_purpose": 1, "status": 1, "owner": 1},
+        session=session,
     )
     if not lot:
         raise ValueError("Unknown commercial lot")
@@ -287,13 +289,15 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
             raise ValueError("Customer oil pickup requires an open, released lot owned by the releasing customer")
     elif draft.source_document_type == "ESS":
         if (source.get("status") != "COMPLETED"
+                or lot.get("status") != "OPEN"
                 or source.get("source_olive_lot_id") != draft.lot_id
                 or source.get("source_location_id") != draft.source_location_id
                 or _quantity(source.get("input_olive_quantity_kg")) != _quantity(draft.quantity_kg)
                 or draft.product_kind != "OLIVE"
                 or draft.movement_kind != "CONSUMPTION"
                 or draft.destination_location_id is not None
-                or not _owner_matches(draft.source_owner, source.get("owner"))):
+                or not _owner_matches(draft.source_owner, source.get("owner"))
+                or not _owner_matches(draft.source_owner, lot.get("owner"))):
             raise ValueError("Preproduction sample consumption does not match its completed trial")
     elif source.get("status") not in {"APPROVED", "COMPLETED"}:
         raise ValueError("Source document is not approved for stock posting")
