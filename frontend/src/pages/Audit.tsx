@@ -170,7 +170,7 @@ export default function Audit() {
             <label className="relative grid gap-1 text-sm font-medium">
               <span>{isArabic ? "بحث" : "Recherche"}</span>
               <Search className="absolute end-3 top-9 size-4 text-muted-foreground" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={labels.search} className="h-10 rounded-lg border bg-background px-3 pe-9 font-normal" />
+              <input value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder={labels.search} className="h-10 rounded-lg border bg-background px-3 pe-9 font-normal" />
             </label>
             <label className="grid gap-1 text-sm font-medium">{labels.entity}
               <select value={entity} onChange={(event) => setEntity(event.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal">
