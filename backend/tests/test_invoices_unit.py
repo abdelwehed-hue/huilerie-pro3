@@ -57,6 +57,7 @@ def fake_db(monkeypatch):
         loads=FakeCollection([load]),
         settings=FakeCollection([{"key": "app", "price_per_kg": 0.18}]),
         invoices=FakeCollection(),
+        commercial_audit_events=FakeCollection(),
     )
     monkeypatch.setattr(invoice_routes, "db", fake)
 
@@ -250,10 +251,10 @@ async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(f
     )
     original_update_one = fake_db.invoices.update_one
 
-    async def simulate_concurrent_edit(query, update):
+    async def simulate_concurrent_edit(query, update, **kwargs):
         # Simulate another admin saving the invoice after this request read it.
         fake_db.invoices.docs[0]["updated_at"] = "changed-by-another-edit"
-        return await original_update_one(query, update)
+        return await original_update_one(query, update, **kwargs)
 
     monkeypatch.setattr(fake_db.invoices, "update_one", simulate_concurrent_edit)
 
