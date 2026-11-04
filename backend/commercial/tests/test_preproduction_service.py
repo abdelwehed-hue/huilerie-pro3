@@ -120,7 +120,15 @@ async def test_preproduction_trial_creates_lab_only_oil_lot_and_posts_olive_cons
     source_lot = db["commercial_lots"].rows[0]
     assert source_lot["preproduction_quality_status"] == "PENDING"
     assert source_lot["latest_preproduction_sample_id"] == "sample-1"
-
+    with pytest.raises(ValueError, match="still awaiting laboratory analysis"):
+        await service.create_preproduction_sample(
+            db, make_draft("preproduction-sample-test-0002"), season_code="2627",
+            actor_user={"active": True, "role": "admin"}, actor_user_id="admin-1",
+            sample_id="sample-2", oil_lot_id="oil-sample-2", movement_id="movement-2",
+            movement_audit_id="movement-audit-2",
+            created_at=datetime(2026, 11, 3, 1, tzinfo=timezone.utc), session=object(),
+        )
+    assert len(db["commercial_preproduction_samples"].rows) == 1
 
 
 @pytest.mark.asyncio
