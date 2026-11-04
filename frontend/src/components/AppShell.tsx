@@ -301,7 +301,7 @@ export default function AppShell() {
                 title="Fermer la session"
                 aria-label="Fermer la session"
                 data-testid="header-logout"
-                className="size-9 shrink-0 rounded-xl border-stone-200 bg-white text-stone-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                className="absolute right-4 top-2 z-10 size-9 shrink-0 rounded-xl border-stone-200 bg-white text-stone-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:right-8"
               >
                 <LogOut className="size-4" />
               </Button>
