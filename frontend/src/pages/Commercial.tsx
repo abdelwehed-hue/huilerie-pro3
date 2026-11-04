@@ -1501,7 +1501,7 @@ export default function Commercial() {
                         {eligibleProductionBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id, b.owner)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
                           const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
                           const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
-                          return <option key={key(balance.lot_id, balance.location_id, balance.owner)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
+                          return <option key={key(balance.lot_id, balance.location_id, balance.owner)} value={key(balance.lot_id, balance.location_id, balance.owner)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
                         })}
                       </select>
                     </label>
