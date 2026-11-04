@@ -93,14 +93,31 @@ async def create_preproduction_sample(
     if draft.sample_oil_quantity_kg > draft.input_olive_quantity_kg:
         raise ValueError("Trial oil output cannot exceed the olive input mass")
 
+    # Do not start another trial while the current trial is awaiting analysis/review.
+    latest_sample_id = source_lot.get("latest_preproduction_sample_id")
+    if latest_sample_id:
+        latest_sample = await collection.find_one({"id": latest_sample_id}, {"_id": 0, "oil_sample_lot_id": 1, "status": 1}, session=session)
+        if latest_sample and latest_sample.get("status") == "COMPLETED":
+            latest_assessment = await db["commercial_quality_assessments"].find_one(
+                {"oil_lot_id": latest_sample.get("oil_sample_lot_id"), "status": "AWAITING_INDEPENDENT_REVIEW"},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            sample_oil_lot = await db["commercial_lots"].find_one(
+                {"id": latest_sample.get("oil_sample_lot_id")}, {"_id": 0, "quality_status": 1}, session=session,
+            )
+            if latest_assessment or (sample_oil_lot and sample_oil_lot.get("quality_status") == "PENDING"):
+                raise ValueError("The latest preproduction trial is still awaiting laboratory analysis or independent review")
+
     # A new trial invalidates every previous approval before the new analysis.
-    await db["commercial_lots"].update_one(
+    source_update = await db["commercial_lots"].update_one(
         {"id": draft.source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN"},
         {"$set": {"preproduction_quality_status": "PENDING", "latest_preproduction_sample_id": sample_id, "updated_at": created_at.astimezone(timezone.utc)},
          "$unset": {"preproduction_sample_id": "", "preproduction_quality_assessment_id": "",
                     "preproduction_quality_decided_at": "", "preproduction_quality_decided_by": ""}},
         session=session,
     )
+    if source_update.matched_count != 1:
+        raise ValueError("Source olive lot changed during trial creation; reload and retry")
     document_number = await reserve_document_number(db["commercial_counters"], season_code, "ESS", session=session)
     oil_lot_number = await reserve_document_number(db["commercial_counters"], season_code, "LOT", session=session)
     created_utc = created_at.astimezone(timezone.utc)
@@ -189,6 +206,13 @@ async def cancel_preproduction_sample(
     )
     if update.matched_count != 1:
         raise ValueError("Preproduction trial changed concurrently")
+    cancelled_lot = await db["commercial_lots"].update_one(
+        {"id": sample.get("oil_sample_lot_id"), "lot_purpose": "PREPRODUCTION_SAMPLE", "status": "OPEN"},
+        {"$set": {"status": "CANCELLED", "updated_at": now}, "$inc": {"version": 1}},
+        session=session,
+    )
+    if cancelled_lot.matched_count != 1:
+        raise ValueError("Preproduction sample lot changed; cancellation was not applied")
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("preproduction-sample-cancel-audit", sample_id),
         "entity_type": "commercial_preproduction_sample", "entity_id": sample_id,
