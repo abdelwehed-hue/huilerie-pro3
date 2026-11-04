@@ -15,7 +15,7 @@ from commercial.schemas.customer_custody import (
     CustomerOilCustodyReleaseDraft,
 )
 from commercial.schemas.inventory import OwnerRef, StockMovementDraft
-from commercial.services.numbering import reserve_document_number
+from commercial.services.numbering import reserve_document_number, reserve_batch_code
 from lib.season import DEFAULT_VARIETIES
 from commercial.services.stock_ledger import post_stock_movement
 
@@ -261,6 +261,9 @@ async def receive_customer_olive_custody(
     lot_number = await reserve_document_number(
         db["commercial_counters"], season_code, "LOT", session=session
     )
+    batch_code = await reserve_batch_code(
+        db["commercial_counters"], season_code, session=session
+    )
     now = created_at.astimezone(timezone.utc)
     owner_ref = OwnerRef(kind="CUSTOMER", customer_id=owner["id"])
     receipt = {
@@ -292,6 +295,7 @@ async def receive_customer_olive_custody(
         "season_code": season_code,
         "document_type": "LOT",
         "document_number": lot_number,
+        "batch_code": batch_code,
         "product_kind": "OLIVE",
         "variety_id": draft.variety_id,
         "source_customer_custody_receipt_id": receipt_id,
