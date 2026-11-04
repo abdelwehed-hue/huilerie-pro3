@@ -13,7 +13,7 @@ from commercial.schemas.production import CommercialProductionDraft
 from commercial.services.production import complete_commercial_production
 
 async def seed_preproduction_approvals(db, lot_ids):
-    for lot_id in lot_ids:
+    for index, lot_id in enumerate(lot_ids):
         sample_id = "sample-" + lot_id
         oil_lot_id = "sample-oil-" + lot_id
         assessment_id = "assessment-" + lot_id
@@ -28,6 +28,15 @@ async def seed_preproduction_approvals(db, lot_ids):
         await db.commercial_preproduction_samples.insert_one({
             "id": sample_id, "source_olive_lot_id": lot_id,
             "oil_sample_lot_id": oil_lot_id, "status": "COMPLETED",
+        })
+        await db.commercial_lots.insert_one({
+            "id": oil_lot_id, "season_code": "2627",
+            "document_number": f"2627LOT{9000 + index:04d}",
+            "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
+            "source_preproduction_sample_id": sample_id,
+            "source_olive_lot_id": lot_id, "status": "OPEN",
+            "quality_status": "RELEASED", "owner": {"kind": "MILL"},
+            "quantity_received_kg": Decimal128("2.000"),
         })
         await db.commercial_quality_assessments.insert_one({
             "id": assessment_id, "oil_lot_id": oil_lot_id,
