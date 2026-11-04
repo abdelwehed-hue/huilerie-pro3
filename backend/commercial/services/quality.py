@@ -29,7 +29,7 @@ def _fingerprint(value: Any) -> str:
 def _quality_snapshot(record: dict[str, Any]) -> dict[str, Any]:
     """Return business-relevant measurements and review state for audit history."""
     fields = (
-        "oil_lot_id", "sample_reference", "sample_date", "tested_date",
+        "oil_lot_id", "lot_purpose", "source_preproduction_sample_id", "source_olive_lot_id", "sample_reference", "sample_date", "tested_date",
         "laboratory_name", "specification_reference", "acidity", "peroxide",
         "k232", "k270", "oil_content_pct", "classification", "oil_type",
         "measurements", "notes", "status", "decision", "decision_reason",
@@ -72,11 +72,28 @@ async def record_oil_quality_assessment(
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
         raise ValueError("Oil lot version conflict; reload before recording the assessment")
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        sample_id = lot.get("source_preproduction_sample_id")
+        source_olive_lot = await db["commercial_lots"].find_one(
+            {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+             "status": "OPEN", "latest_preproduction_sample_id": sample_id},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        sample = await db["commercial_preproduction_samples"].find_one(
+            {"id": sample_id, "source_olive_lot_id": lot.get("source_olive_lot_id"),
+             "oil_sample_lot_id": lot["id"], "status": "COMPLETED"},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        if not sample_id or not source_olive_lot or not sample:
+            raise ValueError("Only the latest active preproduction trial sample can be analysed")
 
     created_utc = created_at.astimezone(timezone.utc)
     record = {
         "id": assessment_id, "season_code": season_code,
         "oil_lot_id": draft.oil_lot_id,
+        "lot_purpose": lot.get("lot_purpose"),
+        "source_preproduction_sample_id": lot.get("source_preproduction_sample_id"),
+        "source_olive_lot_id": lot.get("source_olive_lot_id"),
         "sample_reference": draft.sample_reference,
         "sample_date": draft.sample_date.isoformat(),
         "tested_date": draft.tested_date.isoformat(),
@@ -206,6 +223,26 @@ async def release_oil_quality_assessment(
     )
     if update_assessment.matched_count != 1:
         raise ValueError("Quality assessment changed concurrently; release decision was not applied")
+
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        source_olive_lot_id = lot.get("source_olive_lot_id")
+        sample_id = lot.get("source_preproduction_sample_id")
+        if not source_olive_lot_id or not sample_id:
+            raise ValueError("Preproduction sample is missing its source olive-lot linkage")
+        source_update = await db["commercial_lots"].update_one(
+            {"id": source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN",
+             "latest_preproduction_sample_id": sample_id},
+            {"$set": {
+                "preproduction_quality_status": command.decision,
+                "preproduction_sample_id": sample_id,
+                "preproduction_quality_assessment_id": assessment["id"],
+                "preproduction_quality_decided_at": reviewed_at,
+                "preproduction_quality_decided_by": actor_user_id,
+                "updated_at": reviewed_at,
+            }}, session=session,
+        )
+        if source_update.matched_count != 1:
+            raise ValueError("Source olive lot changed or is no longer open; quality decision cannot authorize production")
 
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("quality-release-audit", f"{release_id}:{command.idempotency_key}"),

@@ -49,15 +49,44 @@ def make_draft():
         idempotency_key="production-service-test-0001",
     )
 
+def approved_lot(lot_id):
+    return {
+        "id": lot_id, "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN",
+        "preproduction_quality_status": "RELEASED",
+        "preproduction_sample_id": f"sample-{lot_id}",
+        "preproduction_quality_assessment_id": f"assessment-{lot_id}",
+        "latest_preproduction_sample_id": f"sample-{lot_id}",
+    }
+
+
+def approved_sample_lot(lot_id):
+    return {
+        "id": f"sample-oil-{lot_id}", "product_kind": "OIL",
+        "lot_purpose": "PREPRODUCTION_SAMPLE",
+        "source_preproduction_sample_id": f"sample-{lot_id}",
+        "source_olive_lot_id": lot_id, "status": "OPEN", "quality_status": "RELEASED", "owner": {"kind": "MILL"},
+    }
+
+
+def approved_quality_rows(lot_ids):
+    samples = [{"id": f"sample-{lot_id}", "source_olive_lot_id": lot_id,
+                "oil_sample_lot_id": f"sample-oil-{lot_id}", "status": "COMPLETED"} for lot_id in lot_ids]
+    assessments = [{"id": f"assessment-{lot_id}", "oil_lot_id": f"sample-oil-{lot_id}",
+                    "status": "REVIEWED", "decision": "RELEASED"} for lot_id in lot_ids]
+    return samples, assessments
+
+
 
 @pytest.mark.asyncio
 async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
     db = Database({
         "commercial_production_runs": Collection(),
         "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
         ]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
         "commercial_audit_events": Collection(),
     })
@@ -95,9 +124,11 @@ async def test_production_idempotency_returns_existing_run_without_reposting(mon
     db = Database({
         "commercial_production_runs": Collection(),
         "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
         ]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
         "commercial_audit_events": Collection(),
     })
@@ -124,6 +155,34 @@ async def test_production_idempotency_returns_existing_run_without_reposting(mon
 
 
 @pytest.mark.asyncio
+async def test_production_rejects_olive_lot_without_preproduction_release():
+    db = Database({
+        "commercial_production_runs": Collection(),
+        "commercial_lots": Collection([
+            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+        ]),
+        "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
+    })
+    draft = CommercialProductionDraft(
+        production_date="2026-11-02",
+        inputs=[{
+            "olive_lot_id": "olive-1", "source_location_id": "yard-1",
+            "owner": {"kind": "MILL"}, "quantity_kg": "100",
+        }],
+        actual_oil_output_kg="20", output_tank_id="tank-01",
+        idempotency_key="production-quality-gate-test-0001",
+    )
+    with pytest.raises(ValueError, match="Preproduction quality approval is required"):
+        await service.complete_commercial_production(
+            db, draft, season_code="2627",
+            actor_user={"active": True, "role": "admin"},
+            actor_user_id="admin-1", production_id="production-gate",
+            created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
+        )
+    assert db["commercial_production_runs"].rows == []
+
+
+@pytest.mark.asyncio
 async def test_production_rejects_owner_mismatch_before_creating_run():
     db = Database({
         "commercial_production_runs": Collection(),
@@ -142,7 +201,7 @@ async def test_production_rejects_owner_mismatch_before_creating_run():
         actual_oil_output_kg="100", output_tank_id="tank-01",
         idempotency_key="production-owner-test-0001",
     )
-    with pytest.raises(ValueError, match="ownership mismatch"):
+    with pytest.raises(ValueError, match="owner does not match the source olive lot"):
         await service.complete_commercial_production(
             db, draft, season_code="2627",
             actor_user={"active": True, "role": "admin"},
@@ -157,9 +216,11 @@ async def test_production_rejects_quarantine_output_tank_before_creating_run():
     db = Database({
         "commercial_production_runs": Collection(),
         "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
         ]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
         "commercial_audit_events": Collection(),
     })

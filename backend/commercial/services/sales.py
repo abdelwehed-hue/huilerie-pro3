@@ -46,6 +46,14 @@ async def create_wholesale_sale_draft(
     )
     if not buyer:
         raise ValueError("Unknown or inactive commercial buyer")
+    oil_lot = await db["commercial_lots"].find_one(
+        {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
+        {"_id": 0, "id": 1, "lot_purpose": 1}, session=session,
+    )
+    if not oil_lot:
+        raise ValueError("Sale requires an open commercial oil lot")
+    if oil_lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        raise ValueError("Preproduction oil samples are laboratory-only and cannot be sold")
     collection = db["commercial_sales"]
     scope = f"{season_code}:{actor_user_id}"
     fingerprint = _fingerprint(draft)

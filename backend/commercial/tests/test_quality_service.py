@@ -124,6 +124,83 @@ async def test_lab_submitter_cannot_release_own_assessment():
     assert db["commercial_quality_releases"].rows == []
 
 
+
+@pytest.mark.asyncio
+async def test_releasing_preproduction_sample_updates_only_its_latest_source_olive_lot():
+    db = make_db()
+    sample_lot = db["commercial_lots"].rows[0]
+    sample_lot.update({
+        "lot_purpose": "PREPRODUCTION_SAMPLE",
+        "source_preproduction_sample_id": "trial-1",
+        "source_olive_lot_id": "olive-source-1",
+    })
+    source_lot = {
+        "id": "olive-source-1", "product_kind": "OLIVE", "status": "OPEN",
+        "preproduction_quality_status": "PENDING",
+        "latest_preproduction_sample_id": "trial-1",
+    }
+    db["commercial_lots"].rows.append(source_lot)
+    db["commercial_preproduction_samples"].rows.append({
+        "id": "trial-1", "source_olive_lot_id": "olive-source-1",
+        "oil_sample_lot_id": "oil-1", "status": "COMPLETED",
+    })
+
+    submitted = await record_oil_quality_assessment(
+        db, make_draft(), season_code="2627",
+        actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
+        actor_user_id="lab-tech-1", assessment_id="assessment-preproduction-1",
+        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
+    )
+    assert submitted["lot_purpose"] == "PREPRODUCTION_SAMPLE"
+    assert submitted["source_olive_lot_id"] == "olive-source-1"
+
+    command = QualityReleaseCommand(
+        assessment_id="assessment-preproduction-1", expected_lot_version=2,
+        decision="RELEASED", decision_reason="Trial sample meets the approved specification.",
+        idempotency_key="quality-preproduction-release-0001",
+    )
+    await release_oil_quality_assessment(
+        db, command, season_code="2627",
+        actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.quality_release"]},
+        actor_user_id="independent-reviewer", release_id="release-preproduction-1",
+        created_at=datetime(2026, 11, 2, 1, tzinfo=timezone.utc), session=object(),
+    )
+    assert source_lot["preproduction_quality_status"] == "RELEASED"
+    assert source_lot["preproduction_sample_id"] == "trial-1"
+    assert source_lot["preproduction_quality_assessment_id"] == "assessment-preproduction-1"
+
+
+@pytest.mark.asyncio
+async def test_old_preproduction_sample_cannot_be_submitted_after_a_new_trial_is_created():
+    db = make_db()
+    sample_lot = db["commercial_lots"].rows[0]
+    sample_lot.update({
+        "lot_purpose": "PREPRODUCTION_SAMPLE",
+        "source_preproduction_sample_id": "trial-old",
+        "source_olive_lot_id": "olive-source-1",
+    })
+    source_lot = {
+        "id": "olive-source-1", "product_kind": "OLIVE", "status": "OPEN",
+        "preproduction_quality_status": "PENDING",
+        "latest_preproduction_sample_id": "trial-new",
+    }
+    db["commercial_lots"].rows.append(source_lot)
+    db["commercial_preproduction_samples"].rows.extend([
+        {"id": "trial-old", "source_olive_lot_id": "olive-source-1",
+         "oil_sample_lot_id": "oil-1", "status": "COMPLETED"},
+        {"id": "trial-new", "source_olive_lot_id": "olive-source-1",
+         "oil_sample_lot_id": "oil-new", "status": "COMPLETED"},
+    ])
+    with pytest.raises(ValueError, match="latest active preproduction trial sample"):
+        await record_oil_quality_assessment(
+            db, make_draft(), season_code="2627",
+            actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
+            actor_user_id="lab-tech-1", assessment_id="assessment-old-sample",
+            created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
+        )
+    assert db["commercial_quality_assessments"].rows == []
+    assert source_lot["preproduction_quality_status"] == "PENDING"
+
 @pytest.mark.asyncio
 async def test_workers_without_scoped_quality_permissions_are_rejected():
     db = make_db()
