@@ -101,7 +101,7 @@ async def complete_commercial_production(
              "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
              "source_preproduction_sample_id": sample.get("id") if sample else None,
              "source_olive_lot_id": line.olive_lot_id, "status": "OPEN"},
-            {"_id": 0, "id": 1}, session=session,
+            {"_id": 0, "id": 1, "owner": 1}, session=session,
         )
         assessment = await db["commercial_quality_assessments"].find_one(
             {"id": lot["preproduction_quality_assessment_id"], "oil_lot_id": sample_oil_lot.get("id") if sample_oil_lot else None, "status": "REVIEWED", "decision": "RELEASED"},
@@ -109,6 +109,8 @@ async def complete_commercial_production(
         )
         if not sample or not sample_oil_lot or not assessment:
             raise ValueError(f"Preproduction quality approval is missing, rejected, or superseded: {line.olive_lot_id}")
+        if sample_oil_lot.get("owner") != owner_doc:
+            raise ValueError(f"Preproduction quality approval belongs to a different stock owner: {line.olive_lot_id}")
 
     tank = await db["commercial_tanks"].find_one(
         {"id": draft.output_tank_id, "active": True},
