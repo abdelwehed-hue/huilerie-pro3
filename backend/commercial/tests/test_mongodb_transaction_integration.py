@@ -1549,3 +1549,63 @@ async def test_stock_movement_rejects_product_kind_mismatch_with_lot():
     finally:
         await client.drop_database(db_name)
         client.close()
+
+@pytest.mark.asyncio
+async def test_traditional_invoice_creation_audit_failure_rolls_back_invoice_and_load_guard(monkeypatch):
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from routers import invoices as invoice_routes
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "traditional_invoice_audit_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    invoice_id = "invoice-audit-rollback"
+    audit_id = "audit-id-conflict"
+    try:
+        await ensure_inventory_indexes(db)
+        await db.invoices.create_index("id", unique=True)
+        await db.invoices.create_index("load_id", unique=True, partialFilterExpression={"load_id": {"$type": "string"}})
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id,
+            "entity_type": "test_conflict",
+            "entity_id": "preexisting",
+            "action": "PREEXISTING",
+            "actor_user_id": "integration-admin",
+            "created_at": datetime(2026, 11, 2, tzinfo=timezone.utc),
+            "details": {},
+        })
+        await db.loads.insert_one({
+            "id": "load-audit-rollback",
+            "code": "2627101",
+            "client_name": "Audit rollback client",
+            "phone": "21600000000",
+            "olive_kg": 100.0,
+            "oil_kg": 20.0,
+            "day": "2026-11-02",
+            "cancelled": False,
+        })
+        await db.settings.insert_one({
+            "key": "app",
+            "price_per_kg": 1.5,
+            "mill_name": "Integration test mill",
+        })
+        identifiers = iter([invoice_id, audit_id])
+        monkeypatch.setattr(invoice_routes.uuid, "uuid4", lambda: next(identifiers))
+
+        with pytest.raises(DuplicateKeyError):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: invoice_routes._create_invoice_in_session(
+                        {"load_id": "load-audit-rollback", "paid_amount": 0},
+                        {"id": "integration-admin", "username": "admin"},
+                        active,
+                    )
+                )
+
+        assert await db.invoices.count_documents({}) == 0
+        load = await db.loads.find_one({"id": "load-audit-rollback"}, {"_id": 0})
+        assert "invoice_guard_version" not in load
+        assert await db.commercial_audit_events.count_documents({}) == 1
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
