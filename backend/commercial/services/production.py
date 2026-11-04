@@ -101,7 +101,7 @@ async def complete_commercial_production(
             {"id": sample.get("oil_sample_lot_id") if sample else None,
              "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
              "source_preproduction_sample_id": sample.get("id") if sample else None,
-             "source_olive_lot_id": line.olive_lot_id, "status": "OPEN"},
+             "source_olive_lot_id": line.olive_lot_id, "status": "OPEN", "quality_status": "RELEASED"},
             {"_id": 0, "id": 1, "owner": 1}, session=session,
         )
         assessment = await db["commercial_quality_assessments"].find_one(
