@@ -124,7 +124,6 @@ async def create_preproduction_sample(
     if source_update.matched_count != 1:
         raise ValueError("Source olive lot changed during trial creation; reload and retry")
     document_number = await reserve_document_number(db["commercial_counters"], season_code, "ESS", session=session)
-    oil_lot_number = await reserve_document_number(db["commercial_counters"], season_code, "LOT", session=session)
     created_utc = created_at.astimezone(timezone.utc)
     record = {
         "id": sample_id, "season_code": season_code, "document_type": "ESS",
@@ -142,8 +141,8 @@ async def create_preproduction_sample(
     }
     await collection.insert_one(record, session=session)
     sample_lot = {
-        "id": oil_lot_id, "season_code": season_code, "document_type": "LOT",
-        "document_number": oil_lot_number, "batch_code": source_lot.get("batch_code") or source_lot.get("document_number"), "product_kind": "OIL",
+        "id": oil_lot_id, "season_code": season_code,
+        "batch_code": source_lot.get("batch_code"), "product_kind": "OIL",
         "lot_purpose": "PREPRODUCTION_SAMPLE", "source_preproduction_sample_id": sample_id,
         "source_olive_lot_id": draft.source_olive_lot_id,
         "quantity_received_kg": Decimal128(draft.sample_oil_quantity_kg),
