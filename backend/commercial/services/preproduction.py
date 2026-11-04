@@ -128,7 +128,7 @@ async def create_preproduction_sample(
     created_utc = created_at.astimezone(timezone.utc)
     record = {
         "id": sample_id, "season_code": season_code, "document_type": "ESS",
-        "document_number": document_number, "status": "COMPLETED",
+        "document_number": document_number, "batch_code": source_lot.get("batch_code"), "status": "COMPLETED",
         "source_olive_lot_id": draft.source_olive_lot_id,
         "source_location_id": draft.source_location_id,
         "owner": _owner_document(owner),
