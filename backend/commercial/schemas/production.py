@@ -40,8 +40,6 @@ class CommercialProductionDraft(BaseModel):
         lot_ids = [line.olive_lot_id for line in self.inputs]
         if len(lot_ids) != len(set(lot_ids)):
             raise ValueError("Each olive lot may appear only once in a production run")
-        if len(self.inputs) != 1:
-            raise ValueError("A production run must use exactly one olive batch; mixing batches is not allowed")
         owners = {line.owner.model_dump_json() for line in self.inputs}
         if len(owners) != 1:
             raise ValueError(
