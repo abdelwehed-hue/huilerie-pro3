@@ -130,8 +130,12 @@ export default function Audit() {
     staleTime: 10_000,
   });
   const allEvents = useMemo(() => events.data?.pages.flat() ?? [], [events.data]);
-  const entityOptions = useMemo(() => [...new Set(allEvents.map((item) => item.entity_type).filter(Boolean))] as string[], [allEvents]);
-  const actionOptions = useMemo(() => [...new Set(allEvents.map((item) => item.action).filter(Boolean))] as string[], [allEvents]);
+  const entityOptions = useMemo(() => [...new Set([
+    ...Object.keys(ENTITY_LABELS), ...allEvents.map((item) => item.entity_type).filter(Boolean) as string[],
+  ])], [allEvents]);
+  const actionOptions = useMemo(() => [...new Set([
+    ...Object.keys(ACTION_LABELS), ...allEvents.map((item) => item.action).filter(Boolean) as string[],
+  ])], [allEvents]);
   const filtered = allEvents;
   const formatDate = (value?: string) => {
     if (!value) return "—";
