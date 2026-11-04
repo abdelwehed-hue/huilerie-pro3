@@ -157,6 +157,9 @@ INVENTORY_INDEXES = {
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_lot_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
                    unique=True, name="uq_commercial_lot_document"),
+        IndexModel([("season_code", ASCENDING), ("batch_code", ASCENDING)], unique=True,
+                   partialFilterExpression={"product_kind": "OLIVE", "batch_code": {"$type": "string"}},
+                   name="uq_commercial_olive_batch_code"),
     ],
     "commercial_quality_assessments": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_quality_assessment_id"),
