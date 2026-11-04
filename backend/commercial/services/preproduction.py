@@ -192,12 +192,21 @@ async def cancel_preproduction_sample(
         raise ValueError("Preproduction trial does not exist")
     if sample.get("status") != "COMPLETED":
         raise ValueError("Only a completed trial can be cancelled")
+    sample_oil_lot = await db["commercial_lots"].find_one(
+        {"id": sample.get("oil_sample_lot_id"), "lot_purpose": "PREPRODUCTION_SAMPLE",
+         "status": "OPEN", "quality_status": "REJECTED"},
+        {"_id": 0, "id": 1, "last_quality_assessment_id": 1}, session=session,
+    )
+    if not sample_oil_lot or not sample_oil_lot.get("last_quality_assessment_id"):
+        raise ValueError("Only a currently rejected preproduction sample can be cancelled")
     assessment = await db["commercial_quality_assessments"].find_one(
-        {"oil_lot_id": sample.get("oil_sample_lot_id"), "status": "REVIEWED", "decision": "REJECTED"},
+        {"id": sample_oil_lot["last_quality_assessment_id"],
+         "oil_lot_id": sample.get("oil_sample_lot_id"),
+         "status": "REVIEWED", "decision": "REJECTED"},
         {"_id": 0, "id": 1}, session=session,
     )
     if not assessment:
-        raise ValueError("Only a rejected preproduction trial can be cancelled")
+        raise ValueError("Only the latest rejected preproduction assessment can be cancelled")
     now = cancelled_at.astimezone(timezone.utc)
     update = await db["commercial_preproduction_samples"].update_one(
         {"id": sample_id, "status": "COMPLETED"},
@@ -207,7 +216,9 @@ async def cancel_preproduction_sample(
     if update.matched_count != 1:
         raise ValueError("Preproduction trial changed concurrently")
     cancelled_lot = await db["commercial_lots"].update_one(
-        {"id": sample.get("oil_sample_lot_id"), "lot_purpose": "PREPRODUCTION_SAMPLE", "status": "OPEN"},
+        {"id": sample.get("oil_sample_lot_id"), "lot_purpose": "PREPRODUCTION_SAMPLE",
+         "status": "OPEN", "quality_status": "REJECTED",
+         "last_quality_assessment_id": assessment["id"]},
         {"$set": {"status": "CANCELLED", "updated_at": now}, "$inc": {"version": 1}},
         session=session,
     )
