@@ -169,6 +169,12 @@ async def approve_olive_purchase(
             "actor_user_id": actor_user_id,
             "created_at": created_at.astimezone(timezone.utc),
             "details": {
+                "document_number": purchase.get("document_number"),
+                "supplier_id": purchase.get("supplier_id"),
+                "total_quantity_kg": purchase.get("total_quantity_kg"),
+                "total_amount_dt": purchase.get("total_amount_dt"),
+                "previous_status": "DRAFT",
+                "new_status": "APPROVED",
                 "lot_ids": lot_ids,
                 "movement_ids": movement_ids,
                 "receiving_location_id": command.receiving_location_id,
