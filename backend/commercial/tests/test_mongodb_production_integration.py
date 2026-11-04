@@ -12,6 +12,29 @@ from commercial.inventory_bootstrap import ensure_inventory_indexes
 from commercial.schemas.production import CommercialProductionDraft
 from commercial.services.production import complete_commercial_production
 
+async def seed_preproduction_approvals(db, lot_ids):
+    for lot_id in lot_ids:
+        sample_id = "sample-" + lot_id
+        oil_lot_id = "sample-oil-" + lot_id
+        assessment_id = "assessment-" + lot_id
+        await db.commercial_lots.update_one(
+            {"id": lot_id},
+            {"$set": {
+                "preproduction_quality_status": "RELEASED",
+                "preproduction_sample_id": sample_id,
+                "preproduction_quality_assessment_id": assessment_id,
+            }},
+        )
+        await db.commercial_preproduction_samples.insert_one({
+            "id": sample_id, "source_olive_lot_id": lot_id,
+            "oil_sample_lot_id": oil_lot_id, "status": "COMPLETED",
+        })
+        await db.commercial_quality_assessments.insert_one({
+            "id": assessment_id, "oil_lot_id": oil_lot_id,
+            "status": "REVIEWED", "decision": "RELEASED",
+        })
+
+
 
 @pytest.mark.asyncio
 async def test_production_posts_olive_and_oil_balances_atomically():
@@ -33,6 +56,7 @@ async def test_production_posts_olive_and_oil_balances_atomically():
             {"id": "olive-1", "season_code": "2627", "document_number": "2627LOT0001", "product_kind": "OLIVE", "owner": {"kind": "CUSTOMER", "customer_id": "customer-origin"}, "status": "OPEN"},
             {"id": "olive-2", "season_code": "2627", "document_number": "2627LOT0002", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
         ])
+        await seed_preproduction_approvals(db, ["olive-1", "olive-2"])
         await db.commercial_stock_balances.insert_many([
             {"product_kind": "OLIVE", "lot_id": lot, "owner": {"kind": "MILL"},
              "location_id": "yard-1", "quantity_kg": Decimal128("500")}
@@ -99,6 +123,7 @@ async def test_insufficient_olive_stock_rolls_back_entire_production_command():
             {"id": "olive-2", "season_code": "2627", "document_number": "2627LOT0002",
              "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
         ])
+        await seed_preproduction_approvals(db, ["olive-1", "olive-2"])
         await db.commercial_stock_balances.insert_one({
             "product_kind": "OLIVE", "lot_id": "olive-1",
             "owner": {"kind": "MILL"}, "location_id": "yard-1",
@@ -167,6 +192,7 @@ async def test_concurrent_productions_cannot_consume_the_same_olive_stock_twice(
             "document_number": "2627LOT0001", "product_kind": "OLIVE",
             "owner": {"kind": "MILL"}, "status": "OPEN",
         })
+        await seed_preproduction_approvals(db, ["shared-olive-lot"])
         await db.commercial_stock_balances.insert_one({
             "product_kind": "OLIVE", "lot_id": "shared-olive-lot",
             "owner": {"kind": "MILL"}, "location_id": "yard-1",
