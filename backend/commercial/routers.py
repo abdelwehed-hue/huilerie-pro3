@@ -7,6 +7,7 @@ or collection is modified here.
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -1621,6 +1622,7 @@ async def list_commercial_audit_events(
     entity_id: str | None = None,
     action: str | None = None,
     actor_user_id: str | None = None,
+    q: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=200, ge=1, le=1000),
     skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
@@ -1636,6 +1638,19 @@ async def list_commercial_audit_events(
         query["action"] = action
     if actor_user_id:
         query["actor_user_id"] = actor_user_id
+    if q and q.strip():
+        pattern = re.escape(q.strip())
+        query["$or"] = [
+            {"action": {"$regex": pattern, "$options": "i"}},
+            {"entity_type": {"$regex": pattern, "$options": "i"}},
+            {"entity_id": {"$regex": pattern, "$options": "i"}},
+            {"actor_user_id": {"$regex": pattern, "$options": "i"}},
+            {"details.document_number": {"$regex": pattern, "$options": "i"}},
+            {"details.number": {"$regex": pattern, "$options": "i"}},
+            {"details.code": {"$regex": pattern, "$options": "i"}},
+            {"details.client_name": {"$regex": pattern, "$options": "i"}},
+            {"details.supplier_id": {"$regex": pattern, "$options": "i"}},
+        ]
     docs = await db.commercial_audit_events.find(
         query, {"_id": 0}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
