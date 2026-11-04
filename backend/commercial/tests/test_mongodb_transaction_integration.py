@@ -1558,6 +1558,7 @@ async def test_traditional_invoice_creation_audit_failure_rolls_back_invoice_and
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
     db_name = "traditional_invoice_audit_rollback_" + uuid.uuid4().hex
     db = client[db_name]
+    monkeypatch.setattr(invoice_routes, "db", db)
     invoice_id = "invoice-audit-rollback"
     audit_id = "audit-id-conflict"
     try:
