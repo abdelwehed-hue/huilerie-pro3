@@ -132,16 +132,7 @@ export default function Audit() {
   const allEvents = useMemo(() => events.data?.pages.flat() ?? [], [events.data]);
   const entityOptions = useMemo(() => [...new Set(allEvents.map((item) => item.entity_type).filter(Boolean))] as string[], [allEvents]);
   const actionOptions = useMemo(() => [...new Set(allEvents.map((item) => item.action).filter(Boolean))] as string[], [allEvents]);
-  const filtered = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase();
-    return allEvents.filter((item) => {
-      if (entity !== "all" && item.entity_type !== entity) return false;
-      if (action !== "all" && item.action !== action) return false;
-      if (!term) return true;
-      return [item.action, item.entity_type, item.entity_id, item.actor_name, item.actor_user_id, JSON.stringify(item.details ?? {})]
-        .some((value) => String(value ?? "").toLocaleLowerCase().includes(term));
-    });
-  }, [allEvents, entity, action]);
+  const filtered = allEvents;
   const formatDate = (value?: string) => {
     if (!value) return "—";
     const date = new Date(value);
