@@ -83,20 +83,25 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
     now_local = datetime.now(_tz())
     season = await active_season()
     code = await next_load_code(season)
+    now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()), "code": code, "season_id": season, "client_name": body.client_name.strip(),
-        "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
-        "day": now_local.strftime("%Y-%m-%d"), "created_at": datetime.now(timezone.utc),
+        "phone": re.sub(r"\\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
+        "day": now_local.strftime("%Y-%m-%d"), "created_at": now,
         "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
         "price_per_kg": await _price(),
         "bags": body.bags, "variety": (body.variety or "").strip() or None,
         "notes": (body.notes or "").strip() or None, "pressing": body.initial_status == "pressing",
     }
-    await db.loads.insert_one(doc)
-    await _audit_load_event(doc, user, "LOAD_CREATED", {
-        "olive_kg": doc.get("olive_kg"), "variety": doc.get("variety"),
-        "phone": doc.get("phone"), "initial_status": body.initial_status,
-    })
+
+    async def operation(session):
+        await db.loads.insert_one(doc, session=session)
+        await _audit_load_event(doc, user, "LOAD_CREATED", {
+            "olive_kg": doc.get("olive_kg"), "variety": doc.get("variety"),
+            "phone": doc.get("phone"), "initial_status": body.initial_status,
+        }, session=session)
+
+    await run_transaction(operation)
     doc.pop("_id", None)
     await send_load_sms(doc, "arrival")
     return to_load(doc, user)
@@ -231,49 +236,65 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
 
 @router.patch("/loads/{id}/status", response_model=Load)
 async def set_status(id: str, body: StatusUpdate, user: dict = Depends(current_user)):
-    cur = await db.loads.find_one({"id": id}, {"_id": 0})
-    if not cur:
-        raise HTTPException(404, "not_found")
-    if cur.get("cancelled"):
-        raise HTTPException(409, "load_cancelled")
-    has_oil = cur.get("oil_kg") is not None
-    st = body.status
-    if st in ("pending", "pressing") and has_oil:
-        raise HTTPException(409, "oil_already_entered")
-    if st in ("done", "delivered") and not has_oil:
-        raise HTTPException(409, "oil_not_ready")
-    upd: dict = {"pressing": st == "pressing"}
-    if st == "delivered":
-        if not cur.get("delivered"):
-            upd.update(delivered=True, delivered_at=datetime.now(timezone.utc), delivered_by=user["username"])
-    else:
-        upd.update(delivered=False, delivered_at=None, delivered_by=None)
-    doc = await db.loads.find_one_and_update({"id": id}, {"$set": upd}, projection={"_id": 0}, return_document=True)
-    await _audit_load_event(doc, user, "LOAD_STATUS_UPDATED", {
-        "previous_status": ("delivered" if cur.get("delivered") else ("done" if has_oil else ("pressing" if cur.get("pressing") else "pending"))),
-        "new_status": st,
-    })
+    async def operation(session):
+        cur = await db.loads.find_one({"id": id}, {"_id": 0}, session=session)
+        if not cur:
+            raise HTTPException(404, "not_found")
+        if cur.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        has_oil = cur.get("oil_kg") is not None
+        st = body.status
+        if st in ("pending", "pressing") and has_oil:
+            raise HTTPException(409, "oil_already_entered")
+        if st in ("done", "delivered") and not has_oil:
+            raise HTTPException(409, "oil_not_ready")
+        previous_status = ("delivered" if cur.get("delivered") else ("done" if has_oil else ("pressing" if cur.get("pressing") else "pending")))
+        upd = {"pressing": st == "pressing"}
+        if st == "delivered":
+            if not cur.get("delivered"):
+                upd.update(delivered=True, delivered_at=datetime.now(timezone.utc), delivered_by=user["username"])
+        else:
+            upd.update(delivered=False, delivered_at=None, delivered_by=None)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "cancelled": {"$ne": True}},
+            {"$set": upd}, projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            raise HTTPException(409, "load_changed_retry")
+        await _audit_load_event(doc, user, "LOAD_STATUS_UPDATED", {
+            "previous_status": previous_status, "new_status": st,
+        }, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
 
 @router.post("/loads/{id}/deliver", response_model=Load)
 async def deliver_load(id: str, user: dict = Depends(current_user)):
-    cur = await db.loads.find_one({"id": id}, {"_id": 0})
-    if not cur:
-        raise HTTPException(404, "not_found")
-    if cur.get("cancelled"):
-        raise HTTPException(409, "load_cancelled")
-    if cur.get("oil_kg") is None:
-        raise HTTPException(409, "oil_not_ready")
-    if cur.get("delivered"):
-        raise HTTPException(409, "already_delivered")
-    doc = await db.loads.find_one_and_update(
-        {"id": id},
-        {"$set": {"delivered": True, "delivered_at": datetime.now(timezone.utc), "delivered_by": user["username"]}},
-        projection={"_id": 0}, return_document=True,
-    )
-    await _audit_load_event(doc, user, "LOAD_DELIVERED", {"delivered_at": doc.get("delivered_at")})
+    async def operation(session):
+        cur = await db.loads.find_one({"id": id}, {"_id": 0}, session=session)
+        if not cur:
+            raise HTTPException(404, "not_found")
+        if cur.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        if cur.get("oil_kg") is None:
+            raise HTTPException(409, "oil_not_ready")
+        if cur.get("delivered"):
+            raise HTTPException(409, "already_delivered")
+        delivered_at = datetime.now(timezone.utc)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "delivered": {"$ne": True}, "cancelled": {"$ne": True}, "oil_kg": {"$ne": None}},
+            {"$set": {"delivered": True, "delivered_at": delivered_at, "delivered_by": user["username"]}},
+            projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            raise HTTPException(409, "load_changed_retry")
+        await _audit_load_event(doc, user, "LOAD_DELIVERED", {"delivered_at": doc.get("delivered_at")}, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
@@ -295,19 +316,24 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
 
 @router.post("/loads/{id}/cancel", response_model=Load)
 async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_admin)):
-    doc = await db.loads.find_one_and_update(
-        {"id": id, "cancelled": {"$ne": True}},
-        {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
-                  "cancelled_at": datetime.now(timezone.utc), "cancelled_by": user["username"]}},
-        projection={"_id": 0}, return_document=True,
-    )
-    if not doc:
-        if await db.loads.find_one({"id": id}):
-            raise HTTPException(409, "load_cancelled")
-        raise HTTPException(404, "not_found")
-    await _audit_load_event(doc, user, "LOAD_CANCELLED", {
-        "cancel_reason": doc.get("cancel_reason"), "cancelled_at": doc.get("cancelled_at")
-    })
+    async def operation(session):
+        cancelled_at = datetime.now(timezone.utc)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "cancelled": {"$ne": True}},
+            {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
+                      "cancelled_at": cancelled_at, "cancelled_by": user["username"]}},
+            projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            if await db.loads.find_one({"id": id}, session=session):
+                raise HTTPException(409, "load_cancelled")
+            raise HTTPException(404, "not_found")
+        await _audit_load_event(doc, user, "LOAD_CANCELLED", {
+            "cancel_reason": doc.get("cancel_reason"), "cancelled_at": doc.get("cancelled_at")
+        }, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
