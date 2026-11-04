@@ -29,7 +29,7 @@ class CommercialProductionDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     production_date: date
-    inputs: tuple[ProductionInputLine, ...] = Field(min_length=1, max_length=100)
+    inputs: tuple[ProductionInputLine, ...] = Field(min_length=1, max_length=1)
     actual_oil_output_kg: QuantityKg
     output_tank_id: str = Field(min_length=1, max_length=100)
     notes: str | None = Field(default=None, max_length=1000)
@@ -38,6 +38,8 @@ class CommercialProductionDraft(BaseModel):
     @model_validator(mode="after")
     def validate_production_balance_and_ownership(self):
         lot_ids = [line.olive_lot_id for line in self.inputs]
+        if len(self.inputs) != 1:
+            raise ValueError("A production run must use exactly one olive batch; mixing batches is not allowed")
         if len(lot_ids) != len(set(lot_ids)):
             raise ValueError("Each olive lot may appear only once in a production run")
         owners = {line.owner.model_dump_json() for line in self.inputs}
