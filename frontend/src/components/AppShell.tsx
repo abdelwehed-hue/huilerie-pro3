@@ -15,7 +15,6 @@ import {
   Ban,
   Tv,
   ReceiptText,
-  ClipboardList,
   Warehouse,
   Clock3,
   Volume2,
@@ -56,7 +55,6 @@ const NAV = [
   { to: "/reports", key: "reports", icon: BarChart3, id: "nav-reports", color: "text-fuchsia-300", admin: true },
   { to: "/factures", key: "factures", icon: ReceiptText, id: "nav-factures", color: "text-emerald-300" },
   { to: "/commercial", key: "commercial", icon: Warehouse, id: "nav-commercial", color: "text-lime-300" },
-  { to: "/audit", key: "audit", icon: ClipboardList, id: "nav-audit", color: "text-rose-300", admin: true },
   { to: "/sms", key: "sms", icon: MessageSquareText, id: "nav-sms", color: "text-pink-300" },
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
@@ -80,7 +78,7 @@ export function LangToggle({ className }: { className?: string }) {
   );
 }
 
-function BottomNav({ isAdmin, canViewAudit }: { isAdmin: boolean; canViewAudit: boolean }) {
+function BottomNav({ isAdmin }: { isAdmin: boolean }) {
   const { t } = useI18n();
   return (
     <nav
@@ -88,7 +86,7 @@ function BottomNav({ isAdmin, canViewAudit }: { isAdmin: boolean; canViewAudit: 
       className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none"
     >
       <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
-        {NAV.filter((n) => n.to === "/audit" ? canViewAudit : !("admin" in n) || isAdmin).map((n) => (
+        {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
           <NavLink
             key={n.to}
             to={n.to}
@@ -187,12 +185,6 @@ export default function AppShell() {
   const me = useMe();
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const commercialPermissions = useQuery({
-    queryKey: ["commercial", "my-permissions"],
-    queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"),
-    enabled: !!me.data && me.data.role === "worker",
-    staleTime: 60_000,
-  });
   const tvControl = useQuery({
     queryKey: ["tv-control"],
     queryFn: () => apiGet<{ sound_enabled: boolean }>("/tv/control"),
@@ -347,7 +339,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} canViewAudit={isAdmin || !!commercialPermissions.data?.permissions.includes("commercial.view_audit")} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} />}
     </div>
     </ThemeProvider>
   );
