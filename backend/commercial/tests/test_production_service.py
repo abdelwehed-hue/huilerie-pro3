@@ -58,6 +58,15 @@ def approved_lot(lot_id):
     }
 
 
+def approved_sample_lot(lot_id):
+    return {
+        "id": f"sample-oil-{lot_id}", "product_kind": "OIL",
+        "lot_purpose": "PREPRODUCTION_SAMPLE",
+        "source_preproduction_sample_id": f"sample-{lot_id}",
+        "source_olive_lot_id": lot_id, "status": "OPEN",
+    }
+
+
 def approved_quality_rows(lot_ids):
     samples = [{"id": f"sample-{lot_id}", "source_olive_lot_id": lot_id,
                 "oil_sample_lot_id": f"sample-oil-{lot_id}", "status": "COMPLETED"} for lot_id in lot_ids]
@@ -71,7 +80,10 @@ def approved_quality_rows(lot_ids):
 async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_lots": Collection([
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
+        ]),
         "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
         "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
@@ -110,7 +122,10 @@ async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
 async def test_production_idempotency_returns_existing_run_without_reposting(monkeypatch):
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_lots": Collection([
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
+        ]),
         "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
         "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
@@ -199,7 +214,10 @@ async def test_production_rejects_owner_mismatch_before_creating_run():
 async def test_production_rejects_quarantine_output_tank_before_creating_run():
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_lots": Collection([
+            approved_lot("olive-1"), approved_lot("olive-2"),
+            approved_sample_lot("olive-1"), approved_sample_lot("olive-2"),
+        ]),
         "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
         "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
