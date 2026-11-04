@@ -1269,17 +1269,20 @@ async def assign_commercial_permissions(
 ):
     """Admin-only assignment of narrowly scoped commercial duties to workers."""
     _reject_public_auth_mode()
-    target = await db.users.find_one({"id": target_user_id}, {"_id": 0, "id": 1, "role": 1})
-    if not target:
-        raise HTTPException(404, "user_not_found")
-    if target.get("role") != "worker":
-        raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
     await _require_commercial_ready()
     permissions = sorted(set(assignment.permissions))
     now = datetime.now(timezone.utc)
     audit_id = str(uuid.uuid4())
 
     async def apply_assignment(session):
+        target = await db.users.find_one(
+            {"id": target_user_id}, {"_id": 0, "id": 1, "role": 1, "commercial_permissions": 1},
+            session=session,
+        )
+        if not target:
+            raise HTTPException(404, "user_not_found")
+        if target.get("role") != "worker":
+            raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
         updated = await db.users.update_one(
             {"id": target_user_id, "role": "worker"},
             {"$set": {"commercial_permissions": permissions,
