@@ -140,6 +140,10 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
         "latest_preproduction_sample_id": "trial-1",
     }
     db["commercial_lots"].rows.append(source_lot)
+    db["commercial_preproduction_samples"].rows.append({
+        "id": "trial-1", "source_olive_lot_id": "olive-source-1",
+        "oil_sample_lot_id": "oil-1", "status": "COMPLETED",
+    })
 
     submitted = await record_oil_quality_assessment(
         db, make_draft(), season_code="2627",
@@ -167,7 +171,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
 
 
 @pytest.mark.asyncio
-async def test_old_preproduction_sample_cannot_release_after_a_new_trial_is_created():
+async def test_old_preproduction_sample_cannot_be_submitted_after_a_new_trial_is_created():
     db = make_db()
     sample_lot = db["commercial_lots"].rows[0]
     sample_lot.update({
@@ -181,26 +185,21 @@ async def test_old_preproduction_sample_cannot_release_after_a_new_trial_is_crea
         "latest_preproduction_sample_id": "trial-new",
     }
     db["commercial_lots"].rows.append(source_lot)
-    await record_oil_quality_assessment(
-        db, make_draft(), season_code="2627",
-        actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
-        actor_user_id="lab-tech-1", assessment_id="assessment-old-sample",
-        created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
-    )
-    command = QualityReleaseCommand(
-        assessment_id="assessment-old-sample", expected_lot_version=2,
-        decision="RELEASED", decision_reason="Review attempted on a superseded sample.",
-        idempotency_key="quality-old-sample-release-0001",
-    )
-    with pytest.raises(ValueError, match="Source olive lot changed"):
-        await release_oil_quality_assessment(
-            db, command, season_code="2627",
-            actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.quality_release"]},
-            actor_user_id="independent-reviewer", release_id="release-old-sample",
-            created_at=datetime(2026, 11, 2, 1, tzinfo=timezone.utc), session=object(),
+    db["commercial_preproduction_samples"].rows.extend([
+        {"id": "trial-old", "source_olive_lot_id": "olive-source-1",
+         "oil_sample_lot_id": "oil-1", "status": "COMPLETED"},
+        {"id": "trial-new", "source_olive_lot_id": "olive-source-1",
+         "oil_sample_lot_id": "oil-new", "status": "COMPLETED"},
+    ])
+    with pytest.raises(ValueError, match="latest active preproduction trial sample"):
+        await record_oil_quality_assessment(
+            db, make_draft(), season_code="2627",
+            actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
+            actor_user_id="lab-tech-1", assessment_id="assessment-old-sample",
+            created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
         )
+    assert db["commercial_quality_assessments"].rows == []
     assert source_lot["preproduction_quality_status"] == "PENDING"
-
 
 @pytest.mark.asyncio
 async def test_workers_without_scoped_quality_permissions_are_rejected():
