@@ -93,6 +93,7 @@ async def approve_olive_purchase(
         raise ValueError("Olive purchase changed concurrently; reload and retry")
 
     lot_ids: list[str] = []
+    batch_codes: list[str] = []
     movement_ids: list[str] = []
     for index, line in enumerate(purchase["lines"]):
         line_key = f"{purchase_id}:{expected_key}:{index}"
@@ -149,6 +150,7 @@ async def approve_olive_purchase(
             session=session,
         )
         lot_ids.append(lot_id)
+        batch_codes.append(batch_code)
         movement_ids.append(movement_id)
 
     final_update = await purchases.update_one(
@@ -156,6 +158,7 @@ async def approve_olive_purchase(
         {
             "$set": {
                 "lot_ids": lot_ids,
+                "batch_codes": batch_codes,
                 "receipt_movement_ids": movement_ids,
                 "updated_at": created_at.astimezone(timezone.utc),
             }
@@ -184,6 +187,7 @@ async def approve_olive_purchase(
                 "previous_version": command.expected_version,
                 "new_version": command.expected_version + 1,
                 "lot_ids": lot_ids,
+                "batch_codes": batch_codes,
                 "movement_ids": movement_ids,
                 "receiving_location_id": command.receiving_location_id,
             },
