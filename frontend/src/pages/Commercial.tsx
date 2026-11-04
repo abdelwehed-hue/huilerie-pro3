@@ -163,6 +163,7 @@ export default function Commercial() {
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("overview");
+  const [showTankLevels, setShowTankLevels] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierTaxId, setSupplierTaxId] = useState("");
@@ -1104,12 +1105,12 @@ export default function Commercial() {
 
       {tab === "overview" && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card className="commercial-card commercial-card--green"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.season}</CardDescription><Activity className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl" dir="ltr">{value(status.data?.season_code)}</CardTitle></CardHeader></Card>
-        <Card className="commercial-card commercial-card--blue"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.tanksCount}</CardDescription><Warehouse className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle></CardHeader></Card>
+        <button type="button" onClick={() => setShowTankLevels((open) => !open)} aria-expanded={showTankLevels} aria-controls="commercial-tank-levels" className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"><Card className="commercial-card commercial-card--blue transition-shadow hover:shadow-md"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.tanksCount}</CardDescription><Warehouse className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle><CardDescription className="text-xs">{showTankLevels ? (lang === "ar" ? "انقر لإخفاء مستويات الزيت" : "Cliquer pour masquer les niveaux") : (lang === "ar" ? "انقر لعرض مستويات الزيت" : "Cliquer pour afficher les niveaux")}</CardDescription></CardHeader></Card></button>
         <Card className="commercial-card commercial-card--teal"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.locations}</CardDescription><MapPin className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
         <Card className="commercial-card commercial-card--amber"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.counters}</CardDescription><ClipboardList className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/15</CardTitle></CardHeader></Card>
       </div>}
 
-      {tab === "overview" && ready && <Card className="commercial-card commercial-card--blue">
+      {tab === "overview" && ready && showTankLevels && <div id="commercial-tank-levels"><Card className="commercial-card commercial-card--blue">
         <CardHeader className="pb-2">
           <CardTitle>{lang === "ar" ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</CardTitle>
           <CardDescription>{lang === "ar" ? "كمية الزيت الحالية في كل خزان" : "Quantité d’huile actuellement stockée dans chaque cuve"}</CardDescription>
@@ -1139,7 +1140,7 @@ export default function Commercial() {
             </div>
           )}
         </CardContent>
-      </Card>}
+      </Card></div>}
 
       {!ready && (
         <Card className="border-amber-300 bg-amber-50/70">
