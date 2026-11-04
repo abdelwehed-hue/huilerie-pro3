@@ -26,6 +26,17 @@ def _fingerprint(value: Any) -> str:
     payload = json.dumps(value.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+def _quality_snapshot(record: dict[str, Any]) -> dict[str, Any]:
+    """Return business-relevant measurements and review state for audit history."""
+    fields = (
+        "oil_lot_id", "sample_reference", "sample_date", "tested_date",
+        "laboratory_name", "specification_reference", "acidity", "peroxide",
+        "k232", "k270", "oil_content_pct", "classification", "oil_type",
+        "measurements", "notes", "status", "decision", "decision_reason",
+        "quality_status_before_submission",
+    )
+    return {key: record.get(key) for key in fields if key in record}
+
 
 async def record_oil_quality_assessment(
     db: Any, draft: QualityAssessmentDraft, *, season_code: str,
@@ -108,10 +119,11 @@ async def record_oil_quality_assessment(
         "entity_type": "commercial_oil_lot", "entity_id": draft.oil_lot_id,
         "action": "QUALITY_RESULTS_SUBMITTED", "actor_user_id": actor_user_id,
         "created_at": created_utc,
-        "details": {"assessment_id": assessment_id,
-                    "laboratory_name": draft.laboratory_name,
-                    "specification_reference": draft.specification_reference,
-                    "measurement_count": len(draft.measurements)},
+        "details": {
+            "assessment_id": assessment_id,
+            "lot_quality_status_before": lot.get("quality_status", "PENDING"),
+            "assessment_after": _quality_snapshot(record),
+        },
     }, session=session)
     return await assessments.find_one({"id": assessment_id}, {"_id": 0}, session=session)
 
@@ -200,9 +212,22 @@ async def release_oil_quality_assessment(
         "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
         "action": f"QUALITY_{command.decision}", "actor_user_id": actor_user_id,
         "created_at": reviewed_at,
-        "details": {"assessment_id": assessment["id"], "release_id": release_id,
-                    "submitted_by": assessment["created_by"],
-                    "decision_reason": command.decision_reason},
+        "details": {
+            "assessment_id": assessment["id"],
+            "release_id": release_id,
+            "submitted_by": assessment["created_by"],
+            "lot_quality_status_before": lot.get("quality_status"),
+            "lot_quality_status_after": command.decision,
+            "assessment_before": _quality_snapshot(assessment),
+            "assessment_after": {
+                **_quality_snapshot(assessment),
+                "status": "REVIEWED",
+                "decision": command.decision,
+                "decision_reason": command.decision_reason,
+                "reviewed_by": actor_user_id,
+                "reviewed_at": reviewed_at,
+            },
+        },
     }, session=session)
     return await releases.find_one({"id": release_id}, {"_id": 0}, session=session)
 
@@ -284,7 +309,13 @@ async def update_oil_quality_assessment(
         "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
         "action": "QUALITY_ASSESSMENT_UPDATED", "actor_user_id": actor_user_id,
         "created_at": updated_at,
-        "details": {"assessment_id": assessment_id, "sample_reference": draft.sample_reference},
+        "details": {
+            "assessment_id": assessment_id,
+            "assessment_before": _quality_snapshot(assessment),
+            "assessment_after": _quality_snapshot({**assessment, **fields}),
+            "lot_version_before": draft.expected_lot_version,
+            "lot_version_after": draft.expected_lot_version + 1,
+        },
     }, session=session)
     return await assessments.find_one({"id": assessment_id}, {"_id": 0}, session=session)
 
@@ -332,6 +363,14 @@ async def delete_oil_quality_assessment(
         "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
         "action": "QUALITY_ASSESSMENT_DELETED", "actor_user_id": actor_user_id,
         "created_at": deleted_at,
-        "details": {"assessment_id": assessment_id, "restored_quality_status": previous_status},
+        "details": {
+            "assessment_id": assessment_id,
+            "assessment_before": _quality_snapshot(assessment),
+            "assessment_after": None,
+            "lot_quality_status_before": lot.get("quality_status"),
+            "lot_quality_status_after": previous_status,
+            "lot_version_before": lot.get("version", 1),
+            "lot_version_after": lot.get("version", 1) + 1,
+        },
     }, session=session)
     return {"id": assessment_id, "deleted": True, "restored_quality_status": previous_status}
