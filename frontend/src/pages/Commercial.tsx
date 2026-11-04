@@ -83,7 +83,7 @@ function value(v: unknown, fallback = "—") {
   return String(v);
 }
 function lotCode(lot: AnyRecord | null | undefined, fallback = "—") {
-  return value(lot?.batch_code ?? lot?.document_number, fallback);
+  return value(lot?.batch_code, fallback);
 }
 function number(v: unknown) {
   const n = Number(v);
