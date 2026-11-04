@@ -48,7 +48,7 @@ async def create_wholesale_sale_draft(
         raise ValueError("Unknown or inactive commercial buyer")
     oil_lot = await db["commercial_lots"].find_one(
         {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
-        {"_id": 0, "id": 1, "lot_purpose": 1}, session=session,
+        {"_id": 0, "id": 1, "lot_purpose": 1, "batch_code": 1, "document_number": 1}, session=session,
     )
     if not oil_lot:
         raise ValueError("Sale requires an open commercial oil lot")
@@ -73,6 +73,7 @@ async def create_wholesale_sale_draft(
         "id": sale_id, "season_code": season_code, "document_type": "VTE",
         "document_number": number, "sale_date": draft.sale_date.isoformat(),
         "buyer_id": draft.buyer_id, "oil_lot_id": draft.oil_lot_id,
+        "batch_code": oil_lot.get("batch_code") or oil_lot.get("document_number"),
         "source_tank_id": draft.source_tank_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
         "unit_price_dt": Decimal128(draft.unit_price_dt),
@@ -166,6 +167,7 @@ async def approve_wholesale_sale(
         "id": invoice_id, "season_code": season_code, "document_type": "FAC",
         "document_number": invoice_number, "sale_id": sale_id,
         "sale_document_number": sale["document_number"], "buyer_id": sale["buyer_id"],
+        "batch_code": sale.get("batch_code"),
         "sale_date": sale["sale_date"], "quantity_kg": sale["quantity_kg"],
         "unit_price_dt": sale["unit_price_dt"], "total_amount_dt": sale["total_amount_dt"],
         "paid_amount_dt": Decimal128("0.000"),
