@@ -207,6 +207,25 @@ async def release_oil_quality_assessment(
     if update_assessment.matched_count != 1:
         raise ValueError("Quality assessment changed concurrently; release decision was not applied")
 
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        source_olive_lot_id = lot.get("source_olive_lot_id")
+        sample_id = lot.get("source_preproduction_sample_id")
+        if not source_olive_lot_id or not sample_id:
+            raise ValueError("Preproduction sample is missing its source olive-lot linkage")
+        source_update = await db["commercial_lots"].update_one(
+            {"id": source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN"},
+            {"$set": {
+                "preproduction_quality_status": command.decision,
+                "preproduction_sample_id": sample_id,
+                "preproduction_quality_assessment_id": assessment["id"],
+                "preproduction_quality_decided_at": reviewed_at,
+                "preproduction_quality_decided_by": actor_user_id,
+                "updated_at": reviewed_at,
+            }}, session=session,
+        )
+        if source_update.matched_count != 1:
+            raise ValueError("Source olive lot changed or is no longer open; quality decision cannot authorize production")
+
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("quality-release-audit", f"{release_id}:{command.idempotency_key}"),
         "entity_type": "commercial_oil_lot", "entity_id": lot["id"],
