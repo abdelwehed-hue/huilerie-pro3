@@ -161,6 +161,31 @@ async def test_rejected_preproduction_trial_cancellation_is_audited_and_closes_s
     assert db["commercial_audit_events"].rows[0]["action"] == "PREPRODUCTION_TRIAL_CANCELLED"
 
 
+
+@pytest.mark.asyncio
+async def test_preproduction_trial_rejects_owner_different_from_source_olive_lot(monkeypatch):
+    db = make_db()
+    async def reserve(*args, **kwargs):
+        raise AssertionError("No document number should be reserved")
+    async def post(*args, **kwargs):
+        raise AssertionError("No stock movement should be posted")
+    monkeypatch.setattr(service, "reserve_document_number", reserve)
+    monkeypatch.setattr(service, "post_stock_movement", post)
+    draft_data = make_draft().model_dump()
+    draft_data["owner"] = {"kind": "CUSTOMER", "customer_id": "customer-1"}
+    draft = PreproductionSampleDraft.model_validate(draft_data)
+
+    with pytest.raises(ValueError, match="does not match the source olive lot owner"):
+        await service.create_preproduction_sample(
+            db, draft, season_code="2627",
+            actor_user={"active": True, "role": "admin"}, actor_user_id="admin-1",
+            sample_id="sample-owner-mismatch", oil_lot_id="oil-sample-owner-mismatch",
+            movement_id="movement-owner-mismatch", movement_audit_id="audit-owner-mismatch",
+            created_at=datetime(2026, 11, 3, tzinfo=timezone.utc), session=object(),
+        )
+    assert db["commercial_preproduction_samples"].rows == []
+
+
 @pytest.mark.asyncio
 async def test_preproduction_trial_rejects_quantity_above_receiving_balance(monkeypatch):
     db = make_db("10.000")
