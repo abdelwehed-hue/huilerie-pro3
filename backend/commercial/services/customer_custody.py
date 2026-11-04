@@ -67,6 +67,27 @@ async def _get_or_create_custody_owner(
             "phone": phone,
             "client_name": legacy_load.get("client_name"),
         }
+        normalized_client_snapshot = {
+            "phone": phone,
+            "client_name": legacy_load.get("client_name"),
+            "source": "legacy_load",
+        }
+        normalized_client_fingerprint = _snapshot_fingerprint(normalized_client_snapshot)
+        await db["commercial_audit_events"].insert_one(
+            {
+                "id": _custody_owner_audit_id(
+                    str(inserted.inserted_id), "CLIENT_DIRECTORY_CREATED",
+                    created_at, normalized_client_fingerprint,
+                ),
+                "entity_type": "client",
+                "entity_id": str(inserted.inserted_id),
+                "action": "CLIENT_DIRECTORY_ENTRY_CREATED_FROM_LEGACY_LOAD",
+                "actor_user_id": actor_user_id,
+                "created_at": created_at.astimezone(timezone.utc),
+                "details": {"after": normalized_client_snapshot},
+            },
+            session=session,
+        )
 
     legacy_client_id = str(client["_id"])
     name = str(client.get("client_name") or "").strip()
