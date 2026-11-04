@@ -1096,10 +1096,10 @@ export default function Commercial() {
       )}
 
       {tab === "overview" && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card><CardHeader className="pb-1"><CardDescription>{l.season}</CardDescription><CardTitle className="text-2xl" dir="ltr">{value(status.data?.season_code)}</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="pb-1"><CardDescription>{l.tanksCount}</CardDescription><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="pb-1"><CardDescription>{l.locations}</CardDescription><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="pb-1"><CardDescription>{l.counters}</CardDescription><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/15</CardTitle></CardHeader></Card>
+        <Card className="commercial-card commercial-card--green"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.season}</CardDescription><Activity className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl" dir="ltr">{value(status.data?.season_code)}</CardTitle></CardHeader></Card>
+        <Card className="commercial-card commercial-card--blue"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.tanksCount}</CardDescription><Warehouse className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle></CardHeader></Card>
+        <Card className="commercial-card commercial-card--teal"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.locations}</CardDescription><MapPin className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
+        <Card className="commercial-card commercial-card--amber"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.counters}</CardDescription><ClipboardList className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/15</CardTitle></CardHeader></Card>
       </div>}
 
       {!ready && (
@@ -1138,9 +1138,9 @@ export default function Commercial() {
       {tab === "overview" && (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card><CardHeader><CardDescription>{l.olive}</CardDescription><CardTitle className="text-3xl">{number(totalOlives)} kg</CardTitle></CardHeader></Card>
-            <Card><CardHeader><CardDescription>{l.oil}</CardDescription><CardTitle className="text-3xl">{number(totalOil)} kg</CardTitle></CardHeader></Card>
-            <Card><CardHeader><CardDescription>{l.quality}</CardDescription><CardTitle className="text-3xl">{ready ? qualityPending : "—"}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader></Card>
+            <Card className="commercial-card commercial-card--olive"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.olive}</CardDescription><ShoppingBasket className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{number(totalOlives)} kg</CardTitle></CardHeader></Card>
+            <Card className="commercial-card commercial-card--violet"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.oil}</CardDescription><Beaker className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{number(totalOil)} kg</CardTitle></CardHeader></Card>
+            <Card className="commercial-card commercial-card--rose"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.quality}</CardDescription><ShieldCheck className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{ready ? qualityPending : "—"}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader></Card>
           </div>
           <Card><CardHeader><CardTitle>{l.readiness}</CardTitle><CardDescription>{ready ? l.ready : l.notReady}</CardDescription></CardHeader><CardContent className="flex items-center gap-2 text-sm">{ready ? <ShieldCheck className="size-5 text-emerald-600" /> : <AlertTriangle className="size-5 text-amber-600" />}{ready ? l.ready : l.warning}</CardContent></Card>
         </div>
