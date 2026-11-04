@@ -59,6 +59,47 @@ def fake_sale_db():
 
 
 
+
+def preproduction_consumption(quantity):
+    return StockMovementDraft(
+        movement_kind="CONSUMPTION",
+        product_kind="OLIVE",
+        lot_id="olive-lot-1",
+        quantity_kg=Decimal(quantity),
+        source_location_id="receiving-1",
+        source_owner=OwnerRef(kind="MILL"),
+        source_document_type="ESS",
+        source_document_id="trial-1",
+        idempotency_key="preproduction-stock-validation-0001",
+        reason="Consume olives for preproduction trial",
+    )
+
+
+def preproduction_db():
+    return FakeDatabase({
+        "commercial_lots": FakeCollection([{"id": "olive-lot-1", "product_kind": "OLIVE"}]),
+        "commercial_locations": FakeCollection([{"id": "receiving-1", "active": True, "kind": "STAGING"}]),
+        "commercial_preproduction_samples": FakeCollection([{
+            "id": "trial-1", "status": "COMPLETED",
+            "source_olive_lot_id": "olive-lot-1", "source_location_id": "receiving-1",
+            "input_olive_quantity_kg": Decimal("12.500"), "owner": {"kind": "MILL"},
+        }]),
+    })
+
+
+@pytest.mark.asyncio
+async def test_preproduction_consumption_must_match_completed_trial_document():
+    db = preproduction_db()
+    await validate_stock_references(db, preproduction_consumption("12.500"), session=object())
+
+
+@pytest.mark.asyncio
+async def test_preproduction_consumption_rejects_quantity_mismatch():
+    db = preproduction_db()
+    with pytest.raises(ValueError, match="does not match its completed trial"):
+        await validate_stock_references(db, preproduction_consumption("12.000"), session=object())
+
+
 @pytest.mark.asyncio
 async def test_preproduction_sample_oil_lot_cannot_be_posted_to_commercial_stock():
     db = fake_sale_db()
