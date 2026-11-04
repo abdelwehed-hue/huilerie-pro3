@@ -173,6 +173,9 @@ async def create_preproduction_sample(
             "input_olive_quantity_kg": Decimal128(draft.input_olive_quantity_kg),
             "sample_oil_lot_id": oil_lot_id, "sample_oil_quantity_kg": Decimal128(draft.sample_oil_quantity_kg),
             "stock_movement_id": movement_id,
+            "superseded_sample_id": source_lot.get("preproduction_sample_id") or source_lot.get("latest_preproduction_sample_id"),
+            "superseded_assessment_id": source_lot.get("preproduction_quality_assessment_id"),
+            "superseded_quality_status": source_lot.get("preproduction_quality_status"),
         },
     }, session=session)
     return record
