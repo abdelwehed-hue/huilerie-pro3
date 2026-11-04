@@ -129,7 +129,7 @@ async def create_preproduction_sample(
         "owner": _owner_document(owner),
         "input_olive_quantity_kg": Decimal128(draft.input_olive_quantity_kg),
         "sample_oil_quantity_kg": Decimal128(draft.sample_oil_quantity_kg),
-        "oil_sample_lot_id": oil_lot_id,
+        "oil_sample_lot_id": oil_lot_id, "stock_movement_id": movement_id,
         "trial_date": draft.trial_date.isoformat(), "notes": draft.notes,
         "created_by": actor_user_id, "created_at": created_utc,
         "idempotency_scope": scope, "idempotency_key": draft.idempotency_key,
