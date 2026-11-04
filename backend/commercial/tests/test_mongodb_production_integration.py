@@ -27,7 +27,11 @@ async def seed_preproduction_approvals(db, lot_ids):
             }},
         )
         await db.commercial_preproduction_samples.insert_one({
-            "id": sample_id, "source_olive_lot_id": lot_id,
+            "id": sample_id, "season_code": "2627", "document_type": "ESS",
+            "document_number": f"2627ESS{9000 + index:04d}",
+            "idempotency_scope": "integration:preproduction",
+            "idempotency_key": sample_id,
+            "source_olive_lot_id": lot_id,
             "oil_sample_lot_id": oil_lot_id, "status": "COMPLETED",
         })
         await db.commercial_lots.insert_one({
@@ -40,7 +44,10 @@ async def seed_preproduction_approvals(db, lot_ids):
             "quantity_received_kg": Decimal128("2.000"),
         })
         await db.commercial_quality_assessments.insert_one({
-            "id": assessment_id, "oil_lot_id": oil_lot_id,
+            "id": assessment_id, "season_code": "2627",
+            "idempotency_scope": "integration:quality",
+            "idempotency_key": assessment_id,
+            "oil_lot_id": oil_lot_id,
             "status": "REVIEWED", "decision": "RELEASED",
         })
 
