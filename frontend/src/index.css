@@ -302,3 +302,30 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 .dark .commercial-workspace .commercial-card--rose { background:linear-gradient(135deg,#432d2c,#593936); border-color:#80524e; }
 .dark .commercial-workspace .commercial-card [data-slot="card-description"],.dark .commercial-workspace .commercial-card [data-slot="card-title"] { color:#f3f6f1; }
 .dark .commercial-workspace .commercial-card-icon { background:rgb(255 255 255 / 12%); color:#e5f0e4; }
+
+
+/* Commercial tables: readable, differentiated text colors per data column.
+   Scoped strictly to Gestion commerciale; other application tables are untouched. */
+.commercial-workspace table tbody td { color: #33443a; }
+.commercial-workspace table tbody td:nth-child(2) { color: #24558a; }
+.commercial-workspace table tbody td:nth-child(3) { color: #17665f; }
+.commercial-workspace table tbody td:nth-child(4) { color: #536b27; }
+.commercial-workspace table tbody td:nth-child(5) { color: #69468d; }
+.commercial-workspace table tbody td:nth-child(6) { color: #87551c; }
+.commercial-workspace table tbody td:nth-child(7) { color: #9a4650; }
+.commercial-workspace table tbody td:nth-child(8) { color: #365f73; }
+.commercial-workspace table tbody td:nth-child(9) { color: #5c6230; }
+.commercial-workspace table tbody td a { color: inherit; font-weight: 650; text-decoration-color: currentColor; text-underline-offset: 2px; }
+.commercial-workspace table tbody td .font-semibold,
+.commercial-workspace table tbody td .font-bold { color: #245b3b; }
+.dark .commercial-workspace table tbody td { color: #d6e0d7; }
+.dark .commercial-workspace table tbody td:nth-child(2) { color: #a9ceff; }
+.dark .commercial-workspace table tbody td:nth-child(3) { color: #91ddd2; }
+.dark .commercial-workspace table tbody td:nth-child(4) { color: #c8dda0; }
+.dark .commercial-workspace table tbody td:nth-child(5) { color: #d5b5f4; }
+.dark .commercial-workspace table tbody td:nth-child(6) { color: #f1d09a; }
+.dark .commercial-workspace table tbody td:nth-child(7) { color: #f0b1b8; }
+.dark .commercial-workspace table tbody td:nth-child(8) { color: #a8d5e8; }
+.dark .commercial-workspace table tbody td:nth-child(9) { color: #d8d99a; }
+.dark .commercial-workspace table tbody td .font-semibold,
+.dark .commercial-workspace table tbody td .font-bold { color: #b9dfc2; }
