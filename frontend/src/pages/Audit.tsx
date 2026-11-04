@@ -19,6 +19,49 @@ type AuditEvent = {
   details?: Record<string, unknown>;
 };
 
+const ACTION_LABELS: Record<string, { ar: string; fr: string }> = {
+  TANK_CAPACITY_CHANGED: { ar: "تغيير سعة الخزان", fr: "Capacité de cuve modifiée" },
+  TANK_ROLE_CHANGED: { ar: "تغيير تصنيف الخزان", fr: "Rôle de cuve modifié" },
+  LOCATION_CREATED: { ar: "إنشاء موقع تخزين", fr: "Emplacement créé" },
+  SUPPLIER_CREATED: { ar: "إضافة مورد", fr: "Fournisseur créé" },
+  SUPPLIER_UPDATED: { ar: "تعديل بيانات مورد", fr: "Fournisseur modifié" },
+  SUPPLIER_DEACTIVATED: { ar: "تعطيل مورد", fr: "Fournisseur désactivé" },
+  BUYER_CREATED: { ar: "إضافة مشترٍ", fr: "Acheteur créé" },
+  BUYER_UPDATED: { ar: "تعديل بيانات مشترٍ", fr: "Acheteur modifié" },
+  BUYER_DEACTIVATED: { ar: "تعطيل مشترٍ", fr: "Acheteur désactivé" },
+  BUYER_REACTIVATED: { ar: "إعادة تفعيل مشترٍ", fr: "Acheteur réactivé" },
+  COMMERCIAL_PERMISSIONS_UPDATED: { ar: "تعديل صلاحيات تجارية", fr: "Droits commerciaux modifiés" },
+  DRAFT_CREATED: { ar: "إنشاء مسودة شراء", fr: "Brouillon d’achat créé" },
+  DRAFT_UPDATED: { ar: "تعديل مسودة شراء", fr: "Brouillon d’achat modifié" },
+  APPROVED_AND_RECEIVED: { ar: "اعتماد الشراء واستلامه", fr: "Achat approuvé et reçu" },
+  SALE_DRAFT_CREATED: { ar: "إنشاء مسودة بيع", fr: "Brouillon de vente créé" },
+  SALE_APPROVED_AND_DISPATCHED: { ar: "اعتماد البيع وتسليم المخزون", fr: "Vente approuvée et stock expédié" },
+  SALE_DRAFT_CANCELLED: { ar: "إلغاء مسودة بيع", fr: "Brouillon de vente annulé" },
+  PAYMENT_RECORDED: { ar: "تسجيل دفعة", fr: "Paiement enregistré" },
+  PAYMENT_REVERSED: { ar: "عكس دفعة", fr: "Paiement contrepassé" },
+  BUYER_CREDIT_APPLIED_TO_INVOICE: { ar: "تطبيق رصيد على فاتورة", fr: "Crédit imputé à la facture" },
+  POSTED: { ar: "ترحيل حركة مخزون", fr: "Mouvement de stock comptabilisé" },
+  COMPLETED_AND_STOCK_POSTED: { ar: "إتمام الإنتاج وترحيل المخزون", fr: "Production terminée et stock comptabilisé" },
+  CUSTOMER_OLIVES_RECEIVED_IN_CUSTODY: { ar: "استلام زيتون أمانة", fr: "Olives reçues en dépôt" },
+  CUSTOMER_OWNED_OIL_RELEASED: { ar: "تسليم زيت مملوك للحريف", fr: "Huile du client remise" },
+  SALE_RETURN_RECEIVED_IN_QUARANTINE: { ar: "استلام إرجاع في الحجر", fr: "Retour reçu en quarantaine" },
+  SALE_RETURN_ACCEPTED_AND_CREDIT_NOTE_ISSUED: { ar: "قبول الإرجاع وإصدار إشعار دائن", fr: "Retour accepté et avoir émis" },
+  SALE_RETURN_REJECTED_AND_DISPATCHED: { ar: "رفض الإرجاع وإعادة التسليم", fr: "Retour rejeté et réexpédié" },
+  QUALITY_RESULTS_SUBMITTED: { ar: "تسجيل نتائج الجودة", fr: "Résultats qualité enregistrés" },
+  QUALITY_ASSESSMENT_UPDATED: { ar: "تعديل تقييم الجودة", fr: "Évaluation qualité modifiée" },
+  QUALITY_ASSESSMENT_DELETED: { ar: "حذف تقييم الجودة", fr: "Évaluation qualité supprimée" },
+  LOAD_CREATED: { ar: "إنشاء استقبال", fr: "Réception créée" },
+  LOAD_OIL_RECORDED: { ar: "تسجيل كمية الزيت", fr: "Quantité d’huile enregistrée" },
+  LOAD_STATUS_UPDATED: { ar: "تغيير حالة الاستقبال", fr: "Statut de réception modifié" },
+  LOAD_DELIVERED: { ar: "تسليم الاستقبال", fr: "Réception livrée" },
+  LOAD_CANCELLED: { ar: "إلغاء الاستقبال", fr: "Réception annulée" },
+  LOAD_DELETED: { ar: "حذف الاستقبال", fr: "Réception supprimée" },
+  INVOICE_CREATED: { ar: "إنشاء فاتورة", fr: "Facture créée" },
+  INVOICE_UPDATED: { ar: "تعديل فاتورة أو دفعة", fr: "Facture ou paiement modifié" },
+  INVOICE_DELETED: { ar: "حذف فاتورة", fr: "Facture supprimée" },
+  INVOICE_LEGACY_REPAIRED: { ar: "استكمال بيانات فاتورة قديمة", fr: "Ancienne facture régularisée" },
+};
+
 const ENTITY_LABELS: Record<string, { ar: string; fr: string }> = {
   commercial_supplier: { ar: "مورد", fr: "Fournisseur" },
   commercial_buyer: { ar: "مشتري", fr: "Acheteur" },
@@ -103,6 +146,7 @@ export default function Audit() {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString(isArabic ? "ar-TN" : "fr-FR");
   };
   const entityName = (value?: string) => value ? (ENTITY_LABELS[value]?.[isArabic ? "ar" : "fr"] ?? value) : "—";
+  const actionName = (value?: string) => value ? (ACTION_LABELS[value]?.[isArabic ? "ar" : "fr"] ?? value) : "—";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6" dir={isArabic ? "rtl" : "ltr"} data-testid="admin-audit-page">
@@ -153,7 +197,7 @@ export default function Audit() {
                 {filtered.map((item) => <TableRow key={item.id}>
                   <TableCell className="min-w-44 whitespace-nowrap text-xs">{formatDate(item.created_at)}</TableCell>
                   <TableCell className="min-w-36 font-medium">{item.actor_name || item.actor_user_id || "system"}</TableCell>
-                  <TableCell className="min-w-48 font-semibold">{item.action || "—"}</TableCell>
+                  <TableCell className="min-w-48 font-semibold">{actionName(item.action)}</TableCell>
                   <TableCell className="min-w-32">{entityName(item.entity_type)}</TableCell>
                   <TableCell className="min-w-36 font-mono text-xs">{item.entity_id || "—"}</TableCell>
                   <TableCell className="min-w-64">
