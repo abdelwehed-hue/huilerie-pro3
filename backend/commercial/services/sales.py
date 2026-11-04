@@ -78,7 +78,9 @@ async def create_wholesale_sale_draft(
     await db["commercial_audit_events"].insert_one({
         "id": audit_event_id, "entity_type": "commercial_sale", "entity_id": sale_id,
         "action": "SALE_DRAFT_CREATED", "actor_user_id": actor_user_id,
-        "created_at": now, "details": {"document_number": number, "buyer_id": draft.buyer_id},
+        "created_at": now, "details": {"document_number": number, "buyer_id": draft.buyer_id,
+            "quantity_kg": record["quantity_kg"], "unit_price_dt": record["unit_price_dt"],
+            "total_amount_dt": record["total_amount_dt"], "status": "DRAFT"},
     }, session=session)
     return record
 
@@ -192,7 +194,10 @@ async def approve_wholesale_sale(
         "action": "SALE_APPROVED_AND_DISPATCHED", "actor_user_id": actor_user_id,
         "created_at": now,
         "details": {"sale_number": sale["document_number"], "invoice_number": invoice_number,
-                    "oil_lot_id": sale["oil_lot_id"], "quantity_kg": sale["quantity_kg"]},
+                    "buyer_id": sale["buyer_id"], "oil_lot_id": sale["oil_lot_id"],
+                    "quantity_kg": sale["quantity_kg"], "unit_price_dt": sale["unit_price_dt"],
+                    "total_amount_dt": sale["total_amount_dt"], "previous_status": "DRAFT",
+                    "new_status": "APPROVED"},
     }, session=session)
     return await sales.find_one({"id": sale_id}, {"_id": 0}, session=session)
 
@@ -265,7 +270,13 @@ async def record_sale_payment(
         "entity_id": invoice_id, "action": "PAYMENT_RECORDED",
         "actor_user_id": actor_user_id, "created_at": now,
         "details": {"payment_id": payment_id, "payment_number": number,
-                    "amount_dt": Decimal128(amount), "payment_status": status},
+                    "amount_dt": Decimal128(amount), "payment_method": draft.method,
+                    "previous_paid_amount_dt": invoice["paid_amount_dt"],
+                    "new_paid_amount_dt": Decimal128(paid),
+                    "previous_outstanding_amount_dt": invoice["outstanding_amount_dt"],
+                    "new_outstanding_amount_dt": Decimal128(remaining),
+                    "previous_payment_status": invoice["payment_status"],
+                    "new_payment_status": status},
     }, session=session)
     return payment
 
@@ -313,6 +324,7 @@ async def cancel_wholesale_sale_draft(
         "details": {
             "sale_number": sale.get("document_number"),
             "reason": command.reason,
+            "previous_status": "DRAFT", "new_status": "CANCELLED",
             "previous_version": command.expected_version,
             "version": command.expected_version + 1,
         },
