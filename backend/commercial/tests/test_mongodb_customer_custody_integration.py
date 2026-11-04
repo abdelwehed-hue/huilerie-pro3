@@ -78,7 +78,14 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert balance["quantity_kg"].to_decimal() == Decimal("1250.500")
         assert balance["owner"]["kind"] == "CUSTOMER"
         assert await db.commercial_stock_movements.count_documents({}) == 1
-        assert await db.commercial_audit_events.count_documents({}) == 2
+        assert await db.commercial_audit_events.count_documents({}) == 3
+        owner_created_event = await db.commercial_audit_events.find_one({
+            "entity_type": "customer_custody_owner",
+            "entity_id": "custody-owner-1",
+            "action": "CUSTOMER_CUSTODY_OWNER_CREATED",
+        })
+        assert owner_created_event["actor_user_id"] == "integration-admin"
+        assert owner_created_event["details"]["after"]["client_name"] == "Customer Olive Owner"
 
         # A phone/name change on the legacy client keeps the same custody owner identity.
         await db.clients.update_one(
@@ -111,6 +118,17 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert updated_owner["client_phone"] == "21698765432"
         assert updated_owner["client_name"] == "Updated Customer Name"
         assert await db.commercial_custody_owners.count_documents({}) == 1
+        owner_updated_event = await db.commercial_audit_events.find_one({
+            "entity_type": "customer_custody_owner",
+            "entity_id": "custody-owner-1",
+            "action": "CUSTOMER_CUSTODY_OWNER_UPDATED",
+        })
+        assert owner_updated_event["actor_user_id"] == "integration-admin"
+        assert owner_updated_event["details"]["before"]["client_phone"] == "21612345678"
+        assert owner_updated_event["details"]["after"]["client_phone"] == "21698765432"
+        assert owner_updated_event["details"]["before"]["client_name"] == "Customer Olive Owner"
+        assert owner_updated_event["details"]["after"]["client_name"] == "Updated Customer Name"
+        assert await db.commercial_audit_events.count_documents({}) == 6
         statement = await get_customer_custody_statement(db, "custody-owner-1")
         assert statement["ledger_totals_kg"]["OLIVE"] == Decimal("1350.500")
         assert statement["current_balances_kg"]["OLIVE"] == Decimal("1350.500")
@@ -122,6 +140,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert await db.commercial_customer_custody_receipts.count_documents({}) == 2
         assert await db.commercial_lots.count_documents({}) == 2
         assert await db.commercial_stock_movements.count_documents({}) == 2
+        assert await db.commercial_audit_events.count_documents({}) == 6
     finally:
         await client.drop_database(name)
         client.close()
