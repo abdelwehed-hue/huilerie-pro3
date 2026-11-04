@@ -30,6 +30,8 @@ const ENTITY_LABELS: Record<string, { ar: string; fr: string }> = {
   commercial_production: { ar: "إنتاج", fr: "Production" },
   commercial_location: { ar: "موقع تخزين", fr: "Emplacement" },
   user: { ar: "مستخدم وصلاحيات", fr: "Utilisateur et droits" },
+  traditional_load: { ar: "استقبال تقليدي", fr: "Réception traditionnelle" },
+  traditional_invoice: { ar: "فاتورة تقليدية", fr: "Facture traditionnelle" },
 };
 
 export default function Audit() {
