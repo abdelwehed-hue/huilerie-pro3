@@ -72,18 +72,18 @@ async def create_preproduction_sample(
     )
     if not location:
         raise ValueError("Source location is not an active olive receiving/storage location")
-    owner = source_lot.get("owner")
-    if not isinstance(owner, dict) or owner.get("kind") not in {"MILL", "CUSTOMER"}:
-        raise ValueError("Source olive lot has no valid owner")
-    if owner.get("kind") == "CUSTOMER":
-        if not owner.get("customer_id"):
-            raise ValueError("Customer-owned olive lot has no customer identity")
-        if not await db["commercial_custody_owners"].find_one({"id": owner["customer_id"]}, {"_id": 0, "id": 1}, session=session):
-            raise ValueError("Source olive lot customer owner does not exist")
+    owner = {"kind": draft.owner.kind}
+    if draft.owner.customer_id is not None:
+        owner["customer_id"] = draft.owner.customer_id
+    if draft.owner.kind == "CUSTOMER":
+        if not draft.owner.customer_id:
+            raise ValueError("Customer-owned olive stock has no customer identity")
+        if not await db["commercial_custody_owners"].find_one({"id": draft.owner.customer_id}, {"_id": 0, "id": 1}, session=session):
+            raise ValueError("Selected olive stock customer owner does not exist")
 
     balance = await db["commercial_stock_balances"].find_one({
         "product_kind": "OLIVE", "lot_id": draft.source_olive_lot_id,
-        "owner.kind": owner.get("kind"), "owner.customer_id": owner.get("customer_id"),
+        "owner.kind": draft.owner.kind, "owner.customer_id": draft.owner.customer_id,
         "location_id": draft.source_location_id,
     }, {"_id": 0, "quantity_kg": 1}, session=session)
     available = balance.get("quantity_kg") if balance else None
@@ -154,7 +154,7 @@ async def create_preproduction_sample(
             movement_kind="CONSUMPTION", product_kind="OLIVE",
             lot_id=draft.source_olive_lot_id, quantity_kg=draft.input_olive_quantity_kg,
             source_location_id=draft.source_location_id,
-            source_owner={"kind": owner["kind"], **({"customer_id": owner["customer_id"]} if owner.get("customer_id") else {})},
+            source_owner=draft.owner,
             source_document_type="ESS", source_document_id=sample_id,
             idempotency_key=_movement_key(movement_key),
             reason=f"Olive consumed for preproduction trial {document_number}",
