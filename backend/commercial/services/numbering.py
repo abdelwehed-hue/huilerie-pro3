@@ -48,11 +48,12 @@ async def reserve_batch_code(
         {"$inc": {"last_sequence": 1}},
         projection={"last_sequence": 1},
         return_document=ReturnDocument.AFTER,
+        upsert=True,
         session=session,
     )
     if not counter:
         raise RuntimeError(
-            f"Missing commercial counter for season={season_code}, type=BATCH"
+            f"Could not allocate batch code for season={season_code}, type=BATCH"
         )
     return f"{season_code}A{counter['last_sequence']:04d}"
 
