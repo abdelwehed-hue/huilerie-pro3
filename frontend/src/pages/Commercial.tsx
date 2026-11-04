@@ -1518,7 +1518,7 @@ export default function Commercial() {
             <TableCell>{purchase.status === "APPROVED" ? l.approved : l.draft}</TableCell>
             <TableCell>{isAdmin && purchase.status === "DRAFT" ? <Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button> : "—"}</TableCell>
           </TableRow>)}
-          {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}
+          {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}
         </TableBody></Table></CardContent></Card>
       </div>}
 
