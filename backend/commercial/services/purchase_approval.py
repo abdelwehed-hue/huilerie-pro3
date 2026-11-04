@@ -151,7 +151,6 @@ async def approve_olive_purchase(
             session=session,
         )
         lot_ids.append(lot_id)
-        batch_codes.append(batch_code)
         movement_ids.append(movement_id)
 
     final_update = await purchases.update_one(
