@@ -29,6 +29,7 @@ from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, effective_
 from commercial.schemas.inventory import CommercialLocationDraft, StockMovementDraft
 from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
+from commercial.schemas.preproduction import PreproductionSampleDraft, CancelPreproductionSampleCommand
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
     OlivePurchaseDraft,
@@ -47,6 +48,7 @@ from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
+from commercial.services.preproduction import create_preproduction_sample, cancel_preproduction_sample
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
 from commercial.services.quality import (
@@ -1221,6 +1223,66 @@ async def approve_purchase(
             lambda session: approve_olive_purchase(
                 db, purchase_id, command, actor_user=user,
                 actor_user_id=user["id"], created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/preproduction-samples", status_code=201)
+async def create_preproduction_sample_route(
+    draft: PreproductionSampleDraft,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.manage_preproduction_samples")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.trial_date.isoformat()) != season:
+        raise HTTPException(422, "preproduction_trial_date_outside_active_season")
+    sample_id, oil_lot_id, movement_id, movement_audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: create_preproduction_sample(
+                db, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], sample_id=sample_id,
+                oil_lot_id=oil_lot_id, movement_id=movement_id,
+                movement_audit_id=movement_audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.get("/preproduction-samples")
+async def list_preproduction_samples(
+    limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_preproduction_samples.find(
+        {}, {"_id": 0}
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/preproduction-samples/{sample_id}/cancel")
+async def cancel_preproduction_sample_route(
+    sample_id: str,
+    command: CancelPreproductionSampleCommand,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.manage_preproduction_samples")
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: cancel_preproduction_sample(
+                db, sample_id, command.reason, actor_user=user,
+                actor_user_id=user["id"], cancelled_at=now, session=session,
             )
         )
         return _safe(result)
