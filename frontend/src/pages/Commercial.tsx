@@ -1029,7 +1029,7 @@ export default function Commercial() {
   }, [targetPermissions.data, selectedWorkerId]);
 
   // New preproduction assessments must target trial oil lots; keep a legacy lot selectable only while editing its existing assessment.
-  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && (lot.lot_purpose === "PREPRODUCTION_SAMPLE" || (editingQualityAssessmentId && lot.id === qualityLotId)));
+  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && ((lot.lot_purpose === "PREPRODUCTION_SAMPLE" && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id)) || (editingQualityAssessmentId && lot.id === qualityLotId)));
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
