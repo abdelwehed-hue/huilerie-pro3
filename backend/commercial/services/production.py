@@ -88,7 +88,12 @@ async def complete_commercial_production(
         )
         if not lot:
             raise ValueError(f"Unknown olive lot: {line.olive_lot_id}")
-        source_batch_code = lot.get("batch_code") or lot.get("document_number") or lot.get("document_number")
+        current_batch_code = lot.get("batch_code")
+        if not current_batch_code:
+            raise ValueError("Production input is missing its purchase traceability code")
+        if source_batch_code is not None and source_batch_code != current_batch_code:
+            raise ValueError("A production run cannot mix different purchase traceability codes")
+        source_batch_code = current_batch_code
         if lot.get("product_kind") != "OLIVE":
             raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
         if line.owner != owner:
