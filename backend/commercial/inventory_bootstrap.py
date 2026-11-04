@@ -3,7 +3,7 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 from commercial.services.numbering import validate_numbering_components
 
 COMMERCIAL_DOCUMENT_TYPES = (
-    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS", "BATCH"
+    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS"
 )
 
 
