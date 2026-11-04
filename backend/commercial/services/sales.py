@@ -193,11 +193,20 @@ async def approve_wholesale_sale(
         "id": audit_event_id, "entity_type": "commercial_sale", "entity_id": sale_id,
         "action": "SALE_APPROVED_AND_DISPATCHED", "actor_user_id": actor_user_id,
         "created_at": now,
-        "details": {"sale_number": sale["document_number"], "invoice_number": invoice_number,
-                    "buyer_id": sale["buyer_id"], "oil_lot_id": sale["oil_lot_id"],
-                    "quantity_kg": sale["quantity_kg"], "unit_price_dt": sale["unit_price_dt"],
-                    "total_amount_dt": sale["total_amount_dt"], "previous_status": "DRAFT",
-                    "new_status": "APPROVED"},
+        "details": {
+            "sale_number": sale["document_number"], "invoice_number": invoice_number,
+            "buyer_id": sale["buyer_id"], "oil_lot_id": sale["oil_lot_id"],
+            "source_tank_id": sale.get("source_tank_id"),
+            "sale_date": sale.get("sale_date"),
+            "quantity_kg": sale["quantity_kg"], "unit_price_dt": sale["unit_price_dt"],
+            "total_amount_dt": sale["total_amount_dt"],
+            "previous_status": "DRAFT", "new_status": "APPROVED",
+            "previous_version": command.expected_version,
+            "new_version": command.expected_version + 1,
+            "invoice_receivable_before_dt": Decimal128("0.000"),
+            "invoice_receivable_after_dt": invoice["outstanding_amount_dt"],
+            "stock_movement_id": stock_movement_id,
+        },
     }, session=session)
     return await sales.find_one({"id": sale_id}, {"_id": 0}, session=session)
 
