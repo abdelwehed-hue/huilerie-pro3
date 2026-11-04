@@ -104,7 +104,9 @@ async def approve_olive_purchase(
             db["commercial_counters"], purchase["season_code"], "LOT",
             session=session,
         )
-        batch_code = await reserve_batch_code(
+        # The batch code is reserved when the purchase draft is created.
+        # Keep a fallback only for legacy drafts created before this workflow. 
+        batch_code = line.get("batch_code") or await reserve_batch_code(
             db["commercial_counters"], purchase["season_code"], session=session
         )
         lot = {
