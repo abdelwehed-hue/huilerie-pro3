@@ -107,6 +107,11 @@ async def post_stock_movement(
     else:
         require_commercial_permission(actor_user, "commercial.post_stock")
     await validate_stock_references(db, draft, session=session)
+    lot_reference = await db["commercial_lots"].find_one(
+        {"id": draft.lot_id}, {"_id": 0, "batch_code": 1, "document_number": 1}, session=session
+    )
+    if not lot_reference:
+        raise ValueError("Stock movement lot reference does not exist")
     if created_at.tzinfo is None:
         raise ValueError("created_at must be timezone-aware")
 
@@ -175,6 +180,7 @@ async def post_stock_movement(
         "movement_kind": draft.movement_kind,
         "product_kind": draft.product_kind,
         "lot_id": draft.lot_id,
+        "batch_code": lot_reference.get("batch_code") or lot_reference.get("document_number"),
         "quantity_kg": quantity,
         "source_location_id": draft.source_location_id,
         "destination_location_id": draft.destination_location_id,
