@@ -63,20 +63,6 @@ async def test_provision_is_idempotent_and_preserves_existing_name():
     assert len(db["commercial_tanks"].rows) == 9
 
 
-def test_preproduction_sample_collection_has_unique_id_document_and_idempotency_indexes():
-    from commercial.inventory_bootstrap import INVENTORY_INDEXES
-
-    indexes = INVENTORY_INDEXES["commercial_preproduction_samples"]
-    names = {index.document["name"] for index in indexes}
-    assert names == {
-        "uq_preproduction_sample_id",
-        "uq_preproduction_sample_document",
-        "uq_preproduction_sample_idempotency",
-        "preproduction_sample_source_created",
-    }
-    assert all(index.document.get("unique") for index in indexes[:3])
-
-
 def test_production_collection_has_unique_id_document_and_idempotency_indexes():
     from commercial.inventory_bootstrap import INVENTORY_INDEXES
 
@@ -121,7 +107,7 @@ async def test_default_counter_bootstrap_creates_every_document_type_once():
     db = CounterDatabase()
     created = await provision_commercial_counters(db, "2627")
 
-    expected = {"LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS"}
+    expected = {"LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT"}
     assert set(COMMERCIAL_DOCUMENT_TYPES) == expected
     assert len(COMMERCIAL_DOCUMENT_TYPES) == len(expected)
     assert created == len(expected)
