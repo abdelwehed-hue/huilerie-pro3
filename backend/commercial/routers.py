@@ -626,9 +626,10 @@ async def update_commercial_buyer(
             "actor_user_id": user["id"], "created_at": now,
             "details": {
                 "changed_fields": sorted(fields.keys()),
-                "previous_name": existing.get("name"),
-                "new_name": draft.name,
-                "version": current_version + 1,
+                "previous_values": {key: existing.get(key) for key in fields},
+                "new_values": fields,
+                "version_before": current_version,
+                "version_after": current_version + 1,
             },
         }, session=session)
         return await db.commercial_buyers.find_one(
