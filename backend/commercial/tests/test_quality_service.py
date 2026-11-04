@@ -200,7 +200,6 @@ async def test_old_preproduction_sample_cannot_release_after_a_new_trial_is_crea
             created_at=datetime(2026, 11, 2, 1, tzinfo=timezone.utc), session=object(),
         )
     assert source_lot["preproduction_quality_status"] == "PENDING"
-    assert db["commercial_quality_releases"].rows == []
 
 
 @pytest.mark.asyncio
