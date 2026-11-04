@@ -183,3 +183,91 @@ html.dark .text-indigo-950 { color: #e0e7ff !important; }
 html.dark .text-indigo-700 { color: #c7d2fe !important; }
 html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 
+
+
+/* Oro Verde — commercial workspace visual hierarchy (scoped to Gestion commerciale). */
+.commercial-workspace [data-slot="card"] {
+  border: 1px solid #d7e5d8;
+  background: linear-gradient(155deg, #ffffff 0%, #fbfdf9 100%);
+  box-shadow: 0 2px 9px rgb(30 58 37 / 5%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.commercial-workspace [data-slot="card"]:hover {
+  border-color: #b7cfb9;
+  box-shadow: 0 5px 16px rgb(30 58 37 / 9%);
+}
+.commercial-workspace [data-slot="card-title"] {
+  color: #244b30;
+  font-weight: 650;
+}
+.commercial-workspace [data-slot="card-description"] {
+  color: #647568;
+}
+.commercial-workspace table thead {
+  background: #edf4ec;
+}
+.commercial-workspace table thead th {
+  color: #294c32;
+  font-weight: 700;
+  border-bottom: 1px solid #d5e3d4;
+}
+.commercial-workspace table tbody td {
+  color: #33443a;
+  font-variant-numeric: tabular-nums;
+}
+.commercial-workspace table tbody tr {
+  border-bottom-color: #e8efe7;
+  transition: background-color 140ms ease;
+}
+.commercial-workspace table tbody tr:hover {
+  background: #f4f8f2;
+}
+.commercial-workspace table tbody td:first-child.font-mono,
+.commercial-workspace table tbody td:first-child .font-mono {
+  display: inline-block;
+  color: #1e4d83;
+  background: #edf4fc;
+  border: 1px solid #d7e5f5;
+  border-radius: 0.4rem;
+  padding: 0.18rem 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.commercial-workspace table tbody td .font-semibold,
+.commercial-workspace table tbody td .font-bold {
+  color: #245b3b;
+  font-weight: 700;
+}
+.commercial-workspace .rounded-xl.border,
+.commercial-workspace .rounded-lg.border {
+  border-color: #dce8dc;
+}
+.commercial-workspace input:focus,
+.commercial-workspace select:focus,
+.commercial-workspace textarea:focus {
+  border-color: #6b9b70;
+  box-shadow: 0 0 0 3px rgb(107 155 112 / 14%);
+  outline: none;
+}
+.dark .commercial-workspace [data-slot="card"] {
+  background: linear-gradient(155deg, #292f2a 0%, #252b26 100%);
+  border-color: #465b49;
+}
+.dark .commercial-workspace [data-slot="card-title"] { color: #c7e4c9; }
+.dark .commercial-workspace [data-slot="card-description"] { color: #a8b8aa; }
+.dark .commercial-workspace table thead { background: #303c32; }
+.dark .commercial-workspace table thead th { color: #d1e8d2; border-bottom-color: #465b49; }
+.dark .commercial-workspace table tbody td { color: #d6e0d7; }
+.dark .commercial-workspace table tbody tr { border-bottom-color: #3c493e; }
+.dark .commercial-workspace table tbody tr:hover { background: #303b32; }
+.dark .commercial-workspace table tbody td:first-child.font-mono,
+.dark .commercial-workspace table tbody td:first-child .font-mono {
+  color: #bfdbfe;
+  background: #26384b;
+  border-color: #3c5875;
+}
+.dark .commercial-workspace table tbody td .font-semibold,
+.dark .commercial-workspace table tbody td .font-bold { color: #b9dfc2; }
+.dark .commercial-workspace .rounded-xl.border,
+.dark .commercial-workspace .rounded-lg.border { border-color: #465b49; }

@@ -1077,7 +1077,7 @@ export default function Commercial() {
   if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="commercial-workspace mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
