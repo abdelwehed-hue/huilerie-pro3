@@ -82,7 +82,7 @@ async def reject_sale_return_and_dispatch_to_buyer(
     lot = await db["commercial_lots"].find_one(
         {"id": lot_id, "product_kind": "OIL", "source_sale_return_id": return_id,
          "status": "OPEN", "owner.kind": "MILL"},
-        {"_id": 0, "id": 1, "quality_status": 1, "version": 1},
+        {"_id": 0, "id": 1, "status": 1, "quality_status": 1, "version": 1},
         session=session,
     )
     if not lot:
