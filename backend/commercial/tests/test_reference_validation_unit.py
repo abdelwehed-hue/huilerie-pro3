@@ -58,6 +58,15 @@ def fake_sale_db():
     })
 
 
+
+@pytest.mark.asyncio
+async def test_preproduction_sample_oil_lot_cannot_be_posted_to_commercial_stock():
+    db = fake_sale_db()
+    db["commercial_lots"].find_one_rows[0]["lot_purpose"] = "PREPRODUCTION_SAMPLE"
+    with pytest.raises(ValueError, match="laboratory-only"):
+        await validate_stock_references(db, sale_movement("25.000"), session=object())
+
+
 @pytest.mark.asyncio
 async def test_sale_dispatch_rejects_quantity_different_from_approved_sale():
     db = fake_sale_db()
