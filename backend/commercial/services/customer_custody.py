@@ -271,6 +271,7 @@ async def receive_customer_olive_custody(
         "season_code": season_code,
         "document_type": "CIN",
         "document_number": receipt_number,
+        "batch_code": batch_code,
         "customer_id": owner["id"],
         "customer_phone": owner["client_phone"],
         "customer_name": owner["client_name"],
