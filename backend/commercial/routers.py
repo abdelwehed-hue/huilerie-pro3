@@ -491,7 +491,29 @@ async def deactivate_commercial_supplier(
             "id": audit_id, "entity_type": "commercial_supplier",
             "entity_id": supplier_id, "action": "SUPPLIER_DEACTIVATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"name": existing.get("name"), "previous_active": True, "active": False, "version_before": version, "version_after": version + 1, "preserved_history": True},
+            "details": {
+                "previous_values": {
+                    "name": existing.get("name"),
+                    "phone": existing.get("phone"),
+                    "address": existing.get("address"),
+                    "tax_id": existing.get("tax_id"),
+                    "notes": existing.get("notes"),
+                    "active": True,
+                },
+                "new_values": {
+                    "name": existing.get("name"),
+                    "phone": existing.get("phone"),
+                    "address": existing.get("address"),
+                    "tax_id": existing.get("tax_id"),
+                    "notes": existing.get("notes"),
+                    "active": False,
+                    "deactivated_at": now,
+                    "deactivated_by": user["id"],
+                },
+                "version_before": version,
+                "version_after": version + 1,
+                "preserved_history": True,
+            },
         }, session=session)
         return {"id": supplier_id, "active": False}
 
