@@ -467,7 +467,7 @@ export default function Commercial() {
   const completeProduction = useMutation({
     mutationFn: () => {
       const inputLines = productionInputs.map((line) => {
-        const balance = (balances.data ?? []).find((b) => `${b.lot_id}::${b.location_id}` === line.balance_key);
+        const balance = (balances.data ?? []).find((b) => [b.lot_id, b.location_id, ownerIdentity(b.owner)].join("::") === line.balance_key);
         const lot = (lots.data ?? []).find((item) => item.id === balance?.lot_id);
         if (!balance || !lot) throw new Error("Selected olive balance is no longer available");
         return {
@@ -1489,19 +1489,19 @@ export default function Commercial() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.inputLots}</h3><Button type="button" variant="outline" onClick={() => setProductionInputs((rows) => [...rows, { balance_key: "", quantity_kg: "" }])}>{l.addInput}</Button></div>
                 {productionInputs.map((line, index) => {
-                  const key = (lotId: string, locationId: string) => lotId + "::" + locationId;
-                  const selectedBalance = eligibleProductionBalances.find((b) => key(b.lot_id, b.location_id) === line.balance_key);
+                  const key = (lotId: string, locationId: string, owner: AnyRecord | undefined) => [lotId, locationId, ownerIdentity(owner)].join("::");
+                  const selectedBalance = eligibleProductionBalances.find((b) => key(b.lot_id, b.location_id, b.owner) === line.balance_key);
                   const selectedLot = (lots.data ?? []).find((lot) => lot.id === selectedBalance?.lot_id);
                   const usedKeys = productionInputs.filter((_, i) => i !== index).map((row) => row.balance_key);
-                  const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id) === row.balance_key)?.owner);
+                  const otherOwners = productionInputs.filter((row, i) => i !== index && row.balance_key).map((row) => availableOliveBalances.find((b) => key(b.lot_id, b.location_id, b.owner) === row.balance_key)?.owner);
                   return <div key={index} className="grid items-end gap-3 rounded-xl border p-3 md:grid-cols-[2fr_1fr_auto]">
                     <label className="grid gap-1 text-sm font-medium">{l.chooseOliveBalance}
                       <select required value={line.balance_key} onChange={(e) => setProductionInputs((rows) => rows.map((row, i) => i === index ? { ...row, balance_key: e.target.value, quantity_kg: "" } : row))} className="h-10 rounded-lg border bg-background px-3 font-normal">
                         <option value="">—</option>
-                        {eligibleProductionBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
+                        {eligibleProductionBalances.filter((b) => !usedKeys.includes(key(b.lot_id, b.location_id, b.owner)) && (otherOwners.length === 0 || otherOwners.every((owner) => ownerIdentity(owner) === ownerIdentity(b.owner)))).map((balance) => {
                           const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
                           const loc = (locations.data ?? []).find((item) => item.id === balance.location_id);
-                          return <option key={key(balance.lot_id, balance.location_id)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
+                          return <option key={key(balance.lot_id, balance.location_id, balance.owner)} value={key(balance.lot_id, balance.location_id)}>{lot?.document_number ?? balance.lot_id} · {loc?.code ?? balance.location_id} · {displayOwnerLabel(balance.owner)} · {number(balance.quantity_kg)} kg</option>;
                         })}
                       </select>
                     </label>
@@ -1532,7 +1532,7 @@ export default function Commercial() {
               <label className="grid gap-1 text-sm font-medium">{l.notes}
                 <input maxLength={1000} value={productionNotes} onChange={(e) => setProductionNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
               </label>
-              <Button type="submit" disabled={completeProduction.isPending || !productionTankId || !productionInputs.every((line) => line.balance_key && Number(line.quantity_kg) > 0) || !(Number(productionOutputKg) > 0) || Number(productionOutputKg) > productionInputTotal || productionInputs.some((line) => { const b = availableOliveBalances.find((x) => x.lot_id + "::" + x.location_id === line.balance_key); return !b || Number(line.quantity_kg) > Number(b.quantity_kg); })}>
+              <Button type="submit" disabled={completeProduction.isPending || !productionTankId || !productionInputs.every((line) => line.balance_key && Number(line.quantity_kg) > 0) || !(Number(productionOutputKg) > 0) || Number(productionOutputKg) > productionInputTotal || productionInputs.some((line) => { const b = availableOliveBalances.find((x) => [x.lot_id, x.location_id, ownerIdentity(x.owner)].join("::") === line.balance_key); return !b || Number(line.quantity_kg) > Number(b.quantity_kg); })}>
                 <Factory className="size-4" /> {l.completeProduction}
               </Button>
             </form>
