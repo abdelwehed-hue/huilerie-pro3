@@ -339,7 +339,7 @@ async def create_commercial_location(
             "id": audit_id, "entity_type": "commercial_location",
             "entity_id": doc["id"], "action": "LOCATION_CREATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"code": doc["code"], "kind": doc["kind"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
