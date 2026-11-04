@@ -1583,6 +1583,40 @@ export default function Commercial() {
             </form>
           </CardContent>
         </Card>}
+        <Card>
+          <CardHeader>
+            <CardTitle>{lang === "ar" ? "دفعات جاهزة للإنتاج" : "Lots prêts pour production"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "تظهر هنا دفعات الزيتون التي اجتازت التحليل المسبق وما زالت لها كمية متاحة." : "Seuls les lots d’olives approuvés par le contrôle préalable et disposant d’un stock sont affichés."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>{lang === "ar" ? "كود الدفعة" : "Code du lot"}</TableHead>
+                <TableHead>{l.currentStock}</TableHead>
+                <TableHead>{l.location}</TableHead>
+                <TableHead>{l.owner}</TableHead>
+                <TableHead>{l.qualityStatus}</TableHead>
+                {isAdmin && <TableHead>{lang === "ar" ? "إجراء" : "Action"}</TableHead>}
+              </TableRow></TableHeader>
+              <TableBody>
+                {eligibleProductionBalances.map((balance) => {
+                  const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
+                  const location = (locations.data ?? []).find((item) => item.id === balance.location_id);
+                  const balanceKey = [balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::");
+                  return <TableRow key={balanceKey}>
+                    <TableCell className="font-mono text-xs font-semibold">{lotCode(lot, balance.lot_id)}</TableCell>
+                    <TableCell>{number(balance.quantity_kg)} kg</TableCell>
+                    <TableCell>{value(location?.name ?? location?.code, balance.location_id)}</TableCell>
+                    <TableCell>{displayOwnerLabel(balance.owner ?? lot?.owner)}</TableCell>
+                    <TableCell>{lang === "ar" ? "مقبولة" : "Approuvée"}</TableCell>
+                    {isAdmin && <TableCell><Button size="sm" variant="outline" onClick={() => setProductionInputs([{ balance_key: balanceKey, quantity_kg: "" }])}>{lang === "ar" ? "اختيار" : "Sélectionner"}</Button></TableCell>}
+                  </TableRow>;
+                })}
+                {eligibleProductionBalances.length === 0 && <EmptyRow colSpan={isAdmin ? 6 : 5} text={lang === "ar" ? "لا توجد دفعات جاهزة للإنتاج حاليًا." : "Aucun lot prêt pour la production pour le moment."} />}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
         <Card><CardHeader><CardTitle>{l.productionHistory}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.productionDate}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.totalInput}</TableHead><TableHead>{l.outputQuantity}</TableHead><TableHead>{l.extractionRate} (%)</TableHead><TableHead>{l.outputTank}</TableHead></TableRow></TableHeader>
             <TableBody>{(productionRuns.data ?? []).map((run) => <TableRow key={run.id}>
