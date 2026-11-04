@@ -1034,7 +1034,6 @@ export default function Commercial() {
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
-      && assessment.created_by !== me.data?.id
       && lot?.last_quality_assessment_id === assessment.id
       && lot?.version === assessment.lot_version_after_submission;
   });
