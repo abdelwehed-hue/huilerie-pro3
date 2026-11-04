@@ -258,9 +258,6 @@ async def receive_customer_olive_custody(
     receipt_number = await reserve_document_number(
         db["commercial_counters"], season_code, "CIN", session=session
     )
-    lot_number = await reserve_document_number(
-        db["commercial_counters"], season_code, "LOT", session=session
-    )
     batch_code = await reserve_batch_code(
         db["commercial_counters"], season_code, session=session
     )
@@ -294,8 +291,6 @@ async def receive_customer_olive_custody(
     lot = {
         "id": olive_lot_id,
         "season_code": season_code,
-        "document_type": "LOT",
-        "document_number": lot_number,
         "batch_code": batch_code,
         "product_kind": "OLIVE",
         "variety_id": draft.variety_id,
