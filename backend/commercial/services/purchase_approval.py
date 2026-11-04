@@ -92,18 +92,24 @@ async def approve_olive_purchase(
     if update.matched_count != 1:
         raise ValueError("Olive purchase changed concurrently; reload and retry")
 
+    # Normalize even legacy drafts to one purchase-level tracking code.
+    purchase_batch_code = purchase.get("batch_code") or next(
+        (str(item.get("batch_code")) for item in purchase.get("lines", []) if item.get("batch_code")),
+        None,
+    )
+    if not purchase_batch_code:
+        purchase_batch_code = await reserve_batch_code(
+            db["commercial_counters"], purchase["season_code"], session=session
+        )
     lot_ids: list[str] = []
-    batch_codes: list[str] = []
+    batch_codes: list[str] = [purchase_batch_code]
     movement_ids: list[str] = []
     for index, line in enumerate(purchase["lines"]):
         line_key = f"{purchase_id}:{expected_key}:{index}"
         lot_id = _stable_id("lot", line_key)
         movement_id = _stable_id("movement", line_key)
         audit_event_id = _stable_id("movement-audit", line_key)
-        # All purchase lines share the one traceability code created on the purchase.
-        batch_code = purchase.get("batch_code") or line.get("batch_code") or await reserve_batch_code(
-            db["commercial_counters"], purchase["season_code"], session=session
-        )
+        batch_code = purchase_batch_code
         lot = {
             "id": lot_id,
             "season_code": purchase["season_code"],
@@ -153,6 +159,7 @@ async def approve_olive_purchase(
         {
             "$set": {
                 "lot_ids": lot_ids,
+                "batch_code": purchase_batch_code,
                 "batch_codes": batch_codes,
                 "receipt_movement_ids": movement_ids,
                 "updated_at": created_at.astimezone(timezone.utc),
