@@ -276,7 +276,7 @@ export default function AppShell() {
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
         <header className="fixed inset-x-0 top-0 z-50 border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
+          <div className="relative mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
               <Brand />
@@ -293,7 +293,6 @@ export default function AppShell() {
                 {todayLoads.data?.non_terminated ?? "—"}
               </span>
             </div>
-            <div className="ms-auto flex items-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -306,6 +305,7 @@ export default function AppShell() {
               >
                 <LogOut className="size-4" />
               </Button>
+            <div className="ms-auto flex items-center gap-3 pr-12">
               {user && <SeasonSwitcher isAdmin={isAdmin} />}
               {user && (
                 <Button
