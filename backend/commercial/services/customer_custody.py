@@ -34,6 +34,11 @@ def _custody_owner_audit_id(owner_id: str, action: str, created_at: datetime, fi
     return "custody-owner-audit:" + hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
+def _snapshot_fingerprint(snapshot: dict[str, Any]) -> str:
+    raw = json.dumps(snapshot, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 async def _get_or_create_custody_owner(
     db: Any, phone: str, owner_id: str, *, actor_user_id: str,
     created_at: datetime, session: Any
@@ -112,7 +117,7 @@ async def _get_or_create_custody_owner(
                 "active": existing.get("active", True),
                 "version": existing["version"],
             }
-            fingerprint = _fingerprint({
+            fingerprint = _snapshot_fingerprint({
                 "owner_id": existing["id"],
                 "before": previous_owner,
                 "after": next_owner,
@@ -155,7 +160,7 @@ async def _get_or_create_custody_owner(
         "active": owner["active"],
         "version": owner["version"],
     }
-    fingerprint = _fingerprint({"owner_id": owner_id, "after": owner_snapshot})
+    fingerprint = _snapshot_fingerprint({"owner_id": owner_id, "after": owner_snapshot})
     await db["commercial_audit_events"].insert_one(
         {
             "id": _custody_owner_audit_id(owner_id, "CREATED", created_at, fingerprint),
