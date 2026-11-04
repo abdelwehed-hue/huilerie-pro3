@@ -506,7 +506,7 @@ export default function Commercial() {
       const lot = (lots.data ?? []).find((item) => item.id === balance?.lot_id);
       if (!balance || !lot) throw new Error("Selected olive balance is no longer available");
       return apiPost<AnyRecord>("/commercial/v1/preproduction-samples", {
-        source_olive_lot_id: lot.id, source_location_id: balance.location_id,
+        source_olive_lot_id: lot.id, source_location_id: balance.location_id, owner: balance.owner,
         input_olive_quantity_kg: trialInputKg, sample_oil_quantity_kg: trialOilKg,
         trial_date: trialDate, notes: trialNotes.trim(), idempotency_key: crypto.randomUUID(),
       });
