@@ -532,6 +532,7 @@ export default function Commercial() {
       setCancelTrialId("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "preproduction-samples"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -1064,6 +1065,9 @@ export default function Commercial() {
     balance.product_kind === "OLIVE" && Number(balance.quantity_kg) > 0
     && (lots.data ?? []).some((lot: AnyRecord) => lot.id === balance.lot_id && lot.status === "OPEN")
   );
+  const availableTrialBalances = availableOliveBalances.filter((balance) =>
+    (locations.data ?? []).some((location) => location.id === balance.location_id && location.active && location.kind === "STAGING")
+  );
   const eligibleProductionBalances = availableOliveBalances.filter((balance) =>
     (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.preproduction_quality_status === "RELEASED"
       && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id)
@@ -1292,7 +1296,7 @@ export default function Commercial() {
           <CardContent><form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); createPreproductionSample.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "دفعة الزيتون · مكان الاستقبال" : "Lot d’olives · emplacement de réception"}
               <select required value={trialBalanceKey} onChange={(e) => { setTrialBalanceKey(e.target.value); setTrialInputKg(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>
-                {availableOliveBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const location = (locations.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id} value={balance.lot_id + "::" + balance.location_id}>{lot?.document_number ?? balance.lot_id} · {location?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}
+                {availableTrialBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const location = (locations.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id} value={balance.lot_id + "::" + balance.location_id}>{lot?.document_number ?? balance.lot_id} · {location?.name ?? location?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}
               </select>
             </label>
             <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "تاريخ التجربة" : "Date de l’essai"}<input required type="date" value={trialDate} onChange={(e) => setTrialDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
