@@ -77,7 +77,10 @@ def preproduction_consumption(quantity):
 
 def preproduction_db():
     return FakeDatabase({
-        "commercial_lots": FakeCollection([{"id": "olive-lot-1", "product_kind": "OLIVE"}]),
+        "commercial_lots": FakeCollection([{
+            "id": "olive-lot-1", "product_kind": "OLIVE", "status": "OPEN",
+            "owner": {"kind": "MILL"},
+        }]),
         "commercial_locations": FakeCollection([{"id": "receiving-1", "active": True, "kind": "STAGING"}]),
         "commercial_preproduction_samples": FakeCollection([{
             "id": "trial-1", "status": "COMPLETED",
@@ -91,6 +94,18 @@ def preproduction_db():
 async def test_preproduction_consumption_must_match_completed_trial_document():
     db = preproduction_db()
     await validate_stock_references(db, preproduction_consumption("12.500"), session=object())
+
+
+
+
+@pytest.mark.asyncio
+async def test_preproduction_consumption_rejects_owner_mismatch_with_source_lot():
+    db = preproduction_db()
+    movement = preproduction_consumption("12.500").model_copy(
+        update={"source_owner": OwnerRef(kind="CUSTOMER", customer_id="customer-1")}
+    )
+    with pytest.raises(ValueError, match="does not match its completed trial"):
+        await validate_stock_references(db, movement, session=object())
 
 
 @pytest.mark.asyncio
