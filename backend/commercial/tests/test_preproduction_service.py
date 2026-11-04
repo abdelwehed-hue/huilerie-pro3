@@ -121,6 +121,36 @@ async def test_preproduction_trial_creates_lab_only_oil_lot_and_posts_olive_cons
     assert source_lot["latest_preproduction_sample_id"] == "sample-1"
 
 
+
+@pytest.mark.asyncio
+async def test_rejected_preproduction_trial_cancellation_is_audited_and_closes_sample_lot():
+    db = Database({
+        "commercial_preproduction_samples": Collection([{
+            "id": "trial-rejected", "oil_sample_lot_id": "oil-sample-rejected",
+            "status": "COMPLETED",
+        }]),
+        "commercial_quality_assessments": Collection([{
+            "id": "assessment-rejected", "oil_lot_id": "oil-sample-rejected",
+            "status": "REVIEWED", "decision": "REJECTED",
+        }]),
+        "commercial_lots": Collection([{
+            "id": "oil-sample-rejected", "lot_purpose": "PREPRODUCTION_SAMPLE",
+            "status": "OPEN", "version": 1,
+        }]),
+        "commercial_audit_events": Collection(),
+    })
+    result = await service.cancel_preproduction_sample(
+        db, "trial-rejected", "Quality rejection; discard the trial sample.",
+        actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.manage_preproduction_samples"]},
+        actor_user_id="operator-1",
+        cancelled_at=datetime(2026, 11, 3, tzinfo=timezone.utc), session=object(),
+    )
+    assert result["status"] == "CANCELLED"
+    assert db["commercial_preproduction_samples"].rows[0]["cancel_reason"].startswith("Quality rejection")
+    assert db["commercial_lots"].rows[0]["status"] == "CANCELLED"
+    assert db["commercial_audit_events"].rows[0]["action"] == "PREPRODUCTION_TRIAL_CANCELLED"
+
+
 @pytest.mark.asyncio
 async def test_preproduction_trial_rejects_quantity_above_receiving_balance(monkeypatch):
     db = make_db("10.000")
