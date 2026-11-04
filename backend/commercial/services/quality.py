@@ -72,6 +72,20 @@ async def record_oil_quality_assessment(
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
         raise ValueError("Oil lot version conflict; reload before recording the assessment")
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        sample_id = lot.get("source_preproduction_sample_id")
+        source_olive_lot = await db["commercial_lots"].find_one(
+            {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+             "status": "OPEN", "latest_preproduction_sample_id": sample_id},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        sample = await db["commercial_preproduction_samples"].find_one(
+            {"id": sample_id, "source_olive_lot_id": lot.get("source_olive_lot_id"),
+             "oil_sample_lot_id": lot["id"], "status": "COMPLETED"},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        if not sample_id or not source_olive_lot or not sample:
+            raise ValueError("Only the latest active preproduction trial sample can be analysed")
 
     created_utc = created_at.astimezone(timezone.utc)
     record = {
