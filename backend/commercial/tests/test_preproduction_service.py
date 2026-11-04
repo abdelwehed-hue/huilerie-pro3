@@ -53,6 +53,7 @@ def make_draft(key="preproduction-sample-test-0001"):
     return PreproductionSampleDraft(
         source_olive_lot_id="olive-1",
         source_location_id="receiving-1",
+        owner={"kind": "MILL"},
         input_olive_quantity_kg="12.500",
         sample_oil_quantity_kg="2.100",
         trial_date=date(2026, 11, 3),
