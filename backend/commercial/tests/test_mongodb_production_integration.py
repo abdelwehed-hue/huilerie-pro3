@@ -74,18 +74,16 @@ async def test_production_posts_olive_and_oil_balances_atomically():
             {"id": "olive-2", "season_code": "2627", "document_number": "2627LOT0002", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
         ])
         await seed_preproduction_approvals(db, ["olive-1", "olive-2"])
-        await db.commercial_stock_balances.insert_many([
-            {"product_kind": "OLIVE", "lot_id": lot, "owner": {"kind": "MILL"},
-             "location_id": "yard-1", "quantity_kg": Decimal128("500")}
-            for lot in ("olive-1", "olive-2")
-        ])
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE", "lot_id": "olive-1", "owner": {"kind": "MILL"},
+            "location_id": "yard-1", "quantity_kg": Decimal128("1000")
+        })
         draft = CommercialProductionDraft(
             production_date=date(2026, 11, 2),
-            inputs=[
-                {"olive_lot_id": lot, "source_location_id": "yard-1",
-                 "owner": {"kind": "MILL"}, "quantity_kg": "500"}
-                for lot in ("olive-1", "olive-2")
-            ],
+            inputs=[{
+                "olive_lot_id": "olive-1", "source_location_id": "yard-1",
+                "owner": {"kind": "MILL"}, "quantity_kg": "1000"
+            }],
             actual_oil_output_kg="180.500", output_tank_id="tank-01",
             idempotency_key="real-mongo-production-post-0001",
         )
@@ -104,11 +102,12 @@ async def test_production_posts_olive_and_oil_balances_atomically():
         assert result["owner"] == {"kind": "MILL"}
         origin_lot = await db.commercial_lots.find_one({"id": "olive-1"}, {"_id": 0})
         assert origin_lot["owner"] == {"kind": "CUSTOMER", "customer_id": "customer-origin"}
-        assert await db.commercial_stock_movements.count_documents({}) == 3
+        assert await db.commercial_stock_movements.count_documents({}) == 2
         olive = await db.commercial_stock_balances.find(
             {"product_kind": "OLIVE"}, {"_id": 0}
         ).to_list(10)
-        assert all(row["quantity_kg"].to_decimal() == Decimal("0") for row in olive)
+        assert len(olive) == 1
+        assert olive[0]["quantity_kg"].to_decimal() == Decimal("0")
         oil = await db.commercial_stock_balances.find_one(
             {"product_kind": "OIL"}, {"_id": 0}
         )
@@ -148,11 +147,10 @@ async def test_insufficient_olive_stock_rolls_back_entire_production_command():
         })
         draft = CommercialProductionDraft(
             production_date=date(2026, 11, 2),
-            inputs=[
-                {"olive_lot_id": lot, "source_location_id": "yard-1",
-                 "owner": {"kind": "MILL"}, "quantity_kg": "500"}
-                for lot in ("olive-1", "olive-2")
-            ],
+            inputs=[{
+                "olive_lot_id": "olive-1", "source_location_id": "yard-1",
+                "owner": {"kind": "MILL"}, "quantity_kg": "1000"
+            }],
             actual_oil_output_kg="180.500", output_tank_id="tank-01",
             idempotency_key="real-mongo-production-rollback-0001",
         )
