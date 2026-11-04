@@ -125,7 +125,9 @@ async def create_olive_purchase_draft(
             "action": "DRAFT_CREATED",
             "actor_user_id": actor_user_id,
             "created_at": created_at.astimezone(timezone.utc),
-            "details": {"document_number": number, "supplier_id": draft.supplier_id},
+            "details": {"document_number": number, "supplier_id": draft.supplier_id,
+                        "quantity_kg": Decimal128(total_quantity),
+                        "total_amount_dt": Decimal128(total_amount), "status": "DRAFT"},
         },
         session=session,
     )
@@ -209,9 +211,15 @@ async def update_olive_purchase_draft(
         "actor_user_id": actor_user_id,
         "created_at": now,
         "details": {
+            "document_number": existing.get("document_number"),
             "previous_version": draft.expected_version,
             "new_version": draft.expected_version + 1,
-            "document_number": existing.get("document_number"),
+            "previous_supplier_id": existing.get("supplier_id"),
+            "new_supplier_id": draft.supplier_id,
+            "previous_quantity_kg": existing.get("total_quantity_kg"),
+            "new_quantity_kg": Decimal128(total_quantity),
+            "previous_total_amount_dt": existing.get("total_amount_dt"),
+            "new_total_amount_dt": Decimal128(total_amount),
         },
     }, session=session)
     return await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
