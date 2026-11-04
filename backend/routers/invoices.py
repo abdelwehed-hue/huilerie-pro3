@@ -69,7 +69,7 @@ async def list_invoices(q: str = "", user: dict = Depends(current_user)):
 
             async def repair_legacy_invoice(session):
                 result = await db.invoices.update_one(
-                    {"id": doc["id"], "oil_kg": {"$exists": False}},
+                    {"id": doc["id"], "oil_kg": None},
                     {"$set": {
                         "oil_kg": oil_kg, "total": total, "balance": balance,
                         "updated_at": repaired_at,
