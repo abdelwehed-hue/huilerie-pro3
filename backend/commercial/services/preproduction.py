@@ -75,6 +75,9 @@ async def create_preproduction_sample(
     owner = {"kind": draft.owner.kind}
     if draft.owner.customer_id is not None:
         owner["customer_id"] = draft.owner.customer_id
+    source_owner = _owner_document(source_lot.get("owner") or {})
+    if source_owner != _owner_document(owner):
+        raise ValueError("Selected owner does not match the source olive lot owner")
     if draft.owner.kind == "CUSTOMER":
         if not draft.owner.customer_id:
             raise ValueError("Customer-owned olive stock has no customer identity")
