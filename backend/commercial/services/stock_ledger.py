@@ -102,7 +102,10 @@ async def post_stock_movement(
     """
     if not actor_user_id or not movement_id or not audit_event_id:
         raise ValueError("Actor and stable event identifiers are required")
-    require_commercial_permission(actor_user, "commercial.post_stock")
+    if draft.source_document_type == "ESS":
+        require_commercial_permission(actor_user, "commercial.manage_preproduction_samples")
+    else:
+        require_commercial_permission(actor_user, "commercial.post_stock")
     await validate_stock_references(db, draft, session=session)
     if created_at.tzinfo is None:
         raise ValueError("created_at must be timezone-aware")
