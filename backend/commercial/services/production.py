@@ -151,9 +151,6 @@ async def complete_commercial_production(
     run_number = await reserve_document_number(
         db["commercial_counters"], season_code, "PROD", session=session
     )
-    oil_lot_number = await reserve_document_number(
-        db["commercial_counters"], season_code, "LOT", session=session
-    )
     oil_lot_id = _stable_id("production-oil-lot", f"{production_id}:{draft.idempotency_key}")
     created_utc = created_at.astimezone(timezone.utc)
 
@@ -199,8 +196,6 @@ async def complete_commercial_production(
     oil_lot = {
         "id": oil_lot_id,
         "season_code": season_code,
-        "document_type": "LOT",
-        "document_number": oil_lot_number,
         "batch_code": source_batch_code,
         "source_olive_lot_id": draft.inputs[0].olive_lot_id,
         "product_kind": "OIL",
