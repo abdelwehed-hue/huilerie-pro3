@@ -29,8 +29,14 @@ def _movement_key(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _custody_owner_audit_id(owner_id: str, action: str, created_at: datetime, fingerprint: str) -> str:
+    key = f"custody-owner:{owner_id}:{action}:{created_at.astimezone(timezone.utc).isoformat()}:{fingerprint}"
+    return "custody-owner-audit:" + hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
 async def _get_or_create_custody_owner(
-    db: Any, phone: str, owner_id: str, *, created_at: datetime, session: Any
+    db: Any, phone: str, owner_id: str, *, actor_user_id: str,
+    created_at: datetime, session: Any
 ) -> dict[str, Any]:
     client = await db["clients"].find_one(
         {"phone": phone}, {"phone": 1, "client_name": 1}, session=session
@@ -69,6 +75,12 @@ async def _get_or_create_custody_owner(
         if not existing.get("active", True):
             raise ValueError("Customer custody account is inactive")
         if existing.get("client_phone") != phone or existing.get("client_name") != name:
+            previous_owner = {
+                "client_phone": existing.get("client_phone"),
+                "client_name": existing.get("client_name"),
+                "active": existing.get("active", True),
+                "version": existing.get("version", 1),
+            }
             owner_version = int(existing.get("version", 1))
             owner_version_filter = (
                 {"version": owner_version}
@@ -94,6 +106,31 @@ async def _get_or_create_custody_owner(
                 "client_name": name,
                 "version": existing.get("version", 1) + 1,
             })
+            next_owner = {
+                "client_phone": phone,
+                "client_name": name,
+                "active": existing.get("active", True),
+                "version": existing["version"],
+            }
+            fingerprint = _fingerprint({
+                "owner_id": existing["id"],
+                "before": previous_owner,
+                "after": next_owner,
+            })
+            await db["commercial_audit_events"].insert_one(
+                {
+                    "id": _custody_owner_audit_id(
+                        existing["id"], "UPDATED", created_at, fingerprint
+                    ),
+                    "entity_type": "customer_custody_owner",
+                    "entity_id": existing["id"],
+                    "action": "CUSTOMER_CUSTODY_OWNER_UPDATED",
+                    "actor_user_id": actor_user_id,
+                    "created_at": created_at.astimezone(timezone.utc),
+                    "details": {"before": previous_owner, "after": next_owner},
+                },
+                session=session,
+            )
         return existing
 
     phone_owner = await db["commercial_custody_owners"].find_one(
@@ -112,6 +149,28 @@ async def _get_or_create_custody_owner(
         "created_at": created_at.astimezone(timezone.utc),
     }
     await db["commercial_custody_owners"].insert_one(owner, session=session)
+    owner_snapshot = {
+        "client_phone": owner["client_phone"],
+        "client_name": owner["client_name"],
+        "active": owner["active"],
+        "version": owner["version"],
+    }
+    fingerprint = _fingerprint({"owner_id": owner_id, "after": owner_snapshot})
+    await db["commercial_audit_events"].insert_one(
+        {
+            "id": _custody_owner_audit_id(owner_id, "CREATED", created_at, fingerprint),
+            "entity_type": "customer_custody_owner",
+            "entity_id": owner_id,
+            "action": "CUSTOMER_CUSTODY_OWNER_CREATED",
+            "actor_user_id": actor_user_id,
+            "created_at": created_at.astimezone(timezone.utc),
+            "details": {
+                "after": owner_snapshot,
+                "legacy_client_id": legacy_client_id,
+            },
+        },
+        session=session,
+    )
     return owner
 
 async def receive_customer_olive_custody(
@@ -149,7 +208,8 @@ async def receive_customer_olive_custody(
         return prior
 
     owner = await _get_or_create_custody_owner(
-        db, draft.customer_phone, custody_owner_id, created_at=created_at, session=session
+        db, draft.customer_phone, custody_owner_id, actor_user_id=actor_user_id,
+        created_at=created_at, session=session
     )
     settings_doc = await db["settings"].find_one(
         {"key": "app"}, {"_id": 0, "varieties": 1}, session=session,
