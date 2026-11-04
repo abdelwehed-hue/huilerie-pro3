@@ -67,7 +67,7 @@ async def create_preproduction_sample(
     if source_lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
         raise ValueError("A laboratory sample cannot be used as an olive input")
     location = await db["commercial_locations"].find_one(
-        {"id": draft.source_location_id, "active": True, "kind": "STAGING"},
+        {"id": draft.source_location_id, "active": True, "kind": {"$in": ["OLIVE_STORAGE", "STAGING"]}},
         {"_id": 0, "id": 1}, session=session,
     )
     if not location:
