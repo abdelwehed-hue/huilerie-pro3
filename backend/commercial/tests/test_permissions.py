@@ -10,14 +10,16 @@ def test_admin_has_commercial_quality_permissions():
     require_commercial_permission(admin, "commercial.post_stock")
     require_commercial_permission(admin, "commercial.manage_custody")
     require_commercial_permission(admin, "commercial.view_audit")
+    require_commercial_permission(admin, "commercial.manage_preproduction_samples")
 
 
 def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
-    lab = {"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record", "commercial.view_audit"]}
+    lab = {"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record", "commercial.view_audit", "commercial.manage_preproduction_samples"]}
     reviewer = {"active": True, "role": "worker", "commercial_permissions": ["commercial.quality_release"]}
     require_commercial_permission(lab, "commercial.read")
     require_commercial_permission(lab, "commercial.lab_record")
     require_commercial_permission(lab, "commercial.view_audit")
+    require_commercial_permission(lab, "commercial.manage_preproduction_samples")
     with pytest.raises(PermissionError):
         require_commercial_permission(lab, "commercial.quality_release")
     require_commercial_permission(reviewer, "commercial.quality_release")
@@ -51,6 +53,8 @@ def test_commercial_api_router_exposes_quality_submission_and_separate_release(m
     assert "/commercial/v1/bootstrap" in paths
     assert "/commercial/v1/olive-purchases" in paths
     assert "/commercial/v1/production-runs" in paths
+    assert "/commercial/v1/preproduction-samples" in paths
+    assert "/commercial/v1/preproduction-samples/{sample_id}/cancel" in paths
     assert "/commercial/v1/quality-assessments" in paths
     assert "/commercial/v1/quality-assessments/release" in paths
     assert "/commercial/v1/customer-custody/receipts" in paths
