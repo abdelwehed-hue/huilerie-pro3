@@ -10,6 +10,7 @@ from routers import invoices as invoice_routes
 class FakeCollection:
     def __init__(self, docs=None):
         self.docs = list(docs or [])
+        self.insert_sessions = []
 
     async def find_one(self, query, projection=None, **kwargs):
         for doc in self.docs:
@@ -22,6 +23,7 @@ class FakeCollection:
         return None
 
     async def insert_one(self, doc, **kwargs):
+        self.insert_sessions.append(kwargs.get("session"))
         self.docs.append(dict(doc))
         return SimpleNamespace(inserted_id="fake-id")
 
@@ -40,6 +42,13 @@ class FakeCollection:
                 return SimpleNamespace(modified_count=1, matched_count=1)
         return SimpleNamespace(modified_count=0, matched_count=0)
 
+    async def delete_one(self, query, **kwargs):
+        for index, doc in enumerate(self.docs):
+            if all(doc.get(key) == value for key, value in query.items()):
+                self.docs.pop(index)
+                return SimpleNamespace(deleted_count=1)
+        return SimpleNamespace(deleted_count=0)
+
 
 @pytest.fixture
 def fake_db(monkeypatch):
@@ -57,6 +66,7 @@ def fake_db(monkeypatch):
         loads=FakeCollection([load]),
         settings=FakeCollection([{"key": "app", "price_per_kg": 0.18}]),
         invoices=FakeCollection(),
+        commercial_audit_events=FakeCollection(),
     )
     monkeypatch.setattr(invoice_routes, "db", fake)
 
@@ -118,6 +128,10 @@ async def test_update_recalculates_balance_and_records_history(fake_db):
     assert updated["history"][-1]["action"] == "updated"
     assert updated["history"][-1]["before"]["balance"] == 2.2
     assert updated["history"][-1]["after"]["balance"] == 2.0
+    assert len(fake_db.commercial_audit_events.docs) == 2
+    assert fake_db.commercial_audit_events.docs[-1]["action"] == "INVOICE_UPDATED"
+    assert fake_db.commercial_audit_events.docs[-1]["details"]["previous_values"]["balance"] == 2.2
+    assert all(session is not None for session in fake_db.commercial_audit_events.insert_sessions)
 
 
 @pytest.mark.asyncio
@@ -223,6 +237,7 @@ async def test_unchanged_invoice_edit_does_not_add_history(fake_db):
     assert updated["total"] == 2.7
     assert updated["balance"] == 2.2
     assert len(updated["history"]) == 1
+    assert len(fake_db.commercial_audit_events.docs) == 1
 
 
 @pytest.mark.asyncio
@@ -250,10 +265,10 @@ async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(f
     )
     original_update_one = fake_db.invoices.update_one
 
-    async def simulate_concurrent_edit(query, update):
+    async def simulate_concurrent_edit(query, update, **kwargs):
         # Simulate another admin saving the invoice after this request read it.
         fake_db.invoices.docs[0]["updated_at"] = "changed-by-another-edit"
-        return await original_update_one(query, update)
+        return await original_update_one(query, update, **kwargs)
 
     monkeypatch.setattr(fake_db.invoices, "update_one", simulate_concurrent_edit)
 
@@ -268,3 +283,21 @@ async def test_concurrent_invoice_edit_is_rejected_without_overwriting_history(f
     assert exc.value.detail == "invoice_changed_retry"
     assert fake_db.invoices.docs[0]["price_per_kg"] == 0.18
     assert len(fake_db.invoices.docs[0]["history"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_invoice_records_full_snapshot_in_same_transaction(fake_db):
+    created = await invoice_routes.create_invoice(
+        {"load_id": "load-test-1", "paid_amount": 0.5},
+        {"username": "admin"},
+    )
+
+    result = await invoice_routes.delete_invoice(created["id"], {"username": "admin"})
+
+    assert result == {"ok": True}
+    assert fake_db.invoices.docs == []
+    event = fake_db.commercial_audit_events.docs[-1]
+    assert event["action"] == "INVOICE_DELETED"
+    assert event["details"]["number"] == "FAC-2627100"
+    assert event["details"]["paid_amount"] == 0.5
+    assert all(session is not None for session in fake_db.commercial_audit_events.insert_sessions)

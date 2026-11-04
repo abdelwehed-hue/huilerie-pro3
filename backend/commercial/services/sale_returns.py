@@ -165,9 +165,22 @@ async def receive_wholesale_sale_return(
         "actor_user_id": actor_user_id, "created_at": now,
         "details": {
             "return_number": return_number, "sale_id": sale_id,
-            "invoice_id": invoice["id"], "quantity_kg": Decimal128(draft.quantity_kg),
+            "sale_number": sale.get("document_number"),
+            "invoice_id": invoice["id"], "buyer_id": sale.get("buyer_id"),
+            "quantity_kg": Decimal128(draft.quantity_kg),
+            "previous_returned_quantity_kg": Decimal128(already_returned),
+            "new_returned_quantity_kg": Decimal128(already_returned + draft.quantity_kg),
+            "previous_sale_version": draft.expected_sale_version,
+            "new_sale_version": draft.expected_sale_version + 1,
+            "reason": draft.reason,
+            "buyer_acknowledgement_reference": draft.buyer_acknowledgement_reference,
+            "return_status": return_doc["status"],
+            "commercial_acceptance_status": return_doc["commercial_acceptance_status"],
+            "quality_status": return_doc["quality_status"],
             "returned_lot_id": returned_lot_id,
+            "returned_lot_number": lot_number,
             "quarantine_tank_id": draft.quarantine_tank_id,
+            "stock_movement_id": ledger["id"],
         },
     }, session=session)
     return return_doc

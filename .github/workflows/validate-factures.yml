@@ -8,12 +8,22 @@ on:
     branches:
       - feature/factures-2026-10-27
       - feature/commercial-foundation
+      - feature/commercial-audit
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 jobs:
+  runner-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify GitHub-hosted runner execution
+        run: |
+          echo "GitHub-hosted runner started"
+          python --version
+
   backend-syntax:
     runs-on: ubuntu-latest
     steps:

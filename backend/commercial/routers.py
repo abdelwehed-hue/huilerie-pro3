@@ -7,6 +7,7 @@ or collection is modified here.
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -338,7 +339,7 @@ async def create_commercial_location(
             "id": audit_id, "entity_type": "commercial_location",
             "entity_id": doc["id"], "action": "LOCATION_CREATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"code": doc["code"], "kind": doc["kind"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
@@ -378,7 +379,7 @@ async def create_commercial_supplier(
             "id": audit_id, "entity_type": "commercial_supplier",
             "entity_id": doc["id"], "action": "SUPPLIER_CREATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"name": doc["name"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
@@ -435,9 +436,10 @@ async def update_commercial_supplier(
             "actor_user_id": user["id"], "created_at": now,
             "details": {
                 "changed_fields": sorted(fields.keys()),
-                "previous_name": existing.get("name"),
-                "new_name": draft.name,
-                "version": current_version + 1,
+                "previous_values": {key: existing.get(key) for key in fields},
+                "new_values": fields,
+                "version_before": current_version,
+                "version_after": current_version + 1,
             },
         }, session=session)
         return await db.commercial_suppliers.find_one(
@@ -489,7 +491,29 @@ async def deactivate_commercial_supplier(
             "id": audit_id, "entity_type": "commercial_supplier",
             "entity_id": supplier_id, "action": "SUPPLIER_DEACTIVATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"name": existing.get("name"), "preserved_history": True},
+            "details": {
+                "previous_values": {
+                    "name": existing.get("name"),
+                    "phone": existing.get("phone"),
+                    "address": existing.get("address"),
+                    "tax_id": existing.get("tax_id"),
+                    "notes": existing.get("notes"),
+                    "active": True,
+                },
+                "new_values": {
+                    "name": existing.get("name"),
+                    "phone": existing.get("phone"),
+                    "address": existing.get("address"),
+                    "tax_id": existing.get("tax_id"),
+                    "notes": existing.get("notes"),
+                    "active": False,
+                    "deactivated_at": now,
+                    "deactivated_by": user["id"],
+                },
+                "version_before": version,
+                "version_after": version + 1,
+                "preserved_history": True,
+            },
         }, session=session)
         return {"id": supplier_id, "active": False}
 
@@ -562,7 +586,7 @@ async def create_commercial_buyer(
             "id": audit_id, "entity_type": "commercial_buyer",
             "entity_id": doc["id"], "action": "BUYER_CREATED",
             "actor_user_id": user["id"], "created_at": doc["created_at"],
-            "details": {"name": doc["name"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
@@ -625,9 +649,10 @@ async def update_commercial_buyer(
             "actor_user_id": user["id"], "created_at": now,
             "details": {
                 "changed_fields": sorted(fields.keys()),
-                "previous_name": existing.get("name"),
-                "new_name": draft.name,
-                "version": current_version + 1,
+                "previous_values": {key: existing.get(key) for key in fields},
+                "new_values": fields,
+                "version_before": current_version,
+                "version_after": current_version + 1,
             },
         }, session=session)
         return await db.commercial_buyers.find_one(
@@ -682,7 +707,8 @@ async def set_commercial_buyer_status(
             "actor_user_id": user["id"], "created_at": now,
             "details": {
                 "previous_active": existing.get("active", True),
-                "active": command.active, "version": current_version + 1,
+                "active": command.active, "version_before": current_version,
+                "version_after": current_version + 1,
             },
         }, session=session)
         return await db.commercial_buyers.find_one(
@@ -1265,17 +1291,20 @@ async def assign_commercial_permissions(
 ):
     """Admin-only assignment of narrowly scoped commercial duties to workers."""
     _reject_public_auth_mode()
-    target = await db.users.find_one({"id": target_user_id}, {"_id": 0, "id": 1, "role": 1})
-    if not target:
-        raise HTTPException(404, "user_not_found")
-    if target.get("role") != "worker":
-        raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
     await _require_commercial_ready()
     permissions = sorted(set(assignment.permissions))
     now = datetime.now(timezone.utc)
     audit_id = str(uuid.uuid4())
 
     async def apply_assignment(session):
+        target = await db.users.find_one(
+            {"id": target_user_id}, {"_id": 0, "id": 1, "role": 1, "commercial_permissions": 1},
+            session=session,
+        )
+        if not target:
+            raise HTTPException(404, "user_not_found")
+        if target.get("role") != "worker":
+            raise HTTPException(422, "commercial_permissions_are_assigned_only_to_worker_accounts")
         updated = await db.users.update_one(
             {"id": target_user_id, "role": "worker"},
             {"$set": {"commercial_permissions": permissions,
@@ -1289,7 +1318,8 @@ async def assign_commercial_permissions(
             "id": audit_id, "entity_type": "user",
             "entity_id": target_user_id, "action": "COMMERCIAL_PERMISSIONS_UPDATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"permissions": permissions},
+            "details": {"previous_permissions": sorted(target.get("commercial_permissions", [])),
+                        "new_permissions": permissions},
         }, session=session)
         return {"user_id": target_user_id, "permissions": permissions}
 
@@ -1615,17 +1645,78 @@ async def list_stock_movements(
 async def list_commercial_audit_events(
     entity_type: str | None = None,
     entity_id: str | None = None,
+    action: str | None = None,
+    actor_user_id: str | None = None,
+    q: str | None = Query(default=None, max_length=120),
     limit: int = Query(default=200, ge=1, le=1000),
     skip: int = Query(default=0, ge=0),
     user: dict = Depends(current_user),
 ):
+    """Read-only audit journal with server-side filters and resolved actor labels."""
     _authorize(user, "commercial.view_audit")
     query: dict[str, Any] = {}
     if entity_type:
         query["entity_type"] = entity_type
     if entity_id:
         query["entity_id"] = entity_id
+    if action:
+        query["action"] = action
+    if actor_user_id:
+        query["actor_user_id"] = actor_user_id
+    if q and q.strip():
+        pattern = re.escape(q.strip())
+        matching_users = await db.users.find(
+            {"$or": [
+                {"full_name": {"$regex": pattern, "$options": "i"}},
+                {"username": {"$regex": pattern, "$options": "i"}},
+            ]},
+            {"_id": 0, "id": 1},
+        ).to_list(1000)
+        matching_actor_ids = [item["id"] for item in matching_users if item.get("id")]
+        query["$or"] = [
+            {"action": {"$regex": pattern, "$options": "i"}},
+            {"entity_type": {"$regex": pattern, "$options": "i"}},
+            {"entity_id": {"$regex": pattern, "$options": "i"}},
+            {"actor_user_id": {"$regex": pattern, "$options": "i"}},
+            {"actor_user_id": {"$in": matching_actor_ids}},
+            {"details.document_number": {"$regex": pattern, "$options": "i"}},
+            {"details.number": {"$regex": pattern, "$options": "i"}},
+            {"details.code": {"$regex": pattern, "$options": "i"}},
+            {"details.client_name": {"$regex": pattern, "$options": "i"}},
+            {"details.name": {"$regex": pattern, "$options": "i"}},
+            {"details.created_values.name": {"$regex": pattern, "$options": "i"}},
+            {"details.previous_values.name": {"$regex": pattern, "$options": "i"}},
+            {"details.new_values.name": {"$regex": pattern, "$options": "i"}},
+            {"details.supplier_id": {"$regex": pattern, "$options": "i"}},
+            {"details.buyer_id": {"$regex": pattern, "$options": "i"}},
+            {"details.customer_id": {"$regex": pattern, "$options": "i"}},
+            {"details.oil_lot_id": {"$regex": pattern, "$options": "i"}},
+            {"details.lot_id": {"$regex": pattern, "$options": "i"}},
+            {"details.invoice_number": {"$regex": pattern, "$options": "i"}},
+            {"details.payment_number": {"$regex": pattern, "$options": "i"}},
+            {"details.reversal_number": {"$regex": pattern, "$options": "i"}},
+            {"details.previous_lines.variety_id": {"$regex": pattern, "$options": "i"}},
+            {"details.new_lines.variety_id": {"$regex": pattern, "$options": "i"}},
+            {"details.lines.variety_id": {"$regex": pattern, "$options": "i"}},
+        ]
     docs = await db.commercial_audit_events.find(
         query, {"_id": 0}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+
+    actor_ids = sorted({
+        item.get("actor_user_id") for item in docs if item.get("actor_user_id")
+    })
+    actor_names: dict[str, str] = {}
+    if actor_ids:
+        users = await db.users.find(
+            {"id": {"$in": actor_ids}},
+            {"_id": 0, "id": 1, "full_name": 1, "username": 1},
+        ).to_list(len(actor_ids))
+        actor_names = {
+            item["id"]: (item.get("full_name") or item.get("username") or item["id"])
+            for item in users if item.get("id")
+        }
+    for item in docs:
+        actor_id = item.get("actor_user_id")
+        item["actor_name"] = actor_names.get(actor_id, actor_id or "system")
     return _safe(docs)

@@ -18,6 +18,7 @@ import TvAdmin from "@/pages/TvAdmin";
 import Factures from "@/pages/Factures";
 import Commercial from "@/pages/Commercial";
 import CommercialCertificate from "@/pages/CommercialCertificate";
+import Audit from "@/pages/Audit";
 import Login from "@/pages/Login";
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/factures" element={<Factures />} />
           <Route path="/commercial" element={<Commercial />} />
+          <Route path="/audit" element={<Audit />} />
           <Route path="/commercial/certificate/:id" element={<CommercialCertificate />} />
           <Route path="/certificate/:id" element={<Certificate />} />
           <Route path="/sms" element={<SmsLog />} />

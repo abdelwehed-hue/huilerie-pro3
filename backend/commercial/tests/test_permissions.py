@@ -9,13 +9,15 @@ def test_admin_has_commercial_quality_permissions():
     require_commercial_permission(admin, "commercial.quality_release")
     require_commercial_permission(admin, "commercial.post_stock")
     require_commercial_permission(admin, "commercial.manage_custody")
+    require_commercial_permission(admin, "commercial.view_audit")
 
 
 def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
-    lab = {"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]}
+    lab = {"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record", "commercial.view_audit"]}
     reviewer = {"active": True, "role": "worker", "commercial_permissions": ["commercial.quality_release"]}
     require_commercial_permission(lab, "commercial.read")
     require_commercial_permission(lab, "commercial.lab_record")
+    require_commercial_permission(lab, "commercial.view_audit")
     with pytest.raises(PermissionError):
         require_commercial_permission(lab, "commercial.quality_release")
     require_commercial_permission(reviewer, "commercial.quality_release")
@@ -25,6 +27,8 @@ def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
         require_commercial_permission(reviewer, "commercial.post_stock")
     with pytest.raises(PermissionError):
         require_commercial_permission(reviewer, "commercial.manage_custody")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(reviewer, "commercial.view_audit")
 
 
 @pytest.mark.parametrize("user", [
@@ -56,5 +60,8 @@ def test_commercial_api_router_exposes_quality_submission_and_separate_release(m
     assert "/commercial/v1/sale-payments/{payment_id}/reversals" in paths
     assert "/commercial/v1/sales-invoices/{invoice_id}/payment-reversals" in paths
     assert "/commercial/v1/sale-payments/{payment_id}/reversals" in paths
+    assert "/commercial/v1/audit-events" in paths
+    audit_route = next(route for route in router.routes if route.path == "/commercial/v1/audit-events")
+    assert audit_route.methods == {"GET"}
     assert "/commercial/v1/me/permissions" in paths
     assert "/commercial/v1/users/{target_user_id}/commercial-permissions" in paths

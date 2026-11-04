@@ -20,6 +20,18 @@ router = APIRouter(tags=["loads"])
 log = logging.getLogger(__name__)
 
 
+async def _audit_load_event(load: dict, user: dict, action: str, details: dict | None = None, session=None):
+    event = {
+        "id": str(uuid.uuid4()), "entity_type": "traditional_load",
+        "entity_id": str(load.get("id") or ""), "action": action,
+        "actor_user_id": user.get("id"), "created_at": datetime.now(timezone.utc),
+        "details": {"code": load.get("code"), "client_name": load.get("client_name"),
+                    **(details or {})},
+    }
+    options = {"session": session} if session is not None else {}
+    await db.commercial_audit_events.insert_one(event, **options)
+
+
 def _tz() -> ZoneInfo:
     return ZoneInfo(os.environ.get("APP_TZ", "UTC"))
 
@@ -71,16 +83,25 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
     now_local = datetime.now(_tz())
     season = await active_season()
     code = await next_load_code(season)
+    now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()), "code": code, "season_id": season, "client_name": body.client_name.strip(),
         "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
-        "day": now_local.strftime("%Y-%m-%d"), "created_at": datetime.now(timezone.utc),
+        "day": now_local.strftime("%Y-%m-%d"), "created_at": now,
         "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
         "price_per_kg": await _price(),
         "bags": body.bags, "variety": (body.variety or "").strip() or None,
         "notes": (body.notes or "").strip() or None, "pressing": body.initial_status == "pressing",
     }
-    await db.loads.insert_one(doc)
+
+    async def operation(session):
+        await db.loads.insert_one(doc, session=session)
+        await _audit_load_event(doc, user, "LOAD_CREATED", {
+            "olive_kg": doc.get("olive_kg"), "variety": doc.get("variety"),
+            "phone": doc.get("phone"), "initial_status": body.initial_status,
+        }, session=session)
+
+    await run_transaction(operation)
     doc.pop("_id", None)
     await send_load_sms(doc, "arrival")
     return to_load(doc, user)
@@ -189,6 +210,9 @@ async def _complete_load_and_invoice(id: str, oil_kg: float, user: dict):
         await _create_invoice_in_session(
             {"load_id": id, "paid_amount": 0}, user, session
         )
+        await _audit_load_event(doc, user, "LOAD_OIL_RECORDED", {
+            "oil_kg": oil_kg, "previous_oil_kg": before.get("oil_kg")
+        }, session=session)
         return doc, True
 
     return await run_transaction(operation)
@@ -212,44 +236,65 @@ async def set_oil(id: str, body: OilUpdate, user: dict = Depends(current_user)):
 
 @router.patch("/loads/{id}/status", response_model=Load)
 async def set_status(id: str, body: StatusUpdate, user: dict = Depends(current_user)):
-    cur = await db.loads.find_one({"id": id}, {"_id": 0})
-    if not cur:
-        raise HTTPException(404, "not_found")
-    if cur.get("cancelled"):
-        raise HTTPException(409, "load_cancelled")
-    has_oil = cur.get("oil_kg") is not None
-    st = body.status
-    if st in ("pending", "pressing") and has_oil:
-        raise HTTPException(409, "oil_already_entered")
-    if st in ("done", "delivered") and not has_oil:
-        raise HTTPException(409, "oil_not_ready")
-    upd: dict = {"pressing": st == "pressing"}
-    if st == "delivered":
-        if not cur.get("delivered"):
-            upd.update(delivered=True, delivered_at=datetime.now(timezone.utc), delivered_by=user["username"])
-    else:
-        upd.update(delivered=False, delivered_at=None, delivered_by=None)
-    doc = await db.loads.find_one_and_update({"id": id}, {"$set": upd}, projection={"_id": 0}, return_document=True)
+    async def operation(session):
+        cur = await db.loads.find_one({"id": id}, {"_id": 0}, session=session)
+        if not cur:
+            raise HTTPException(404, "not_found")
+        if cur.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        has_oil = cur.get("oil_kg") is not None
+        st = body.status
+        if st in ("pending", "pressing") and has_oil:
+            raise HTTPException(409, "oil_already_entered")
+        if st in ("done", "delivered") and not has_oil:
+            raise HTTPException(409, "oil_not_ready")
+        previous_status = ("delivered" if cur.get("delivered") else ("done" if has_oil else ("pressing" if cur.get("pressing") else "pending")))
+        upd = {"pressing": st == "pressing"}
+        if st == "delivered":
+            if not cur.get("delivered"):
+                upd.update(delivered=True, delivered_at=datetime.now(timezone.utc), delivered_by=user["username"])
+        else:
+            upd.update(delivered=False, delivered_at=None, delivered_by=None)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "cancelled": {"$ne": True}},
+            {"$set": upd}, projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            raise HTTPException(409, "load_changed_retry")
+        await _audit_load_event(doc, user, "LOAD_STATUS_UPDATED", {
+            "previous_status": previous_status, "new_status": st,
+        }, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
 
 @router.post("/loads/{id}/deliver", response_model=Load)
 async def deliver_load(id: str, user: dict = Depends(current_user)):
-    cur = await db.loads.find_one({"id": id}, {"_id": 0})
-    if not cur:
-        raise HTTPException(404, "not_found")
-    if cur.get("cancelled"):
-        raise HTTPException(409, "load_cancelled")
-    if cur.get("oil_kg") is None:
-        raise HTTPException(409, "oil_not_ready")
-    if cur.get("delivered"):
-        raise HTTPException(409, "already_delivered")
-    doc = await db.loads.find_one_and_update(
-        {"id": id},
-        {"$set": {"delivered": True, "delivered_at": datetime.now(timezone.utc), "delivered_by": user["username"]}},
-        projection={"_id": 0}, return_document=True,
-    )
+    async def operation(session):
+        cur = await db.loads.find_one({"id": id}, {"_id": 0}, session=session)
+        if not cur:
+            raise HTTPException(404, "not_found")
+        if cur.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
+        if cur.get("oil_kg") is None:
+            raise HTTPException(409, "oil_not_ready")
+        if cur.get("delivered"):
+            raise HTTPException(409, "already_delivered")
+        delivered_at = datetime.now(timezone.utc)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "delivered": {"$ne": True}, "cancelled": {"$ne": True}, "oil_kg": {"$ne": None}},
+            {"$set": {"delivered": True, "delivered_at": delivered_at, "delivered_by": user["username"]}},
+            projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            raise HTTPException(409, "load_changed_retry")
+        await _audit_load_event(doc, user, "LOAD_DELIVERED", {"delivered_at": doc.get("delivered_at")}, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
@@ -271,16 +316,24 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
 
 @router.post("/loads/{id}/cancel", response_model=Load)
 async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_admin)):
-    doc = await db.loads.find_one_and_update(
-        {"id": id, "cancelled": {"$ne": True}},
-        {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
-                  "cancelled_at": datetime.now(timezone.utc), "cancelled_by": user["username"]}},
-        projection={"_id": 0}, return_document=True,
-    )
-    if not doc:
-        if await db.loads.find_one({"id": id}):
-            raise HTTPException(409, "load_cancelled")
-        raise HTTPException(404, "not_found")
+    async def operation(session):
+        cancelled_at = datetime.now(timezone.utc)
+        doc = await db.loads.find_one_and_update(
+            {"id": id, "cancelled": {"$ne": True}},
+            {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
+                      "cancelled_at": cancelled_at, "cancelled_by": user["username"]}},
+            projection={"_id": 0}, return_document=True, session=session,
+        )
+        if not doc:
+            if await db.loads.find_one({"id": id}, session=session):
+                raise HTTPException(409, "load_cancelled")
+            raise HTTPException(404, "not_found")
+        await _audit_load_event(doc, user, "LOAD_CANCELLED", {
+            "cancel_reason": doc.get("cancel_reason"), "cancelled_at": doc.get("cancelled_at")
+        }, session=session)
+        return doc
+
+    doc = await run_transaction(operation)
     labs = await _labs_for([id])
     return to_load(doc, user, labs.get(id))
 
@@ -297,18 +350,25 @@ async def _ensure_load_has_no_invoice(load_id: str, session=None) -> None:
         raise HTTPException(409, "load_has_invoice")
 
 
-async def _delete_load_in_transaction(load_id: str, session):
+async def _delete_load_in_transaction(load_id: str, session, user: dict):
     await _ensure_load_has_no_invoice(load_id, session=session)
+    doc = await db.loads.find_one({"id": load_id}, {"_id": 0}, session=session)
+    if not doc:
+        raise HTTPException(404, "not_found")
     res = await db.loads.delete_one({"id": load_id}, session=session)
     if not res.deleted_count:
         raise HTTPException(404, "not_found")
     await db.lab.delete_many({"load_id": load_id}, session=session)
+    await _audit_load_event(doc, user, "LOAD_DELETED", {
+        "olive_kg": doc.get("olive_kg"), "oil_kg": doc.get("oil_kg"),
+        "created_at": doc.get("created_at"),
+    }, session=session)
     return {"ok": True}
 
 
 @router.delete("/loads/{id}")
-async def delete_load(id: str, _: dict = Depends(require_admin)):
-    return await run_transaction(lambda session: _delete_load_in_transaction(id, session))
+async def delete_load(id: str, user: dict = Depends(require_admin)):
+    return await run_transaction(lambda session: _delete_load_in_transaction(id, session, user))
 
 
 @router.get("/stats", response_model=Stats)

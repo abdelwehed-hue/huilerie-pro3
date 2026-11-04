@@ -37,6 +37,15 @@ class FakeLoads:
         return deepcopy(self.doc)
 
 
+class FakeAuditEvents:
+    def __init__(self):
+        self.events = []
+
+    async def insert_one(self, event, **kwargs):
+        assert kwargs.get("session") is not None
+        self.events.append(deepcopy(event))
+
+
 class FakeInvoices:
     def __init__(self, existing=False):
         self.existing = existing
@@ -63,6 +72,7 @@ def load_env(monkeypatch):
     }
     fake_loads = FakeLoads(doc)
     fake_invoices = FakeInvoices()
+    fake_audit = FakeAuditEvents()
     session = FakeSession()
 
     async def run_transaction(operation):
@@ -70,12 +80,12 @@ def load_env(monkeypatch):
 
     monkeypatch.setattr(
         load_routes, "db",
-        SimpleNamespace(loads=fake_loads, invoices=fake_invoices),
+        SimpleNamespace(loads=fake_loads, invoices=fake_invoices, commercial_audit_events=fake_audit),
     )
     monkeypatch.setattr(load_routes, "run_transaction", run_transaction)
     monkeypatch.setattr(load_routes, "_labs_for", _empty_labs)
     monkeypatch.setattr(load_routes, "to_load", lambda saved, user, lab=None: deepcopy(saved))
-    return SimpleNamespace(loads=fake_loads, invoices=fake_invoices, session=session)
+    return SimpleNamespace(loads=fake_loads, invoices=fake_invoices, audit=fake_audit, session=session)
 
 
 async def _empty_labs(_ids):
@@ -105,6 +115,8 @@ async def test_first_completion_updates_load_and_creates_invoice_in_same_session
 
     assert result["oil_kg"] == 15.0
     assert calls == [("load-retry-test", load_env.session)]
+    assert len(load_env.audit.events) == 1
+    assert load_env.audit.events[0]["action"] == "LOAD_OIL_RECORDED"
     assert load_env.loads.doc["oil_kg"] == 15.0
 
 

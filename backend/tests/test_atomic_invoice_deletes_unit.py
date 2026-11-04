@@ -31,6 +31,17 @@ class FakeCursor:
         return list(self.docs)
 
 
+class FakeAuditEvents:
+    def __init__(self, calls=None):
+        self.calls = calls if calls is not None else []
+        self.events = []
+
+    async def insert_one(self, event, **kwargs):
+        assert kwargs.get("session") is not None
+        self.calls.append("audit-event")
+        self.events.append(dict(event))
+
+
 @pytest.mark.asyncio
 async def test_run_transaction_uses_session_with_transaction(monkeypatch):
     monkeypatch.setattr(db_module, "client", FakeClient())
@@ -75,14 +86,21 @@ async def test_invoice_creation_writes_source_load_and_invoice_in_same_session(m
             assert kwargs["session"] is session
             self.inserted = doc
 
+    class AuditEvents(FakeAuditEvents):
+        async def insert_one(self, event, **kwargs):
+            assert kwargs["session"] is session
+            self.events.append(dict(event))
+
     class Settings:
         async def find_one(self, query, projection=None, **kwargs):
             assert kwargs["session"] is session
             return {"price_per_kg": 1.5, "mill_name": "Test mill"}
 
     fake_invoices = Invoices()
+    fake_audit = AuditEvents()
     monkeypatch.setattr(invoices, "db", SimpleNamespace(
-        loads=Loads(), invoices=fake_invoices, settings=Settings()
+        loads=Loads(), invoices=fake_invoices, settings=Settings(),
+        commercial_audit_events=fake_audit,
     ))
 
     result = await invoices._create_invoice_in_session(
@@ -94,6 +112,8 @@ async def test_invoice_creation_writes_source_load_and_invoice_in_same_session(m
     assert result["number"] == "FAC-2627101"
     assert result["total"] == 30.0
     assert fake_invoices.inserted["load_id"] == "load-1"
+    assert len(fake_audit.events) == 1
+    assert fake_audit.events[0]["action"] == "INVOICE_CREATED"
 
 
 @pytest.mark.asyncio
@@ -108,6 +128,11 @@ async def test_load_delete_checks_invoice_and_deletes_with_same_session(monkeypa
             return None
 
     class Loads:
+        async def find_one(self, query, projection=None, **kwargs):
+            assert kwargs["session"] is session
+            calls.append("load-read")
+            return {"id": query["id"], "code": "2627101", "client_name": "Client", "olive_kg": 100}
+
         async def delete_one(self, query, **kwargs):
             assert kwargs["session"] is session
             calls.append("load-delete")
@@ -122,14 +147,15 @@ async def test_load_delete_checks_invoice_and_deletes_with_same_session(monkeypa
         return await operation(session)
 
     monkeypatch.setattr(loads, "db", SimpleNamespace(
-        invoices=Invoices(), loads=Loads(), lab=Lab()
+        invoices=Invoices(), loads=Loads(), lab=Lab(),
+        commercial_audit_events=FakeAuditEvents(calls),
     ))
     monkeypatch.setattr(loads, "run_transaction", run)
 
     result = await loads.delete_load("load-1", {})
 
     assert result == {"ok": True}
-    assert calls == ["invoice-check", "load-delete", "lab-delete"]
+    assert calls == ["invoice-check", "load-read", "load-delete", "lab-delete", "audit-event"]
 
 
 @pytest.mark.asyncio
