@@ -213,7 +213,8 @@ async def release_oil_quality_assessment(
         if not source_olive_lot_id or not sample_id:
             raise ValueError("Preproduction sample is missing its source olive-lot linkage")
         source_update = await db["commercial_lots"].update_one(
-            {"id": source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN"},
+            {"id": source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN",
+             "latest_preproduction_sample_id": sample_id},
             {"$set": {
                 "preproduction_quality_status": command.decision,
                 "preproduction_sample_id": sample_id,
