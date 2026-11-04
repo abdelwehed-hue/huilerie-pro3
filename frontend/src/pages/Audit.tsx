@@ -50,6 +50,8 @@ const ACTION_LABELS: Record<string, { ar: string; fr: string }> = {
   SALE_RETURN_RECEIVED_IN_QUARANTINE: { ar: "استلام إرجاع في الحجر", fr: "Retour reçu en quarantaine" },
   SALE_RETURN_ACCEPTED_AND_CREDIT_NOTE_ISSUED: { ar: "قبول الإرجاع وإصدار إشعار دائن", fr: "Retour accepté et avoir émis" },
   SALE_RETURN_REJECTED_AND_DISPATCHED: { ar: "رفض الإرجاع وإعادة التسليم", fr: "Retour rejeté et réexpédié" },
+  QUALITY_RELEASED: { ar: "اعتماد جودة الزيت", fr: "Qualité de l’huile approuvée" },
+  QUALITY_REJECTED: { ar: "رفض جودة الزيت", fr: "Qualité de l’huile rejetée" },
   QUALITY_RESULTS_SUBMITTED: { ar: "تسجيل نتائج الجودة", fr: "Résultats qualité enregistrés" },
   QUALITY_ASSESSMENT_UPDATED: { ar: "تعديل تقييم الجودة", fr: "Évaluation qualité modifiée" },
   QUALITY_ASSESSMENT_DELETED: { ar: "حذف تقييم الجودة", fr: "Évaluation qualité supprimée" },
