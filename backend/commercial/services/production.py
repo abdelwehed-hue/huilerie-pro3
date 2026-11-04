@@ -111,6 +111,20 @@ async def complete_commercial_production(
             raise ValueError(f"Preproduction quality approval is missing, rejected, or superseded: {line.olive_lot_id}")
         if sample_oil_lot.get("owner") != owner_doc:
             raise ValueError(f"Preproduction quality approval belongs to a different stock owner: {line.olive_lot_id}")
+        # Write the source lot inside this transaction. Trial creation and quality
+        # release update the same document, preventing a stale approval from racing
+        # a production command on another receiving location.
+        gate_guard = await db["commercial_lots"].update_one(
+            {"id": line.olive_lot_id, "status": "OPEN",
+             "preproduction_quality_status": "RELEASED",
+             "preproduction_sample_id": lot["preproduction_sample_id"],
+             "preproduction_quality_assessment_id": lot["preproduction_quality_assessment_id"],
+             "latest_preproduction_sample_id": lot["preproduction_sample_id"]},
+            {"$inc": {"preproduction_gate_version": 1}},
+            session=session,
+        )
+        if gate_guard.matched_count != 1:
+            raise ValueError(f"Preproduction quality approval changed during production validation: {line.olive_lot_id}")
 
     tank = await db["commercial_tanks"].find_one(
         {"id": draft.output_tank_id, "active": True},
