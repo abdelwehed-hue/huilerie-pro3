@@ -76,17 +76,19 @@ async def complete_commercial_production(
     owner = draft.owner
     owner_doc = _owner_document(owner)
     quality_gate_evidence: list[dict[str, str]] = []
+    source_batch_code: str | None = None
     # Validate every input lot's identity and owner before writing anything.
     for line in draft.inputs:
         lot = await db["commercial_lots"].find_one(
             {"id": line.olive_lot_id},
-            {"_id": 0, "id": 1, "product_kind": 1, "status": 1, "owner": 1,
+            {"_id": 0, "id": 1, "product_kind": 1, "status": 1, "owner": 1, "batch_code": 1,
              "preproduction_quality_status": 1, "preproduction_sample_id": 1,
              "preproduction_quality_assessment_id": 1, "latest_preproduction_sample_id": 1},
             session=session,
         )
         if not lot:
             raise ValueError(f"Unknown olive lot: {line.olive_lot_id}")
+        source_batch_code = lot.get("batch_code")
         if lot.get("product_kind") != "OLIVE":
             raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
         if line.owner != owner:
@@ -164,6 +166,8 @@ async def complete_commercial_production(
         "status": "COMPLETED",
         "version": 1,
         "owner": owner_doc,
+        "batch_code": source_batch_code,
+        "source_olive_lot_id": draft.inputs[0].olive_lot_id,
         "preproduction_quality_approvals": quality_gate_evidence,
         "inputs": [
             {
@@ -197,6 +201,8 @@ async def complete_commercial_production(
         "season_code": season_code,
         "document_type": "LOT",
         "document_number": oil_lot_number,
+        "batch_code": source_batch_code,
+        "source_olive_lot_id": draft.inputs[0].olive_lot_id,
         "product_kind": "OIL",
         "source_production_id": production_id,
         "quantity_received_kg": Decimal128(draft.actual_oil_output_kg),
