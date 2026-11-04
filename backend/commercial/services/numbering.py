@@ -34,6 +34,29 @@ def format_document_number(season_code: str, document_type: str, sequence: int) 
     return f"{season_code}{document_type}{sequence:04d}"
 
 
+
+async def reserve_batch_code(
+    counters_collection: Any,
+    season_code: str,
+    *,
+    session: Any,
+) -> str:
+    """Allocate the user-facing, season-scoped olive batch code (YYZZA0001)."""
+    validate_numbering_components(season_code, "BATCH")
+    counter = await counters_collection.find_one_and_update(
+        {"season_code": season_code, "document_type": "BATCH"},
+        {"$inc": {"last_sequence": 1}},
+        projection={"last_sequence": 1},
+        return_document=ReturnDocument.AFTER,
+        session=session,
+    )
+    if not counter:
+        raise RuntimeError(
+            f"Missing commercial counter for season={season_code}, type=BATCH"
+        )
+    return f"{season_code}A{counter['last_sequence']:04d}"
+
+
 async def reserve_document_number(
     counters_collection: Any,
     season_code: str,
