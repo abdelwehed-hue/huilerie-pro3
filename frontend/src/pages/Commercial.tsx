@@ -37,7 +37,7 @@ const labels = {
     season: "Saison active", tanksCount: "Cuves configurées", locations: "Emplacements actifs",
     counters: "Compteurs de documents", readiness: "État du module", ready: "Prêt après initialisation",
     notReady: "Initialisation requise", bootstrap: "Initialiser le module commercial", bootstrapping: "Initialisation…",
-    bootstrapHint: "Cette action crée les neuf cuves et les compteurs de la saison. Elle ne crée aucun stock et ne modifie pas les données de trituration.",
+    bootstrapHint: "Cette action crée les neuf cuves et les compteurs de la saison, y compris les essais préproduction ESS. Elle ne crée aucun stock et ne modifie pas les données de trituration.",
     bootstrapSuccess: "Module commercial initialisé", bootstrapError: "Impossible d'initialiser le module commercial",
     tank: "Cuve", capacity: "Capacité max. (kg)", flexible: "Flexible — capacité non définie", active: "Active", saveCapacity: "Enregistrer", clearCapacity: "Vide = flexible", capacitySaved: "Capacité de la cuve mise à jour", capacityError: "Impossible de modifier la capacité",
     product: "Produit", document: "Document", owner: "Propriétaire actuel", quantity: "Quantité (kg)", currentStock: "Stock actuel (kg)",
@@ -62,7 +62,7 @@ const labels = {
     season: "الموسم الحالي", tanksCount: "الخزانات المهيأة", locations: "المواقع النشطة",
     counters: "عدادات الوثائق", readiness: "حالة الوحدة", ready: "جاهزة بعد التهيئة",
     notReady: "تتطلب التهيئة", bootstrap: "تهيئة الوحدة التجارية", bootstrapping: "جار التهيئة…",
-    bootstrapHint: "تنشئ هذه العملية الخزانات التسعة وعدادات الموسم. لا تضيف أي مخزون ولا تغيّر بيانات العصر.",
+    bootstrapHint: "تنشئ هذه العملية الخزانات التسعة وعدادات الموسم، بما فيها وثائق تجارب ما قبل الإنتاج ESS. لا تضيف أي مخزون ولا تغيّر بيانات العصر.",
     bootstrapSuccess: "تمت تهيئة الوحدة التجارية", bootstrapError: "تعذرت تهيئة الوحدة التجارية",
     tank: "الخزان", capacity: "السعة القصوى (كغ)", flexible: "مرنة — دون سعة محددة", active: "نشط", saveCapacity: "حفظ", clearCapacity: "اتركه فارغاً للسعة المرنة", capacitySaved: "تم تحديث سعة الخزان", capacityError: "تعذر تعديل سعة الخزان",
     product: "المنتج", document: "الوثيقة", owner: "المالك الحالي", quantity: "الكمية (كغ)", currentStock: "الرصيد الحالي (كغ)",
@@ -1152,7 +1152,7 @@ export default function Commercial() {
         <Card><CardHeader className="pb-1"><CardDescription>{l.season}</CardDescription><CardTitle className="text-2xl" dir="ltr">{value(status.data?.season_code)}</CardTitle></CardHeader></Card>
         <Card><CardHeader className="pb-1"><CardDescription>{l.tanksCount}</CardDescription><CardTitle className="text-2xl">{status.data?.tanks_provisioned ?? "—"}/9</CardTitle></CardHeader></Card>
         <Card><CardHeader className="pb-1"><CardDescription>{l.locations}</CardDescription><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="pb-1"><CardDescription>{l.counters}</CardDescription><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/15</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-1"><CardDescription>{l.counters}</CardDescription><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/16</CardTitle></CardHeader></Card>
       </div>}
 
       {!ready && (
