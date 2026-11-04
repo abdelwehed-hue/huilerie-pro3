@@ -49,15 +49,31 @@ def make_draft():
         idempotency_key="production-service-test-0001",
     )
 
+def approved_lot(lot_id):
+    return {
+        "id": lot_id, "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN",
+        "preproduction_quality_status": "RELEASED",
+        "preproduction_sample_id": f"sample-{lot_id}",
+        "preproduction_quality_assessment_id": f"assessment-{lot_id}",
+    }
+
+
+def approved_quality_rows(lot_ids):
+    samples = [{"id": f"sample-{lot_id}", "source_olive_lot_id": lot_id,
+                "oil_sample_lot_id": f"sample-oil-{lot_id}", "status": "COMPLETED"} for lot_id in lot_ids]
+    assessments = [{"id": f"assessment-{lot_id}", "oil_lot_id": f"sample-oil-{lot_id}",
+                    "status": "REVIEWED", "decision": "RELEASED"} for lot_id in lot_ids]
+    return samples, assessments
+
+
 
 @pytest.mark.asyncio
 async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-        ]),
+        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
         "commercial_audit_events": Collection(),
     })
@@ -94,10 +110,9 @@ async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
 async def test_production_idempotency_returns_existing_run_without_reposting(monkeypatch):
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-        ]),
+        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True}]),
         "commercial_audit_events": Collection(),
     })
@@ -156,10 +171,9 @@ async def test_production_rejects_owner_mismatch_before_creating_run():
 async def test_production_rejects_quarantine_output_tank_before_creating_run():
     db = Database({
         "commercial_production_runs": Collection(),
-        "commercial_lots": Collection([
-            {"id": "olive-1", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-            {"id": "olive-2", "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN"},
-        ]),
+        "commercial_lots": Collection([approved_lot("olive-1"), approved_lot("olive-2")]),
+        "commercial_preproduction_samples": Collection(approved_quality_rows(["olive-1", "olive-2"])[0]),
+        "commercial_quality_assessments": Collection(approved_quality_rows(["olive-1", "olive-2"])[1]),
         "commercial_tanks": Collection([{"id": "tank-01", "active": True, "role": "QUARANTINE"}]),
         "commercial_audit_events": Collection(),
     })
