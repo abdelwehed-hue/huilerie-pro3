@@ -33,7 +33,7 @@ def _owner_matches(owner: Any, stored: Any) -> bool:
 
 async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> None:
     lot = await db["commercial_lots"].find_one(
-        {"id": draft.lot_id}, {"_id": 0, "id": 1, "product_kind": 1}, session=session
+        {"id": draft.lot_id}, {"_id": 0, "id": 1, "product_kind": 1, "lot_purpose": 1}, session=session
     )
     if not lot:
         raise ValueError("Unknown commercial lot")
@@ -118,7 +118,8 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
          "source_purchase_id": 1, "quantity_received_kg": 1,
          "movement_kind": 1, "product_kind": 1, "lot_id": 1,
          "source_location_id": 1, "destination_location_id": 1,
-         "source_owner": 1, "destination_owner": 1},
+         "source_owner": 1, "destination_owner": 1,
+         "source_olive_lot_id": 1, "input_olive_quantity_kg": 1},
         session=session,
     )
     if not source:
