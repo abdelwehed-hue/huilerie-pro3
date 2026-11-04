@@ -77,11 +77,12 @@ async def create_olive_purchase_draft(
     number = await reserve_document_number(
         db["commercial_counters"], season_code, "ACH", session=session
     )
+    # One traceability code belongs to the whole purchase, not to each line.
+    batch_code = await reserve_batch_code(
+        db["commercial_counters"], season_code, session=session
+    )
     lines = []
     for line in draft.lines:
-        batch_code = await reserve_batch_code(
-            db["commercial_counters"], season_code, session=session
-        )
         lines.append({
             "variety_id": line.variety_id,
             "batch_code": batch_code,
@@ -89,7 +90,7 @@ async def create_olive_purchase_draft(
             "unit_price_dt": Decimal128(line.unit_price_dt),
             "line_total_dt": Decimal128((line.quantity_kg * line.unit_price_dt).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)),
         })
-    batch_codes = [line["batch_code"] for line in lines]
+    batch_codes = [batch_code]
     total_quantity = sum((line.quantity_kg for line in draft.lines), start=Decimal("0"))
     total_amount = sum(
         (
@@ -108,6 +109,7 @@ async def create_olive_purchase_draft(
         "supplier_id": draft.supplier_id,
         "purchase_date": draft.purchase_date.isoformat(),
         "lines": lines,
+        "batch_code": batch_code,
         "batch_codes": batch_codes,
         "total_quantity_kg": Decimal128(total_quantity),
         "total_amount_dt": Decimal128(total_amount),
@@ -184,20 +186,18 @@ async def update_olive_purchase_draft(
     if not {line.variety_id for line in draft.lines}.issubset(active_varieties):
         raise ValueError("One or more olive varieties are unknown or inactive")
 
-    # Preserve each draft line's identity when it remains the same variety.
-    # New lines receive a new batch code; changed varieties become new batches.
-    reusable_codes: dict[str, list[str]] = {}
-    for old_line in existing.get("lines", []):
-        old_variety = str(old_line.get("variety_id") or "")
-        old_code = old_line.get("batch_code")
-        if old_variety and old_code:
-            reusable_codes.setdefault(old_variety, []).append(str(old_code))
-    lines = []
-    for line in draft.lines:
-        candidates = reusable_codes.get(line.variety_id, [])
-        batch_code = candidates.pop(0) if candidates else await reserve_batch_code(
+    # Keep the purchase's single traceability code when editing its draft.
+    # Legacy drafts are normalized to one code at the purchase level.
+    batch_code = existing.get("batch_code") or next(
+        (str(item.get("batch_code")) for item in existing.get("lines", []) if item.get("batch_code")),
+        None,
+    )
+    if not batch_code:
+        batch_code = await reserve_batch_code(
             db["commercial_counters"], existing["season_code"], session=session
         )
+    lines = []
+    for line in draft.lines:
         lines.append({
             "variety_id": line.variety_id,
             "batch_code": batch_code,
@@ -207,7 +207,7 @@ async def update_olive_purchase_draft(
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )),
         })
-    batch_codes = [line["batch_code"] for line in lines]
+    batch_codes = [batch_code]
     total_quantity = sum((line.quantity_kg for line in draft.lines), start=Decimal("0"))
     total_amount = sum((
         (line.quantity_kg * line.unit_price_dt).quantize(
@@ -221,6 +221,7 @@ async def update_olive_purchase_draft(
             "supplier_id": draft.supplier_id,
             "purchase_date": draft.purchase_date.isoformat(),
             "lines": lines,
+            "batch_code": batch_code,
             "batch_codes": batch_codes,
             "total_quantity_kg": Decimal128(total_quantity),
             "total_amount_dt": Decimal128(total_amount),
