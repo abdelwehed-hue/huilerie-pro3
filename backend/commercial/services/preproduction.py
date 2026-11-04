@@ -110,10 +110,12 @@ async def create_preproduction_sample(
 
     # A new trial invalidates every previous approval before the new analysis.
     source_update = await db["commercial_lots"].update_one(
-        {"id": draft.source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN"},
+        {"id": draft.source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN",
+         "latest_preproduction_sample_id": latest_sample_id},
         {"$set": {"preproduction_quality_status": "PENDING", "latest_preproduction_sample_id": sample_id, "updated_at": created_at.astimezone(timezone.utc)},
          "$unset": {"preproduction_sample_id": "", "preproduction_quality_assessment_id": "",
-                    "preproduction_quality_decided_at": "", "preproduction_quality_decided_by": ""}},
+                    "preproduction_quality_decided_at": "", "preproduction_quality_decided_by": ""},
+         "$inc": {"version": 1}},
         session=session,
     )
     if source_update.matched_count != 1:
