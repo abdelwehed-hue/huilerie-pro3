@@ -201,7 +201,7 @@ async def test_production_rejects_owner_mismatch_before_creating_run():
         actual_oil_output_kg="100", output_tank_id="tank-01",
         idempotency_key="production-owner-test-0001",
     )
-    with pytest.raises(ValueError, match="ownership mismatch"):
+    with pytest.raises(ValueError, match="owner does not match the source olive lot"):
         await service.complete_commercial_production(
             db, draft, season_code="2627",
             actor_user={"active": True, "role": "admin"},
