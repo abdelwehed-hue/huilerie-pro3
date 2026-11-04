@@ -156,7 +156,9 @@ INVENTORY_INDEXES = {
     "commercial_lots": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_commercial_lot_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
-                   unique=True, name="uq_commercial_lot_document"),
+                   unique=True,
+                   partialFilterExpression={"document_number": {"$type": "string"}},
+                   name="uq_commercial_lot_document"),
         IndexModel([("season_code", ASCENDING), ("source_purchase_id", ASCENDING)],
                    unique=False, partialFilterExpression={"product_kind": "OLIVE"},
                    name="ix_commercial_olive_source_purchase"),
@@ -223,6 +225,13 @@ INVENTORY_INDEXES = {
 
 async def ensure_inventory_indexes(db):
     """Create critical indexes; any failure must prevent commercial activation."""
+    # LOTs no longer receive user-facing document numbers. Retire legacy unique
+    # indexes that would otherwise reject multiple lots without document_number
+    # or enforce one traceability code per physical lot.
+    lot_indexes = await db["commercial_lots"].index_information()
+    for legacy_name in ("uq_commercial_lot_document", "uq_commercial_olive_batch_code"):
+        if legacy_name in lot_indexes:
+            await db["commercial_lots"].drop_index(legacy_name)
     for collection, indexes in INVENTORY_INDEXES.items():
         await db[collection].create_indexes(indexes)
 
