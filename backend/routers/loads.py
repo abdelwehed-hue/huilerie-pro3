@@ -86,7 +86,7 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
     now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()), "code": code, "season_id": season, "client_name": body.client_name.strip(),
-        "phone": re.sub(r"\\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
+        "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
         "day": now_local.strftime("%Y-%m-%d"), "created_at": now,
         "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
         "price_per_kg": await _price(),
