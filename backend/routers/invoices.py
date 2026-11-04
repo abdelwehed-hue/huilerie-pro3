@@ -35,7 +35,7 @@ def _public(doc):
 
 
 @router.get("/invoices")
-async def list_invoices(q: str = "", _: dict = Depends(current_user)):
+async def list_invoices(q: str = "", user: dict = Depends(current_user)):
     flt = {}
     if q.strip():
         term = re.escape(q.strip())
@@ -65,11 +65,32 @@ async def list_invoices(q: str = "", _: dict = Depends(current_user)):
             total = _money(oil_kg * float(doc.get("price_per_kg", 0)))
             paid = _money(doc.get("paid_amount", 0))
             balance = _money(max(0, total - paid))
-            await db.invoices.update_one(
-                {"id": doc["id"], "oil_kg": {"$exists": False}},
-                {"$set": {"oil_kg": oil_kg, "total": total, "balance": balance}},
-            )
-            doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
+            repaired_at = datetime.now(timezone.utc)
+
+            async def repair_legacy_invoice(session):
+                result = await db.invoices.update_one(
+                    {"id": doc["id"], "oil_kg": {"$exists": False}},
+                    {"$set": {
+                        "oil_kg": oil_kg, "total": total, "balance": balance,
+                        "updated_at": repaired_at,
+                    }},
+                    session=session,
+                )
+                if result.modified_count:
+                    await db.commercial_audit_events.insert_one({
+                        "id": str(uuid.uuid4()), "entity_type": "traditional_invoice",
+                        "entity_id": doc["id"], "action": "INVOICE_LEGACY_REPAIRED",
+                        "actor_user_id": user.get("id"), "created_at": repaired_at,
+                        "details": {
+                            "number": doc.get("number"), "oil_kg": oil_kg,
+                            "total": total, "balance": balance,
+                            "reason": "backfill_missing_oil_weight_from_source_load",
+                        },
+                    }, session=session)
+                return bool(result.modified_count)
+
+            if await run_transaction(repair_legacy_invoice):
+                doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
     return docs
 
 
