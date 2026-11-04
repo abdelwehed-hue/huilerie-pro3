@@ -66,6 +66,7 @@ def make_db(quantity="100"):
     return Database({
         "commercial_lots": Collection([{
             "id": "olive-1", "product_kind": "OLIVE", "status": "OPEN",
+            "document_number": "2627LOT0001", "batch_code": "2627A0001",
             "owner": {"kind": "MILL"},
         }]),
         "commercial_locations": Collection([{
@@ -107,10 +108,12 @@ async def test_preproduction_trial_creates_lab_only_oil_lot_and_posts_olive_cons
     assert result["document_number"] == "2627ESS0001"
     assert result["status"] == "COMPLETED"
     assert result["source_olive_lot_id"] == "olive-1"
+    assert result["batch_code"] == "2627A0001"
     assert result["input_olive_quantity_kg"].to_decimal() == Decimal("12.500")
     sample_lot = next(row for row in db["commercial_lots"].rows if row["id"] == "oil-sample-1")
     assert sample_lot["lot_purpose"] == "PREPRODUCTION_SAMPLE"
     assert sample_lot["source_olive_lot_id"] == "olive-1"
+    assert sample_lot["batch_code"] == "2627A0001"
     assert sample_lot["quality_status"] == "PENDING"
     assert len(movements) == 1
     assert movements[0].movement_kind == "CONSUMPTION"
