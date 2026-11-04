@@ -1008,6 +1008,13 @@ export default function Commercial() {
     .filter((balance) => balance.lot_id === lot.id)
     .reduce((total, balance) => total + Number(balance.quantity_kg ?? 0), 0);
 
+  const tankOilStocks = (tanks.data ?? []).filter((tank) => tank.active !== false).map((tank, index) => {
+    const quantity = (balances.data ?? [])
+      .filter((balance) => balance.product_kind === "OIL" && balance.location_id === tank.id)
+      .reduce((sum, balance) => sum + Number(balance.quantity_kg ?? 0), 0);
+    return { tank, index, quantity };
+  });
+  const maxFlexibleTankStock = Math.max(1, ...tankOilStocks.map((item) => item.quantity));
   const availableMillOilLots = (lots.data ?? []).filter((lot) =>
     lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED"
     && (balances.data ?? []).some((balance) => balance.product_kind === "OIL" && balance.lot_id === lot.id
@@ -1101,6 +1108,38 @@ export default function Commercial() {
         <Card className="commercial-card commercial-card--teal"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.locations}</CardDescription><MapPin className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
         <Card className="commercial-card commercial-card--amber"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.counters}</CardDescription><ClipboardList className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/15</CardTitle></CardHeader></Card>
       </div>}
+
+      {tab === "overview" && ready && <Card className="commercial-card commercial-card--blue">
+        <CardHeader className="pb-2">
+          <CardTitle>{lang === "ar" ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</CardTitle>
+          <CardDescription>{lang === "ar" ? "كمية الزيت الحالية في كل خزان" : "Quantité d’huile actuellement stockée dans chaque cuve"}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tanks.isLoading || balances.isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{lang === "ar" ? "جار تحميل مستويات الخزانات…" : "Chargement des niveaux des cuves…"}</p>
+          ) : tankOilStocks.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{l.noRows}</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9">
+              {tankOilStocks.map(({ tank, index, quantity }) => {
+                const capacity = Number(tank.capacity_kg ?? 0);
+                const fillPercent = Math.max(0, Math.min(100, capacity > 0 ? quantity / capacity * 100 : quantity / maxFlexibleTankStock * 100));
+                const tankLabel = String(tank.code ?? tank.name ?? (index + 1));
+                return (
+                  <div key={tank.id} className="flex min-w-0 flex-col items-center gap-2 rounded-xl border border-sky-100 bg-sky-50/70 px-2 pt-3 pb-2 dark:border-sky-900/60 dark:bg-slate-900/50" title={`${tankLabel}: ${number(quantity)} kg${capacity > 0 ? ` / ${number(capacity)} kg` : ""}`}>
+                    <div className="flex h-36 w-full max-w-16 items-end overflow-hidden rounded-t-lg rounded-b-md border border-sky-200 bg-white shadow-inner dark:border-slate-700 dark:bg-slate-950">
+                      <div className="w-full rounded-t-sm bg-gradient-to-t from-sky-700 via-cyan-500 to-cyan-300 transition-[height] duration-700 ease-out" style={{ height: `${fillPercent}%`, minHeight: quantity > 0 ? "4px" : "0" }} />
+                    </div>
+                    <span className="w-full truncate text-center text-sm font-bold text-slate-800 dark:text-slate-100">{lang === "ar" ? "خزان" : "Cuve"} {tankLabel}</span>
+                    <span className="text-xs font-semibold tabular-nums text-sky-800 dark:text-sky-300">{number(quantity)} kg</span>
+                    {capacity > 0 && <span className="text-[10px] tabular-nums text-muted-foreground">{Math.round(fillPercent)}%</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>}
 
       {!ready && (
         <Card className="border-amber-300 bg-amber-50/70">
