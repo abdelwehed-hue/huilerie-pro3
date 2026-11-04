@@ -162,74 +162,93 @@ async def create_invoice(body: dict, user: dict = Depends(require_admin)):
 async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(require_admin)):
     if not any(key in body for key in ("price_per_kg", "payment_amount", "paid_amount")):
         raise HTTPException(422, "no_editable_fields")
-    doc = await db.invoices.find_one({"id": invoice_id})
-    if not doc:
-        raise HTTPException(404, "invoice_not_found")
-    allowed = {}
-    if "price_per_kg" in body:
-        price = _number(body["price_per_kg"], "price_invalid")
-        if price < 0:
-            raise HTTPException(422, "price_invalid")
-        allowed["price_per_kg"] = _money(price)
-    old_paid = _money(doc.get("paid_amount", 0))
-    payment_amount = 0.0
-    if "payment_amount" in body:
-        payment_amount = _money(_number(body["payment_amount"], "paid_amount_invalid"))
-        if payment_amount < 0:
-            raise HTTPException(422, "paid_amount_invalid")
-    # Keep compatibility with older clients that still send paid_amount as a replacement value.
-    if "paid_amount" in body:
-        paid_value = _money(_number(body["paid_amount"], "paid_amount_invalid"))
-        if paid_value < 0:
-            raise HTTPException(422, "paid_amount_invalid")
-        old_paid = paid_value
-    price = allowed.get("price_per_kg", float(doc["price_per_kg"]))
-    oil_kg = doc.get("oil_kg")
-    if oil_kg is None:
-        load = await db.loads.find_one({"id": doc.get("load_id")}, {"_id": 0, "oil_kg": 1})
-        if not load or load.get("oil_kg") is None:
-            raise HTTPException(409, "invoice_oil_weight_missing")
-        oil_kg = float(load["oil_kg"])
-        allowed["oil_kg"] = oil_kg
-    total = _money(float(oil_kg) * price)
-    paid = _money(old_paid + payment_amount) if "payment_amount" in body else old_paid
-    if paid > total:
-        raise HTTPException(422, "paid_amount_exceeds_total")
-    allowed["paid_amount"] = paid
-    allowed["total"] = total
-    allowed["balance"] = _money(total - paid)
-    new_payments = list(doc.get("payments") or [])
-    if payment_amount > 0:
-        new_payments.append({"at": datetime.now(timezone.utc), "by": user.get("username", ""), "amount": payment_amount})
-        allowed["payments"] = new_payments
-    now = datetime.now(timezone.utc)
-    before = {"price_per_kg": doc["price_per_kg"], "paid_amount": doc["paid_amount"],
-              "total": doc["total"], "balance": doc["balance"]}
-    after = {"price_per_kg": allowed["price_per_kg"], "paid_amount": allowed["paid_amount"],
-             "total": total, "balance": allowed["balance"]}
-    # Do not create an audit event when the requested edit changes no invoice values.
-    if all(before[key] == after[key] for key in before):
-        return _public(doc)
-    audit_event = {"at": now, "by": user.get("username", ""), "action": "updated",
-                   "before": before, "after": after}
-    # Optimistic concurrency prevents simultaneous edits from overwriting each other's
-    # invoice values or audit history.
-    result = await db.invoices.update_one(
-        {"id": invoice_id, "updated_at": doc.get("updated_at")},
-        {"$set": {**allowed, "updated_at": now}, "$push": {"history": audit_event}},
-    )
-    if not result.modified_count:
-        raise HTTPException(409, "invoice_changed_retry")
-    await db.commercial_audit_events.insert_one({
-        "id": str(uuid.uuid4()), "entity_type": "traditional_invoice",
-        "entity_id": invoice_id, "action": "INVOICE_UPDATED",
-        "actor_user_id": user.get("id"), "created_at": now,
-        "details": {"number": doc.get("number"), "previous_values": before,
-                    "new_values": after},
-    })
-    updated = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
-    return updated
 
+    async def operation(session):
+        doc = await db.invoices.find_one({"id": invoice_id}, session=session)
+        if not doc:
+            raise HTTPException(404, "invoice_not_found")
+
+        allowed = {}
+        if "price_per_kg" in body:
+            price = _number(body["price_per_kg"], "price_invalid")
+            if price < 0:
+                raise HTTPException(422, "price_invalid")
+            allowed["price_per_kg"] = _money(price)
+
+        old_paid = _money(doc.get("paid_amount", 0))
+        payment_amount = 0.0
+        if "payment_amount" in body:
+            payment_amount = _money(_number(body["payment_amount"], "paid_amount_invalid"))
+            if payment_amount < 0:
+                raise HTTPException(422, "paid_amount_invalid")
+        # Compatibility with older clients sending paid_amount as a replacement value.
+        if "paid_amount" in body:
+            paid_value = _money(_number(body["paid_amount"], "paid_amount_invalid"))
+            if paid_value < 0:
+                raise HTTPException(422, "paid_amount_invalid")
+            old_paid = paid_value
+
+        price = allowed.get("price_per_kg", float(doc["price_per_kg"]))
+        oil_kg = doc.get("oil_kg")
+        if oil_kg is None:
+            load = await db.loads.find_one(
+                {"id": doc.get("load_id")}, {"_id": 0, "oil_kg": 1}, session=session
+            )
+            if not load or load.get("oil_kg") is None:
+                raise HTTPException(409, "invoice_oil_weight_missing")
+            oil_kg = float(load["oil_kg"])
+            allowed["oil_kg"] = oil_kg
+
+        total = _money(float(oil_kg) * price)
+        paid = _money(old_paid + payment_amount) if "payment_amount" in body else old_paid
+        if paid > total:
+            raise HTTPException(422, "paid_amount_exceeds_total")
+        allowed.update({
+            "paid_amount": paid,
+            "total": total,
+            "balance": _money(total - paid),
+        })
+
+        now = datetime.now(timezone.utc)
+        before = {
+            "price_per_kg": doc.get("price_per_kg", 0),
+            "paid_amount": doc.get("paid_amount", 0),
+            "total": doc.get("total", 0),
+            "balance": doc.get("balance", 0),
+        }
+        after = {
+            "price_per_kg": allowed["price_per_kg"] if "price_per_kg" in allowed else doc["price_per_kg"],
+            "paid_amount": allowed["paid_amount"],
+            "total": total,
+            "balance": allowed["balance"],
+        }
+        if all(before[key] == after[key] for key in before) and payment_amount == 0:
+            return _public(doc)
+
+        update_fields = {**allowed, "updated_at": now}
+        history_event = {
+            "at": now, "by": user.get("username", ""), "action": "updated",
+            "before": before, "after": after,
+        }
+        result = await db.invoices.update_one(
+            {"id": invoice_id, "updated_at": doc.get("updated_at")},
+            {"$set": update_fields, "$push": {"history": history_event}},
+            session=session,
+        )
+        if not result.modified_count:
+            raise HTTPException(409, "invoice_changed_retry")
+
+        await db.commercial_audit_events.insert_one({
+            "id": str(uuid.uuid4()), "entity_type": "traditional_invoice",
+            "entity_id": invoice_id, "action": "INVOICE_UPDATED",
+            "actor_user_id": user.get("id"), "created_at": now,
+            "details": {"number": doc.get("number"), "previous_values": before,
+                        "new_values": after, "payment_amount": payment_amount},
+        }, session=session)
+        updated = await db.invoices.find_one({"id": invoice_id}, {"_id": 0}, session=session)
+        return updated
+
+    return await run_transaction(operation)
 
 @router.delete("/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, user: dict = Depends(require_admin)):
