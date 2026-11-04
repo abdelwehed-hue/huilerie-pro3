@@ -189,6 +189,7 @@ export default function Commercial() {
   const [trialOilKg, setTrialOilKg] = useState("");
   const [trialDate, setTrialDate] = useState(new Date().toISOString().slice(0, 10));
   const [trialNotes, setTrialNotes] = useState("");
+  const [cancelTrialId, setCancelTrialId] = useState("");
   const [qualityLotId, setQualityLotId] = useState("");
   const [editingQualityAssessmentId, setEditingQualityAssessmentId] = useState("");
   const [sampleReference, setSampleReference] = useState("");
@@ -518,6 +519,19 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const cancelPreproductionSample = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/preproduction-samples/${encodeURIComponent(id)}/cancel`, { reason }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم إلغاء التجربة مع الاحتفاظ بسجل التدقيق" : "Essai annulé; l’audit est conservé");
+      setCancelTrialId("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "preproduction-samples"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -1291,6 +1305,27 @@ export default function Commercial() {
             <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.notes}<input maxLength={1000} value={trialNotes} onChange={(e) => setTrialNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <div className="md:col-span-2"><Button type="submit" disabled={createPreproductionSample.isPending || !trialBalanceKey || !(Number(trialInputKg) > 0) || !(Number(trialOilKg) > 0) || Number(trialOilKg) > Number(trialInputKg)}>{lang === "ar" ? "إنشاء تجربة العصر" : "Créer l’essai de trituration"}</Button></div>
           </form></CardContent>
+        </Card>}
+        {(preproductionSamples.data?.length ?? 0) > 0 && <Card>
+          <CardHeader><CardTitle>{lang === "ar" ? "سجل تجارب العصر" : "Historique des essais de trituration"}</CardTitle></CardHeader>
+          <CardContent><Table><TableHeader><TableRow>
+            <TableHead>{l.document}</TableHead><TableHead>{lang === "ar" ? "دفعة الزيتون" : "Lot d’olives"}</TableHead>
+            <TableHead>{l.qualityLot}</TableHead><TableHead>{lang === "ar" ? "زيتون التجربة (kg)" : "Olives essai (kg)"}</TableHead>
+            <TableHead>{lang === "ar" ? "زيت العينة (kg)" : "Huile échantillon (kg)"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead>
+          </TableRow></TableHeader><TableBody>
+            {(preproductionSamples.data ?? []).map((sample) => {
+              const sampleLot = (lots.data ?? []).find((lot) => lot.id === sample.oil_sample_lot_id);
+              const assessment = (quality.data ?? []).find((item) => item.oil_lot_id === sample.oil_sample_lot_id && item.status === "REVIEWED");
+              return <TableRow key={sample.id}>
+                <TableCell className="font-mono text-xs">{value(sample.document_number)}</TableCell>
+                <TableCell>{value((lots.data ?? []).find((lot) => lot.id === sample.source_olive_lot_id)?.document_number, sample.source_olive_lot_id)}</TableCell>
+                <TableCell>{value(sampleLot?.document_number, sample.oil_sample_lot_id)}</TableCell>
+                <TableCell>{number(sample.input_olive_quantity_kg)}</TableCell><TableCell>{number(sample.sample_oil_quantity_kg)}</TableCell>
+                <TableCell>{sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulé") : value(assessment?.decision, lang === "ar" ? "بانتظار التحليل" : "En attente d’analyse")}</TableCell>
+                <TableCell>{canCreatePreproductionSample && sample.status === "COMPLETED" && assessment?.decision === "REJECTED" && <Button type="button" size="sm" variant="destructive" disabled={cancelPreproductionSample.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "اذكر سبب إلغاء التجربة" : "Motif de l’annulation"); if (reason && reason.trim().length >= 5) cancelPreproductionSample.mutate({ id: sample.id, reason: reason.trim() }); }}>{lang === "ar" ? "إلغاء التجربة" : "Annuler l’essai"}</Button>}</TableCell>
+              </TableRow>;
+            })}
+          </TableBody></Table></CardContent>
         </Card>}
         {canRecordLab && <Card><CardHeader><CardTitle>{editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
