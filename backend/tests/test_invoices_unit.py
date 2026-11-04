@@ -10,6 +10,7 @@ from routers import invoices as invoice_routes
 class FakeCollection:
     def __init__(self, docs=None):
         self.docs = list(docs or [])
+        self.insert_sessions = []
 
     async def find_one(self, query, projection=None, **kwargs):
         for doc in self.docs:
@@ -22,6 +23,7 @@ class FakeCollection:
         return None
 
     async def insert_one(self, doc, **kwargs):
+        self.insert_sessions.append(kwargs.get("session"))
         self.docs.append(dict(doc))
         return SimpleNamespace(inserted_id="fake-id")
 
@@ -129,6 +131,7 @@ async def test_update_recalculates_balance_and_records_history(fake_db):
     assert len(fake_db.commercial_audit_events.docs) == 2
     assert fake_db.commercial_audit_events.docs[-1]["action"] == "INVOICE_UPDATED"
     assert fake_db.commercial_audit_events.docs[-1]["details"]["previous_values"]["balance"] == 2.2
+    assert all(session is not None for session in fake_db.commercial_audit_events.insert_sessions)
 
 
 @pytest.mark.asyncio
@@ -297,3 +300,4 @@ async def test_delete_invoice_records_full_snapshot_in_same_transaction(fake_db)
     assert event["action"] == "INVOICE_DELETED"
     assert event["details"]["number"] == "FAC-2627100"
     assert event["details"]["paid_amount"] == 0.5
+    assert all(session is not None for session in fake_db.commercial_audit_events.insert_sessions)
