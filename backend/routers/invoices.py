@@ -273,18 +273,20 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
 
 @router.delete("/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, user: dict = Depends(require_admin)):
-    doc = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "invoice_not_found")
-    now = datetime.now(timezone.utc)
     async def operation(session):
-        result = await db.invoices.delete_one({"id": invoice_id}, session=session)
+        doc = await db.invoices.find_one({"id": invoice_id}, {"_id": 0}, session=session)
+        if not doc:
+            raise HTTPException(404, "invoice_not_found")
+        result = await db.invoices.delete_one(
+            {"id": invoice_id, "updated_at": doc.get("updated_at")},
+            session=session,
+        )
         if not result.deleted_count:
             raise HTTPException(409, "invoice_changed_retry")
         await db.commercial_audit_events.insert_one({
             "id": str(uuid.uuid4()), "entity_type": "traditional_invoice",
             "entity_id": invoice_id, "action": "INVOICE_DELETED",
-            "actor_user_id": user.get("id"), "created_at": now,
+            "actor_user_id": user.get("id"), "created_at": datetime.now(timezone.utc),
             "details": {"number": doc.get("number"), "load_id": doc.get("load_id"),
                         "client_name": doc.get("client_name"), "total": doc.get("total"),
                         "paid_amount": doc.get("paid_amount"), "balance": doc.get("balance")},
