@@ -1640,11 +1640,20 @@ async def list_commercial_audit_events(
         query["actor_user_id"] = actor_user_id
     if q and q.strip():
         pattern = re.escape(q.strip())
+        matching_users = await db.users.find(
+            {"$or": [
+                {"full_name": {"$regex": pattern, "$options": "i"}},
+                {"username": {"$regex": pattern, "$options": "i"}},
+            ]},
+            {"_id": 0, "id": 1},
+        ).to_list(1000)
+        matching_actor_ids = [item["id"] for item in matching_users if item.get("id")]
         query["$or"] = [
             {"action": {"$regex": pattern, "$options": "i"}},
             {"entity_type": {"$regex": pattern, "$options": "i"}},
             {"entity_id": {"$regex": pattern, "$options": "i"}},
             {"actor_user_id": {"$regex": pattern, "$options": "i"}},
+            {"actor_user_id": {"$in": matching_actor_ids}},
             {"details.document_number": {"$regex": pattern, "$options": "i"}},
             {"details.number": {"$regex": pattern, "$options": "i"}},
             {"details.code": {"$regex": pattern, "$options": "i"}},
