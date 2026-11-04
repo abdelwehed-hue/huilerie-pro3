@@ -378,7 +378,7 @@ async def create_commercial_supplier(
             "id": audit_id, "entity_type": "commercial_supplier",
             "entity_id": doc["id"], "action": "SUPPLIER_CREATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"name": doc["name"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
@@ -490,7 +490,7 @@ async def deactivate_commercial_supplier(
             "id": audit_id, "entity_type": "commercial_supplier",
             "entity_id": supplier_id, "action": "SUPPLIER_DEACTIVATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"name": existing.get("name"), "preserved_history": True},
+            "details": {"name": existing.get("name"), "previous_active": True, "active": False, "version_before": version, "version_after": version + 1, "preserved_history": True},
         }, session=session)
         return {"id": supplier_id, "active": False}
 
@@ -563,7 +563,7 @@ async def create_commercial_buyer(
             "id": audit_id, "entity_type": "commercial_buyer",
             "entity_id": doc["id"], "action": "BUYER_CREATED",
             "actor_user_id": user["id"], "created_at": doc["created_at"],
-            "details": {"name": doc["name"]},
+            "details": {"created_values": draft.model_dump(), "active": True},
         }, session=session)
         return doc
 
@@ -684,7 +684,8 @@ async def set_commercial_buyer_status(
             "actor_user_id": user["id"], "created_at": now,
             "details": {
                 "previous_active": existing.get("active", True),
-                "active": command.active, "version": current_version + 1,
+                "active": command.active, "version_before": current_version,
+                "version_after": current_version + 1,
             },
         }, session=session)
         return await db.commercial_buyers.find_one(
@@ -1291,7 +1292,8 @@ async def assign_commercial_permissions(
             "id": audit_id, "entity_type": "user",
             "entity_id": target_user_id, "action": "COMMERCIAL_PERMISSIONS_UPDATED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"permissions": permissions},
+            "details": {"previous_permissions": sorted(target.get("commercial_permissions", [])),
+                        "new_permissions": permissions},
         }, session=session)
         return {"user_id": target_user_id, "permissions": permissions}
 
