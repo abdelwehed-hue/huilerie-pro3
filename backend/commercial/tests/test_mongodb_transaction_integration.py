@@ -1610,3 +1610,104 @@ async def test_traditional_invoice_creation_audit_failure_rolls_back_invoice_and
         await client.drop_database(db_name)
         client.close()
 
+@pytest.mark.asyncio
+async def test_traditional_invoice_update_audit_failure_rolls_back_invoice_values_and_history(monkeypatch):
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from routers import invoices as invoice_routes
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "traditional_invoice_update_audit_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    monkeypatch.setattr(invoice_routes, "db", db)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.invoices.create_index("id", unique=True)
+        audit_id = "audit-update-id-conflict"
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "test_conflict", "entity_id": "preexisting",
+            "action": "PREEXISTING", "actor_user_id": "integration-admin",
+            "created_at": datetime(2026, 11, 2, tzinfo=timezone.utc), "details": {},
+        })
+        original_updated_at = datetime(2026, 11, 1, tzinfo=timezone.utc)
+        await db.invoices.insert_one({
+            "id": "invoice-update-rollback", "number": "FAC-2627102",
+            "load_id": "load-update-rollback", "client_name": "Update rollback client",
+            "oil_kg": 20.0, "price_per_kg": 1.5, "total": 30.0,
+            "paid_amount": 5.0, "balance": 25.0,
+            "history": [{"action": "created", "after": {"total": 30.0}}],
+            "updated_at": original_updated_at,
+        })
+
+        async def run_local_transaction(operation):
+            async with await client.start_session() as session:
+                return await session.with_transaction(operation)
+
+        monkeypatch.setattr(invoice_routes, "run_transaction", run_local_transaction)
+        monkeypatch.setattr(invoice_routes.uuid, "uuid4", lambda: audit_id)
+        with pytest.raises(DuplicateKeyError):
+            await invoice_routes.update_invoice(
+                "invoice-update-rollback",
+                {"price_per_kg": 2.0},
+                {"id": "integration-admin", "username": "admin"},
+            )
+
+        invoice = await db.invoices.find_one({"id": "invoice-update-rollback"}, {"_id": 0})
+        assert invoice["price_per_kg"] == 1.5
+        assert invoice["total"] == 30.0
+        assert invoice["balance"] == 25.0
+        assert invoice["updated_at"] == original_updated_at
+        assert len(invoice["history"]) == 1
+        assert await db.commercial_audit_events.count_documents({}) == 1
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_traditional_invoice_delete_audit_failure_restores_deleted_invoice(monkeypatch):
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from routers import invoices as invoice_routes
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "traditional_invoice_delete_audit_rollback_" + uuid.uuid4().hex
+    db = client[db_name]
+    monkeypatch.setattr(invoice_routes, "db", db)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.invoices.create_index("id", unique=True)
+        audit_id = "audit-delete-id-conflict"
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "test_conflict", "entity_id": "preexisting",
+            "action": "PREEXISTING", "actor_user_id": "integration-admin",
+            "created_at": datetime(2026, 11, 2, tzinfo=timezone.utc), "details": {},
+        })
+        await db.invoices.insert_one({
+            "id": "invoice-delete-rollback", "number": "FAC-2627103",
+            "load_id": "load-delete-rollback", "client_name": "Delete rollback client",
+            "oil_kg": 10.0, "price_per_kg": 1.5, "total": 15.0,
+            "paid_amount": 3.0, "balance": 12.0,
+            "updated_at": datetime(2026, 11, 1, tzinfo=timezone.utc),
+        })
+
+        async def run_local_transaction(operation):
+            async with await client.start_session() as session:
+                return await session.with_transaction(operation)
+
+        monkeypatch.setattr(invoice_routes, "run_transaction", run_local_transaction)
+        monkeypatch.setattr(invoice_routes.uuid, "uuid4", lambda: audit_id)
+        with pytest.raises(DuplicateKeyError):
+            await invoice_routes.delete_invoice(
+                "invoice-delete-rollback",
+                {"id": "integration-admin", "username": "admin"},
+            )
+
+        invoice = await db.invoices.find_one({"id": "invoice-delete-rollback"}, {"_id": 0})
+        assert invoice is not None
+        assert invoice["number"] == "FAC-2627103"
+        assert invoice["total"] == 15.0
+        assert invoice["paid_amount"] == 3.0
+        assert await db.commercial_audit_events.count_documents({}) == 1
+    finally:
+        await client.drop_database(db_name)
+        client.close()
+
