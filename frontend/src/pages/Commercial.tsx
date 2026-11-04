@@ -1551,7 +1551,11 @@ export default function Commercial() {
                       {selectedBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedBalance.quantity_kg)} kg</span>}
                     </label>
                     <Button type="button" variant="outline" disabled={productionInputs.length === 1} onClick={() => setProductionInputs((rows) => rows.filter((_, i) => i !== index))}>{l.removeLine}</Button>
-                    {selectedLot && <p className="text-xs text-muted-foreground md:col-span-3">{l.owner}: {ownerLabel(selectedLot.owner, l)}</p>}
+                    {selectedBalance && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm md:col-span-3 md:grid-cols-3">
+                      <div><span className="text-muted-foreground">{lang === "ar" ? "الدفعة" : "Lot"} : </span><strong>{value(selectedLot?.document_number, selectedBalance.lot_id)}</strong></div>
+                      <div><span className="text-muted-foreground">{l.location} : </span><strong>{value((locations.data ?? []).find((item) => item.id === selectedBalance.location_id)?.name ?? (locations.data ?? []).find((item) => item.id === selectedBalance.location_id)?.code, selectedBalance.location_id)}</strong></div>
+                      <div><span className="text-muted-foreground">{l.owner} : </span><strong>{displayOwnerLabel(selectedBalance.owner ?? selectedLot?.owner)}</strong></div>
+                    </div>}
                   </div>;
                 })}
                 {eligibleProductionBalances.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{lang === "ar" ? "لا توجد دفعات زيتون معتمدة مخبريًا للإنتاج الكامل." : "Aucun lot d’olives n’a encore reçu l’approbation qualité préalable."}</p>}
