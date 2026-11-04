@@ -40,9 +40,7 @@ def make_draft():
         production_date=date(2026, 11, 2),
         inputs=[
             {"olive_lot_id": "olive-1", "source_location_id": "yard-1",
-             "owner": {"kind": "MILL"}, "quantity_kg": "500"},
-            {"olive_lot_id": "olive-2", "source_location_id": "yard-1",
-             "owner": {"kind": "MILL"}, "quantity_kg": "500"},
+             "owner": {"kind": "MILL"}, "quantity_kg": "1000"},
         ],
         actual_oil_output_kg="180.500",
         output_tank_id="tank-01",
@@ -52,6 +50,7 @@ def make_draft():
 def approved_lot(lot_id):
     return {
         "id": lot_id, "product_kind": "OLIVE", "owner": {"kind": "MILL"}, "status": "OPEN",
+        "document_number": "2627LOT0001", "batch_code": "2627A0001",
         "preproduction_quality_status": "RELEASED",
         "preproduction_sample_id": f"sample-{lot_id}",
         "preproduction_quality_assessment_id": f"assessment-{lot_id}",
@@ -111,11 +110,13 @@ async def test_production_posts_olive_consumption_and_oil_receipt(monkeypatch):
     assert result["status"] == "COMPLETED"
     assert result["total_olive_input_kg"].to_decimal() == Decimal("1000")
     assert result["actual_oil_output_kg"].to_decimal() == Decimal("180.500")
-    assert [item.movement_kind for item in posted] == ["CONSUMPTION", "CONSUMPTION", "RECEIPT"]
+    assert [item.movement_kind for item in posted] == ["CONSUMPTION", "RECEIPT"]
     assert all(item.source_document_type == "PROD" for item in posted)
     oil_lot = db["commercial_lots"].rows[-1]
     assert oil_lot["product_kind"] == "OIL"
     assert oil_lot["owner"] == {"kind": "MILL"}
+    assert result["batch_code"] == "2627A0001"
+    assert oil_lot["batch_code"] == "2627A0001"
     assert oil_lot["quality_status"] == "PENDING"
 
 
