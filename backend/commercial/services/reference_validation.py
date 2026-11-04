@@ -17,6 +17,7 @@ SOURCE_DOCUMENT_COLLECTIONS: dict[str, str] = {
     "CIN": "commercial_customer_custody_receipts",
     "CUS": "commercial_customer_custody_releases",
     "RJT": "commercial_sale_return_rejections",
+    "ESS": "commercial_preproduction_samples",
 }
 
 
@@ -36,6 +37,8 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
     )
     if not lot:
         raise ValueError("Unknown commercial lot")
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        raise ValueError("Preproduction oil samples are laboratory-only and cannot enter stock movements")
     if lot.get("product_kind") != draft.product_kind:
         raise ValueError(
             f"Stock movement product kind {draft.product_kind} does not match "
@@ -281,5 +284,15 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
             or not _owner_matches(draft.source_owner, customer_oil_lot.get("owner"))
         ):
             raise ValueError("Customer oil pickup requires an open, released lot owned by the releasing customer")
+    elif draft.source_document_type == "ESS":
+        if (source.get("status") != "COMPLETED"
+                or source.get("source_olive_lot_id") != draft.lot_id
+                or source.get("source_location_id") != draft.source_location_id
+                or _quantity(source.get("input_olive_quantity_kg")) != _quantity(draft.quantity_kg)
+                or draft.product_kind != "OLIVE"
+                or draft.movement_kind != "CONSUMPTION"
+                or draft.destination_location_id is not None
+                or not _owner_matches(draft.source_owner, source.get("owner"))):
+            raise ValueError("Preproduction sample consumption does not match its completed trial")
     elif source.get("status") not in {"APPROVED", "COMPLETED"}:
         raise ValueError("Source document is not approved for stock posting")
