@@ -97,9 +97,10 @@ async def test_invoice_creation_writes_source_load_and_invoice_in_same_session(m
             return {"price_per_kg": 1.5, "mill_name": "Test mill"}
 
     fake_invoices = Invoices()
+    fake_audit = AuditEvents()
     monkeypatch.setattr(invoices, "db", SimpleNamespace(
         loads=Loads(), invoices=fake_invoices, settings=Settings(),
-        commercial_audit_events=AuditEvents(),
+        commercial_audit_events=fake_audit,
     ))
 
     result = await invoices._create_invoice_in_session(
@@ -111,6 +112,8 @@ async def test_invoice_creation_writes_source_load_and_invoice_in_same_session(m
     assert result["number"] == "FAC-2627101"
     assert result["total"] == 30.0
     assert fake_invoices.inserted["load_id"] == "load-1"
+    assert len(fake_audit.events) == 1
+    assert fake_audit.events[0]["action"] == "INVOICE_CREATED"
 
 
 @pytest.mark.asyncio
