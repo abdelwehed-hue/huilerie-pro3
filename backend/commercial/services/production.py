@@ -288,7 +288,6 @@ async def complete_commercial_production(
             "details": {
                 "document_number": run_number,
                 "oil_lot_id": oil_lot_id,
-                "oil_lot_number": oil_lot_number,
                 "stock_movement_ids": movement_ids,
                 "preproduction_quality_approvals": quality_gate_evidence,
                 "output_tank_id": draft.output_tank_id,
