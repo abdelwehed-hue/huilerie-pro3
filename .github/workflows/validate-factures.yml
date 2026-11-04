@@ -15,6 +15,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  runner-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify GitHub-hosted runner execution
+        run: |
+          echo "GitHub-hosted runner started"
+          python --version
+
   backend-syntax:
     runs-on: ubuntu-latest
     steps:
