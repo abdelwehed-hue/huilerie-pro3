@@ -1070,7 +1070,7 @@ export default function Commercial() {
   );
   const eligibleProductionBalances = availableOliveBalances.filter((balance) =>
     (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.preproduction_quality_status === "RELEASED"
-      && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id)
+      && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id && lot.latest_preproduction_sample_id === lot.preproduction_sample_id)
   );
 
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
