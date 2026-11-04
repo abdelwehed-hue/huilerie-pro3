@@ -116,9 +116,10 @@ export default function Audit() {
     denied: isArabic ? "هذا القسم مخصص للمستخدمين المخولين فقط." : "Cette section est réservée aux utilisateurs autorisés.",
   };
   const events = useInfiniteQuery({
-    queryKey: ["commercial", "audit", "standalone", entity, action],
+    queryKey: ["commercial", "audit", "standalone", entity, action, search.trim()],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ limit: "200", skip: String(pageParam) });
+      if (search.trim()) params.set("q", search.trim());
       if (entity !== "all") params.set("entity_type", entity);
       if (action !== "all") params.set("action", action);
       return apiGet<AuditEvent[]>(`/commercial/v1/audit-events?${params.toString()}`);
@@ -140,7 +141,7 @@ export default function Audit() {
       return [item.action, item.entity_type, item.entity_id, item.actor_name, item.actor_user_id, JSON.stringify(item.details ?? {})]
         .some((value) => String(value ?? "").toLocaleLowerCase().includes(term));
     });
-  }, [allEvents, entity, action, search]);
+  }, [allEvents, entity, action]);
   const formatDate = (value?: string) => {
     if (!value) return "—";
     const date = new Date(value);
