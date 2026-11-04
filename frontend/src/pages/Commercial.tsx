@@ -1055,7 +1055,7 @@ export default function Commercial() {
     .reduce((total, balance) => total + Number(balance.quantity_kg ?? 0), 0);
 
   const availableMillOilLots = (lots.data ?? []).filter((lot) =>
-    lot.product_kind === "OIL" && lot.status === "OPEN" && lot.quality_status === "RELEASED"
+    lot.product_kind === "OIL" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && lot.status === "OPEN" && lot.quality_status === "RELEASED"
     && (balances.data ?? []).some((balance) => balance.product_kind === "OIL" && balance.lot_id === lot.id
       && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0
       && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && tank.active && (tank.role ?? "NORMAL") === "NORMAL"))
@@ -1078,6 +1078,7 @@ export default function Commercial() {
     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
     if (!lot) return false;
     if (internalProductKind === "OIL") {
+      if (lot.lot_purpose === "PREPRODUCTION_SAMPLE") return false;
       const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
       if (!tank) return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
