@@ -75,6 +75,7 @@ async def complete_commercial_production(
 
     owner = draft.owner
     owner_doc = _owner_document(owner)
+    quality_gate_evidence: list[dict[str, str]] = []
     # Validate every input lot's identity and owner before writing anything.
     for line in draft.inputs:
         lot = await db["commercial_lots"].find_one(
@@ -111,6 +112,12 @@ async def complete_commercial_production(
             raise ValueError(f"Preproduction quality approval is missing, rejected, or superseded: {line.olive_lot_id}")
         if sample_oil_lot.get("owner") != owner_doc:
             raise ValueError(f"Preproduction quality approval belongs to a different stock owner: {line.olive_lot_id}")
+        quality_gate_evidence.append({
+            "olive_lot_id": line.olive_lot_id,
+            "sample_id": sample["id"],
+            "sample_oil_lot_id": sample_oil_lot["id"],
+            "assessment_id": assessment["id"],
+        })
         # Write the source lot inside this transaction. Trial creation and quality
         # release update the same document, preventing a stale approval from racing
         # a production command on another receiving location.
@@ -153,6 +160,7 @@ async def complete_commercial_production(
         "status": "COMPLETED",
         "version": 1,
         "owner": owner_doc,
+        "preproduction_quality_approvals": quality_gate_evidence,
         "inputs": [
             {
                 "olive_lot_id": line.olive_lot_id,
@@ -272,6 +280,7 @@ async def complete_commercial_production(
                 "oil_lot_id": oil_lot_id,
                 "oil_lot_number": oil_lot_number,
                 "stock_movement_ids": movement_ids,
+                "preproduction_quality_approvals": quality_gate_evidence,
                 "output_tank_id": draft.output_tank_id,
                 "owner": owner_doc,
             },
