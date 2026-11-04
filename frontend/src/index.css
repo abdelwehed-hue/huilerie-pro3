@@ -183,3 +183,122 @@ html.dark .text-indigo-950 { color: #e0e7ff !important; }
 html.dark .text-indigo-700 { color: #c7d2fe !important; }
 html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 
+
+
+/* Oro Verde — commercial workspace visual hierarchy (scoped to Gestion commerciale). */
+.commercial-workspace [data-slot="card"] {
+  border: 1px solid #d7e5d8;
+  background: linear-gradient(155deg, #ffffff 0%, #fbfdf9 100%);
+  box-shadow: 0 2px 9px rgb(30 58 37 / 5%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.commercial-workspace [data-slot="card"]:hover {
+  border-color: #b7cfb9;
+  box-shadow: 0 5px 16px rgb(30 58 37 / 9%);
+}
+.commercial-workspace [data-slot="card-title"] {
+  color: #244b30;
+  font-weight: 650;
+}
+.commercial-workspace [data-slot="card-description"] {
+  color: #647568;
+}
+.commercial-workspace table thead {
+  background: #edf4ec;
+}
+.commercial-workspace table thead th {
+  color: #294c32;
+  font-weight: 700;
+  border-bottom: 1px solid #d5e3d4;
+}
+.commercial-workspace table tbody td {
+  color: #33443a;
+  font-variant-numeric: tabular-nums;
+}
+.commercial-workspace table tbody tr {
+  border-bottom-color: #e8efe7;
+  transition: background-color 140ms ease;
+}
+.commercial-workspace table tbody tr:hover {
+  background: #f4f8f2;
+}
+.commercial-workspace table tbody td:first-child.font-mono,
+.commercial-workspace table tbody td:first-child .font-mono {
+  display: inline-block;
+  color: #1e4d83;
+  background: #edf4fc;
+  border: 1px solid #d7e5f5;
+  border-radius: 0.4rem;
+  padding: 0.18rem 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.commercial-workspace table tbody td .font-semibold,
+.commercial-workspace table tbody td .font-bold {
+  color: #245b3b;
+  font-weight: 700;
+}
+.commercial-workspace .rounded-xl.border,
+.commercial-workspace .rounded-lg.border {
+  border-color: #dce8dc;
+}
+.commercial-workspace input:focus,
+.commercial-workspace select:focus,
+.commercial-workspace textarea:focus {
+  border-color: #6b9b70;
+  box-shadow: 0 0 0 3px rgb(107 155 112 / 14%);
+  outline: none;
+}
+.dark .commercial-workspace [data-slot="card"] {
+  background: linear-gradient(155deg, #292f2a 0%, #252b26 100%);
+  border-color: #465b49;
+}
+.dark .commercial-workspace [data-slot="card-title"] { color: #c7e4c9; }
+.dark .commercial-workspace [data-slot="card-description"] { color: #a8b8aa; }
+.dark .commercial-workspace table thead { background: #303c32; }
+.dark .commercial-workspace table thead th { color: #d1e8d2; border-bottom-color: #465b49; }
+.dark .commercial-workspace table tbody td { color: #d6e0d7; }
+.dark .commercial-workspace table tbody tr { border-bottom-color: #3c493e; }
+.dark .commercial-workspace table tbody tr:hover { background: #303b32; }
+.dark .commercial-workspace table tbody td:first-child.font-mono,
+.dark .commercial-workspace table tbody td:first-child .font-mono {
+  color: #bfdbfe;
+  background: #26384b;
+  border-color: #3c5875;
+}
+.dark .commercial-workspace table tbody td .font-semibold,
+.dark .commercial-workspace table tbody td .font-bold { color: #b9dfc2; }
+.dark .commercial-workspace .rounded-xl.border,
+.dark .commercial-workspace .rounded-lg.border { border-color: #465b49; }
+
+
+/* Distinct, coordinated card palettes for commercial KPIs. */
+.commercial-workspace [data-slot="card"] { background: linear-gradient(145deg,#ffffff 0%,#f8fbf7 100%); }
+.commercial-workspace .commercial-card { border-width:1px; box-shadow:0 3px 12px rgb(35 55 40 / 7%); }
+.commercial-workspace .commercial-card [data-slot="card-description"] { font-weight:650; opacity:.92; }
+.commercial-workspace .commercial-card [data-slot="card-title"] { font-weight:750; letter-spacing:-.025em; }
+.commercial-workspace .commercial-card-icon { flex:none; stroke-width:2.1; padding:.28rem; border-radius:.7rem; background:rgb(255 255 255 / 72%); }
+.commercial-workspace .commercial-card--green { background:linear-gradient(135deg,#edf7ed,#dceedd); border-color:#c4dfc5; }
+.commercial-workspace .commercial-card--green [data-slot="card-description"],.commercial-workspace .commercial-card--green [data-slot="card-title"],.commercial-workspace .commercial-card--green .commercial-card-icon { color:#245c32; }
+.commercial-workspace .commercial-card--blue { background:linear-gradient(135deg,#eef5ff,#dce9fb); border-color:#c8dafa; }
+.commercial-workspace .commercial-card--blue [data-slot="card-description"],.commercial-workspace .commercial-card--blue [data-slot="card-title"],.commercial-workspace .commercial-card--blue .commercial-card-icon { color:#24518a; }
+.commercial-workspace .commercial-card--teal { background:linear-gradient(135deg,#e9f8f6,#d4efeb); border-color:#bce1db; }
+.commercial-workspace .commercial-card--teal [data-slot="card-description"],.commercial-workspace .commercial-card--teal [data-slot="card-title"],.commercial-workspace .commercial-card--teal .commercial-card-icon { color:#17645d; }
+.commercial-workspace .commercial-card--amber { background:linear-gradient(135deg,#fff7e8,#f8e9c9); border-color:#ead5a9; }
+.commercial-workspace .commercial-card--amber [data-slot="card-description"],.commercial-workspace .commercial-card--amber [data-slot="card-title"],.commercial-workspace .commercial-card--amber .commercial-card-icon { color:#80551a; }
+.commercial-workspace .commercial-card--olive { background:linear-gradient(135deg,#f1f7e9,#e3edcf); border-color:#d0dfb5; }
+.commercial-workspace .commercial-card--olive [data-slot="card-description"],.commercial-workspace .commercial-card--olive [data-slot="card-title"],.commercial-workspace .commercial-card--olive .commercial-card-icon { color:#4c681e; }
+.commercial-workspace .commercial-card--violet { background:linear-gradient(135deg,#f4effc,#e9def8); border-color:#d9c8ed; }
+.commercial-workspace .commercial-card--violet [data-slot="card-description"],.commercial-workspace .commercial-card--violet [data-slot="card-title"],.commercial-workspace .commercial-card--violet .commercial-card-icon { color:#68428e; }
+.commercial-workspace .commercial-card--rose { background:linear-gradient(135deg,#fff0ef,#f8dfdc); border-color:#ecc9c5; }
+.commercial-workspace .commercial-card--rose [data-slot="card-description"],.commercial-workspace .commercial-card--rose [data-slot="card-title"],.commercial-workspace .commercial-card--rose .commercial-card-icon { color:#93413d; }
+.dark .commercial-workspace .commercial-card--green { background:linear-gradient(135deg,#263b2a,#304b34); border-color:#496d4e; }
+.dark .commercial-workspace .commercial-card--blue { background:linear-gradient(135deg,#263448,#304663); border-color:#486487; }
+.dark .commercial-workspace .commercial-card--teal { background:linear-gradient(135deg,#203b39,#28534e); border-color:#3e716a; }
+.dark .commercial-workspace .commercial-card--amber { background:linear-gradient(135deg,#403522,#584627); border-color:#80683a; }
+.dark .commercial-workspace .commercial-card--olive { background:linear-gradient(135deg,#343d25,#465331); border-color:#657747; }
+.dark .commercial-workspace .commercial-card--violet { background:linear-gradient(135deg,#362b45,#48365d); border-color:#695181; }
+.dark .commercial-workspace .commercial-card--rose { background:linear-gradient(135deg,#432d2c,#593936); border-color:#80524e; }
+.dark .commercial-workspace .commercial-card [data-slot="card-description"],.dark .commercial-workspace .commercial-card [data-slot="card-title"] { color:#f3f6f1; }
+.dark .commercial-workspace .commercial-card-icon { background:rgb(255 255 255 / 12%); color:#e5f0e4; }
