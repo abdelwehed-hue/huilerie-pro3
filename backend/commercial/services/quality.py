@@ -173,8 +173,6 @@ async def release_oil_quality_assessment(
     )
     if not assessment:
         raise ValueError("Quality assessment does not exist")
-    if assessment.get("created_by") == actor_user_id:
-        raise PermissionError("The laboratory submitter cannot approve their own assessment")
     if assessment.get("status") != "AWAITING_INDEPENDENT_REVIEW":
         raise ValueError("Quality assessment has already been reviewed")
     lot = await db["commercial_lots"].find_one(
