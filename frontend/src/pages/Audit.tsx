@@ -80,6 +80,7 @@ const ENTITY_LABELS: Record<string, { ar: string; fr: string }> = {
   commercial_payment_reversal: { ar: "عكس دفعة", fr: "Annulation de paiement" },
   commercial_buyer_credit_application: { ar: "تطبيق رصيد دائن", fr: "Imputation d’avoir acheteur" },
   commercial_sale_return: { ar: "إرجاع مبيعات", fr: "Retour de vente" },
+  commercial_sale_return_rejection: { ar: "رفض إرجاع مبيعات", fr: "Rejet de retour de vente" },
   commercial_oil_lot: { ar: "دفعة زيت وجودة", fr: "Lot d’huile et qualité" },
   user: { ar: "مستخدم وصلاحيات", fr: "Utilisateur et droits" },
   traditional_load: { ar: "استقبال تقليدي", fr: "Réception traditionnelle" },
