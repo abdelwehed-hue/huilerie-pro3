@@ -80,7 +80,9 @@ async def complete_commercial_production(
     for line in draft.inputs:
         lot = await db["commercial_lots"].find_one(
             {"id": line.olive_lot_id},
-            {"_id": 0, "id": 1, "product_kind": 1, "status": 1, "preproduction_quality_status": 1, "preproduction_sample_id": 1, "preproduction_quality_assessment_id": 1, "latest_preproduction_sample_id": 1},
+            {"_id": 0, "id": 1, "product_kind": 1, "status": 1, "owner": 1,
+             "preproduction_quality_status": 1, "preproduction_sample_id": 1,
+             "preproduction_quality_assessment_id": 1, "latest_preproduction_sample_id": 1},
             session=session,
         )
         if not lot:
@@ -89,6 +91,8 @@ async def complete_commercial_production(
             raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
         if line.owner != owner:
             raise ValueError(f"Production input owner mismatch: {line.olive_lot_id}")
+        if lot.get("owner") != owner_doc:
+            raise ValueError(f"Production input owner does not match the source olive lot: {line.olive_lot_id}")
         if lot.get("status") != "OPEN":
             raise ValueError(f"Olive lot is not open: {line.olive_lot_id}")
         if lot.get("preproduction_quality_status") != "RELEASED" or not lot.get("preproduction_sample_id") or not lot.get("preproduction_quality_assessment_id") or lot.get("latest_preproduction_sample_id") != lot.get("preproduction_sample_id"):
