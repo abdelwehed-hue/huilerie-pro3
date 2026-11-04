@@ -88,7 +88,7 @@ async def complete_commercial_production(
         )
         if not lot:
             raise ValueError(f"Unknown olive lot: {line.olive_lot_id}")
-        source_batch_code = lot.get("batch_code") or lot.get("document_number")
+        source_batch_code = lot.get("batch_code") or lot.get("document_number") or lot.get("document_number")
         if lot.get("product_kind") != "OLIVE":
             raise ValueError(f"Input lot is not olive stock: {line.olive_lot_id}")
         if line.owner != owner:
