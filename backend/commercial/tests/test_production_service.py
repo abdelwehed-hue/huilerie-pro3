@@ -55,6 +55,7 @@ def approved_lot(lot_id):
         "preproduction_quality_status": "RELEASED",
         "preproduction_sample_id": f"sample-{lot_id}",
         "preproduction_quality_assessment_id": f"assessment-{lot_id}",
+        "latest_preproduction_sample_id": f"sample-{lot_id}",
     }
 
 
