@@ -16,7 +16,7 @@ from bson.decimal128 import Decimal128
 from commercial.permissions import require_commercial_permission
 from commercial.schemas.inventory import OwnerRef, StockMovementDraft
 from commercial.schemas.purchases import ApproveOlivePurchaseCommand
-from commercial.services.numbering import reserve_document_number
+from commercial.services.numbering import reserve_document_number, reserve_batch_code
 from commercial.services.stock_ledger import post_stock_movement
 
 
@@ -103,11 +103,15 @@ async def approve_olive_purchase(
             db["commercial_counters"], purchase["season_code"], "LOT",
             session=session,
         )
+        batch_code = await reserve_batch_code(
+            db["commercial_counters"], purchase["season_code"], session=session
+        )
         lot = {
             "id": lot_id,
             "season_code": purchase["season_code"],
             "document_type": "LOT",
             "document_number": lot_number,
+            "batch_code": batch_code,
             "product_kind": "OLIVE",
             "variety_id": line["variety_id"],
             "source_purchase_id": purchase_id,
