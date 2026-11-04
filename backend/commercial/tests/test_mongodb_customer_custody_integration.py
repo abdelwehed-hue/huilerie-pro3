@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 from bson.decimal128 import Decimal128
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 
 from commercial.inventory_bootstrap import ensure_inventory_indexes
 from commercial.schemas.customer_custody import (
@@ -14,6 +15,8 @@ from commercial.schemas.customer_custody import (
     CustomerOilCustodyReleaseDraft,
 )
 from commercial.services.customer_custody import (
+    _custody_owner_audit_id,
+    _snapshot_fingerprint,
     receive_customer_olive_custody,
     release_customer_oil_custody,
     get_customer_custody_statement,
@@ -141,6 +144,69 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         assert await db.commercial_lots.count_documents({}) == 2
         assert await db.commercial_stock_movements.count_documents({}) == 2
         assert await db.commercial_audit_events.count_documents({}) == 6
+    finally:
+        await client.drop_database(name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_custody_owner_creation_rolls_back_when_audit_insert_fails():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "customer_custody_owner_audit_rollback_" + uuid.uuid4().hex
+    db = client[name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    owner_id = "custody-owner-audit-rollback"
+    owner_snapshot = {
+        "client_phone": "21612345678",
+        "client_name": "Rollback Customer",
+        "active": True,
+        "version": 1,
+    }
+    fingerprint = _snapshot_fingerprint({"owner_id": owner_id, "after": owner_snapshot})
+    conflicting_audit_id = _custody_owner_audit_id(owner_id, "CREATED", now, fingerprint)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.clients.insert_one({
+            "phone": "21612345678",
+            "client_name": "Rollback Customer",
+        })
+        await db.commercial_audit_events.insert_one({
+            "id": conflicting_audit_id,
+            "entity_type": "test",
+            "entity_id": "pre-existing",
+            "action": "PREEXISTING",
+            "actor_user_id": "integration-admin",
+            "created_at": now,
+        })
+        draft = CustomerOliveCustodyReceiptDraft(
+            customer_phone="21612345678",
+            receipt_date=date(2026, 11, 2),
+            variety_id="chemlali",
+            quantity_kg=Decimal("10.000"),
+            receiving_location_id="olive-yard-01",
+            customer_acknowledgement_reference="ACK-ROLLBACK-001",
+            idempotency_key="customer-custody-owner-rollback-001",
+        )
+        with pytest.raises(DuplicateKeyError):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: receive_customer_olive_custody(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        receipt_id="rollback-receipt-1",
+                        custody_owner_id=owner_id,
+                        olive_lot_id="rollback-olive-lot-1",
+                        stock_movement_id="rollback-movement-1",
+                        audit_event_id="rollback-receipt-audit-1",
+                        created_at=now, session=active,
+                    )
+                )
+        assert await db.commercial_custody_owners.count_documents({}) == 0
+        assert await db.commercial_customer_custody_receipts.count_documents({}) == 0
+        assert await db.commercial_lots.count_documents({}) == 0
+        assert await db.commercial_stock_movements.count_documents({}) == 0
+        assert await db.commercial_audit_events.count_documents({}) == 1
     finally:
         await client.drop_database(name)
         client.close()
