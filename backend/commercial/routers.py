@@ -1661,6 +1661,10 @@ async def list_commercial_audit_events(
             {"details.number": {"$regex": pattern, "$options": "i"}},
             {"details.code": {"$regex": pattern, "$options": "i"}},
             {"details.client_name": {"$regex": pattern, "$options": "i"}},
+            {"details.name": {"$regex": pattern, "$options": "i"}},
+            {"details.created_values.name": {"$regex": pattern, "$options": "i"}},
+            {"details.previous_values.name": {"$regex": pattern, "$options": "i"}},
+            {"details.new_values.name": {"$regex": pattern, "$options": "i"}},
             {"details.supplier_id": {"$regex": pattern, "$options": "i"}},
         ]
     docs = await db.commercial_audit_events.find(
