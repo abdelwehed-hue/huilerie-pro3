@@ -23,6 +23,7 @@ async def seed_preproduction_approvals(db, lot_ids):
                 "preproduction_quality_status": "RELEASED",
                 "preproduction_sample_id": sample_id,
                 "preproduction_quality_assessment_id": assessment_id,
+                "latest_preproduction_sample_id": sample_id,
             }},
         )
         await db.commercial_preproduction_samples.insert_one({
