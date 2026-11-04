@@ -61,8 +61,13 @@ export default function Audit() {
     denied: isArabic ? "هذا القسم مخصص للمستخدمين المخولين فقط." : "Cette section est réservée aux utilisateurs autorisés.",
   };
   const events = useInfiniteQuery({
-    queryKey: ["commercial", "audit", "standalone"],
-    queryFn: ({ pageParam }) => apiGet<AuditEvent[]>(`/commercial/v1/audit-events?limit=200&skip=${pageParam}`),
+    queryKey: ["commercial", "audit", "standalone", entity, action],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "200", skip: String(pageParam) });
+      if (entity !== "all") params.set("entity_type", entity);
+      if (action !== "all") params.set("action", action);
+      return apiGet<AuditEvent[]>(`/commercial/v1/audit-events?${params.toString()}`);
+    },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => lastPage.length === 200 ? lastPageParam + 200 : undefined,
     enabled: !!me.data,
