@@ -100,20 +100,13 @@ async def approve_olive_purchase(
         lot_id = _stable_id("lot", line_key)
         movement_id = _stable_id("movement", line_key)
         audit_event_id = _stable_id("movement-audit", line_key)
-        lot_number = await reserve_document_number(
-            db["commercial_counters"], purchase["season_code"], "LOT",
-            session=session,
-        )
-        # The batch code is reserved when the purchase draft is created.
-        # Keep a fallback only for legacy drafts created before this workflow. 
-        batch_code = line.get("batch_code") or await reserve_batch_code(
+        # All purchase lines share the one traceability code created on the purchase.
+        batch_code = purchase.get("batch_code") or line.get("batch_code") or await reserve_batch_code(
             db["commercial_counters"], purchase["season_code"], session=session
         )
         lot = {
             "id": lot_id,
             "season_code": purchase["season_code"],
-            "document_type": "LOT",
-            "document_number": lot_number,
             "batch_code": batch_code,
             "product_kind": "OLIVE",
             "variety_id": line["variety_id"],
