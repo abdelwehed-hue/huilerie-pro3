@@ -96,7 +96,7 @@ async def create_preproduction_sample(
     # A new trial invalidates every previous approval before the new analysis.
     await db["commercial_lots"].update_one(
         {"id": draft.source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN"},
-        {"$set": {"preproduction_quality_status": "PENDING", "updated_at": created_at.astimezone(timezone.utc)},
+        {"$set": {"preproduction_quality_status": "PENDING", "latest_preproduction_sample_id": sample_id, "updated_at": created_at.astimezone(timezone.utc)},
          "$unset": {"preproduction_sample_id": "", "preproduction_quality_assessment_id": "",
                     "preproduction_quality_decided_at": "", "preproduction_quality_decided_by": ""}},
         session=session,
