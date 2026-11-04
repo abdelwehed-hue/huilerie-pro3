@@ -29,7 +29,7 @@ def _fingerprint(value: Any) -> str:
 def _quality_snapshot(record: dict[str, Any]) -> dict[str, Any]:
     """Return business-relevant measurements and review state for audit history."""
     fields = (
-        "oil_lot_id", "sample_reference", "sample_date", "tested_date",
+        "oil_lot_id", "lot_purpose", "source_preproduction_sample_id", "source_olive_lot_id", "sample_reference", "sample_date", "tested_date",
         "laboratory_name", "specification_reference", "acidity", "peroxide",
         "k232", "k270", "oil_content_pct", "classification", "oil_type",
         "measurements", "notes", "status", "decision", "decision_reason",
@@ -77,6 +77,9 @@ async def record_oil_quality_assessment(
     record = {
         "id": assessment_id, "season_code": season_code,
         "oil_lot_id": draft.oil_lot_id,
+        "lot_purpose": lot.get("lot_purpose"),
+        "source_preproduction_sample_id": lot.get("source_preproduction_sample_id"),
+        "source_olive_lot_id": lot.get("source_olive_lot_id"),
         "sample_reference": draft.sample_reference,
         "sample_date": draft.sample_date.isoformat(),
         "tested_date": draft.tested_date.isoformat(),
