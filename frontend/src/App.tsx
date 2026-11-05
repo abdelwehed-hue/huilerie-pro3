@@ -20,7 +20,6 @@ import Commercial from "@/pages/Commercial";
 import CommercialCertificate from "@/pages/CommercialCertificate";
 import Audit from "@/pages/Audit";
 import Login from "@/pages/Login";
-import { GSApp } from "@/gs/GSApp";
 
 export default function App() {
   return (
@@ -28,8 +27,6 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/tv" element={<TvScreen />} />
-        {/* GS — shell indépendant (hors AppShell) */}
-        <Route path="/gs/*" element={<GSApp />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/intake" element={<Intake />} />
