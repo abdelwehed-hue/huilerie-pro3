@@ -27,11 +27,12 @@ def validate_numbering_components(season_code: str, document_type: str) -> None:
 
 
 def format_document_number(season_code: str, document_type: str, sequence: int) -> str:
-    """Format an allocated number, e.g. 2627LOT0001."""
+    """Format a public number, e.g. 2627LOT0001 or invoice 2627F0001."""
     validate_numbering_components(season_code, document_type)
     if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1:
         raise ValueError("sequence must be a positive integer")
-    return f"{season_code}{document_type}{sequence:04d}"
+    public_type = "F" if document_type == "FAC" else document_type
+    return f"{season_code}{public_type}{sequence:04d}"
 
 
 
