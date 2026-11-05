@@ -21,42 +21,23 @@ from lib.season import migrate_season_ids
 from commercial import routers as commercial_router
 from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router, campaign as campaign_router, tv as tv_router, invoices as invoices_router, client_accounts as client_accounts_router
 
-# --- GS (new isolated Gestion Commerciale) ---
-try:
-    from gs.app import router as gs_router
-    from gs.database.indexes import ensure_gs_indexes
-    from gs.database.connection import close_gs_client
-    GS_ENABLED = True
-except Exception as _gs_import_err:  # pragma: no cover
-    GS_ENABLED = False
-    gs_router = None
-    logging.getLogger(__name__).warning("GS module not loaded: %s", _gs_import_err)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_runtime_security()
     app.state.index_task = asyncio.create_task(ensure_indexes())
-    if GS_ENABLED:
-        try:
-            app.state.gs_index_task = asyncio.create_task(ensure_gs_indexes())
-        except Exception as exc:
-            logging.getLogger(__name__).error("GS index init failed: %s", exc)
     await seed_defaults()
     await migrate_season_ids()
     app.state.reminder_task = asyncio.create_task(reminder_loop())
     yield
     app.state.reminder_task.cancel()
-    if GS_ENABLED:
-        try:
-            await close_gs_client()
-        except Exception:
-            pass
     client.close()
 
 
 app = FastAPI(lifespan=lifespan)
 
+# WebSocket clients are kept in memory. Render currently runs this service as one
+# instance; use a shared pub/sub broker before scaling the backend horizontally.
 active_connections: set[WebSocket] = set()
 broadcast_lock = asyncio.Lock()
 
@@ -145,9 +126,6 @@ api_router.include_router(invoices_router.router)
 api_router.include_router(client_accounts_router.router)
 api_router.include_router(commercial_router.router)
 
-if GS_ENABLED and gs_router is not None:
-    api_router.include_router(gs_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -162,4 +140,5 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Include the router in the main app — keep last
 app.include_router(api_router)
