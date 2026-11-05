@@ -1,5 +1,4 @@
 """Commercial domain for Oro Verde.
-"""
 Oro Verde Gestion Commerciale (GS).
 
 Independent commercial domain.
