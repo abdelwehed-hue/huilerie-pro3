@@ -230,6 +230,7 @@ export default function Commercial() {
   const [saleQuantity, setSaleQuantity] = useState("");
   const [saleUnitPrice, setSaleUnitPrice] = useState("");
   const [saleNotes, setSaleNotes] = useState("");
+  const [saleIdempotencyKey, setSaleIdempotencyKey] = useState(() => crypto.randomUUID());
   const [returnSaleId, setReturnSaleId] = useState("");
   const [returnQuantity, setReturnQuantity] = useState("");
   const [returnTankId, setReturnTankId] = useState("");
@@ -718,11 +719,12 @@ export default function Commercial() {
       sale_date: saleDate, buyer_id: saleBuyerId, oil_lot_id: saleLotId,
       source_tank_id: saleTankId, quantity_kg: saleQuantity,
       unit_price_dt: saleUnitPrice, notes: saleNotes.trim() || null,
-      idempotency_key: crypto.randomUUID(),
+      idempotency_key: saleIdempotencyKey,
     }),
     onSuccess: async () => {
       toast.success(salesText.saleSaved);
       setSaleQuantity(""); setSaleUnitPrice(""); setSaleNotes("");
+      setSaleIdempotencyKey(crypto.randomUUID());
       await queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
@@ -1717,13 +1719,13 @@ export default function Commercial() {
       {tab === "sales" && <div className="space-y-4">
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => setSaleBuyerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{availableMillOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lotCode(lot)} · {lot.quality_status}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => setSaleTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(balances.data ?? []).filter((balance) => balance.product_kind === "OIL" && balance.lot_id === saleLotId && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0 && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && tank.active && (tank.role ?? "NORMAL") === "NORMAL")).map((balance) => { const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.location_id} value={balance.location_id}>{tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => setSaleQuantity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.salePrice}<input required type="number" min="0.001" step="0.001" value={saleUnitPrice} onChange={(e) => setSaleUnitPrice(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium md:col-span-3">{l.notes}<input maxLength={1000} value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleDate(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleBuyerId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleLotId(e.target.value); setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{availableMillOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lotCode(lot)} · {lot.quality_status}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleTankId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(balances.data ?? []).filter((balance) => balance.product_kind === "OIL" && balance.lot_id === saleLotId && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0 && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && tank.active && (tank.role ?? "NORMAL") === "NORMAL")).map((balance) => { const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.location_id} value={balance.location_id}>{tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleQuantity(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.salePrice}<input required type="number" min="0.001" step="0.001" value={saleUnitPrice} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleUnitPrice(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium md:col-span-3">{l.notes}<input maxLength={1000} value={saleNotes} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleNotes(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <p className="text-xs text-amber-700 md:col-span-3">{salesText.taxNotice}</p>
             <Button type="submit" disabled={createSale.isPending || !saleBuyerId || !saleLotId || !saleTankId || !(Number(saleQuantity) > 0) || !(Number(saleUnitPrice) > 0)}><ShoppingCart className="size-4" />{salesText.createSale}</Button>
           </form>
