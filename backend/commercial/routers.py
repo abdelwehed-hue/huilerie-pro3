@@ -1410,6 +1410,31 @@ async def create_quality_assessment(
         _raise_domain_error(exc)
 
 
+@router.post("/quality-assessments/{assessment_id}/corrections", status_code=201)
+async def correct_quality_assessment(
+    assessment_id: str,
+    draft: QualityAssessmentDraft,
+    user: dict = Depends(current_user),
+):
+    """Submit a new analysis revision for independent review; preserve the approved record."""
+    _authorize(user, "commercial.lab_record")
+    _, season_code = await _require_commercial_ready()
+    correction_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: record_oil_quality_assessment(
+                db, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], assessment_id=correction_id,
+                created_at=now, session=session,
+                correction_of_assessment_id=assessment_id,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
 @router.post("/quality-assessments/release", status_code=201)
 async def release_quality_assessment(
     command: QualityReleaseCommand,
