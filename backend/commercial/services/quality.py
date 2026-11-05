@@ -33,7 +33,7 @@ def _quality_snapshot(record: dict[str, Any]) -> dict[str, Any]:
         "laboratory_name", "specification_reference", "acidity", "peroxide",
         "k232", "k270", "oil_content_pct", "classification", "oil_type",
         "measurements", "notes", "status", "decision", "decision_reason",
-        "quality_status_before_submission",
+        "quality_status_before_submission", "supersedes_assessment_id",
     )
     return {key: record.get(key) for key in fields if key in record}
 
@@ -42,8 +42,9 @@ async def record_oil_quality_assessment(
     db: Any, draft: QualityAssessmentDraft, *, season_code: str,
     actor_user: dict[str, Any], actor_user_id: str, assessment_id: str,
     created_at: datetime, session: Any,
+    correction_of_assessment_id: str | None = None,
 ) -> dict[str, Any]:
-    """Record measurements only. This operation cannot release or reject oil."""
+    """Record new measurements; corrections create a reviewable revision."""
     require_commercial_permission(actor_user, "commercial.lab_record")
     if not actor_user_id or not assessment_id or created_at.tzinfo is None:
         raise ValueError("Authenticated actor, stable ID, and timezone-aware timestamp are required")
@@ -68,7 +69,30 @@ async def record_oil_quality_assessment(
         raise ValueError("Quality assessment applies only to oil lots")
     if lot.get("status") != "OPEN":
         raise ValueError("Only an open oil lot can receive a quality assessment")
-    if lot.get("quality_status") not in {"PENDING", "REJECTED"}:
+    superseded_assessment = None
+    if correction_of_assessment_id:
+        superseded_assessment = await assessments.find_one(
+            {"id": correction_of_assessment_id, "season_code": season_code},
+            {"_id": 0}, session=session,
+        )
+        if (
+            not superseded_assessment
+            or superseded_assessment.get("status") != "REVIEWED"
+            or superseded_assessment.get("decision") != "RELEASED"
+            or superseded_assessment.get("oil_lot_id") != lot["id"]
+            or lot.get("last_quality_assessment_id") != correction_of_assessment_id
+            or lot.get("quality_status") != "RELEASED"
+            or lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE"
+        ):
+            raise ValueError("Only the latest released commercial oil analysis can be corrected")
+        release = await db["commercial_quality_releases"].find_one(
+            {"id": lot.get("quality_decision_id"), "assessment_id": correction_of_assessment_id,
+             "oil_lot_id": lot["id"], "decision": "RELEASED"},
+            {"_id": 0, "id": 1}, session=session,
+        )
+        if not release:
+            raise ValueError("A recorded release is required before correcting this analysis")
+    elif lot.get("quality_status") not in {"PENDING", "REJECTED"}:
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
         raise ValueError("Oil lot version conflict; reload before recording the assessment")
@@ -114,19 +138,28 @@ async def record_oil_quality_assessment(
         ],
         "status": "AWAITING_INDEPENDENT_REVIEW",
         "quality_status_before_submission": lot.get("quality_status", "PENDING"),
+        "supersedes_assessment_id": correction_of_assessment_id,
         "idempotency_scope": scope, "idempotency_key": draft.idempotency_key,
         "request_fingerprint": fingerprint, "created_by": actor_user_id,
         "created_at": created_utc, "lot_version_after_submission": draft.expected_lot_version + 1,
     }
     await assessments.insert_one(record, session=session)
+    lot_update: dict[str, Any] = {
+        "$set": {"last_quality_assessment_id": assessment_id,
+                 "quality_submitted_by": actor_user_id,
+                 "quality_submitted_at": created_utc, "updated_at": created_utc},
+        "$inc": {"version": 1},
+        "$push": {"quality_assessment_ids": assessment_id},
+    }
+    if correction_of_assessment_id:
+        lot_update["$set"]["quality_status"] = "PENDING"
+        lot_update["$unset"] = {
+            "quality_decision_id": "", "quality_decided_by": "", "quality_decided_at": "",
+        }
     update = await lots.update_one(
         {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN",
          "version": draft.expected_lot_version, "quality_status": lot.get("quality_status")},
-        {"$set": {"last_quality_assessment_id": assessment_id,
-                  "quality_submitted_by": actor_user_id,
-                  "quality_submitted_at": created_utc, "updated_at": created_utc},
-         "$inc": {"version": 1},
-         "$push": {"quality_assessment_ids": assessment_id}},
+        lot_update,
         session=session,
     )
     if update.matched_count != 1:
@@ -374,6 +407,8 @@ async def delete_oil_quality_assessment(
         raise ValueError("Reviewed assessments cannot be deleted; audit decisions must remain immutable")
     if assessment.get("created_by") != actor_user_id and actor_user.get("role") != "admin":
         raise PermissionError("Only the submitting analyst or an administrator can delete this assessment")
+    if assessment.get("supersedes_assessment_id"):
+        raise ValueError("A submitted correction cannot be deleted; edit it and submit it for review")
     previous_status = assessment.get("quality_status_before_submission")
     if previous_status not in {"PENDING", "REJECTED"}:
         raise ValueError("This legacy assessment has no safe prior quality state; it cannot be deleted")
