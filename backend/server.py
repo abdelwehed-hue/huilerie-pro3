@@ -22,7 +22,6 @@ from commercial import routers as commercial_router
 from routers import auth as auth_router, loads as loads_router, lab as lab_router, admin as admin_router, extras as extras_router, campaign as campaign_router, tv as tv_router, invoices as invoices_router, client_accounts as client_accounts_router
 
 # --- GS (new isolated Gestion Commerciale) ---
-# Optional: never crash Oro Verde if GS is incomplete or GS_MONGO_URL missing.
 try:
     from gs.app import router as gs_router
     from gs.database.indexes import ensure_gs_indexes
@@ -42,7 +41,7 @@ async def lifespan(app: FastAPI):
         try:
             app.state.gs_index_task = asyncio.create_task(ensure_gs_indexes())
         except Exception as exc:
-            logging.getLogger(__name__).error("GS index init failed: %s", exp)
+            logging.getLogger(__name__).error("GS index init failed: %s", exc)
     await seed_defaults()
     await migrate_season_ids()
     app.state.reminder_task = asyncio.create_task(reminder_loop())
@@ -58,8 +57,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# WebSocket clients are kept in memory. Render currently runs this service as one
-# instance; use a shared pub/sub broker before scaling the backend horizontally.
 active_connections: set[WebSocket] = set()
 broadcast_lock = asyncio.Lock()
 
@@ -148,7 +145,6 @@ api_router.include_router(invoices_router.router)
 api_router.include_router(client_accounts_router.router)
 api_router.include_router(commercial_router.router)
 
-# New isolated GS — does not replace legacy commercial
 if GS_ENABLED and gs_router is not None:
     api_router.include_router(gs_router)
 
@@ -166,5 +162,4 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Include the router in the main app — keep last
 app.include_router(api_router)
