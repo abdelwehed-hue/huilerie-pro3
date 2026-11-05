@@ -23,7 +23,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "tanks" | "lots" | "movements" | "quality" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "lots" | "movements" | "quality" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -172,7 +172,6 @@ export default function Commercial() {
   const [supplierTaxId, setSupplierTaxId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
-  const [tankCapacityDrafts, setTankCapacityDrafts] = useState<Record<string, string>>({});
   const [locationCode, setLocationCode] = useState("");
   const [locationName, setLocationName] = useState("");
   const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
@@ -988,35 +987,6 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
-  const changeTankCapacity = useMutation({
-    mutationFn: ({ tank, capacity }: { tank: AnyRecord; capacity: string }) =>
-      apiPut<AnyRecord>(`/commercial/v1/tanks/${encodeURIComponent(tank.id)}/capacity`, {
-        capacity_kg: capacity.trim() === "" ? null : Number(capacity),
-        expected_version: tank.version ?? 1,
-      }),
-    onSuccess: async () => {
-      toast.success(l.capacitySaved);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["commercial", "tanks"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
-      ]);
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : l.capacityError),
-  });
-  const changeTankRole = useMutation({
-    mutationFn: ({ tank, role }: { tank: AnyRecord; role: "NORMAL" | "QUARANTINE" }) =>
-      apiPost<AnyRecord>(`/commercial/v1/tanks/${encodeURIComponent(tank.id)}/role`, {
-        role, expected_version: tank.version ?? 1,
-      }),
-    onSuccess: async () => {
-      toast.success(lang === "ar" ? "تم تحديث دور الخزان" : "Rôle de la cuve mis à jour");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["commercial", "tanks"] }),
-        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
-      ]);
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
-  });
   const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
@@ -1168,7 +1138,6 @@ export default function Commercial() {
     { id: "lots", label: l.lots, icon: Boxes },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
-    { id: "tanks", label: l.tanks, icon: Warehouse },
     { id: "movements", label: l.movements, icon: ArrowLeftRight },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "custody", label: l.custodyTab, icon: Handshake },
@@ -1281,7 +1250,6 @@ export default function Commercial() {
         </div>
       )}
 
-      {tab === "tanks" && <Card><CardHeader><CardTitle>{l.tanks}</CardTitle><CardDescription>{l.capacity}: {lang === "ar" ? "حدد السعة لكل خزان؛ اترك الحقل فارغاً لإبقائه مرناً." : "Définissez une capacité par cuve ; laissez le champ vide pour conserver une capacité flexible."}</CardDescription></CardHeader><CardContent><Table dir="rtl"><TableHeader><TableRow><TableHead>{l.actions}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.capacity}</TableHead><TableHead>{lang === "ar" ? "الدور" : "Rôle"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.tank}</TableHead></TableRow></TableHeader><TableBody>{(tanks.data ?? []).map((tank) => { const quantity = (balances.data ?? []).filter((b) => b.location_id === tank.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0); const flexibleScale = Math.max(1, ...(tanks.data ?? []).map((item) => (balances.data ?? []).filter((b) => b.location_id === item.id && b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0))); const scale = tank.capacity_kg != null && Number(tank.capacity_kg) > 0 ? Number(tank.capacity_kg) : flexibleScale; const fillPercent = Math.min(100, Math.max(0, (quantity / scale) * 100)); return <TableRow key={tank.id}><TableCell>{isAdmin && <div dir={lang === "ar" ? "rtl" : "ltr"} className="flex flex-wrap items-center gap-2">
             <input aria-label={l.capacity} type="number" min={Math.max(0.001, quantity)} step="0.001" placeholder={l.flexible} value={tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg))} onChange={(e) => setTankCapacityDrafts((current) => ({ ...current, [tank.id]: e.target.value }))} className="h-9 w-32 rounded-lg border bg-background px-2 text-sm" />
             <Button size="sm" variant="outline" disabled={changeTankCapacity.isPending || (tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg))) !== "" && Number(tankCapacityDrafts[tank.id] ?? tank.capacity_kg) < quantity} onClick={() => changeTankCapacity.mutate({ tank, capacity: tankCapacityDrafts[tank.id] ?? (tank.capacity_kg == null ? "" : String(tank.capacity_kg)) })}>{l.saveCapacity}</Button>
             <select aria-label={lang === "ar" ? "دور الخزان" : "Rôle de la cuve"} value={tank.role ?? "NORMAL"} disabled={quantity > 0 || changeTankRole.isPending} onChange={(e) => { const role = e.target.value as "NORMAL" | "QUARANTINE"; if (window.confirm(lang === "ar" ? "تأكيد تغيير دور الخزان؟" : "Confirmer le changement de rôle de la cuve ?")) changeTankRole.mutate({ tank, role }); }} className="h-9 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"><option value="NORMAL">{lang === "ar" ? "عادي" : "Normal"}</option><option value="QUARANTINE">{lang === "ar" ? "حجر" : "Quarantaine"}</option></select>

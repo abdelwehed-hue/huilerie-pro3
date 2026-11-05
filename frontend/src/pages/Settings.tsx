@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, ClipboardList } from "lucide-react";
+import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, ClipboardList, Warehouse } from "lucide-react";
 import SmsSettings from "@/components/SmsSettings";
 import LoginImageSettings from "@/components/LoginImageSettings";
 import TwilioSettings from "@/components/TwilioSettings";
 import TunisieSmsSettings from "@/components/TunisieSmsSettings";
 import CampaignSettings from "@/components/CampaignSettings";
 import VarietiesSettings from "@/components/VarietiesSettings";
+import CommercialTanksSettings from "@/components/CommercialTanksSettings";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -322,7 +323,7 @@ function UsersPanel() {
 }
 
 export default function SettingsPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const me = useMe();
   if (me.data && me.data.role !== "admin") {
     return (
@@ -335,12 +336,15 @@ export default function SettingsPage() {
     <div>
       <PageHeader title={t("settings")} accent="bg-violet-500" />
       <Tabs defaultValue="users">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-6">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-7">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-sky-100 text-sky-700"><Users className="size-4 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
           <TabsTrigger value="tariff" data-testid="settings-tab-tariff" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-violet-300 hover:bg-violet-50 data-[state=active]:border-violet-600 data-[state=active]:bg-violet-200 data-[state=active]:text-violet-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-violet-100 text-violet-700"><Coins className="size-4 stroke-[2.2]" /></span><span>{t("tariff")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="tanks" data-testid="settings-tab-tanks" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-cyan-300 hover:bg-cyan-50 data-[state=active]:border-cyan-600 data-[state=active]:bg-cyan-200 data-[state=active]:text-cyan-950 data-[state=active]:shadow-md">
+            <span className="grid size-7 place-items-center rounded-lg bg-cyan-100 text-cyan-700"><Warehouse className="size-4 stroke-[2.2]" /></span><span>{lang === "ar" ? "الخزانات" : "Cuves"}</span>
           </TabsTrigger>
           <TabsTrigger value="sms" data-testid="settings-tab-sms" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-pink-300 hover:bg-pink-50 data-[state=active]:border-pink-600 data-[state=active]:bg-pink-200 data-[state=active]:text-pink-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-pink-100 text-pink-700"><MessageSquareText className="size-4 stroke-[2.2]" /></span><span>{t("sms_settings")}</span>
@@ -357,6 +361,7 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="users"><UsersPanel /></TabsContent>
         <TabsContent value="tariff"><PriceForm /></TabsContent>
+        <TabsContent value="tanks"><CommercialTanksSettings /></TabsContent>
         <TabsContent value="sms"><div className="space-y-6"><div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2"><div className="min-w-0 sm:col-start-2 sm:row-start-1"><TwilioSettings /></div><div className="min-w-0 sm:col-start-1 sm:row-start-1"><TunisieSmsSettings /></div></div><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
         <TabsContent value="audit"><Audit /></TabsContent>
