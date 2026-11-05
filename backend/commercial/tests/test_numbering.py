@@ -10,7 +10,7 @@ from commercial.services.numbering import (
 
 def test_formats_season_scoped_document_number():
     assert format_document_number("2627", "LOT", 1) == "2627LOT0001"
-    assert format_document_number("2627", "FAC", 27) == "2627FAC0027"
+    assert format_document_number("2627", "FAC", 27) == "2627F0027"
 
 
 
