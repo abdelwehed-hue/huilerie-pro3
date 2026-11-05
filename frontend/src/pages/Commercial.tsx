@@ -1043,8 +1043,11 @@ export default function Commercial() {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     if (!canRecordLab || !lot || lot.last_quality_assessment_id !== assessment.id) return false;
     if (assessment.status === "AWAITING_INDEPENDENT_REVIEW") return assessment.created_by === me.data?.id || isAdmin;
+    const isCurrentTrial = lot.lot_purpose !== "PREPRODUCTION_SAMPLE"
+      || (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id
+        && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id);
     return assessment.status === "REVIEWED" && assessment.decision === "RELEASED"
-      && lot.quality_status === "RELEASED" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE";
+      && lot.quality_status === "RELEASED" && isCurrentTrial;
   };
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
