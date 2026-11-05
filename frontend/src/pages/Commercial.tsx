@@ -626,7 +626,7 @@ export default function Commercial() {
           : apiPost<AnyRecord>("/commercial/v1/quality-assessments", payload);
     },
     onSuccess: async () => {
-      toast.success(correctingQualityAssessmentId ? salesText.correctionSubmitted : editingQualityAssessmentId ? (lang === "ar" ? "تم تحديث التحليل" : "Analyse mise à jour") : l.assessmentSaved);
+      toast.success(correctingQualityAssessmentId ? l.correctionSubmitted : editingQualityAssessmentId ? (lang === "ar" ? "تم تحديث التحليل" : "Analyse mise à jour") : l.assessmentSaved);
       setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId("");
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
@@ -1390,7 +1390,7 @@ export default function Commercial() {
             })}
           </TableBody></Table></CardContent>
         </Card>}
-        {canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? salesText.correctedAnalysis : editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
+        {canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
               <select required disabled={!!editingQualityAssessmentId || !!correctingQualityAssessmentId} value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => { const eligible = lot.status === "OPEN" && (["PENDING", "REJECTED"].includes(lot.quality_status) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)); return <option key={lot.id} value={lot.id} disabled={!eligible}>{lotCode(lot)} · v{lot.version ?? 1}{eligible ? "" : ` · ${value(lot.quality_status, lot.status)}`}</option>; })}</select>
@@ -1420,7 +1420,7 @@ export default function Commercial() {
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? salesText.submitCorrection : editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{(editingQualityAssessmentId || correctingQualityAssessmentId) && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setOilClassification("auto"); setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || !qualityLotId || !sampleReference.trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{(editingQualityAssessmentId || correctingQualityAssessmentId) && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setOilClassification("auto"); setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
           </form>
         </CardContent></Card>}
         {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
