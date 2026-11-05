@@ -82,7 +82,6 @@ async def record_oil_quality_assessment(
             or superseded_assessment.get("oil_lot_id") != lot["id"]
             or lot.get("last_quality_assessment_id") != correction_of_assessment_id
             or lot.get("quality_status") != "RELEASED"
-            or lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE"
         ):
             raise ValueError("Only the latest released commercial oil analysis can be corrected")
         release = await db["commercial_quality_releases"].find_one(
@@ -92,6 +91,17 @@ async def record_oil_quality_assessment(
         )
         if not release:
             raise ValueError("A recorded release is required before correcting this analysis")
+        if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+            sample_id = lot.get("source_preproduction_sample_id")
+            source_lot = await lots.find_one(
+                {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+                 "status": "OPEN", "latest_preproduction_sample_id": sample_id,
+                 "preproduction_quality_status": "RELEASED",
+                 "preproduction_quality_assessment_id": correction_of_assessment_id},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            if not source_lot:
+                raise ValueError("The preproduction approval is no longer current")
     elif lot.get("quality_status") not in {"PENDING", "REJECTED"}:
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
@@ -164,6 +174,19 @@ async def record_oil_quality_assessment(
     )
     if update.matched_count != 1:
         raise ValueError("Oil lot changed concurrently; assessment was not applied")
+    if correction_of_assessment_id and lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        source_update = await lots.update_one(
+            {"id": lot["source_olive_lot_id"], "product_kind": "OLIVE", "status": "OPEN",
+             "latest_preproduction_sample_id": lot["source_preproduction_sample_id"],
+             "preproduction_quality_status": "RELEASED",
+             "preproduction_quality_assessment_id": correction_of_assessment_id},
+            {"$set": {"preproduction_quality_status": "PENDING", "updated_at": created_utc},
+             "$unset": {"preproduction_quality_decided_by": "", "preproduction_quality_decided_at": ""},
+             "$inc": {"version": 1}},
+            session=session,
+        )
+        if source_update.matched_count != 1:
+            raise ValueError("Preproduction approval changed concurrently; correction was not applied")
 
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("quality-submission-audit", f"{assessment_id}:{draft.idempotency_key}"),
