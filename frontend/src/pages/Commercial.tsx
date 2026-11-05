@@ -139,7 +139,7 @@ export default function Commercial() {
     paymentSaved: "تم تسجيل الخلاص", cash: "نقداً", bank: "تحويل بنكي", cheque: "صك",
     outstanding: "الباقي", total: "المجموع", paidAmount: "المبلغ المدفوع",
     saleCancelled: "تم إلغاء مسودة البيع", returnIntake: "تسجيل مرتجع زيت", returnWarning: "سيبقى الزيت المرتجع في الحجر وغير قابل للبيع إلى حين إعادة التحليل والاعتماد.", returnConfirm: "تأكيد استلام الكمية في خزان الحجر؟ سيُسجّل ذلك كمرتجع فعلي.", returnSale: "عملية البيع الأصلية", returnQty: "الكمية المرتجعة (كغ)", quarantineTank: "خزان الحجر", returnReason: "سبب الإرجاع", returnSaved: "تم استلام المرتجع في خزان الحجر", returnHistory: "سجل المرتجعات", acceptReturn: "قبول المرتجع وإصدار إشعار دائن", returnAccepted: "تم قبول المرتجع وإصدار الإشعار الدائن", returnAcceptancePrompt: "اذكر سبب القبول التجاري (5 أحرف على الأقل):", returnRejection: "وثيقة رفض المرتجع", rejectReturn: "رفض المرتجع وإعادته للحريف", returnRejected: "تم رفض المرتجع وإرجاع الزيت للحريف", returnRejectionReason: "سبب الرفض (5 أحرف على الأقل):", buyerReceiptReference: "مرجع استلام الحريف", rejectReturnConfirm: "هل تؤكد رفض المرتجع وإخراج كامل الكمية من خزان الحجر؟ لن يصدر إشعار دائن أو استرجاع نقدي.", creditNote: "الإشعار الدائن", netTotal: "الصافي بعد الإشعارات", credited: "مغطاة بإشعار دائن", creditedAmount: "المبلغ الدائن", noQuarantineTank: "يجب تعيين خزان فارغ للحجر أولاً من تبويب الخزانات.", remainingReturnable: "الكمية المتبقية للإرجاع", ackRef: "مرجع إقرار الحريف", cancelSalePrompt: "اذكر سبب إلغاء مسودة البيع (5 أحرف على الأقل):", cancelSale: "إلغاء المسودة",
-    noEligibleOil: "لا توجد دفعات زيت مملوكة للمعصرة ومصادق عليها ومتوفرة للبيع.",
+    noEligibleOil: "لا يوجد مخزون زيت مملوك للمعصرة في خزان نشط عادي.", saleDraftHint: "اختر دفعة وخزانًا به رصيد. لا يمكن اعتماد البيع قبل المصادقة على الجودة.",
   } : {
     buyers: "Acheteurs", account: "Compte commercial", accountInvoices: "Nombre de factures", grossTotal: "Total brut facturé", creditNotesTotal: "Avoirs", netReceivable: "Net à recevoir", buyerCreditBalance: "Crédit de l’acheteur", buyerName: "Nom de l’acheteur", buyerContact: "Contact",
     buyerPhone: "Téléphone", buyerTax: "Identifiant fiscal", buyerAddress: "Adresse",
@@ -159,7 +159,7 @@ export default function Commercial() {
     paymentSaved: "Paiement enregistré", cash: "Espèces", bank: "Virement", cheque: "Chèque",
     outstanding: "Solde dû", total: "Total", paidAmount: "Payé",
     saleCancelled: "Brouillon de vente annulé", returnIntake: "Réception d’un retour d’huile", returnWarning: "L’huile retournée reste en quarantaine et ne peut être vendue avant une nouvelle analyse et validation.", returnConfirm: "Confirmer la réception physique du retour dans la cuve de quarantaine ?", returnSale: "Vente d’origine", returnQty: "Quantité retournée (kg)", quarantineTank: "Cuve de quarantaine", returnReason: "Motif du retour", returnSaved: "Retour reçu en quarantaine", returnHistory: "Historique des retours", acceptReturn: "Accepter le retour et émettre l’avoir", returnAccepted: "Retour accepté et avoir émis", returnAcceptancePrompt: "Motif de l’acceptation commerciale (5 caractères minimum) :", returnRejection: "Document de rejet", rejectReturn: "Refuser le retour et le réexpédier à l’acheteur", returnRejected: "Retour refusé et huile réexpédiée à l’acheteur", returnRejectionReason: "Motif du rejet (5 caractères minimum) :", buyerReceiptReference: "Référence de réception par l’acheteur", rejectReturnConfirm: "Confirmer le rejet et la sortie de toute la quantité de la cuve de quarantaine ? Aucun avoir ni remboursement ne sera émis.", creditNote: "Avoir", netTotal: "Net après avoirs", credited: "Soldée par avoir", creditedAmount: "Montant crédité", noQuarantineTank: "Désignez d’abord une cuve vide comme quarantaine dans l’onglet Cuves.", remainingReturnable: "Quantité encore retournable", ackRef: "Référence d’accusé de l’acheteur", cancelSalePrompt: "Motif de l’annulation (5 caractères minimum) :", cancelSale: "Annuler le brouillon",
-    noEligibleOil: "Aucun lot d’huile libéré, appartenant à la maâsra et disponible à la vente.",
+    noEligibleOil: "Aucun stock d’huile de la maâsra dans une cuve normale active.", saleDraftHint: "Choisissez un lot et une cuve avec du stock. La vente ne pourra être approuvée qu’après validation qualité.",
   };
   const me = useMe();
   const navigate = useNavigate();
@@ -1068,7 +1068,7 @@ export default function Commercial() {
   const maxFlexibleTankStock = Math.max(1, ...tankOilStocks.map((item) => item.quantity));
 
   const availableMillOilLots = (lots.data ?? []).filter((lot) =>
-    lot.product_kind === "OIL" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && lot.status === "OPEN" && lot.quality_status === "RELEASED"
+    lot.product_kind === "OIL" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && lot.status === "OPEN" && lot.quality_status !== "REJECTED"
     && (balances.data ?? []).some((balance) => balance.product_kind === "OIL" && balance.lot_id === lot.id
       && balance.owner?.kind === "MILL" && Number(balance.quantity_kg) > 0
       && (tanks.data ?? []).some((tank) => tank.id === balance.location_id && tank.active && (tank.role ?? "NORMAL") === "NORMAL"))
@@ -1717,7 +1717,7 @@ export default function Commercial() {
       </div>}
 
       {tab === "sales" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
+        {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{availableMillOilLots.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleDate(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleBuyerId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
