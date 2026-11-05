@@ -40,7 +40,7 @@ const labels = {
     bootstrapHint: "Cette action crée les neuf cuves et les compteurs de la saison, y compris les essais préproduction ESS. Elle ne crée aucun stock et ne modifie pas les données de trituration.",
     bootstrapSuccess: "Module commercial initialisé", bootstrapError: "Impossible d'initialiser le module commercial",
     tank: "Cuve", capacity: "Capacité max. (kg)", flexible: "Flexible — capacité non définie", active: "Active", saveCapacity: "Enregistrer", clearCapacity: "Vide = flexible", capacitySaved: "Capacité de la cuve mise à jour", capacityError: "Impossible de modifier la capacité",
-    product: "Produit", document: "Document", owner: "Propriétaire actuel", quantity: "Quantité (kg)", currentStock: "Stock actuel (kg)",
+    product: "Produit", document: "Document", purchaseCode: "Code d’achat", purchaseReference: "Réf. achat", owner: "Propriétaire actuel", quantity: "Quantité (kg)", currentStock: "Stock actuel (kg)",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
     source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
     refresh: "Actualiser", adminOnly: "Initialisation réservée à l'administrateur",
@@ -65,7 +65,7 @@ const labels = {
     bootstrapHint: "تنشئ هذه العملية الخزانات التسعة وعدادات الموسم، بما فيها وثائق تجارب ما قبل الإنتاج ESS. لا تضيف أي مخزون ولا تغيّر بيانات العصر.",
     bootstrapSuccess: "تمت تهيئة الوحدة التجارية", bootstrapError: "تعذرت تهيئة الوحدة التجارية",
     tank: "الخزان", capacity: "السعة القصوى (كغ)", flexible: "مرنة — دون سعة محددة", active: "نشط", saveCapacity: "حفظ", clearCapacity: "اتركه فارغاً للسعة المرنة", capacitySaved: "تم تحديث سعة الخزان", capacityError: "تعذر تعديل سعة الخزان",
-    product: "المنتج", document: "الوثيقة", owner: "المالك الحالي", quantity: "الكمية (كغ)", currentStock: "الرصيد الحالي (كغ)",
+    product: "المنتج", document: "الوثيقة", purchaseCode: "كود الشراء", purchaseReference: "مرجع الشراء", owner: "المالك الحالي", quantity: "الكمية (كغ)", currentStock: "الرصيد الحالي (كغ)",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
     source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
     refresh: "تحديث", adminOnly: "التهيئة متاحة للمدير فقط",
@@ -1486,7 +1486,7 @@ export default function Commercial() {
       </div>}
 
       {tab === "purchases" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{editingPurchase ? `${l.editPurchase} · ${editingPurchase.document_number}` : l.newPurchase}</CardTitle><CardDescription>{l.bootstrapHint}</CardDescription></CardHeader><CardContent>
+        {isAdmin && <Card><CardHeader><CardTitle>{editingPurchase ? `${l.editPurchase} · ${value(editingPurchase.batch_codes?.join(", ") || editingPurchase.batch_code, editingPurchase.document_number)}` : l.newPurchase}</CardTitle><CardDescription>{l.bootstrapHint}</CardDescription></CardHeader><CardContent>
           {(suppliers.data?.length ?? 0) === 0 || (varieties.data?.length ?? 0) === 0 ? <p className="mb-3 text-sm text-amber-700">{(suppliers.data?.length ?? 0) === 0 ? l.noSuppliers : l.noVarieties}</p> : null}
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); editingPurchase ? updatePurchase.mutate() : createPurchase.mutate(); }}>
             <div className="grid gap-3 md:grid-cols-2">
@@ -1507,10 +1507,10 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         {isAdmin && <Card><CardHeader><CardTitle>{l.receivingLocation}</CardTitle></CardHeader><CardContent><select value={receivingLocationId} onChange={(e) => setReceivingLocationId(e.target.value)} className="h-10 w-full max-w-xl rounded-lg border bg-background px-3"><option value="">—</option>{(locations.data ?? []).map((loc) => <option key={loc.id} value={loc.id}>{loc.code} · {loc.name}</option>)}</select></CardContent></Card>}
-        <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{lang === "ar" ? "كود الدفعة" : "Code de lot"}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
+        <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
           {(purchases.data ?? []).map((purchase) => <TableRow key={purchase.id}>
-            <TableCell className="font-mono text-xs">{purchase.status === "DRAFT" && isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{value(purchase.document_number)}</button> : value(purchase.document_number)}</TableCell>
-            <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
+            <TableCell className="font-mono text-xs font-semibold">{purchase.status === "DRAFT" && isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</button> : value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+            <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell>
             <TableCell>{value((suppliers.data ?? []).find((s) => s.id === purchase.supplier_id)?.name, purchase.supplier_id)}</TableCell>
             <TableCell>{date(purchase.purchase_date)}</TableCell>
             <TableCell>{number(purchase.total_quantity_kg)}</TableCell>
