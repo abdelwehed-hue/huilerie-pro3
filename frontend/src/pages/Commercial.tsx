@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Wallet, Layers,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -1650,9 +1650,9 @@ export default function Commercial() {
       {tab === "suppliers" && <div className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
           <div className="rounded-2xl border border-teal-200 bg-white p-4 shadow-sm">
-            <Button type="button" className="mb-3 w-full rounded-xl bg-teal-600 hover:bg-teal-700" onClick={() => { cancelSupplierEdit(); setShowSupplierForm((v) => !v); }}>
+            {isAdmin && <Button type="button" className="mb-3 w-full rounded-xl bg-teal-600 hover:bg-teal-700" onClick={() => { cancelSupplierEdit(); setShowSupplierForm((v) => !v); }}>
               <Plus className="mr-2 size-4"/>{lang === "ar" ? "إضافة مزوّد جديد" : "Nouveau fournisseur"}
-            </Button>
+            </Button>}
             {showSupplierForm && <form className="mb-4 space-y-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) editingSupplier ? updateSupplier.mutate() : addSupplier.mutate(); }}>
               <div className="font-semibold text-teal-900">{editingSupplier ? l.editSupplier : l.addSupplier}</div>
               <label className="grid gap-1 text-sm font-medium">{l.supplierName}<input required minLength={2} maxLength={160} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
