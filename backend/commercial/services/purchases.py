@@ -160,7 +160,7 @@ async def update_olive_purchase_draft(
     session: Any,
 ) -> dict[str, Any]:
     """Update only a DRAFT purchase; approved receipts are immutable."""
-    require_commercial_permission(actor_user, "commercial.manage_purchases")
+    require_commercial_permission(actor_user, "commercial.edit_records")
     purchases = db["commercial_olive_purchases"]
     existing = await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
     if not existing:
@@ -269,7 +269,7 @@ async def cancel_olive_purchase_draft(
     actor_user_id: str, audit_event_id: str, cancelled_at: datetime, session: Any,
 ) -> dict[str, Any]:
     """Soft-cancel a draft only; approved stock receipts remain immutable."""
-    require_commercial_permission(actor_user, "commercial.manage_purchases")
+    require_commercial_permission(actor_user, "commercial.delete_records")
     if not actor_user_id or cancelled_at.tzinfo is None:
         raise ValueError("Authenticated actor and timezone-aware timestamp are required")
     purchases = db["commercial_olive_purchases"]
