@@ -39,7 +39,7 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
     )
     if not lot:
         raise ValueError("Unknown commercial lot")
-    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+    if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE" and draft.source_document_type != "VTE":
         raise ValueError("Preproduction oil samples are laboratory-only and cannot enter stock movements")
     if lot.get("product_kind") != draft.product_kind:
         raise ValueError(
@@ -179,16 +179,40 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
         else:
             raise ValueError("Unsupported production stock movement")
     elif draft.source_document_type == "VTE":
-        if (
-            source.get("status") != "APPROVED"
-            or draft.movement_kind != "DISPATCH"
-            or draft.product_kind != "OIL"
-            or source.get("oil_lot_id") != draft.lot_id
-            or source.get("source_tank_id") != draft.source_location_id
-            or draft.destination_location_id is not None
-            or _quantity(source.get("quantity_kg")) != _quantity(draft.quantity_kg)
-            or not _owner_matches(draft.source_owner, {"kind": "MILL"})
-        ):
+        allocations = source.get("dispatch_allocations")
+        if isinstance(allocations, list):
+            # A tank-based sale can be fulfilled from several oil lots by FIFO.
+            # Each stock movement must match exactly one approved allocation,
+            # rather than the sale's total quantity or its legacy single-lot field.
+            matching_allocation = next((
+                item for item in allocations
+                if isinstance(item, dict)
+                and item.get("lot_id") == draft.lot_id
+                and _quantity(item.get("quantity_kg")) == _quantity(draft.quantity_kg)
+            ), None)
+            matches_sale = (
+                source.get("status") == "APPROVED"
+                and draft.movement_kind == "DISPATCH"
+                and draft.product_kind == "OIL"
+                and matching_allocation is not None
+                and source.get("source_tank_id") == draft.source_location_id
+                and draft.destination_location_id is None
+                and _owner_matches(draft.source_owner, {"kind": "MILL"})
+            )
+        else:
+            # Backward compatibility for historical approved sales created
+            # before FIFO multi-lot allocations were introduced.
+            matches_sale = (
+                source.get("status") == "APPROVED"
+                and draft.movement_kind == "DISPATCH"
+                and draft.product_kind == "OIL"
+                and source.get("oil_lot_id") == draft.lot_id
+                and source.get("source_tank_id") == draft.source_location_id
+                and draft.destination_location_id is None
+                and _quantity(source.get("quantity_kg")) == _quantity(draft.quantity_kg)
+                and _owner_matches(draft.source_owner, {"kind": "MILL"})
+            )
+        if not matches_sale:
             raise ValueError("Wholesale sale dispatch does not match its approved sale")
     elif draft.source_document_type == "INT":
         if (
