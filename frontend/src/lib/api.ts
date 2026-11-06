@@ -10,7 +10,20 @@ export class ApiError extends Error {
   body: unknown;
 
   constructor(status: number, body: unknown) {
-    super(`request failed with ${status}`);
+    const detail = body && typeof body === "object" && "detail" in body
+      ? (body as { detail?: unknown }).detail
+      : undefined;
+    const validationMessages = Array.isArray(detail)
+      ? detail.map((item) => item && typeof item === "object" && "msg" in item
+        ? String((item as { msg?: unknown }).msg ?? "").trim()
+        : "").filter(Boolean)
+      : [];
+    const message = status < 500 && typeof detail === "string" && detail.trim()
+      ? detail.trim()
+      : validationMessages.length
+        ? validationMessages.join("; ")
+        : `request failed with ${status}`;
+    super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
