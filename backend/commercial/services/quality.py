@@ -125,7 +125,12 @@ async def record_oil_quality_assessment(
         if not expected_sample_reference or draft.sample_reference.strip() != expected_sample_reference:
             raise ValueError("Sample reference must match the unified source olive batch code")
         mill_settings = await db["settings"].find_one({"key": "app"}, {"_id": 0, "mill_name": 1}, session=session)
-        expected_laboratory_name = str((mill_settings or {}).get("mill_name") or "").strip() or "Labo Oroverde"
+        configured_mill_name = str((mill_settings or {}).get("mill_name") or "").strip()
+        expected_laboratory_name = (
+            configured_mill_name if configured_mill_name.lower().startswith("labo ")
+            else f"Labo {configured_mill_name}" if configured_mill_name
+            else "Labo Oroverde"
+        )
         if draft.laboratory_name.strip() != expected_laboratory_name:
             raise ValueError("Laboratory must match the mill name configured in Campaign settings")
 
