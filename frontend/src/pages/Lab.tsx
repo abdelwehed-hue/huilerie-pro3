@@ -36,7 +36,8 @@ export default function Lab() {
   const [f, setF] = useState(EMPTY);
   const [scanOpen, setScanOpen] = useState(false);
   const [specificationReference, setSpecificationReference] = useState("");
-  const isGsCode = /^\\d{4}A\\d{4}$/i.test(code);
+  const code = f.code.trim();
+  const isGsCode = /^\d{4}A\d{4}$/i.test(code);
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
@@ -44,10 +45,9 @@ export default function Lab() {
   const gsSample = gsOliveLot ? (gsSamples.data ?? []).find((sample) => sample.source_olive_lot_id === gsOliveLot.id && sample.status === "COMPLETED" && sample.id === gsOliveLot.latest_preproduction_sample_id) : undefined;
   const gsOilLot = gsSample ? (gsLots.data ?? []).find((lot) => lot.id === gsSample.oil_sample_lot_id && lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.status === "OPEN") : undefined;
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
-  const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
+  const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
 
-  const code = f.code.trim();
   const lookup = useQuery({
     queryKey: ["load-by-code", code],
     queryFn: () => apiGet<Load>(`/loads/by-code/${encodeURIComponent(code)}`),
