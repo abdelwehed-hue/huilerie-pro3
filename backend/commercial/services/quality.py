@@ -112,7 +112,7 @@ async def record_oil_quality_assessment(
         source_olive_lot = await db["commercial_lots"].find_one(
             {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
              "status": "OPEN", "latest_preproduction_sample_id": sample_id},
-            {"_id": 0, "id": 1}, session=session,
+            {"_id": 0, "id": 1, "batch_code": 1}, session=session,
         )
         sample = await db["commercial_preproduction_samples"].find_one(
             {"id": sample_id, "source_olive_lot_id": lot.get("source_olive_lot_id"),
