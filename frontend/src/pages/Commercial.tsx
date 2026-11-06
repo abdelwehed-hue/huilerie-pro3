@@ -1170,7 +1170,10 @@ export default function Commercial() {
     ? (lots.data ?? []).find((lot) => lot.id === selectedQualityLot.source_olive_lot_id)
     : undefined;
   const qualitySampleReference = selectedQualitySourceLot?.batch_code ?? selectedQualityLot?.batch_code ?? sampleReference;
-  const configuredLaboratoryName = String(millSettings.data?.mill_name ?? laboratoryName ?? "").trim() || "Labo Oroverde";
+  const configuredMillName = String(millSettings.data?.mill_name ?? laboratoryName ?? "").trim();
+  const configuredLaboratoryName = configuredMillName
+    ? (/^labo\b/i.test(configuredMillName) ? configuredMillName : `Labo ${configuredMillName}`)
+    : "Labo Oroverde";
   const canOpenQualityAssessment = (assessment: AnyRecord) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     if (!canRecordLab || !lot || lot.last_quality_assessment_id !== assessment.id) return false;
