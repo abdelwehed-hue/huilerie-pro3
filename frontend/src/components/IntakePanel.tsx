@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiGet, apiPost } from "@/lib/api";
-import type { ClientCreate, ClientHistory, ClientSummary, Load, LoadCreate, SmsStatus, Varieties } from "@/lib/types";
+import type { ClientCreate, ClientHistory, ClientSummary, Load, LoadCreate, MillInfo, SmsStatus, Varieties } from "@/lib/types";
 import { fmtNum, useI18n } from "@/lib/i18n";
 import { StatusPill } from "@/components/shared";
 import ReceptionTicket from "@/components/ReceptionTicket";
@@ -70,6 +70,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
   const varietyList = vq.isError ? [] : (vq.data?.varieties ?? []);
   const sms = useQuery({ queryKey: ["sms-status"], queryFn: () => apiGet<SmsStatus>("/sms/status") });
+  const millQuery = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
+  const millInfo = millQuery.isError ? undefined : millQuery.data;
   const smsNote = sms.data && !sms.isError && sms.data.enabled ? (sms.data.mode === "live" ? t("sms_sent_live_toast") : t("sms_sent_toast")) : undefined;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -410,7 +412,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               supplierPurchases.length === 0 ? <p className="text-sm text-stone-500">Aucun achat précédent pour ce fournisseur.</p> :
               <ul className="max-h-56 divide-y divide-stone-100 overflow-auto text-sm">
                 {supplierPurchases.slice(0, 10).map((purchase) => <li key={purchase.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid={`intake-supplier-history-${purchase.id}`}>
-                  <span className="font-mono text-xs text-stone-600" dir="ltr">{purchase.document_number ?? purchase.id}</span>
+                  <span className="min-w-0"><span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-stone-400">Code d’achat</span><span className="font-mono text-xs font-semibold text-blue-900" dir="ltr">{purchase.document_number ?? "—"}</span></span>
                   <span className="text-stone-600">{purchase.purchase_date ?? "—"}</span>
                   <span className="font-medium text-blue-800">{fmtNum(Number(purchase.total_quantity_kg ?? 0))} kg</span>
                   <span className="text-teal-800">{fmtNum(Number(purchase.total_amount_dt ?? 0), 3)} TND</span>
@@ -420,18 +422,42 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           </div>
         )}
         {supplierReceipt && receptionType === "supplier" && (
-          <div className="print-area rounded-2xl border-2 border-dashed border-blue-300 bg-white p-6 shadow-sm" data-testid="supplier-reception-ticket">
-            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold text-stone-900">ORO VERDE · GESTION COMMERCIALE</div><div className="text-sm text-stone-500">Bon de réception fournisseur</div></div><div className="text-right"><div className="font-mono text-2xl font-bold text-blue-800" dir="ltr">{supplierReceipt.batch_code}</div><div className="text-xs text-stone-500">Code unique de traçabilité</div></div></div>
-            <div className="grid grid-cols-[1fr_auto] gap-4 py-5"><div className="space-y-2 text-sm">
-              <div><span className="text-stone-500">Fournisseur :</span> <strong>{supplierReceipt.supplier?.name}</strong></div>
-              <div><span className="text-stone-500">Téléphone :</span> {supplierReceipt.supplier?.phone || "—"}</div>
-              <div><span className="text-stone-500">N° achat :</span> <strong>{supplierReceipt.purchase?.document_number}</strong></div>
-              <div><span className="text-stone-500">Date :</span> {supplierReceipt.purchase?.purchase_date}</div>
-              <div><span className="text-stone-500">Quantité :</span> {fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</div>
-              <div><span className="text-stone-500">Total :</span> {fmtNum(Number(supplierReceipt.purchase?.total_amount_dt), 3)} TND</div>
-              <div><span className="text-stone-500">Statut :</span> Réception enregistrée</div>
-            </div><div className="flex flex-col items-center gap-1"><QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(supplierReceipt.purchase?.id ?? "") + "&batch=" + encodeURIComponent(supplierReceipt.batch_code ?? "")} size={112} level="H" includeMargin /><span className="text-[10px] text-stone-500">QR Code GS</span></div></div>
-            <div className="no-print flex flex-wrap gap-2 border-t border-stone-200 pt-4"><Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button><Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button></div>
+          <div className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm" data-testid="supplier-reception-ticket">
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+              <div>
+                <div className="font-heading text-lg font-bold text-stone-900">{millInfo?.mill_name || "Oro Verde"}</div>
+                {millInfo?.mill_address && <div className="text-xs text-stone-500">{millInfo.mill_address}</div>}
+                {millInfo?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{millInfo.mill_phone}</div>}
+              </div>
+              <div className="text-end">
+                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">Bon de réception fournisseur</div>
+                <div className="mt-1 text-xs text-stone-500" dir="ltr">{supplierReceipt.purchase?.purchase_date || supplierDate}</div>
+              </div>
+            </div>
+            <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
+              <div>
+                <div className="mb-2 text-xs text-stone-500">Code unique de traçabilité</div>
+                <div className="inline-flex rounded-lg bg-amber-50 px-4 py-2 font-mono text-2xl font-bold text-amber-900" dir="ltr">{supplierReceipt.batch_code}</div>
+                <div className="mt-3 text-sm text-stone-500">Code GS à conserver pour le suivi du lot</div>
+              </div>
+              <div data-testid="supplier-ticket-qr" className="flex flex-col items-center gap-1">
+                <QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(supplierReceipt.purchase?.id ?? "") + "&batch=" + encodeURIComponent(supplierReceipt.batch_code ?? "")} size={112} level="M" marginSize={1} />
+                <span className="text-[10px] text-stone-500">Scanner pour ouvrir le lot dans GS</span>
+              </div>
+            </div>
+            <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
+              <div><dt className="text-stone-500">Fournisseur</dt><dd className="font-semibold text-stone-900">{supplierReceipt.supplier?.name || "—"}</dd></div>
+              <div><dt className="text-stone-500">Téléphone</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierReceipt.supplier?.phone || "—"}</dd></div>
+              <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{supplierReceipt.purchase?.document_number || "—"}</dd></div>
+              <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
+              <div><dt className="text-stone-500">Quantité d’olives</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
+              <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{fmtNum(Number(supplierReceipt.purchase?.total_amount_dt), 3)} TND</dd></div>
+              <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">Réception enregistrée</dd></div>
+            </dl>
+            <div className="no-print mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-4">
+              <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button>
+              <Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button>
+            </div>
           </div>
         )}
         {created && receptionType === "client" && (
