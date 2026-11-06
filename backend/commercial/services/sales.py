@@ -52,25 +52,21 @@ async def create_wholesale_sale_draft(
     )
     if not tank:
         raise ValueError("Source tank does not exist, is inactive, or is not a normal sale tank")
-    # A sale is selected by tank, not by an operator-chosen oil lot. Stock is
-    # allocated from eligible balances in FIFO order when the sale is approved.
+    # Sales are tank-based: count all positive mill-owned oil balances in this
+    # active normal tank. Lot status/purpose/quality restrictions are deliberately
+    # not applied; FIFO allocation is performed at approval time.
     balances = await db["commercial_stock_balances"].find(
         {"product_kind": "OIL", "location_id": draft.source_tank_id,
          "owner.kind": "MILL", "quantity_kg": {"$gt": Decimal128("0.000")}},
-        {"_id": 0, "lot_id": 1, "quantity_kg": 1, "created_at": 1},
+        {"_id": 0, "quantity_kg": 1},
         session=session,
-    ).sort([("created_at", 1), ("lot_id", 1)]).to_list(500)
+    ).to_list(500)
     available = Decimal("0")
     for balance in balances:
-        lot = await db["commercial_lots"].find_one(
-            {"id": balance["lot_id"], "product_kind": "OIL", "status": "OPEN"},
-            {"_id": 0, "lot_purpose": 1}, session=session,
-        )
-        if lot and lot.get("lot_purpose") != "PREPRODUCTION_SAMPLE":
-            raw = balance.get("quantity_kg", Decimal128("0.000"))
-            available += raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
+        raw = balance.get("quantity_kg", Decimal128("0.000"))
+        available += raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
     if available < draft.quantity_kg:
-        raise ValueError("Insufficient eligible oil stock in the selected tank")
+        raise ValueError("Insufficient mill-owned oil stock in the selected tank")
     collection = db["commercial_sales"]
     scope = f"{season_code}:{actor_user_id}"
     fingerprint = _fingerprint(draft)
@@ -156,22 +152,22 @@ async def approve_wholesale_sale(
         {"_id": 0, "lot_id": 1, "quantity_kg": 1, "created_at": 1},
         session=session,
     ).sort([("created_at", 1), ("lot_id", 1)]).to_list(500)
-    eligible = []
+    fifo_balances = []
     for balance in balances:
         lot = await db["commercial_lots"].find_one(
-            {"id": balance["lot_id"], "product_kind": "OIL", "status": "OPEN"},
-            {"_id": 0, "id": 1, "batch_code": 1, "lot_purpose": 1, "quality_status": 1},
+            {"id": balance["lot_id"], "product_kind": "OIL"},
+            {"_id": 0, "id": 1, "batch_code": 1, "quality_status": 1},
             session=session,
         )
-        if not lot or lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+        if not lot:
             continue
         raw = balance.get("quantity_kg", Decimal128("0.000"))
         quantity = raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
         if quantity > 0:
-            eligible.append((balance, lot, quantity))
+            fifo_balances.append((balance, lot, quantity))
     remaining = sale["quantity_kg"].to_decimal()
     allocations = []
-    for balance, lot, available in eligible:
+    for balance, lot, available in fifo_balances:
         if remaining <= 0:
             break
         taken = min(available, remaining)
@@ -182,7 +178,7 @@ async def approve_wholesale_sale(
         })
         remaining -= taken
     if remaining > 0:
-        raise ValueError("Insufficient eligible oil stock in the selected tank")
+        raise ValueError("Insufficient mill-owned oil stock in the selected tank")
 
     now = created_at.astimezone(timezone.utc)
     invoice_number = await reserve_document_number(
