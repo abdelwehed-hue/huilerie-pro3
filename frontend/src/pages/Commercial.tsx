@@ -213,6 +213,7 @@ export default function Commercial() {
   const [specificationReference, setSpecificationReference] = useState("");
   const [measurements, setMeasurements] = useState([{ code: "", value: "", unit: "" }]);
   const [oilAcidity, setOilAcidity] = useState("");
+  const [qualityClassification, setQualityClassification] = useState<"" | "extra_vierge" | "vierge" | "lampante">("");
   const [oilPeroxide, setOilPeroxide] = useState("");
   const [oilK232, setOilK232] = useState("");
   const [oilK270, setOilK270] = useState("");
@@ -664,7 +665,7 @@ export default function Commercial() {
         k232: oilK232 === "" ? null : oilK232,
         k270: oilK270 === "" ? null : oilK270,
         oil_content_pct: oilContent === "" ? null : oilContent,
-        classification: liveOilClassification,
+        classification: qualityClassification || liveOilClassification,
         oil_type: oilType.trim() || null,
         notes: analysisNotes.trim(),
         idempotency_key: crypto.randomUUID(),
@@ -680,7 +681,7 @@ export default function Commercial() {
       setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId("");
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
-      setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
+      setOilAcidity(""); setQualityClassification(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
       setOilType(""); setAnalysisNotes("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
@@ -1607,7 +1608,10 @@ export default function Commercial() {
                 <label className="grid gap-1 text-sm font-medium">{l.oliveType}<input readOnly value={selectedOliveType || "—"} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.classification}
-                  <div className="flex min-h-10 items-center rounded-lg border bg-muted px-3 font-semibold" aria-live="polite">{liveOilClassificationLabel}</div>
+                  <select value={qualityClassification || liveOilClassification} onChange={(e) => setQualityClassification(e.target.value as typeof qualityClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
+                  </select>
+                  <span className="text-xs text-muted-foreground" aria-live="polite">{lang === "ar" ? "التصنيف المحسوب آليًا: " : "Classification calculée automatiquement : "}{liveOilClassificationLabel}</span>
                 </label>
                 <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.analysisNotes}<textarea maxLength={2000} value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} className="min-h-20 rounded-lg border bg-background px-3 py-2 font-normal" /></label>
               </div>
@@ -1656,7 +1660,7 @@ export default function Commercial() {
         <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
             <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
-              <TableCell className="font-mono text-xs"><button type="button" className={`underline underline-offset-2 ${canOpenQualityAssessment(assessment) ? "cursor-pointer text-emerald-700 font-semibold" : "cursor-default"}`} disabled={!canOpenQualityAssessment(assessment)} title={assessment.status === "REVIEWED" ? (lang === "ar" ? "انقر لإنشاء تصحيح معتمد للمراجعة" : "Cliquer pour soumettre une correction à réviser") : (lang === "ar" ? "انقر لتعديل التحليل المعلّق" : "Cliquer pour modifier l’analyse en attente")} onClick={() => { const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id); if (!lot) { toast.error(l.warning); return; } const correcting = assessment.status === "REVIEWED"; setEditingQualityAssessmentId(correcting ? "" : assessment.id); setCorrectingQualityAssessmentId(correcting ? assessment.id : ""); setQualityLotId(assessment.oil_lot_id); setSampleReference(value(assessment.sample_reference, "")); setSampleDate(String(assessment.sample_date ?? "").slice(0,10)); setTestedDate(String(assessment.tested_date ?? "").slice(0,10)); setLaboratoryName(value(assessment.laboratory_name, "")); setSpecificationReference(value(assessment.specification_reference, "")); setOilAcidity(assessment.acidity == null ? "" : String(assessment.acidity)); setOilPeroxide(assessment.peroxide == null ? "" : String(assessment.peroxide)); setOilK232(assessment.k232 == null ? "" : String(assessment.k232)); setOilK270(assessment.k270 == null ? "" : String(assessment.k270)); setOilContent(assessment.oil_content_pct == null ? "" : String(assessment.oil_content_pct)); setOilType(value(assessment.oil_type, "")); setAnalysisNotes(value(assessment.notes, "")); window.scrollTo({top:0,behavior:"smooth"}); }}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)}</button></TableCell>
+              <TableCell className="font-mono text-xs"><button type="button" className={`underline underline-offset-2 ${canOpenQualityAssessment(assessment) ? "cursor-pointer text-emerald-700 font-semibold" : "cursor-default"}`} disabled={!canOpenQualityAssessment(assessment)} title={assessment.status === "REVIEWED" ? (lang === "ar" ? "انقر لإنشاء تصحيح معتمد للمراجعة" : "Cliquer pour soumettre une correction à réviser") : (lang === "ar" ? "انقر لتعديل التحليل المعلّق" : "Cliquer pour modifier l’analyse en attente")} onClick={() => { const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id); if (!lot) { toast.error(l.warning); return; } const correcting = assessment.status === "REVIEWED"; setEditingQualityAssessmentId(correcting ? "" : assessment.id); setCorrectingQualityAssessmentId(correcting ? assessment.id : ""); setQualityLotId(assessment.oil_lot_id); setSampleReference(value(assessment.sample_reference, "")); setSampleDate(String(assessment.sample_date ?? "").slice(0,10)); setTestedDate(String(assessment.tested_date ?? "").slice(0,10)); setLaboratoryName(value(assessment.laboratory_name, "")); setSpecificationReference(value(assessment.specification_reference, "")); setOilAcidity(assessment.acidity == null ? "" : String(assessment.acidity)); setQualityClassification(["extra_vierge","vierge","lampante"].includes(assessment.classification) ? assessment.classification : ""); setOilPeroxide(assessment.peroxide == null ? "" : String(assessment.peroxide)); setOilK232(assessment.k232 == null ? "" : String(assessment.k232)); setOilK270(assessment.k270 == null ? "" : String(assessment.k270)); setOilContent(assessment.oil_content_pct == null ? "" : String(assessment.oil_content_pct)); setOilType(value(assessment.oil_type, "")); setAnalysisNotes(value(assessment.notes, "")); window.scrollTo({top:0,behavior:"smooth"}); }}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)}</button></TableCell>
               <TableCell>{value(assessment.sample_reference)}</TableCell>
               <TableCell>{value(assessment.laboratory_name)}</TableCell>
               <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
