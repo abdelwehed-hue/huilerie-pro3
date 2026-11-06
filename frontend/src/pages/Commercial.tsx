@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake, Home,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -23,7 +23,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "lots" | "movements" | "quality" | "suppliers" | "locations" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -172,10 +172,6 @@ export default function Commercial() {
   const [supplierTaxId, setSupplierTaxId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
-  const [locationCode, setLocationCode] = useState("");
-  const [locationName, setLocationName] = useState("");
-  const [locationKind, setLocationKind] = useState<"OLIVE_STORAGE" | "STAGING">("OLIVE_STORAGE");
-  const [locationNotes, setLocationNotes] = useState("");
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -382,18 +378,6 @@ export default function Commercial() {
     setEditingSupplier(null);
     setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
   };
-  const addLocation = useMutation({
-    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/locations", {
-      code: locationCode.trim().toUpperCase(), name: locationName.trim(),
-      kind: locationKind, notes: locationNotes.trim() || null,
-    }),
-    onSuccess: async () => {
-      toast.success(l.locationSaved);
-      setLocationCode(""); setLocationName(""); setLocationNotes("");
-      await queryClient.invalidateQueries({ queryKey: ["commercial", "locations"] });
-    },
-    onError: () => toast.error(l.warning),
-  });
   const cancelPurchase = useMutation({
     mutationFn: ({ purchase, reason }: { purchase: AnyRecord; reason: string }) =>
       apiPost<AnyRecord>(`/commercial/v1/olive-purchases/${encodeURIComponent(purchase.id)}/cancel`, {
@@ -1308,7 +1292,6 @@ export default function Commercial() {
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     // Supporting/setup sections are grouped after the operational flow.
-    { id: "locations", label: l.locationsTab, icon: MapPin },
   ];
   if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
 
@@ -1636,19 +1619,6 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{l.suppliers}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead>{canDeleteRecords && <TableHead className="text-right">{l.actions}</TableHead>}</TableRow></TableHeader><TableBody>{(suppliers.data ?? []).map((s) => <TableRow key={s.id}><TableCell className="font-semibold">{canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => beginSupplierEdit(s)} title={l.editSupplier}>{value(s.name)}</button> : value(s.name)}</TableCell><TableCell>{value(s.phone)}</TableCell><TableCell>{value(s.tax_identifier)}</TableCell>{canDeleteRecords && <TableCell className="text-right"><Button type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive" title={l.deleteSupplier} aria-label={l.deleteSupplier} disabled={deleteSupplier.isPending} onClick={() => { if (window.confirm(l.confirmDeleteSupplier)) deleteSupplier.mutate(s); }}><Trash2 className="h-4 w-4" /></Button></TableCell>}</TableRow>)}{(!suppliers.isLoading && !(suppliers.data?.length)) && <EmptyRow colSpan={canDeleteRecords ? 4 : 3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
-      </div>}
-
-      {tab === "locations" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{l.addLocation}</CardTitle></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (locationCode.trim().length >= 2 && locationName.trim().length >= 2) addLocation.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{l.locationCode}<input required minLength={2} maxLength={20} value={locationCode} onChange={(e) => setLocationCode(e.target.value.toUpperCase())} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.locationName}<input required minLength={2} maxLength={100} value={locationName} onChange={(e) => setLocationName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.locationType}<select value={locationKind} onChange={(e) => setLocationKind(e.target.value as "OLIVE_STORAGE" | "STAGING")} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="OLIVE_STORAGE">{l.oliveStorage}</option><option value="STAGING">{l.staging}</option></select></label>
-            <label className="grid gap-1 text-sm font-medium">{l.notes}<input maxLength={500} value={locationNotes} onChange={(e) => setLocationNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="md:col-span-2"><Button type="submit" disabled={addLocation.isPending || locationCode.trim().length < 2 || locationName.trim().length < 2}>{l.addLocation}</Button></div>
-          </form>
-        </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{l.locationsTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.locationCode}</TableHead><TableHead>{l.locationName}</TableHead><TableHead>{l.locationType}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(locations.data ?? []).map((loc) => <TableRow key={loc.id}><TableCell className="font-mono">{value(loc.code)}</TableCell><TableCell className="font-semibold">{value(loc.name)}</TableCell><TableCell>{loc.kind === "OLIVE_STORAGE" ? l.oliveStorage : l.staging}</TableCell><TableCell>{loc.active ? l.active : l.closed}</TableCell></TableRow>)}{(!locations.isLoading && !(locations.data?.length)) && <EmptyRow colSpan={4} text={l.noRows} />}</TableBody></Table></CardContent></Card>
       </div>}
 
       {tab === "purchases" && <div className="space-y-4">
