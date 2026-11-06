@@ -1312,7 +1312,11 @@ export default function Commercial() {
     && (lots.data ?? []).some((lot) => lot.id === balance.lot_id && lot.status === "OPEN" && lot.quality_status === "RELEASED")
   );
   const selectedPickupBalance = availableCustomerOilBalances.find((balance) => balance.lot_id + "::" + balance.location_id === pickupBalanceKey);
-  const productionInputTotal = productionInputs.reduce((sum, line) => sum + (Number(line.quantity_kg) || 0), 0);
+  const productionInputTotal = productionInputs.reduce((sum, line) => {
+    const rawQuantity = String(line.quantity_kg ?? "").trim().replace(",", ".");
+    const quantity = rawQuantity === "" ? 0 : Number(rawQuantity);
+    return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+  }, 0);
   const productionRate = productionInputTotal > 0 && Number(productionOutputKg) >= 0
     ? (Number(productionOutputKg) / productionInputTotal) * 100 : 0;
 
