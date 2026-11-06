@@ -2,13 +2,23 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
-import { apiGet, apiGetAllPages, apiPost } from "@/lib/api";
+import { apiGet, apiGet, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type LocationRecord = { id: string; code: string; name: string; kind: "OLIVE_STORAGE" | "STAGING"; active: boolean; notes?: string | null };
+
+async function fetchAllLocations(): Promise<LocationRecord[]> {
+  const rows: LocationRecord[] = [];
+  for (let skip = 0, page = 0; page <= 100; skip += 500, page += 1) {
+    const chunk = await apiGet<LocationRecord[]>(`/commercial/v1/locations?limit=500&skip=${skip}`);
+    rows.push(...chunk);
+    if (chunk.length < 500) return rows;
+  }
+  throw new Error("La liste dépasse la limite de pagination sûre.");
+}
 
 export default function CommercialLocationsSettings() {
   const { lang } = useI18n();
@@ -38,7 +48,7 @@ export default function CommercialLocationsSettings() {
   const ready = status.data?.ready === true;
   const locations = useQuery({
     queryKey: ["commercial", "locations"],
-    queryFn: () => apiGetAllPages<LocationRecord>("/commercial/v1/locations", 500),
+    queryFn: fetchAllLocations,
     enabled: ready,
   });
   const addLocation = useMutation({
