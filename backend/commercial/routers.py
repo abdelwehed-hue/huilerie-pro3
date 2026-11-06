@@ -1047,6 +1047,16 @@ async def list_commercial_sales_invoices(
 ):
     _authorize(user, "commercial.read")
     docs = await db.commercial_sales_invoices.find({}, {"_id": 0}).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+    # Use the same mill identity shown on standard Oro Verde customer invoices.
+    mill = await db.settings.find_one(
+        {"key": "app"},
+        {"_id": 0, "mill_name": 1, "mill_address": 1, "mill_phone": 1, "mill_logo": 1},
+    ) or {}
+    for doc in docs:
+        doc.setdefault("mill_name", mill.get("mill_name", ""))
+        doc.setdefault("mill_address", mill.get("mill_address", ""))
+        doc.setdefault("mill_phone", mill.get("mill_phone", ""))
+        doc.setdefault("mill_logo", mill.get("mill_logo", ""))
     return _safe(docs)
 
 
