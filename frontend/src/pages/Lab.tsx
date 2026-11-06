@@ -35,13 +35,23 @@ export default function Lab() {
   const qc = useQueryClient();
   const [f, setF] = useState(EMPTY);
   const [scanOpen, setScanOpen] = useState(false);
+  const [specificationReference, setSpecificationReference] = useState("");
+  const isGsCode = /^\\d{4}A\\d{4}$/i.test(code);
+  const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
+  const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
+  const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
+  const gsOliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && lot.batch_code === code && lot.status === "OPEN");
+  const gsSample = gsOliveLot ? (gsSamples.data ?? []).find((sample) => sample.source_olive_lot_id === gsOliveLot.id && sample.status === "COMPLETED" && sample.id === gsOliveLot.latest_preproduction_sample_id) : undefined;
+  const gsOilLot = gsSample ? (gsLots.data ?? []).find((lot) => lot.id === gsSample.oil_sample_lot_id && lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.status === "OPEN") : undefined;
+  const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
+  const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
 
   const code = f.code.trim();
   const lookup = useQuery({
     queryKey: ["load-by-code", code],
     queryFn: () => apiGet<Load>(`/loads/by-code/${encodeURIComponent(code)}`),
-    enabled: code.length >= 7,
+    enabled: code.length >= 7 && !isGsCode,
     retry: false,
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
@@ -68,6 +78,28 @@ export default function Lab() {
   const acid = num(f.acidity);
   const auto = acid != null ? classify(acid, num(f.peroxide), num(f.k232), num(f.k270)) : null;
   const finalGrade = f.grade === "auto" ? auto : (f.grade as Grade);
+
+  const gsMutation = useMutation({
+    mutationFn: async () => {
+      if (!gsOilLot || !gsOliveLot || !gsSample) throw new Error("Aucun Lot d’huile expérimental actif n’est lié à ce code d’achat.");
+      if (!specificationReference.trim()) throw new Error("La référence de la norme est obligatoire.");
+      if (acid == null) throw new Error("L’acidité est obligatoire.");
+      return apiPost("/commercial/v1/quality-assessments", {
+        oil_lot_id: gsOilLot.id, expected_lot_version: gsOilLot.version ?? 1,
+        sample_reference: code, sample_date: gsSample.trial_date, tested_date: new Date().toISOString().slice(0, 10),
+        laboratory_name: gsConfiguredLaboratoryName, specification_reference: specificationReference.trim(), measurements: [],
+        acidity: acid, peroxide: num(f.peroxide), k232: num(f.k232), k270: num(f.k270), oil_content_pct: num(f.oil),
+        classification: finalGrade, oil_type: oilType || null, notes: f.notes, idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Résultats transmis à la Décision indépendante");
+      setF(EMPTY); setSpecificationReference("");
+      qc.invalidateQueries({ queryKey: ["commercial"] });
+      qc.invalidateQueries({ queryKey: ["lab-gs-lots"] });
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
 
   const m = useMutation({
     mutationFn: (b: LabCreate) => apiPost<LabAnalysis>("/lab", b),
@@ -116,7 +148,7 @@ export default function Lab() {
                 <span className="hidden sm:inline">Scan QR Code</span>
               </Button>
             </div>
-            {found && (
+            {isGsCode && gsOilLot && gsSample && (\n              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Lot d’huile expérimental prêt · {code}</div>\n            )}\n            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && (\n              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun Lot d’huile expérimental actif trouvé pour ce code. Créez d’abord l’échantillon d’huile dans GS.</div>\n            )}\n            {isGsCode && (gsLots.isError || gsSamples.isError || mill.isError) && (\n              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales.</div>\n            )}\n            {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
                 <CheckCircle2 className="size-4 text-green-600" /> {found.client_name} · {fmtNum(found.olive_kg)} {t("kg")}
               </div>
@@ -132,7 +164,7 @@ export default function Lab() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}\n          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="la">{t("acidity")}</Label>
               <Input id="la" inputMode="decimal" data-testid="lab-acidity-input" value={f.acidity} onChange={(e) => set("acidity")(e.target.value)} className="h-10 rounded-xl bg-white" />
@@ -187,8 +219,8 @@ export default function Lab() {
             <span className="text-sm font-medium text-stone-600">{t("classification")}</span>
             {finalGrade ? <GradeBadge grade={finalGrade} testId="lab-classification-badge" /> : <span className="text-stone-400">—</span>}
           </div>
-          <Button type="submit" disabled={acid == null || !found || m.isPending} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
-            {t("save")}
+          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || gsLots.isLoading || gsSamples.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
+            {isGsCode ? "Envoyer à la Décision indépendante" : t("save")}
           </Button>
         </form>
 
