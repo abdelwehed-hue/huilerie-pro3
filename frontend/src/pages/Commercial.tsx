@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Wallet, Layers,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -180,6 +180,8 @@ export default function Commercial() {
   const [supplierNotes, setSupplierNotes] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -361,6 +363,7 @@ export default function Commercial() {
     onSuccess: async () => {
       toast.success(l.supplierSaved);
       setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
+      setShowSupplierForm(false);
       await queryClient.invalidateQueries({ queryKey: ["commercial", "suppliers"] });
     },
     onError: () => toast.error(l.warning),
@@ -1644,76 +1647,71 @@ export default function Commercial() {
         </CardContent></Card>
       </div>}
 
-      {tab === "suppliers" && <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="border-sky-200 bg-sky-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المزوّدين النشطين" : "Fournisseurs actifs"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierRows.length}</CardTitle></CardHeader></Card>
-          <Card className="border-violet-200 bg-violet-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"}</CardDescription><CardTitle className="text-2xl text-violet-800">{allSupplierPurchaseCount}</CardTitle></CardHeader></Card>
-          <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "إجمالي الزيتون المشترى (كغ)" : "Olives achetées (kg)"}</CardDescription><CardTitle className="text-2xl text-emerald-800">{number(allSupplierPurchaseKg)}</CardTitle></CardHeader></Card>
-          <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "القيمة الإجمالية للمشتريات" : "Valeur totale des achats"}</CardDescription><CardTitle className="text-2xl text-amber-800">{money(allSupplierPurchaseAmount)}</CardTitle></CardHeader></Card>
-        </div>
-        <Card className="border-stone-200">
-          <CardHeader><CardTitle>{lang === "ar" ? "ملف المزوّد" : "Dossier fournisseur"}</CardTitle><CardDescription>{lang === "ar" ? "اختر مزوّداً لعرض بياناته وجميع معاملاته التجارية المسجلة." : "Sélectionnez un fournisseur pour consulter ses informations et toutes ses opérations commerciales enregistrées."}</CardDescription></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="grid min-w-[240px] flex-1 gap-1 text-sm font-medium">{lang === "ar" ? "اختيار المزوّد" : "Sélectionner un fournisseur"}
-                <select value={selectedSupplierId} onChange={(e) => setSelectedSupplierId(e.target.value)} className="h-11 rounded-lg border bg-background px-3 font-normal">
-                  <option value="">{lang === "ar" ? "اختر المزوّد" : "Choisir un fournisseur"}</option>
-                  {supplierRows.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
-                </select>
-              </label>
-              {selectedSupplier && canEditRecords && <Button type="button" variant="outline" onClick={() => beginSupplierEdit(selectedSupplier)}><Pencil className="mr-2 size-4"/>{l.editSupplier}</Button>}
-              {canDeleteRecords && selectedSupplier && <Button type="button" variant="destructive" onClick={() => { if (window.confirm(l.confirmDeleteSupplier)) deleteSupplier.mutate(selectedSupplier); }} disabled={deleteSupplier.isPending}><Trash2 className="mr-2 size-4"/>{l.deleteSupplier}</Button>}
-            </div>
-            {selectedSupplier && <div className="rounded-2xl border bg-gradient-to-r from-stone-50 to-emerald-50/60 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{lang === "ar" ? "بطاقة المزوّد" : "Fiche fournisseur"}</p><h2 className="mt-1 text-2xl font-bold">{value(selectedSupplier.name)}</h2></div>
-                <span className={selectedSupplier.active === false ? "rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700" : "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"}>{selectedSupplier.active === false ? (lang === "ar" ? "غير نشط" : "Inactif") : (lang === "ar" ? "نشط" : "Actif")}</span>
+      {tab === "suppliers" && <div className="space-y-5">
+        <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+          <div className="rounded-2xl border border-teal-200 bg-white p-4 shadow-sm">
+            <Button type="button" className="mb-3 w-full rounded-xl bg-teal-600 hover:bg-teal-700" onClick={() => { cancelSupplierEdit(); setShowSupplierForm((v) => !v); }}>
+              <Plus className="mr-2 size-4"/>{lang === "ar" ? "إضافة مزوّد جديد" : "Nouveau fournisseur"}
+            </Button>
+            {showSupplierForm && <form className="mb-4 space-y-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) editingSupplier ? updateSupplier.mutate() : addSupplier.mutate(); }}>
+              <div className="font-semibold text-teal-900">{editingSupplier ? l.editSupplier : l.addSupplier}</div>
+              <label className="grid gap-1 text-sm font-medium">{l.supplierName}<input required minLength={2} maxLength={160} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{l.supplierPhone}<input maxLength={40} value={supplierPhone} onChange={(e) => setSupplierPhone(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{l.taxId}<input maxLength={80} value={supplierTaxId} onChange={(e) => setSupplierTaxId(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{l.notes}<input maxLength={1000} value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <div className="flex gap-2"><Button type="submit" disabled={addSupplier.isPending || updateSupplier.isPending || supplierName.trim().length < 2} className="rounded-xl bg-teal-600 hover:bg-teal-700">{editingSupplier ? l.saveSupplierChanges : l.addSupplier}</Button><Button type="button" variant="outline" className="rounded-xl" onClick={() => { cancelSupplierEdit(); setShowSupplierForm(false); }}>{l.cancelSupplierEdit}</Button></div>
+            </form>}
+            <div className="relative mb-3"><Search className="absolute left-3 top-3 size-4 text-stone-400"/><input value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} placeholder={lang === "ar" ? "البحث عن مزوّد..." : "Rechercher un fournisseur..."} className="h-10 w-full rounded-xl border bg-white pl-9 pr-3 text-sm"/></div>
+            {supplierRows.filter((supplier) => String(supplier.name ?? "").toLowerCase().includes(supplierSearch.toLowerCase()) || String(supplier.phone ?? "").includes(supplierSearch)).length === 0 && <p className="py-10 text-center text-sm text-stone-500">{l.noRows}</p>}
+            <ul className="max-h-[65vh] space-y-1 overflow-y-auto">
+              {supplierRows.filter((supplier) => String(supplier.name ?? "").toLowerCase().includes(supplierSearch.toLowerCase()) || String(supplier.phone ?? "").includes(supplierSearch)).map((supplier) => {
+                const count = purchaseRows.filter((purchase) => purchase.supplier_id === supplier.id).length;
+                const kg = purchaseRows.filter((purchase) => purchase.supplier_id === supplier.id).reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0);
+                return <li key={supplier.id}><button type="button" onClick={() => { setSelectedSupplierId(supplier.id); setShowSupplierForm(false); cancelSupplierEdit(); }} className={`w-full rounded-xl px-3 py-2.5 text-start transition-colors duration-200 ${supplier.id === selectedSupplierId ? "bg-teal-50 ring-1 ring-teal-300" : "hover:bg-stone-50"}`}>
+                  <div className="flex items-center justify-between gap-2"><span className="truncate font-medium text-stone-900">{value(supplier.name)}</span><span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-800">{count}×</span></div>
+                  <div className="mt-0.5 flex justify-between gap-2 text-xs text-stone-500"><span dir="ltr">{value(supplier.phone)}</span><span>{number(kg)} kg</span></div>
+                </button></li>;
+              })}
+            </ul>
+          </div>
+          <div>
+            {!selectedSupplier && <div className="grid min-h-72 place-items-center rounded-2xl border-2 border-dashed border-stone-200 bg-white/60 p-8 text-center text-stone-500"><div><BookUser className="mx-auto mb-3 size-10 text-teal-400"/>{lang === "ar" ? "اختر مزوّداً لعرض ملفه وسجل معاملاته" : "Sélectionnez un fournisseur pour consulter son dossier"}</div></div>}
+            {selectedSupplier && <div className="code-reveal space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+                <div><div className="text-xs font-semibold uppercase tracking-wider text-stone-500">{lang === "ar" ? "المزوّد" : "Fournisseur"}</div><div className="font-heading text-3xl font-bold text-stone-900">{value(selectedSupplier.name)}</div><div className="mt-1 flex items-center gap-2 text-sm text-stone-600"><Phone className="size-4"/><span dir="ltr">{value(selectedSupplier.phone)}</span></div><div className="mt-1 text-xs text-stone-500">{l.taxId}: {value(selectedSupplier.tax_identifier)}</div></div>
+                <div className="flex gap-2">{canEditRecords && <Button variant="outline" onClick={() => { beginSupplierEdit(selectedSupplier); setShowSupplierForm(true); }} className="rounded-xl border-teal-300 text-teal-800 hover:bg-teal-50"><Pencil className="size-4"/>{l.editSupplier}</Button>}{canDeleteRecords && <Button variant="outline" onClick={() => window.confirm(l.confirmDeleteSupplier) && deleteSupplier.mutate(selectedSupplier)} disabled={deleteSupplier.isPending} className="rounded-xl border-red-200 text-red-700 hover:bg-red-50"><Trash2 className="size-4"/>{l.deleteSupplier}</Button>}</div>
               </div>
-              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div><span className="text-muted-foreground">{l.supplierPhone}</span><p className="font-semibold">{value(selectedSupplier.phone)}</p></div>
-                <div><span className="text-muted-foreground">{l.taxId}</span><p className="font-semibold">{value(selectedSupplier.tax_identifier)}</p></div>
-                <div className="sm:col-span-2"><span className="text-muted-foreground">{l.notes}</span><p className="font-semibold">{value(selectedSupplier.notes)}</p></div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <Card className="border-rose-200 bg-rose-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المشتريات" : "Achats"}</CardDescription><CardTitle className="text-2xl text-rose-800">{supplierPurchaseCount}</CardTitle></CardHeader></Card>
+                <Card className="border-lime-200 bg-lime-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "الزيتون المشترى" : "Olives achetées"}</CardDescription><CardTitle className="text-2xl text-lime-800">{number(supplierTotalKg)} <span className="text-sm">kg</span></CardTitle></CardHeader></Card>
+                <Card className="border-amber-200 bg-amber-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "المشتريات المعتمدة" : "Achats approuvés"}</CardDescription><CardTitle className="text-2xl text-amber-800">{supplierApprovedPurchases.length}</CardTitle></CardHeader></Card>
+                <Card className="border-sky-200 bg-sky-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "مسودات" : "Brouillons"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierDraftPurchases.length}</CardTitle></CardHeader></Card>
+                <Card className="border-violet-200 bg-violet-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "قيمة المشتريات" : "Montant des achats"}</CardDescription><CardTitle className="text-xl text-violet-800">{money(supplierTotalAmount)}</CardTitle></CardHeader></Card>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل عمليات المزوّد" : "Historique des opérations"}</div>
+                <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
+                  <TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-start">{l.purchaseReference}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{l.variety}</TableHead><TableHead className="text-end">{l.totalQuantity}</TableHead><TableHead className="text-end">{l.totalAmount}</TableHead><TableHead className="text-start">{l.status}</TableHead>
+                </TableRow></TableHeader><TableBody>
+                  {selectedSupplierPurchases.map((purchase) => <TableRow key={purchase.id}>
+                    <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
+                    <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell><TableCell className="text-xs text-stone-500" dir="ltr">{date(purchase.purchase_date)}</TableCell>
+                    <TableCell className="text-end">{value(purchase.lines?.map((line: AnyRecord) => line.variety_name).filter(Boolean).join(", "), "—")}</TableCell>
+                    <TableCell className="text-end font-semibold text-lime-800">{number(purchase.total_quantity_kg)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(purchase.total_amount_dt)}</TableCell>
+                    <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
+                  </TableRow>)}
+                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={7} text={l.noRows}/>}
+                </TableBody></Table></div>
               </div>
             </div>}
-          </CardContent>
-        </Card>
-        {selectedSupplier && <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد معاملات الشراء" : "Nombre d’achats"}</CardDescription><CardTitle className="text-2xl">{supplierPurchaseCount}</CardTitle></CardHeader></Card>
-            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عمليات معتمدة" : "Achats réceptionnés"}</CardDescription><CardTitle className="text-2xl text-emerald-700">{supplierApprovedPurchases.length}</CardTitle></CardHeader></Card>
-            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "مسودات غير معتمدة" : "Brouillons en attente"}</CardDescription><CardTitle className="text-2xl text-amber-700">{supplierDraftPurchases.length}</CardTitle></CardHeader></Card>
-            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "الكمية الجملية (كغ)" : "Quantité totale (kg)"}</CardDescription><CardTitle className="text-2xl">{number(supplierTotalKg)}</CardTitle></CardHeader></Card>
           </div>
-          <Card><CardHeader><CardTitle>{lang === "ar" ? "القيمة وسجل المشتريات" : "Valeur et historique des achats"}</CardTitle><CardDescription>{lang === "ar" ? "المبالغ المعروضة هي قيمة عمليات الشراء المسجلة، وليست رصيداً مدفوعاً أو متبقياً." : "Les montants affichés représentent la valeur des achats enregistrés, pas un solde payé ou restant."}</CardDescription></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-xl bg-muted/60 p-3"><p className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي قيمة المشتريات" : "Montant total des achats"}</p><p className="text-2xl font-bold">{money(supplierTotalAmount)}</p></div>
-              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>
-                {selectedSupplierPurchases.map((purchase) => <TableRow key={purchase.id}>
-                  <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
-                  <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell><TableCell>{date(purchase.purchase_date)}</TableCell><TableCell>{number(purchase.total_quantity_kg)}</TableCell><TableCell className="font-semibold">{money(purchase.total_amount_dt)}</TableCell>
-                  <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
-                </TableRow>)}
-                {!selectedSupplierPurchases.length && <EmptyRow colSpan={6} text={l.noRows}/>}
-              </TableBody></Table></div>
-            </CardContent>
-          </Card>
-        </div>}
-        {(isAdmin || (editingSupplier && canEditRecords)) && <Card><CardHeader><CardTitle>{editingSupplier ? l.editSupplier : l.addSupplier}</CardTitle></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) editingSupplier ? updateSupplier.mutate() : isAdmin && addSupplier.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{l.supplierName}<input required minLength={2} maxLength={160} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.supplierPhone}<input maxLength={40} value={supplierPhone} onChange={(e) => setSupplierPhone(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.taxId}<input maxLength={80} value={supplierTaxId} onChange={(e) => setSupplierTaxId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.notes}<input maxLength={1000} value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="md:col-span-2"><div className="flex flex-wrap gap-2"><Button type="submit" disabled={addSupplier.isPending || updateSupplier.isPending || supplierName.trim().length < 2}>{editingSupplier ? l.saveSupplierChanges : l.addSupplier}</Button>{editingSupplier && <Button type="button" variant="outline" onClick={cancelSupplierEdit}>{l.cancelSupplierEdit}</Button>}</div></div>
-          </form>
-        </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{lang === "ar" ? "قائمة المزوّدين" : "Liste des fournisseurs"}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead><TableHead>{lang === "ar" ? "عدد المشتريات" : "Nombre d’achats"}</TableHead>{canEditRecords && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader><TableBody>
-          {supplierRows.map((supplier) => <TableRow key={supplier.id} className={selectedSupplierId === supplier.id ? "bg-emerald-50" : ""}>
-            <TableCell><button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setSelectedSupplierId(supplier.id)}>{value(supplier.name)}</button></TableCell><TableCell>{value(supplier.phone)}</TableCell><TableCell>{value(supplier.tax_identifier)}</TableCell><TableCell>{purchaseRows.filter((purchase) => purchase.supplier_id === supplier.id).length}</TableCell>
-            {canEditRecords && <TableCell><Button type="button" size="sm" variant="outline" onClick={() => beginSupplierEdit(supplier)}><Pencil className="mr-1 size-4"/>{l.editSupplier}</Button></TableCell>}
-          </TableRow>)}
-          {!supplierRows.length && <EmptyRow colSpan={canEditRecords ? 5 : 4} text={l.noRows}/>}
-        </TableBody></Table></CardContent></Card>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border-sky-200 bg-sky-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المزوّدين" : "Fournisseurs"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierRows.length}</CardTitle></CardHeader></Card>
+          <Card className="border-violet-200 bg-violet-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"}</CardDescription><CardTitle className="text-2xl text-violet-800">{allSupplierPurchaseCount}</CardTitle></CardHeader></Card>
+          <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "إجمالي الزيتون (kg)" : "Olives achetées (kg)"}</CardDescription><CardTitle className="text-2xl text-emerald-800">{number(allSupplierPurchaseKg)}</CardTitle></CardHeader></Card>
+          <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "القيمة الإجمالية" : "Valeur totale"}</CardDescription><CardTitle className="text-2xl text-amber-800">{money(allSupplierPurchaseAmount)}</CardTitle></CardHeader></Card>
+        </div>
       </div>}
 
       {tab === "purchases" && <div className="space-y-4">
