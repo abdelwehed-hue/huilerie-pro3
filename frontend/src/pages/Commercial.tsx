@@ -1639,7 +1639,7 @@ export default function Commercial() {
                     <TableCell>{date(sample.trial_date)}</TableCell>
                     <TableCell>{number(sample.input_olive_quantity_kg)}</TableCell>
                     <TableCell>{number(sample.sample_oil_quantity_kg)}</TableCell>
-                    <TableCell><Badge variant={sample.status === "COMPLETED" ? "default" : "secondary"}>{sample.status === "COMPLETED" ? (lang === "ar" ? "مكتملة" : "Terminée") : sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulée") : value(sample.status)}</Badge></TableCell>
+                    <TableCell><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${sample.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-700"}`}>{sample.status === "COMPLETED" ? (lang === "ar" ? "مكتملة" : "Terminée") : sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulée") : value(sample.status)}</span></TableCell>
                     <TableCell className="max-w-xs whitespace-normal text-xs">{value(sample.notes)}</TableCell>
                   </TableRow>;
                 })}
