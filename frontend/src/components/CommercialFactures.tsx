@@ -398,7 +398,7 @@ export default function CommercialFactures() {
           <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.credit}</p><strong>{money(statementCredit)}</strong></div>
         </div>
         <table className="w-full table-fixed border-collapse text-[9pt]">
-          <colgroup><col style={{width:"14%"}}/><col style={{width:"34%"}}/><col style={{width:"15%"}}/><col style={{width:"15%"}}/><col style={{width:"22%"}}/></colgroup>
+          <colgroup><col style={{width:"12%"}}/><col style={{width:"28%"}}/><col style={{width:"16%"}}/><col style={{width:"14%"}}/><col style={{width:"14%"}}/><col style={{width:"16%"}}/></colgroup>
           <thead><tr className="bg-stone-100">{[labels.date,labels.operation,labels.number,labels.debit,labels.credit,labels.balance].map(label=><th key={label} className="border border-stone-300 p-2 text-start">{label}</th>)}</tr></thead>
           <tbody>
             <tr><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">{labels.opening}</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2 font-semibold">{money(ledgerData.opening)}</td></tr>
