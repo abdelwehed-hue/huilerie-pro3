@@ -38,6 +38,17 @@ def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
     {"active": True, "role": "unknown"},
     {},
 ])
+def test_workers_can_edit_or_delete_records_only_when_explicitly_assigned():
+    editor = {"active": True, "role": "worker", "commercial_permissions": ["commercial.edit_records"]}
+    deleter = {"active": True, "role": "worker", "commercial_permissions": ["commercial.delete_records"]}
+    require_commercial_permission(editor, "commercial.edit_records")
+    require_commercial_permission(deleter, "commercial.delete_records")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(editor, "commercial.delete_records")
+    with pytest.raises(PermissionError):
+        require_commercial_permission(deleter, "commercial.edit_records")
+
+
 def test_inactive_or_unknown_user_has_no_commercial_permissions(user):
     with pytest.raises(PermissionError):
         require_commercial_permission(user, "commercial.read")
