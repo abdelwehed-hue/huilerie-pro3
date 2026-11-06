@@ -121,7 +121,8 @@ async def validate_stock_references(db: Any, draft: Any, *, session: Any) -> Non
          "movement_kind": 1, "product_kind": 1, "lot_id": 1,
          "source_location_id": 1, "destination_location_id": 1,
          "source_owner": 1, "destination_owner": 1,
-         "source_olive_lot_id": 1, "input_olive_quantity_kg": 1},
+         "source_olive_lot_id": 1, "input_olive_quantity_kg": 1,
+         "dispatch_allocations": 1},
         session=session,
     )
     if not source:
