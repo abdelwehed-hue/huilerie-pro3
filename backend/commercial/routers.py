@@ -29,7 +29,7 @@ from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, effective_
 from commercial.schemas.inventory import CommercialLocationDraft, OliveLotBalanceAdjustmentDraft, StockMovementDraft
 from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
-from commercial.schemas.preproduction import PreproductionSampleDraft, CancelPreproductionSampleCommand
+from commercial.schemas.preproduction import PreproductionSampleDraft, CancelPreproductionSampleCommand, AutoCompletePreproductionByBatchCommand
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
     CancelOlivePurchaseDraftCommand,
@@ -56,7 +56,7 @@ from commercial.schemas.customer_custody import (
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
-from commercial.services.preproduction import create_preproduction_sample, cancel_preproduction_sample
+from commercial.services.preproduction import create_preproduction_sample, cancel_preproduction_sample, auto_complete_preproduction_sample_for_purchase
 from commercial.services.purchase_approval import approve_olive_purchase
 from commercial.services.purchases import (
     cancel_olive_purchase_draft,
@@ -1389,6 +1389,28 @@ async def create_preproduction_sample_route(
                 actor_user_id=user["id"], sample_id=sample_id,
                 oil_lot_id=oil_lot_id, movement_id=movement_id,
                 movement_audit_id=movement_audit_id, created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/preproduction-samples/auto-complete", status_code=201)
+async def auto_complete_preproduction_sample_route(
+    command: AutoCompletePreproductionByBatchCommand,
+    user: dict = Depends(current_user),
+):
+    """Create the zero-stock, analysis-only preproduction sample for a purchase code."""
+    _authorize(user, "commercial.lab_record")
+    _, season_code = await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: auto_complete_preproduction_sample_for_purchase(
+                db, command.batch_code, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                created_at=now, session=session,
             )
         )
         return _safe(result)
