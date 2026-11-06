@@ -60,6 +60,23 @@ export default function CommercialFactures() {
   }, [buyerInvoices, buyers, search, start, end]);
   const selectedBuyer = buyers.find(x => x.id === buyerId);
   const selectedInvoice = invoices.find(x => x.id === selectedInvoiceId);
+  const selectedInvoiceDetails = useQuery({
+    queryKey: ["commercial", "factures", "invoice-details", selectedInvoiceId],
+    enabled: Boolean(selectedInvoiceId) && mode === "invoices",
+    queryFn: async () => {
+      const inv = invoices.find(x => x.id === selectedInvoiceId);
+      if (!inv) return { payments: [], reversals: [], applications: [], returns: [], notes: [] };
+      const base = "/commercial/v1/sales-invoices/" + encodeURIComponent(inv.id);
+      const [payments, reversals, applications, returns, allNotes] = await Promise.all([
+        page<Row>(base + "/payments?limit=500"),
+        page<Row>(base + "/payment-reversals?limit=500"),
+        page<Row>(base + "/credit-applications?limit=500"),
+        page<Row>("/commercial/v1/sale-returns?sale_id=" + encodeURIComponent(inv.sale_id) + "&limit=500"),
+        page<Row>("/commercial/v1/credit-notes?limit=500"),
+      ]);
+      return { payments, reversals, applications, returns, notes: allNotes.filter(n => n.invoice_id === inv.id) };
+    }
+  });
   const buyerSummary = useQuery({
     queryKey: ["commercial", "factures", "summary", buyerId],
     queryFn: () => apiGet<Row>(`/commercial/v1/buyers/${encodeURIComponent(buyerId)}/account-summary`),
@@ -162,6 +179,11 @@ export default function CommercialFactures() {
           <div><span className="text-muted-foreground">{labels.total}</span><p className="font-semibold">{money(selectedInvoice.total_amount_dt)} TND</p></div>
           <div><span className="text-muted-foreground">{labels.balance}</span><p className="font-semibold">{money(selectedInvoice.outstanding_amount_dt)} TND</p></div>
         </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div><h4 className="mb-2 font-semibold">{ar ? "الدفعات" : "Paiements"}</h4><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{ar ? "المرجع" : "Référence"}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{ar ? "الطريقة" : "Méthode"}</TableHead></TableRow></TableHeader><TableBody>{(selectedInvoiceDetails.data?.payments ?? []).map(p=><TableRow key={p.id}><TableCell>{dateText(p.payment_date ?? p.created_at)}</TableCell><TableCell>{p.document_number ?? "—"}</TableCell><TableCell>{money(p.amount_dt)} TND</TableCell><TableCell>{p.method ?? "—"}</TableCell></TableRow>)}{!selectedInvoiceDetails.data?.payments?.length && <TableRow><TableCell colSpan={4}>{labels.noRows}</TableCell></TableRow>}</TableBody></Table></div>
+          <div><h4 className="mb-2 font-semibold">{ar ? "الإشعارات الدائنة وعكس الدفعات" : "Avoirs et annulations de paiement"}</h4><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{ar ? "الوثيقة" : "Document"}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{ar ? "البيان" : "Motif"}</TableHead></TableRow></TableHeader><TableBody>{(selectedInvoiceDetails.data?.notes ?? []).map(n=><TableRow key={n.id}><TableCell>{dateText(n.created_at)}</TableCell><TableCell>{n.document_number}</TableCell><TableCell>{money(n.amount_dt)} TND</TableCell><TableCell>{ar ? "إشعار دائن" : "Avoir"}</TableCell></TableRow>)}{(selectedInvoiceDetails.data?.reversals ?? []).map(v=><TableRow key={v.id}><TableCell>{dateText(v.created_at)}</TableCell><TableCell>{v.document_number}</TableCell><TableCell>{money(v.amount_dt)} TND</TableCell><TableCell>{v.reason ?? "—"}</TableCell></TableRow>)}{!selectedInvoiceDetails.data?.notes?.length && !selectedInvoiceDetails.data?.reversals?.length && <TableRow><TableCell colSpan={4}>{labels.noRows}</TableCell></TableRow>}</TableBody></Table></div>
+        </div>
+        <div className="mt-4"><h4 className="mb-2 font-semibold">{ar ? "التسويات والمرتجعات" : "Affectations et retours"}</h4><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{ar ? "الوثيقة" : "Document"}</TableHead><TableHead>{labels.operation}</TableHead><TableHead>{labels.status}</TableHead></TableRow></TableHeader><TableBody>{(selectedInvoiceDetails.data?.applications ?? []).map(a=><TableRow key={a.id}><TableCell>{dateText(a.created_at)}</TableCell><TableCell>{a.document_number}</TableCell><TableCell>{labels.creditApply}</TableCell><TableCell>{a.status}</TableCell></TableRow>)}{(selectedInvoiceDetails.data?.returns ?? []).map(r=><TableRow key={r.id}><TableCell>{dateText(r.received_at ?? r.created_at)}</TableCell><TableCell>{r.document_number}</TableCell><TableCell>{ar ? "مرتجع" : "Retour physique"}</TableCell><TableCell>{r.commercial_acceptance_status ?? r.status}</TableCell></TableRow>)}{!selectedInvoiceDetails.data?.applications?.length && !selectedInvoiceDetails.data?.returns?.length && <TableRow><TableCell colSpan={4}>{labels.noRows}</TableCell></TableRow>}</TableBody></Table></div>
       </div>}
       </CardContent>
     </Card>}
