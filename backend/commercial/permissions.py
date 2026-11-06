@@ -8,11 +8,12 @@ ADMIN_PERMISSIONS = frozenset({
     "commercial.post_stock", "commercial.reverse_stock", "commercial.manage_sales", "commercial.manage_custody",
     "commercial.manage_purchases", "commercial.manage_production",
     "commercial.lab_record", "commercial.quality_release", "commercial.view_audit",
-    "commercial.manage_preproduction_samples",
+    "commercial.manage_preproduction_samples", "commercial.edit_records", "commercial.delete_records",
 })
 ASSIGNABLE_COMMERCIAL_PERMISSIONS = frozenset({
     "commercial.read", "commercial.lab_record", "commercial.quality_release",
     "commercial.view_audit", "commercial.manage_preproduction_samples",
+    "commercial.edit_records", "commercial.delete_records",
 })
 
 
