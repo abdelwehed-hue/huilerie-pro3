@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
-  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserX, UserCheck, X, Ban, Trash2,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
   Truck, ShoppingBasket, MapPin, ArrowLeftRight, Handshake, Home,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
@@ -125,7 +125,7 @@ export default function Commercial() {
     buyerPhone: "الهاتف", buyerTax: "المعرّف الجبائي", buyerAddress: "العنوان",
     addBuyer: "إضافة حريف", buyerSaved: "تم تسجيل الحريف", buyerEmail: "البريد الإلكتروني",
     editBuyer: "تعديل الحريف", saveBuyer: "حفظ التعديلات", cancelEdit: "إلغاء",
-    activeBuyer: "نشط", inactiveBuyer: "معطّل", deactivateBuyer: "تعطيل", reactivateBuyer: "إعادة التفعيل",
+    activeBuyer: "نشط", inactiveBuyer: "معطّل", deactivateBuyer: "تعطيل", reactivateBuyer: "إعادة التفعيل", deleteBuyer: "حذف الحريف", confirmDeleteBuyer: "سيُحذف الحريف من قائمة البيع مع الاحتفاظ بفواتيره وعملياته السابقة. هل تؤكد؟", buyerDeleted: "تم حذف الحريف من قائمة البيع", buyerReactivated: "تمت إعادة تفعيل الحريف",
     sales: "البيع بالجملة",
     saleDate: "تاريخ البيع", selectBuyer: "اختر الحريف", selectOilLot: "دفعة الزيت",
     selectTank: "الخزان", noSaleTank: "لا يوجد زيت متاح للبيع في الخزانات العادية النشطة.", saleQty: "الكمية المباعة (كغ)", salePrice: "سعر الكغ (د.ت)",
@@ -145,7 +145,7 @@ export default function Commercial() {
     buyerPhone: "Téléphone", buyerTax: "Identifiant fiscal", buyerAddress: "Adresse",
     addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", buyerEmail: "E-mail",
     editBuyer: "Modifier l’acheteur", saveBuyer: "Enregistrer les modifications", cancelEdit: "Annuler",
-    activeBuyer: "Actif", inactiveBuyer: "Désactivé", deactivateBuyer: "Désactiver", reactivateBuyer: "Réactiver",
+    activeBuyer: "Actif", inactiveBuyer: "Désactivé", deactivateBuyer: "Désactiver", reactivateBuyer: "Réactiver", deleteBuyer: "Supprimer l’acheteur", confirmDeleteBuyer: "Cet acheteur sera retiré des nouvelles ventes. Ses factures et opérations passées resteront conservées. Confirmer ?", buyerDeleted: "Acheteur retiré des nouvelles ventes", buyerReactivated: "Acheteur réactivé",
     sales: "Vente en gros",
     saleDate: "Date de vente", selectBuyer: "Choisir l’acheteur", selectOilLot: "Lot d’huile",
     selectTank: "Cuve", noSaleTank: "Aucune huile disponible à la vente dans les cuves normales actives.", saleQty: "Quantité vendue (kg)", salePrice: "Prix/kg (DT)",
@@ -743,12 +743,28 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const resetBuyerEditor = () => {
+    setEditingBuyerId(""); setBuyerName(""); setBuyerContact(""); setBuyerPhone("");
+    setBuyerEmail(""); setBuyerTaxId(""); setBuyerAddress("");
+  };
+  const startBuyerEdit = (buyer: AnyRecord) => {
+    setEditingBuyerId(buyer.id); setBuyerName(buyer.name ?? "");
+    setBuyerContact(buyer.contact_name ?? ""); setBuyerPhone(buyer.phone ?? "");
+    setBuyerEmail(buyer.email ?? ""); setBuyerTaxId(buyer.tax_identifier ?? "");
+    setBuyerAddress(buyer.address ?? "");
+  };
   const changeBuyerStatus = useMutation({
     mutationFn: (buyer: AnyRecord) => apiPost<AnyRecord>(
       `/commercial/v1/buyers/${encodeURIComponent(buyer.id)}/status`,
       { expected_version: buyer.version ?? 1, active: !buyer.active },
     ),
-    onSuccess: async () => {
+    onSuccess: async (_result, buyer) => {
+      if (buyer.active) {
+        toast.success(salesText.buyerDeleted);
+        if (editingBuyerId === buyer.id) resetBuyerEditor();
+      } else {
+        toast.success(salesText.buyerReactivated);
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
@@ -1864,19 +1880,19 @@ export default function Commercial() {
             <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.buyerAddress}<input maxLength={500} value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={saveBuyer.isPending || !buyerName.trim()}><UserRound className="size-4" />{editingBuyerId ? salesText.saveBuyer : salesText.addBuyer}</Button>
-              {editingBuyerId && <Button type="button" variant="outline" onClick={() => { setEditingBuyerId(""); setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerEmail(""); setBuyerTaxId(""); setBuyerAddress(""); }}><X className="size-4" />{salesText.cancelEdit}</Button>}
+              {editingBuyerId && <Button type="button" variant="outline" onClick={resetBuyerEditor}><X className="size-4" />{salesText.cancelEdit}</Button>}
             </div>
           </form>
         </CardContent></Card>}
         <Card><CardHeader><CardTitle>{salesText.buyers}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead><TableHead>{l.status}</TableHead><TableHead>{salesText.account}</TableHead>{isAdmin && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader>
             <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}>
-              <TableCell className="font-semibold">{value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell>
+              <TableCell className="font-semibold">{isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" title={salesText.editBuyer} onClick={() => startBuyerEdit(buyer)}>{value(buyer.name)}</button> : value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell>
               <TableCell><span className={buyer.active ? "text-emerald-700" : "text-muted-foreground"}>{buyer.active ? salesText.activeBuyer : salesText.inactiveBuyer}</span></TableCell>
               <TableCell><Button size="sm" variant="outline" onClick={() => setSelectedBuyerAccountId(buyer.id)}><Wallet className="size-3.5" />{salesText.account}</Button></TableCell>
               {isAdmin && <TableCell><div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="outline" onClick={() => { setEditingBuyerId(buyer.id); setBuyerName(buyer.name ?? ""); setBuyerContact(buyer.contact_name ?? ""); setBuyerPhone(buyer.phone ?? ""); setBuyerEmail(buyer.email ?? ""); setBuyerTaxId(buyer.tax_identifier ?? ""); setBuyerAddress(buyer.address ?? ""); }}><Pencil className="size-3.5" />{salesText.editBuyer}</Button>
-                <Button size="sm" variant="outline" disabled={changeBuyerStatus.isPending} onClick={() => changeBuyerStatus.mutate(buyer)}>{buyer.active ? <UserX className="size-3.5" /> : <UserCheck className="size-3.5" />}{buyer.active ? salesText.deactivateBuyer : salesText.reactivateBuyer}</Button>
+                <Button size="sm" variant="outline" onClick={() => startBuyerEdit(buyer)}><Pencil className="size-3.5" />{salesText.editBuyer}</Button>
+                {buyer.active ? <Button size="sm" variant="destructive" disabled={changeBuyerStatus.isPending} onClick={() => { if (window.confirm(salesText.confirmDeleteBuyer)) changeBuyerStatus.mutate(buyer); }}><Trash2 className="size-3.5" />{salesText.deleteBuyer}</Button> : <Button size="sm" variant="outline" disabled={changeBuyerStatus.isPending} onClick={() => changeBuyerStatus.mutate(buyer)}><UserCheck className="size-3.5" />{salesText.reactivateBuyer}</Button>}
               </div></TableCell>}
             </TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={isAdmin ? 8 : 7} text={l.noRows} />}</TableBody>
           </Table>
