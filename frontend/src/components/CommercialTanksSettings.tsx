@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Warehouse } from "lucide-react";
+import CommercialLocationsSettings from "@/components/CommercialLocationsSettings";
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ export default function CommercialTanksSettings() {
     .reduce((sum, balance) => sum + Number(balance.quantity_kg ?? 0), 0);
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Warehouse className="size-5 text-cyan-700" />{labels.title}</CardTitle>
@@ -238,6 +240,8 @@ export default function CommercialTanksSettings() {
         )}
       </CardContent>
     </Card>
+    <CommercialLocationsSettings />
+    </>
   );
 }
 
