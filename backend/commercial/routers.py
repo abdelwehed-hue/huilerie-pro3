@@ -1251,7 +1251,7 @@ async def create_olive_reception_purchase(
             audit_event_id=purchase_audit_id, created_at=now, session=session,
         )
         approved = await approve_olive_purchase(
-            db, purchase_id, approval, actor_user=user, actor_user_id=user["id"],
+            db, created["id"], approval, actor_user=user, actor_user_id=user["id"],
             created_at=now, session=session,
         )
         supplier = await db.commercial_suppliers.find_one(
