@@ -22,10 +22,16 @@ export default function CommercialCertificate() {
     queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/lots?product_kind=OIL&limit=500`),
     retry: false,
   });
+  const purchasesQuery = useQuery({ queryKey: ["commercial-certificate-purchases"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/olive-purchases?limit=500`), retry: false });
+  const suppliersQuery = useQuery({ queryKey: ["commercial-certificate-suppliers"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/suppliers?limit=500`), retry: false });
+  const varietiesQuery = useQuery({ queryKey: ["commercial-certificate-varieties"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/varieties?limit=500`), retry: false });
   const assessment = (assessmentQuery.data ?? []).find((item) => item.id === id);
   const lot = (lotsQuery.data ?? []).find((item) => item.id === assessment?.oil_lot_id);
-  const loading = assessmentQuery.isLoading || lotsQuery.isLoading;
-  const failed = assessmentQuery.isError || lotsQuery.isError || (!loading && !assessment);
+  const purchase = (purchasesQuery.data ?? []).find((item) => item.id === lot?.source_purchase_id || item.batch_code === assessment?.batch_code);
+  const supplier = (suppliersQuery.data ?? []).find((item) => item.id === purchase?.supplier_id);
+  const varietyNames = [...new Set((purchase?.lines ?? []).map((line: AnyRecord) => (varietiesQuery.data ?? []).find((v) => v.id === line.variety_id)?.name || line.variety_id))];
+  const loading = assessmentQuery.isLoading || lotsQuery.isLoading || purchasesQuery.isLoading || suppliersQuery.isLoading || varietiesQuery.isLoading;
+  const failed = assessmentQuery.isError || lotsQuery.isError || purchasesQuery.isError || suppliersQuery.isError || varietiesQuery.isError || (!loading && !assessment);
 
   const rows = [
     { label: t("acidity"), value: assessment?.acidity, digits: 2 },
@@ -67,8 +73,8 @@ export default function CommercialCertificate() {
                   <span className="text-[10px] text-stone-600">Scanner pour consulter l'analyse</span>
                 </div>
                 <div className="text-end">
-                  <div className="text-xs uppercase tracking-wider text-stone-500">LOT OIL</div>
-                  <div className="font-mono text-lg font-bold text-stone-900">{lot.document_number ?? lot.id}</div>
+                  <div className="text-xs uppercase tracking-wider text-stone-500">CODE ACHAT</div>
+                  <div className="font-mono text-lg font-bold text-stone-900">{assessment.batch_code || lot.batch_code || lot.document_number || lot.id}</div>
                 </div>
               </div>
             </div>
