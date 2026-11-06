@@ -112,6 +112,8 @@ async def complete_commercial_production(
             {"_id": 0, "id": 1, "oil_sample_lot_id": 1,
              "source_purchase_id": 1, "source_olive_lot_ids": 1}, session=session,
         )
+        if sample and sample.get("source_purchase_id") and sample.get("source_purchase_id") != lot.get("source_purchase_id"):
+            raise ValueError("Preproduction sample belongs to a different olive purchase")
         sample_oil_query = {
             "id": sample.get("oil_sample_lot_id") if sample else None,
             "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
