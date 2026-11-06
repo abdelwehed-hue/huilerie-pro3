@@ -68,12 +68,20 @@ async def receive_wholesale_sale_return(
     if not invoice:
         raise ValueError("Approved sale has no matching commercial invoice")
 
-    original_lot = await db["commercial_lots"].find_one(
-        {"id": sale.get("oil_lot_id"), "product_kind": "OIL"},
-        {"_id": 0, "id": 1, "product_kind": 1}, session=session,
-    )
-    if not original_lot:
-        raise ValueError("Original sale oil lot is missing or is not an oil lot")
+    original_lot_ids = list(dict.fromkeys(
+        allocation.get("lot_id") for allocation in (sale.get("dispatch_allocations") or [])
+        if allocation.get("lot_id")
+    ))
+    if not original_lot_ids and sale.get("oil_lot_id"):
+        original_lot_ids = [sale["oil_lot_id"]]
+    if not original_lot_ids:
+        raise ValueError("Sale has no recorded FIFO dispatch allocations")
+    original_lots = await db["commercial_lots"].find(
+        {"id": {"$in": original_lot_ids}, "product_kind": "OIL"},
+        {"_id": 0, "id": 1}, session=session,
+    ).to_list(len(original_lot_ids))
+    if {lot["id"] for lot in original_lots} != set(original_lot_ids):
+        raise ValueError("One or more original sale oil lots are missing")
 
     quarantine = await db["commercial_tanks"].find_one(
         {"id": draft.quarantine_tank_id, "active": True, "role": "QUARANTINE"},
@@ -99,7 +107,8 @@ async def receive_wholesale_sale_return(
         "id": returned_lot_id, "season_code": season_code,
         "document_type": "LOT", "document_number": lot_number,
         "product_kind": "OIL", "source_sale_return_id": return_id,
-        "source_sale_id": sale_id, "source_original_lot_id": sale["oil_lot_id"],
+        "source_sale_id": sale_id, "source_original_lot_id": original_lot_ids[0],
+        "source_original_lot_ids": original_lot_ids,
         "quantity_received_kg": Decimal128(draft.quantity_kg),
         "owner": {"kind": "MILL"}, "quality_status": "PENDING",
         "status": "OPEN", "version": 1,
@@ -109,7 +118,8 @@ async def receive_wholesale_sale_return(
         "id": return_id, "season_code": season_code,
         "document_type": "RET", "document_number": return_number,
         "sale_id": sale_id, "invoice_id": invoice["id"],
-        "buyer_id": sale["buyer_id"], "original_oil_lot_id": sale["oil_lot_id"],
+        "buyer_id": sale["buyer_id"], "original_oil_lot_id": original_lot_ids[0],
+        "original_oil_lot_ids": original_lot_ids,
         "returned_oil_lot_id": returned_lot_id,
         "quarantine_tank_id": draft.quarantine_tank_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
