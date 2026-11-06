@@ -131,6 +131,7 @@ export default function Lab() {
           data-testid="lab-form"
           onSubmit={(e) => {
             e.preventDefault();
+            if (isGsCode) { gsMutation.mutate(); return; }
             if (acid == null || !code) return;
             m.mutate({
               code, acidity: acid, peroxide: num(f.peroxide), k232: num(f.k232), k270: num(f.k270),
