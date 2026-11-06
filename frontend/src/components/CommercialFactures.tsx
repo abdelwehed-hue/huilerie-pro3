@@ -110,12 +110,12 @@ export default function CommercialFactures() {
       return events.sort((a,b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
     }
   });
-  const ledgerData = useMemo(() => {
+  const ledgerData = useMemo<{ opening: number; rows: Row[]; final: number }>(() => {
     const allRows = ledgerQuery.data ?? [];
     const beforePeriod = allRows.filter(row => start && String(row.date ?? "").slice(0,10) < start);
     const opening = Math.round(beforePeriod.reduce((sum, row) => sum + Number(row.debit ?? 0) - Number(row.credit ?? 0), 0) * 1000) / 1000;
     let balance = opening;
-    const rows = allRows.filter(row => {
+    const rows: Row[] = allRows.filter((row: Row) => {
       const d = String(row.date ?? "").slice(0,10);
       return (!start || d >= start) && (!end || d <= end);
     }).map(row => {
