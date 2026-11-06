@@ -93,15 +93,17 @@ async def record_oil_quality_assessment(
             raise ValueError("A recorded release is required before correcting this analysis")
         if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
             sample_id = lot.get("source_preproduction_sample_id")
-            source_lot = await lots.find_one(
-                {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
-                 "status": "OPEN", "latest_preproduction_sample_id": sample_id,
+            source_ids = lot.get("source_olive_lot_ids") or [lot.get("source_olive_lot_id")]
+            source_ids = [item for item in source_ids if item]
+            source_lots = await lots.find(
+                {"id": {"$in": source_ids}, "product_kind": "OLIVE", "status": "OPEN",
+                 "latest_preproduction_sample_id": sample_id,
                  "preproduction_quality_status": "RELEASED",
                  "preproduction_quality_assessment_id": correction_of_assessment_id},
                 {"_id": 0, "id": 1}, session=session,
-            )
-            if not source_lot:
-                raise ValueError("The preproduction approval is no longer current")
+            ).to_list(len(source_ids))
+            if not source_ids or len(source_lots) != len(source_ids):
+                raise ValueError("The preproduction approval is no longer current for every source olive lot")
     elif lot.get("quality_status") not in {"PENDING", "REJECTED"}:
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
@@ -109,18 +111,25 @@ async def record_oil_quality_assessment(
     source_olive_lot = None
     if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
         sample_id = lot.get("source_preproduction_sample_id")
-        source_olive_lot = await db["commercial_lots"].find_one(
-            {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
-             "status": "OPEN", "latest_preproduction_sample_id": sample_id},
-            {"_id": 0, "id": 1, "batch_code": 1}, session=session,
-        )
+        source_ids = lot.get("source_olive_lot_ids") or [lot.get("source_olive_lot_id")]
+        source_ids = [item for item in source_ids if item]
+        source_olive_lots = await db["commercial_lots"].find(
+            {"id": {"$in": source_ids}, "product_kind": "OLIVE", "status": "OPEN",
+             "latest_preproduction_sample_id": sample_id, "batch_code": lot.get("batch_code")},
+            {"_id": 0, "id": 1, "batch_code": 1, "owner": 1, "source_purchase_id": 1}, session=session,
+        ).to_list(len(source_ids))
         sample = await db["commercial_preproduction_samples"].find_one(
-            {"id": sample_id, "source_olive_lot_id": lot.get("source_olive_lot_id"),
-             "oil_sample_lot_id": lot["id"], "status": "COMPLETED"},
-            {"_id": 0, "id": 1}, session=session,
+            {"id": sample_id, "oil_sample_lot_id": lot["id"], "status": "COMPLETED"},
+            {"_id": 0, "id": 1, "source_olive_lot_ids": 1, "source_olive_lot_id": 1}, session=session,
         )
-        if not sample_id or not source_olive_lot or not sample:
-            raise ValueError("Only the latest active preproduction trial sample can be analysed")
+        if (not sample_id or not source_ids or len(source_olive_lots) != len(source_ids)
+                or not sample or sorted(sample.get("source_olive_lot_ids") or [sample.get("source_olive_lot_id")]) != sorted(source_ids)):
+            raise ValueError("Only the latest active preproduction sample for all purchase lots can be analysed")
+        owner_keys = {json.dumps(item.get("owner") or {}, sort_keys=True) for item in source_olive_lots}
+        purchase_ids = {item.get("source_purchase_id") for item in source_olive_lots}
+        if len(owner_keys) != 1 or len(purchase_ids) != 1:
+            raise ValueError("The preproduction sample combines different owners or purchases")
+        source_olive_lot = source_olive_lots[0]
         expected_sample_reference = str(source_olive_lot.get("batch_code") or lot.get("batch_code") or "").strip()
         if not expected_sample_reference or draft.sample_reference.strip() != expected_sample_reference:
             raise ValueError("Sample reference must match the unified source olive batch code")
@@ -142,6 +151,7 @@ async def record_oil_quality_assessment(
         "lot_purpose": lot.get("lot_purpose"),
         "source_preproduction_sample_id": lot.get("source_preproduction_sample_id"),
         "source_olive_lot_id": lot.get("source_olive_lot_id"),
+        "source_olive_lot_ids": lot.get("source_olive_lot_ids") or ([lot.get("source_olive_lot_id")] if lot.get("source_olive_lot_id") else []),
         "sample_reference": expected_sample_reference if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE" else draft.sample_reference,
         "sample_date": draft.sample_date.isoformat(),
         "tested_date": draft.tested_date.isoformat(),
@@ -188,18 +198,21 @@ async def record_oil_quality_assessment(
     if update.matched_count != 1:
         raise ValueError("Oil lot changed concurrently; assessment was not applied")
     if correction_of_assessment_id and lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
-        source_update = await lots.update_one(
-            {"id": lot["source_olive_lot_id"], "product_kind": "OLIVE", "status": "OPEN",
+        source_ids = lot.get("source_olive_lot_ids") or [lot.get("source_olive_lot_id")]
+        source_ids = [item for item in source_ids if item]
+        source_update = await lots.update_many(
+            {"id": {"$in": source_ids}, "product_kind": "OLIVE", "status": "OPEN",
              "latest_preproduction_sample_id": lot["source_preproduction_sample_id"],
              "preproduction_quality_status": "RELEASED",
              "preproduction_quality_assessment_id": correction_of_assessment_id},
             {"$set": {"preproduction_quality_status": "PENDING", "updated_at": created_utc},
-             "$unset": {"preproduction_quality_decided_by": "", "preproduction_quality_decided_at": ""},
+             "$unset": {"preproduction_sample_id": "", "preproduction_quality_assessment_id": "",
+                        "preproduction_quality_decided_by": "", "preproduction_quality_decided_at": ""},
              "$inc": {"version": 1}},
             session=session,
         )
-        if source_update.matched_count != 1:
-            raise ValueError("Preproduction approval changed concurrently; correction was not applied")
+        if source_update.matched_count != len(source_ids):
+            raise ValueError("Preproduction approvals changed concurrently; correction was not applied")
 
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("quality-submission-audit", f"{assessment_id}:{draft.idempotency_key}"),
@@ -293,13 +306,14 @@ async def release_oil_quality_assessment(
         raise ValueError("Quality assessment changed concurrently; release decision was not applied")
 
     if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
-        source_olive_lot_id = lot.get("source_olive_lot_id")
         sample_id = lot.get("source_preproduction_sample_id")
-        if not source_olive_lot_id or not sample_id:
+        source_ids = lot.get("source_olive_lot_ids") or [lot.get("source_olive_lot_id")]
+        source_ids = [item for item in source_ids if item]
+        if not source_ids or not sample_id:
             raise ValueError("Preproduction sample is missing its source olive-lot linkage")
-        source_update = await db["commercial_lots"].update_one(
-            {"id": source_olive_lot_id, "product_kind": "OLIVE", "status": "OPEN",
-             "latest_preproduction_sample_id": sample_id},
+        source_update = await db["commercial_lots"].update_many(
+            {"id": {"$in": source_ids}, "product_kind": "OLIVE", "status": "OPEN",
+             "batch_code": lot.get("batch_code"), "latest_preproduction_sample_id": sample_id},
             {"$set": {
                 "preproduction_quality_status": command.decision,
                 "preproduction_sample_id": sample_id,
@@ -309,8 +323,8 @@ async def release_oil_quality_assessment(
                 "updated_at": reviewed_at,
             }}, session=session,
         )
-        if source_update.matched_count != 1:
-            raise ValueError("Source olive lot changed or is no longer open; quality decision cannot authorize production")
+        if source_update.matched_count != len(source_ids):
+            raise ValueError("One or more source olive lots changed or closed; quality decision cannot authorize production")
 
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("quality-release-audit", f"{release_id}:{command.idempotency_key}"),
