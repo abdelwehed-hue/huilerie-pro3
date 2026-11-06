@@ -146,7 +146,7 @@ export default function Commercial() {
     addBuyer: "Ajouter l’acheteur", buyerSaved: "Acheteur enregistré", buyerEmail: "E-mail",
     editBuyer: "Modifier l’acheteur", saveBuyer: "Enregistrer les modifications", cancelEdit: "Annuler",
     activeBuyer: "Actif", inactiveBuyer: "Désactivé", deactivateBuyer: "Désactiver", reactivateBuyer: "Réactiver", deleteBuyer: "Supprimer l’acheteur", confirmDeleteBuyer: "Cet acheteur sera retiré des nouvelles ventes. Ses factures et opérations passées resteront conservées. Confirmer ?", buyerDeleted: "Acheteur retiré des nouvelles ventes", buyerReactivated: "Acheteur réactivé",
-    sales: "Vente en gros",
+    sales: "Vente",
     saleDate: "Date de vente", selectBuyer: "Choisir l’acheteur", selectOilLot: "Lot d’huile",
     selectTank: "Cuve", noSaleTank: "Aucune huile disponible à la vente dans les cuves normales actives.", saleQty: "Quantité vendue (kg)", salePrice: "Prix/kg (DT)",
     createSale: "Créer le brouillon", saleSaved: "Brouillon de vente créé",
