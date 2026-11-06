@@ -110,15 +110,19 @@ export default function CommercialFactures() {
       return events.sort((a,b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
     }
   });
-  const ledger = useMemo<Row[]>(() => {
-    let balance = 0;
-    return (ledgerQuery.data ?? []).filter(row => {
+  const ledgerData = useMemo(() => {
+    const allRows = ledgerQuery.data ?? [];
+    const beforePeriod = allRows.filter(row => start && String(row.date ?? "").slice(0,10) < start);
+    const opening = Math.round(beforePeriod.reduce((sum, row) => sum + Number(row.debit ?? 0) - Number(row.credit ?? 0), 0) * 1000) / 1000;
+    let balance = opening;
+    const rows = allRows.filter(row => {
       const d = String(row.date ?? "").slice(0,10);
       return (!start || d >= start) && (!end || d <= end);
     }).map(row => {
       balance = Math.round((balance + Number(row.debit ?? 0) - Number(row.credit ?? 0)) * 1000) / 1000;
       return { ...row, running: balance };
     });
+    return { opening, rows, final: balance };
   }, [ledgerQuery.data, start, end]);
   const print = () => window.print();
   const totalGross = filtered.reduce((sum, x) => sum + Number(x.total_amount_dt ?? 0), 0);
@@ -155,9 +159,9 @@ export default function CommercialFactures() {
       <CardContent>
         {buyerSummary.data && <div className="mb-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-muted p-3"><div className="text-xs text-muted-foreground">{labels.gross}</div><strong>{money(buyerSummary.data.summary?.gross_invoiced_amount_dt)} TND</strong></div><div className="rounded-lg bg-muted p-3"><div className="text-xs text-muted-foreground">{labels.paid}</div><strong>{money(buyerSummary.data.summary?.settled_amount_dt)} TND</strong></div><div className="rounded-lg bg-muted p-3"><div className="text-xs text-muted-foreground">{labels.outstanding}</div><strong>{money(buyerSummary.data.summary?.outstanding_amount_dt)} TND</strong></div></div>}
         {ledgerQuery.isLoading ? <p className="py-5 text-center">{labels.loading}</p> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{labels.operation}</TableHead><TableHead>{labels.number}</TableHead><TableHead>{labels.debit}</TableHead><TableHead>{labels.credit}</TableHead><TableHead>{labels.balance}</TableHead></TableRow></TableHeader><TableBody>
-          <TableRow><TableCell>—</TableCell><TableCell>{labels.opening}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>{money(0)}</TableCell></TableRow>
-          {ledger.map(row=><TableRow key={row.id}><TableCell>{dateText(row.date)}</TableCell><TableCell>{row.label}{row.detail ? <div className="text-xs text-muted-foreground">{row.detail}</div> : null}</TableCell><TableCell className="font-mono text-xs">{row.invoice ?? "—"}</TableCell><TableCell>{row.debit ? money(row.debit) : "—"}</TableCell><TableCell>{row.credit ? money(row.credit) : "—"}</TableCell><TableCell className="font-semibold">{money(row.running)}</TableCell></TableRow>)}
-          {!ledger.length && <TableRow><TableCell colSpan={6} className="text-center">{labels.noRows}</TableCell></TableRow>}
+          <TableRow><TableCell>—</TableCell><TableCell>{labels.opening}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>{money(ledgerData.opening)}</TableCell></TableRow>
+          {ledgerData.rows.map(row=><TableRow key={row.id}><TableCell>{dateText(row.date)}</TableCell><TableCell>{row.label}{row.detail ? <div className="text-xs text-muted-foreground">{row.detail}</div> : null}</TableCell><TableCell className="font-mono text-xs">{row.invoice ?? "—"}</TableCell><TableCell>{row.debit ? money(row.debit) : "—"}</TableCell><TableCell>{row.credit ? money(row.credit) : "—"}</TableCell><TableCell className="font-semibold">{money(row.running)}</TableCell></TableRow>)}
+          {!ledgerData.rows.length && <TableRow><TableCell colSpan={6} className="text-center">{labels.noRows}</TableCell></TableRow>}\n          <TableRow className="font-bold"><TableCell>—</TableCell><TableCell>{labels.final}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>—</TableCell><TableCell>{money(ledgerData.final)}</TableCell></TableRow>
         </TableBody></Table></div>}
       </CardContent>
     </Card>}
