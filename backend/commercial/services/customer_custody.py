@@ -216,9 +216,11 @@ async def receive_customer_olive_custody(
     audit_event_id: str,
     created_at: datetime,
     session: Any,
+    authorization_checked: bool = False,
 ) -> dict[str, Any]:
     """Receive customer-owned olives without recording a purchase or mill asset."""
-    require_commercial_permission(actor_user, "commercial.manage_custody")
+    if not authorization_checked:
+        require_commercial_permission(actor_user, "commercial.manage_custody")
     if not actor_user_id or not all((receipt_id, custody_owner_id, olive_lot_id, stock_movement_id, audit_event_id)):
         raise ValueError("Authenticated actor and stable custody identifiers are required")
     if created_at.tzinfo is None:
@@ -370,9 +372,11 @@ async def release_customer_oil_custody(
     audit_event_id: str,
     created_at: datetime,
     session: Any,
+    authorization_checked: bool = False,
 ) -> dict[str, Any]:
     """Release customer-owned, quality-released oil to its owner without a sale."""
-    require_commercial_permission(actor_user, "commercial.manage_custody")
+    if not authorization_checked:
+        require_commercial_permission(actor_user, "commercial.manage_custody")
     if not actor_user_id or not all((release_id, stock_movement_id, audit_event_id)):
         raise ValueError("Authenticated actor and stable custody identifiers are required")
     if created_at.tzinfo is None:
@@ -631,9 +635,10 @@ async def cancel_customer_olive_custody_receipt(
     db: Any, receipt_id: str, command: CancelCustomerCustodyDocumentCommand, *,
     season_code: str, actor_user: dict[str, Any], actor_user_id: str,
     reversal_document_id: str, stock_movement_id: str, audit_event_id: str,
-    cancelled_at: datetime, session: Any,
+    cancelled_at: datetime, session: Any, authorization_checked: bool = False,
 ) -> dict[str, Any]:
-    require_commercial_permission(actor_user, "commercial.manage_custody")
+    if not authorization_checked:
+        require_commercial_permission(actor_user, "commercial.delete_records")
     reason = command.reason.strip()
     if len(reason) < 5 or cancelled_at.tzinfo is None:
         raise ValueError("A cancellation reason and timezone-aware timestamp are required")
@@ -717,9 +722,10 @@ async def cancel_customer_oil_custody_release(
     db: Any, release_id: str, command: CancelCustomerCustodyDocumentCommand, *,
     season_code: str, actor_user: dict[str, Any], actor_user_id: str,
     reversal_document_id: str, stock_movement_id: str, audit_event_id: str,
-    cancelled_at: datetime, session: Any,
+    cancelled_at: datetime, session: Any, authorization_checked: bool = False,
 ) -> dict[str, Any]:
-    require_commercial_permission(actor_user, "commercial.manage_custody")
+    if not authorization_checked:
+        require_commercial_permission(actor_user, "commercial.delete_records")
     reason = command.reason.strip()
     if len(reason) < 5 or cancelled_at.tzinfo is None:
         raise ValueError("A cancellation reason and timezone-aware timestamp are required")
@@ -788,6 +794,7 @@ async def correct_customer_olive_custody_receipt(
     receipt_movement_id: str, replacement_audit_event_id: str,
     corrected_at: datetime, session: Any,
 ) -> dict[str, Any]:
+    require_commercial_permission(actor_user, "commercial.edit_records")
     existing = await db["commercial_customer_custody_receipts"].find_one(
         {"id": receipt_id}, {"_id": 0, "status": 1}, session=session,
     )
@@ -800,14 +807,14 @@ async def correct_customer_olive_custody_receipt(
         db, receipt_id, cancel_command, season_code=season_code, actor_user=actor_user,
         actor_user_id=actor_user_id, reversal_document_id=reversal_document_id,
         stock_movement_id=reversal_movement_id, audit_event_id=cancel_audit_event_id,
-        cancelled_at=corrected_at, session=session,
+        cancelled_at=corrected_at, session=session, authorization_checked=True,
     )
     return await receive_customer_olive_custody(
         db, command.replacement, season_code=season_code, actor_user=actor_user,
         actor_user_id=actor_user_id, receipt_id=replacement_receipt_id,
         custody_owner_id=custody_owner_id, olive_lot_id=olive_lot_id,
         stock_movement_id=receipt_movement_id, audit_event_id=replacement_audit_event_id,
-        created_at=corrected_at, session=session,
+        created_at=corrected_at, session=session, authorization_checked=True,
     )
 
 
@@ -818,6 +825,7 @@ async def correct_customer_oil_custody_release(
     replacement_release_id: str, receipt_movement_id: str,
     replacement_audit_event_id: str, corrected_at: datetime, session: Any,
 ) -> dict[str, Any]:
+    require_commercial_permission(actor_user, "commercial.edit_records")
     existing = await db["commercial_customer_custody_releases"].find_one(
         {"id": release_id}, {"_id": 0, "status": 1}, session=session,
     )
@@ -830,11 +838,11 @@ async def correct_customer_oil_custody_release(
         db, release_id, cancel_command, season_code=season_code, actor_user=actor_user,
         actor_user_id=actor_user_id, reversal_document_id=reversal_document_id,
         stock_movement_id=reversal_movement_id, audit_event_id=cancel_audit_event_id,
-        cancelled_at=corrected_at, session=session,
+        cancelled_at=corrected_at, session=session, authorization_checked=True,
     )
     return await release_customer_oil_custody(
         db, command.replacement, season_code=season_code, actor_user=actor_user,
         actor_user_id=actor_user_id, release_id=replacement_release_id,
         stock_movement_id=receipt_movement_id,
-        audit_event_id=replacement_audit_event_id, created_at=corrected_at, session=session,
+        audit_event_id=replacement_audit_event_id, created_at=corrected_at, session=session, authorization_checked=True,
     )
