@@ -84,6 +84,7 @@ from commercial.services.customer_custody import (
     get_customer_custody_statement,
     receive_customer_olive_custody,
     release_customer_oil_custody,
+    _get_or_create_custody_owner,
 )
 from commercial.services.credit_application import apply_buyer_credit_to_invoice
 from commercial.services.payment_reversal import reverse_sale_payment
@@ -106,6 +107,10 @@ class OliveReceptionPurchaseCommand(BaseModel):
     receiving_location_id: str = Field(min_length=1, max_length=100)
     notes: str | None = Field(default=None, max_length=1000)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+
+class CustomerCustodyOwnerResolveCommand(BaseModel):
+    customer_phone: str = Field(min_length=5, max_length=40)
 
 
 class CommercialTankRoleCommand(BaseModel):
@@ -1986,6 +1991,33 @@ async def get_customer_custody_statement_route(
         if "does not exist" in str(exc).lower():
             raise HTTPException(404, "customer_custody_owner_not_found") from exc
         raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/customer-custody/owners/resolve")
+async def resolve_customer_custody_owner_route(
+    command: CustomerCustodyOwnerResolveCommand,
+    user: dict = Depends(current_user),
+):
+    """Ensure a registered client has a stable custody-owner identity for ownership transfers."""
+    _authorize(user, "commercial.post_stock")
+    owner_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        owner = await run_transaction(
+            lambda session: _get_or_create_custody_owner(
+                db, command.customer_phone, owner_id,
+                actor_user_id=user["id"], created_at=now, session=session,
+            )
+        )
+        return _safe({
+            "id": owner["id"], "client_phone": owner["client_phone"],
+            "client_name": owner["client_name"], "active": owner.get("active", True),
+            "version": owner.get("version", 1),
+        })
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "customer_custody_owner_conflict_retry") from exc
 
 
 @router.get("/customer-custody/owners")
