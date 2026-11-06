@@ -116,11 +116,10 @@ async def test_preproduction_consumption_rejects_quantity_mismatch():
 
 
 @pytest.mark.asyncio
-async def test_preproduction_sample_oil_lot_cannot_be_posted_to_commercial_stock():
+async def test_sale_dispatch_can_use_preproduction_sample_lot_when_user_has_removed_eligibility_filter():
     db = fake_sale_db()
     db["commercial_lots"].find_one_rows[0]["lot_purpose"] = "PREPRODUCTION_SAMPLE"
-    with pytest.raises(ValueError, match="laboratory-only"):
-        await validate_stock_references(db, sale_movement("25.000"), session=object())
+    await validate_stock_references(db, sale_movement("25.000"), session=object())
 
 
 @pytest.mark.asyncio
@@ -135,6 +134,32 @@ async def test_sale_dispatch_accepts_exact_approved_sale_reference():
     db = fake_sale_db()
     await validate_stock_references(db, sale_movement("25.000"), session=object())
     assert db["commercial_tanks"].updates == 1
+
+@pytest.mark.asyncio
+async def test_sale_dispatch_matches_each_fifo_allocation_in_multi_lot_approved_sale():
+    def allocation_db():
+        return FakeDatabase({
+            "commercial_lots": FakeCollection([{"id": "oil-lot-2", "product_kind": "OIL"}]),
+            "commercial_tanks": FakeCollection([{"id": "tank-1", "role": "NORMAL"}]),
+            "commercial_sales": FakeCollection([{
+                "id": "sale-1", "status": "APPROVED", "oil_lot_id": None,
+                "source_tank_id": "tank-1", "quantity_kg": Decimal("25.000"),
+                "dispatch_allocations": [
+                    {"lot_id": "oil-lot-1", "quantity_kg": Decimal("10.000")},
+                    {"lot_id": "oil-lot-2", "quantity_kg": Decimal("15.000")},
+                ],
+            }]),
+        })
+
+    db = allocation_db()
+    movement = sale_movement("15.000").model_copy(update={"lot_id": "oil-lot-2"})
+    await validate_stock_references(db, movement, session=object())
+    assert db["commercial_tanks"].updates == 1
+
+    db = allocation_db()
+    wrong_quantity = sale_movement("14.000").model_copy(update={"lot_id": "oil-lot-2"})
+    with pytest.raises(ValueError, match="does not match its approved sale"):
+        await validate_stock_references(db, wrong_quantity, session=object())
 
 
 def return_receipt_movement(quantity):
