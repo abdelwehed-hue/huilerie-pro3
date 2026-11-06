@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import CommercialFactures from "@/components/CommercialFactures";
+import { StatCard } from "@/components/shared";
 
 type AnyRecord = Record<string, any>;
 type CommercialStatus = {
@@ -1682,11 +1683,11 @@ export default function Commercial() {
                 <div className="flex gap-2">{canEditRecords && <Button variant="outline" onClick={() => { beginSupplierEdit(selectedSupplier); setShowSupplierForm(true); }} className="rounded-xl border-teal-300 text-teal-800 hover:bg-teal-50"><Pencil className="size-4"/>{l.editSupplier}</Button>}{canDeleteRecords && <Button variant="outline" onClick={() => window.confirm(l.confirmDeleteSupplier) && deleteSupplier.mutate(selectedSupplier)} disabled={deleteSupplier.isPending} className="rounded-xl border-red-200 text-red-700 hover:bg-red-50"><Trash2 className="size-4"/>{l.deleteSupplier}</Button>}</div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <Card className="border-rose-200 bg-rose-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المشتريات" : "Achats"}</CardDescription><CardTitle className="text-2xl text-rose-800">{supplierPurchaseCount}</CardTitle></CardHeader></Card>
-                <Card className="border-lime-200 bg-lime-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "الزيتون المشترى" : "Olives achetées"}</CardDescription><CardTitle className="text-2xl text-lime-800">{number(supplierTotalKg)} <span className="text-sm">kg</span></CardTitle></CardHeader></Card>
-                <Card className="border-amber-200 bg-amber-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "المشتريات المعتمدة" : "Achats approuvés"}</CardDescription><CardTitle className="text-2xl text-amber-800">{supplierApprovedPurchases.length}</CardTitle></CardHeader></Card>
-                <Card className="border-sky-200 bg-sky-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "مسودات" : "Brouillons"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierDraftPurchases.length}</CardTitle></CardHeader></Card>
-                <Card className="border-violet-200 bg-violet-50/50"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "قيمة المشتريات" : "Montant des achats"}</CardDescription><CardTitle className="text-xl text-violet-800">{money(supplierTotalAmount)}</CardTitle></CardHeader></Card>
+                <StatCard tone="rose" label={lang === "ar" ? "عدد المشتريات" : "Achats"} value={supplierPurchaseCount} icon={<ShoppingCart />} />
+                <StatCard tone="olive" label={lang === "ar" ? "الزيتون المشترى" : "Olives achetées"} value={number(supplierTotalKg)} unit="kg" icon={<Sprout />} />
+                <StatCard tone="gold" label={lang === "ar" ? "المشتريات المعتمدة" : "Achats approuvés"} value={supplierApprovedPurchases.length} icon={<ShieldCheck />} />
+                <StatCard tone="sky" label={lang === "ar" ? "مسودات" : "Brouillons"} value={supplierDraftPurchases.length} icon={<ClipboardList />} />
+                <StatCard tone="violet" label={lang === "ar" ? "قيمة المشتريات" : "Montant des achats"} value={money(supplierTotalAmount)} icon={<Wallet />} />
               </div>
               <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل عمليات المزوّد" : "Historique des opérations"}</div>
@@ -1707,10 +1708,10 @@ export default function Commercial() {
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="border-sky-200 bg-sky-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المزوّدين" : "Fournisseurs"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierRows.length}</CardTitle></CardHeader></Card>
-          <Card className="border-violet-200 bg-violet-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"}</CardDescription><CardTitle className="text-2xl text-violet-800">{allSupplierPurchaseCount}</CardTitle></CardHeader></Card>
-          <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "إجمالي الزيتون (kg)" : "Olives achetées (kg)"}</CardDescription><CardTitle className="text-2xl text-emerald-800">{number(allSupplierPurchaseKg)}</CardTitle></CardHeader></Card>
-          <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "القيمة الإجمالية" : "Valeur totale"}</CardDescription><CardTitle className="text-2xl text-amber-800">{money(allSupplierPurchaseAmount)}</CardTitle></CardHeader></Card>
+          <StatCard tone="sky" label={lang === "ar" ? "عدد المزوّدين" : "Fournisseurs"} value={supplierRows.length} icon={<UserRound />} />
+          <StatCard tone="violet" label={lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"} value={allSupplierPurchaseCount} icon={<ShoppingCart />} />
+          <StatCard tone="emerald" label={lang === "ar" ? "إجمالي الزيتون (kg)" : "Olives achetées (kg)"} value={number(allSupplierPurchaseKg)} unit="kg" icon={<Sprout />} />
+          <StatCard tone="gold" label={lang === "ar" ? "القيمة الإجمالية" : "Valeur totale"} value={money(allSupplierPurchaseAmount)} icon={<Wallet />} />
         </div>
       </div>}
 
