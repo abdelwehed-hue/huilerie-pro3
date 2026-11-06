@@ -154,7 +154,19 @@ export default function Lab() {
                 <span className="hidden sm:inline">Scan QR Code</span>
               </Button>
             </div>
-            {isGsCode && gsOilLot && gsSample && (\n              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Lot d’huile expérimental prêt · {code}</div>\n            )}\n            {isGsCode && gsExistingAssessment && (\n              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante pour {code}.</div>\n            )}\n            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && (\n              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun Lot d’huile expérimental actif trouvé pour ce code. Créez d’abord l’échantillon d’huile dans GS.</div>\n            )}\n            {isGsCode && (gsLots.isError || gsSamples.isError || mill.isError) && (\n              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales.</div>\n            )}\n            {found && (
+            {isGsCode && gsOilLot && gsSample && (
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Lot d’huile expérimental prêt · {code}</div>
+            )}
+            {isGsCode && gsExistingAssessment && (
+              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante pour {code}.</div>
+            )}
+            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && (
+              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun Lot d’huile expérimental actif trouvé pour ce code. Créez d’abord l’échantillon d’huile dans GS.</div>
+            )}
+            {isGsCode && (gsLots.isError || gsSamples.isError || mill.isError) && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales.</div>
+            )}
+            {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
                 <CheckCircle2 className="size-4 text-green-600" /> {found.client_name} · {fmtNum(found.olive_kg)} {t("kg")}
               </div>
@@ -170,7 +182,8 @@ export default function Lab() {
               </div>
             )}
           </div>
-          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}\n          <div className="grid grid-cols-2 gap-3">
+          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="la">{t("acidity")}</Label>
               <Input id="la" inputMode="decimal" data-testid="lab-acidity-input" value={f.acidity} onChange={(e) => set("acidity")(e.target.value)} className="h-10 rounded-xl bg-white" />
