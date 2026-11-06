@@ -30,4 +30,4 @@ class CancelPreproductionSampleCommand(BaseModel):
 class AutoCompletePreproductionByBatchCommand(BaseModel):
     """Create an analysis-only preproduction sample for one approved purchase batch."""
     model_config = ConfigDict(extra="forbid", frozen=True)
-    batch_code: str = Field(min_length=9, max_length=9, pattern=r"^\\d{4}A\\d{4}$")
+    batch_code: str = Field(min_length=9, max_length=9, pattern=r"^\d{4}A\d{4}$")
