@@ -40,7 +40,7 @@ export default function Lab() {
   const isGsCode = /^\d{4}A\d{4}$/i.test(code);
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
-  const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), enabled: isGsCode, retry: false });
+  const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
   const gsOliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && lot.batch_code === code && lot.status === "OPEN");
   const gsSample = gsOliveLot ? (gsSamples.data ?? []).find((sample) => (sample.source_olive_lot_id === gsOliveLot.id || (sample.source_olive_lot_ids ?? []).includes(gsOliveLot.id)) && sample.status === "COMPLETED" && sample.id === gsOliveLot.latest_preproduction_sample_id) : undefined;
@@ -72,6 +72,7 @@ export default function Lab() {
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
   const rows = list.isError ? [] : (list.data ?? []);
+  const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
   const found = lookup.data && !lookup.isError ? lookup.data : null;
   // Existing analysis of this receipt (rows are newest first) -> prefill the form so it can be edited.
   const existing = found ? rows.find((r) => r.load_id === found.id) : undefined;
@@ -281,9 +282,24 @@ export default function Lab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 && (
+              {rows.length === 0 && gsAnalysisRows.length === 0 && (
                 <TableRow><TableCell colSpan={11} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
               )}
+              {gsAnalysisRows.map((r) => (
+                <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
+                  <TableCell><CodeBadge code={String(r.batch_code || r.sample_reference)} /></TableCell>
+                  <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
+                  <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
+                  <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
+                  <TableCell>{r.classification ? <GradeBadge grade={r.classification} /> : "—"}</TableCell>
+                  <TableCell className="text-sm font-medium text-stone-800">{r.oil_type || "—"}</TableCell>
+                  <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.tested_date || r.created_at)}</TableCell>
+                  <TableCell className="text-end">—</TableCell>
+                </TableRow>
+              ))}
               {rows.map((r) => (
                 <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
                   <TableCell>
