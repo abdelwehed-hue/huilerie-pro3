@@ -179,6 +179,7 @@ export default function Commercial() {
   const [supplierTaxId, setSupplierTaxId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<AnyRecord | null>(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -307,7 +308,7 @@ export default function Commercial() {
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "custody") });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && tab === "purchases" });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "purchases" || tab === "suppliers") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
@@ -318,6 +319,23 @@ export default function Commercial() {
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals", 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const supplierRows = suppliers.data ?? [];
+  const purchaseRows = purchases.data ?? [];
+  const selectedSupplier = supplierRows.find((supplier) => supplier.id === selectedSupplierId) ?? null;
+  const selectedSupplierPurchases = purchaseRows.filter((purchase) => purchase.supplier_id === selectedSupplierId)
+    .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
+  const supplierPurchaseCount = selectedSupplierPurchases.length;
+  const supplierApprovedPurchases = selectedSupplierPurchases.filter((purchase) => purchase.status === "APPROVED");
+  const supplierDraftPurchases = selectedSupplierPurchases.filter((purchase) => purchase.status === "DRAFT");
+  const supplierTotalKg = selectedSupplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0);
+  const supplierTotalAmount = selectedSupplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_amount_dt ?? 0), 0);
+  const allSupplierPurchaseCount = purchaseRows.length;
+  const allSupplierPurchaseKg = purchaseRows.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0);
+  const allSupplierPurchaseAmount = purchaseRows.reduce((sum, purchase) => sum + Number(purchase.total_amount_dt ?? 0), 0);
+  useEffect(() => {
+    if (!selectedSupplierId && supplierRows.length) setSelectedSupplierId(supplierRows[0].id);
+    if (selectedSupplierId && !supplierRows.some((supplier) => supplier.id === selectedSupplierId)) setSelectedSupplierId(supplierRows[0]?.id ?? "");
+  }, [selectedSupplierId, supplierRows]);
   const selectedPayment = (salePayments.data ?? []).find((payment) => payment.id === selectedPaymentForReversal);
   const selectedSalesInvoice = (salesInvoices.data ?? []).find((invoice) => invoice.id === selectedInvoiceId);
   const invoiceBuyerSummary = useQuery({
@@ -1627,6 +1645,59 @@ export default function Commercial() {
       </div>}
 
       {tab === "suppliers" && <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border-sky-200 bg-sky-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد المزوّدين النشطين" : "Fournisseurs actifs"}</CardDescription><CardTitle className="text-2xl text-sky-800">{supplierRows.length}</CardTitle></CardHeader></Card>
+          <Card className="border-violet-200 bg-violet-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"}</CardDescription><CardTitle className="text-2xl text-violet-800">{allSupplierPurchaseCount}</CardTitle></CardHeader></Card>
+          <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "إجمالي الزيتون المشترى (كغ)" : "Olives achetées (kg)"}</CardDescription><CardTitle className="text-2xl text-emerald-800">{number(allSupplierPurchaseKg)}</CardTitle></CardHeader></Card>
+          <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "القيمة الإجمالية للمشتريات" : "Valeur totale des achats"}</CardDescription><CardTitle className="text-2xl text-amber-800">{money(allSupplierPurchaseAmount)}</CardTitle></CardHeader></Card>
+        </div>
+        <Card className="border-stone-200">
+          <CardHeader><CardTitle>{lang === "ar" ? "ملف المزوّد" : "Dossier fournisseur"}</CardTitle><CardDescription>{lang === "ar" ? "اختر مزوّداً لعرض بياناته وجميع معاملاته التجارية المسجلة." : "Sélectionnez un fournisseur pour consulter ses informations et toutes ses opérations commerciales enregistrées."}</CardDescription></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="grid min-w-[240px] flex-1 gap-1 text-sm font-medium">{lang === "ar" ? "اختيار المزوّد" : "Sélectionner un fournisseur"}
+                <select value={selectedSupplierId} onChange={(e) => setSelectedSupplierId(e.target.value)} className="h-11 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">{lang === "ar" ? "اختر المزوّد" : "Choisir un fournisseur"}</option>
+                  {supplierRows.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+                </select>
+              </label>
+              {selectedSupplier && canEditRecords && <Button type="button" variant="outline" onClick={() => beginSupplierEdit(selectedSupplier)}><Pencil className="mr-2 size-4"/>{l.editSupplier}</Button>}
+              {canDeleteRecords && selectedSupplier && <Button type="button" variant="destructive" onClick={() => { if (window.confirm(l.confirmDeleteSupplier)) deleteSupplier.mutate(selectedSupplier); }} disabled={deleteSupplier.isPending}><Trash2 className="mr-2 size-4"/>{l.deleteSupplier}</Button>}
+            </div>
+            {selectedSupplier && <div className="rounded-2xl border bg-gradient-to-r from-stone-50 to-emerald-50/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{lang === "ar" ? "بطاقة المزوّد" : "Fiche fournisseur"}</p><h2 className="mt-1 text-2xl font-bold">{value(selectedSupplier.name)}</h2></div>
+                <span className={selectedSupplier.active === false ? "rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700" : "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700"}>{selectedSupplier.active === false ? (lang === "ar" ? "غير نشط" : "Inactif") : (lang === "ar" ? "نشط" : "Actif")}</span>
+              </div>
+              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div><span className="text-muted-foreground">{l.supplierPhone}</span><p className="font-semibold">{value(selectedSupplier.phone)}</p></div>
+                <div><span className="text-muted-foreground">{l.taxId}</span><p className="font-semibold">{value(selectedSupplier.tax_identifier)}</p></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">{l.notes}</span><p className="font-semibold">{value(selectedSupplier.notes)}</p></div>
+              </div>
+            </div>}
+          </CardContent>
+        </Card>
+        {selectedSupplier && <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عدد معاملات الشراء" : "Nombre d’achats"}</CardDescription><CardTitle className="text-2xl">{supplierPurchaseCount}</CardTitle></CardHeader></Card>
+            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "عمليات معتمدة" : "Achats réceptionnés"}</CardDescription><CardTitle className="text-2xl text-emerald-700">{supplierApprovedPurchases.length}</CardTitle></CardHeader></Card>
+            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "مسودات غير معتمدة" : "Brouillons en attente"}</CardDescription><CardTitle className="text-2xl text-amber-700">{supplierDraftPurchases.length}</CardTitle></CardHeader></Card>
+            <Card><CardHeader className="pb-2"><CardDescription>{lang === "ar" ? "الكمية الجملية (كغ)" : "Quantité totale (kg)"}</CardDescription><CardTitle className="text-2xl">{number(supplierTotalKg)}</CardTitle></CardHeader></Card>
+          </div>
+          <Card><CardHeader><CardTitle>{lang === "ar" ? "القيمة وسجل المشتريات" : "Valeur et historique des achats"}</CardTitle><CardDescription>{lang === "ar" ? "المبالغ المعروضة هي قيمة عمليات الشراء المسجلة، وليست رصيداً مدفوعاً أو متبقياً." : "Les montants affichés représentent la valeur des achats enregistrés, pas un solde payé ou restant."}</CardDescription></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-xl bg-muted/60 p-3"><p className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي قيمة المشتريات" : "Montant total des achats"}</p><p className="text-2xl font-bold">{money(supplierTotalAmount)}</p></div>
+              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>
+                {selectedSupplierPurchases.map((purchase) => <TableRow key={purchase.id}>
+                  <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
+                  <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell><TableCell>{date(purchase.purchase_date)}</TableCell><TableCell>{number(purchase.total_quantity_kg)}</TableCell><TableCell className="font-semibold">{money(purchase.total_amount_dt)}</TableCell>
+                  <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
+                </TableRow>)}
+                {!selectedSupplierPurchases.length && <EmptyRow colSpan={6} text={l.noRows}/>}
+              </TableBody></Table></div>
+            </CardContent>
+          </Card>
+        </div>}
         {(isAdmin || (editingSupplier && canEditRecords)) && <Card><CardHeader><CardTitle>{editingSupplier ? l.editSupplier : l.addSupplier}</CardTitle></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (supplierName.trim().length >= 2) editingSupplier ? updateSupplier.mutate() : isAdmin && addSupplier.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{l.supplierName}<input required minLength={2} maxLength={160} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
@@ -1636,7 +1707,13 @@ export default function Commercial() {
             <div className="md:col-span-2"><div className="flex flex-wrap gap-2"><Button type="submit" disabled={addSupplier.isPending || updateSupplier.isPending || supplierName.trim().length < 2}>{editingSupplier ? l.saveSupplierChanges : l.addSupplier}</Button>{editingSupplier && <Button type="button" variant="outline" onClick={cancelSupplierEdit}>{l.cancelSupplierEdit}</Button>}</div></div>
           </form>
         </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{l.suppliers}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead>{canDeleteRecords && <TableHead className="text-right">{l.actions}</TableHead>}</TableRow></TableHeader><TableBody>{(suppliers.data ?? []).map((s) => <TableRow key={s.id}><TableCell className="font-semibold">{canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => beginSupplierEdit(s)} title={l.editSupplier}>{value(s.name)}</button> : value(s.name)}</TableCell><TableCell>{value(s.phone)}</TableCell><TableCell>{value(s.tax_identifier)}</TableCell>{canDeleteRecords && <TableCell className="text-right"><Button type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive" title={l.deleteSupplier} aria-label={l.deleteSupplier} disabled={deleteSupplier.isPending} onClick={() => { if (window.confirm(l.confirmDeleteSupplier)) deleteSupplier.mutate(s); }}><Trash2 className="h-4 w-4" /></Button></TableCell>}</TableRow>)}{(!suppliers.isLoading && !(suppliers.data?.length)) && <EmptyRow colSpan={canDeleteRecords ? 4 : 3} text={l.noRows} />}</TableBody></Table></CardContent></Card>
+        <Card><CardHeader><CardTitle>{lang === "ar" ? "قائمة المزوّدين" : "Liste des fournisseurs"}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.supplierName}</TableHead><TableHead>{l.supplierPhone}</TableHead><TableHead>{l.taxId}</TableHead><TableHead>{lang === "ar" ? "عدد المشتريات" : "Nombre d’achats"}</TableHead>{canEditRecords && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader><TableBody>
+          {supplierRows.map((supplier) => <TableRow key={supplier.id} className={selectedSupplierId === supplier.id ? "bg-emerald-50" : ""}>
+            <TableCell><button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setSelectedSupplierId(supplier.id)}>{value(supplier.name)}</button></TableCell><TableCell>{value(supplier.phone)}</TableCell><TableCell>{value(supplier.tax_identifier)}</TableCell><TableCell>{purchaseRows.filter((purchase) => purchase.supplier_id === supplier.id).length}</TableCell>
+            {canEditRecords && <TableCell><Button type="button" size="sm" variant="outline" onClick={() => beginSupplierEdit(supplier)}><Pencil className="mr-1 size-4"/>{l.editSupplier}</Button></TableCell>}
+          </TableRow>)}
+          {!supplierRows.length && <EmptyRow colSpan={canEditRecords ? 5 : 4} text={l.noRows}/>}
+        </TableBody></Table></CardContent></Card>
       </div>}
 
       {tab === "purchases" && <div className="space-y-4">
