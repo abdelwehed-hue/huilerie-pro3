@@ -11,6 +11,8 @@ def test_admin_has_commercial_quality_permissions():
     require_commercial_permission(admin, "commercial.manage_custody")
     require_commercial_permission(admin, "commercial.view_audit")
     require_commercial_permission(admin, "commercial.manage_preproduction_samples")
+    require_commercial_permission(admin, "commercial.edit_records")
+    require_commercial_permission(admin, "commercial.delete_records")
 
 
 def test_worker_can_receive_only_explicit_scoped_commercial_permissions():
