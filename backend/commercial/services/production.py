@@ -83,7 +83,8 @@ async def complete_commercial_production(
             {"id": line.olive_lot_id},
             {"_id": 0, "id": 1, "product_kind": 1, "status": 1, "owner": 1, "batch_code": 1,
              "preproduction_quality_status": 1, "preproduction_sample_id": 1,
-             "preproduction_quality_assessment_id": 1, "latest_preproduction_sample_id": 1},
+             "preproduction_quality_assessment_id": 1, "latest_preproduction_sample_id": 1,
+             "source_purchase_id": 1},
             session=session,
         )
         if not lot:
@@ -105,15 +106,21 @@ async def complete_commercial_production(
         if lot.get("preproduction_quality_status") != "RELEASED" or not lot.get("preproduction_sample_id") or not lot.get("preproduction_quality_assessment_id") or lot.get("latest_preproduction_sample_id") != lot.get("preproduction_sample_id"):
             raise ValueError(f"Preproduction quality approval is required before full production: {line.olive_lot_id}")
         sample = await db["commercial_preproduction_samples"].find_one(
-            {"id": lot["preproduction_sample_id"], "source_olive_lot_id": line.olive_lot_id, "status": "COMPLETED"},
-            {"_id": 0, "id": 1, "oil_sample_lot_id": 1}, session=session,
+            {"id": lot["preproduction_sample_id"], "status": "COMPLETED",
+             "$or": [{"source_olive_lot_id": line.olive_lot_id},
+                     {"source_olive_lot_ids": line.olive_lot_id}]},
+            {"_id": 0, "id": 1, "oil_sample_lot_id": 1,
+             "source_purchase_id": 1, "source_olive_lot_ids": 1}, session=session,
         )
         sample_oil_lot = await db["commercial_lots"].find_one(
             {"id": sample.get("oil_sample_lot_id") if sample else None,
              "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
              "source_preproduction_sample_id": sample.get("id") if sample else None,
-             "source_olive_lot_id": line.olive_lot_id, "status": "OPEN", "quality_status": "RELEASED"},
-            {"_id": 0, "id": 1, "owner": 1}, session=session,
+             "$or": [{"source_olive_lot_id": line.olive_lot_id},
+                     {"source_olive_lot_ids": line.olive_lot_id}],
+             "source_purchase_id": lot.get("source_purchase_id"),
+             "status": "OPEN", "quality_status": "RELEASED"},
+            {"_id": 0, "id": 1, "owner": 1, "source_purchase_id": 1}, session=session,
         )
         assessment = await db["commercial_quality_assessments"].find_one(
             {"id": lot["preproduction_quality_assessment_id"], "oil_lot_id": sample_oil_lot.get("id") if sample_oil_lot else None, "status": "REVIEWED", "decision": "RELEASED"},
