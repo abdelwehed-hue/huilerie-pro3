@@ -205,6 +205,7 @@ export default function Commercial() {
   const [cancelTrialId, setCancelTrialId] = useState("");
   const [qualityLotId, setQualityLotId] = useState("");
   const [editingQualityAssessmentId, setEditingQualityAssessmentId] = useState("");
+  const [showNewQualityAssessment, setShowNewQualityAssessment] = useState(false);
   const [correctingQualityAssessmentId, setCorrectingQualityAssessmentId] = useState("");
   const [sampleReference, setSampleReference] = useState("");
   const [sampleDate, setSampleDate] = useState(new Date().toISOString().slice(0, 10));
@@ -311,7 +312,7 @@ export default function Commercial() {
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "purchases" || tab === "suppliers") });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "quality") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
@@ -678,7 +679,7 @@ export default function Commercial() {
     },
     onSuccess: async () => {
       toast.success(correctingQualityAssessmentId ? l.correctionSubmitted : editingQualityAssessmentId ? (lang === "ar" ? "تم تحديث التحليل" : "Analyse mise à jour") : l.assessmentSaved);
-      setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId("");
+      setEditingQualityAssessmentId(""); setShowNewQualityAssessment(false); setCorrectingQualityAssessmentId(""); setQualityLotId("");
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
       setOilAcidity(""); setQualityClassification(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
@@ -1549,7 +1550,7 @@ export default function Commercial() {
 
 
       {tab === "quality" && <div className="space-y-4">
-        {(editingQualityAssessmentId || correctingQualityAssessmentId) && canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile")}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
+        {(editingQualityAssessmentId || correctingQualityAssessmentId || showNewQualityAssessment) && canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile")}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
               <select required disabled value={qualityLotId} className="h-10 rounded-lg border bg-muted px-3 font-normal"><option value={qualityLotId}>{lotCode((lots.data ?? []).find((lot) => lot.id === qualityLotId), qualityLotId)}</option></select>
@@ -1576,7 +1577,7 @@ export default function Commercial() {
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications")}</Button><Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications")}</Button><Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setShowNewQualityAssessment(false); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
           </form>
         </CardContent></Card>}
         {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
@@ -1630,7 +1631,7 @@ export default function Commercial() {
                     <TableCell className="font-mono text-xs font-semibold">{value(lot.batch_code, lot.document_number ?? lot.id)}</TableCell>
                     <TableCell>{value(purchase?.document_number, "—")}</TableCell>
                     <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{lang === "ar" ? "في انتظار التحليل" : "En attente d’analyse"}</span></TableCell>
-                    <TableCell><Button type="button" size="sm" variant="outline" disabled={!canRecordLab} onClick={() => { setQualityLotId(lot.id); setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualitySampleReference(String(lot.batch_code || "")); setSampleReference(String(lot.batch_code || "")); setSampleDate(new Date().toISOString().slice(0,10)); setTestedDate(new Date().toISOString().slice(0,10)); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setQualityClassification(""); setOilType(""); setAnalysisNotes(""); window.scrollTo({top:0,behavior:"smooth"}); }}>{lang === "ar" ? "فتح التحليل" : "Ouvrir l’analyse"}</Button></TableCell>
+                    <TableCell><Button type="button" size="sm" variant="outline" disabled={!canRecordLab} onClick={() => { setQualityLotId(lot.id); setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setShowNewQualityAssessment(true); setSampleReference(String(lot.batch_code || "")); setSampleDate(new Date().toISOString().slice(0,10)); setTestedDate(new Date().toISOString().slice(0,10)); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setQualityClassification(""); setOilType(""); setAnalysisNotes(""); window.scrollTo({top:0,behavior:"smooth"}); }}>{lang === "ar" ? "فتح التحليل" : "Ouvrir l’analyse"}</Button></TableCell>
                   </TableRow>;
                 })}
                 {(!lots.isLoading && !(lots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <EmptyRow colSpan={4} text={l.noRows} />}
