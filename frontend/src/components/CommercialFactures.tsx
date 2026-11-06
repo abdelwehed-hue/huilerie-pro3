@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { useMe } from "@/lib/useMe";
 import { BookOpenCheck, FileSpreadsheet, FileText, Printer, Search, Pencil, Save, X } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -26,6 +27,7 @@ const page = async <T,>(url: string): Promise<T[]> => {
 export default function CommercialFactures() {
   const { lang } = useI18n();
   const ar = lang === "ar";
+  const isAdmin = useMe().data?.role === "admin";
   const [mode, setMode] = useState<Mode>("invoices");
   const [buyerId, setBuyerId] = useState("");
   const [search, setSearch] = useState("");
@@ -94,7 +96,7 @@ export default function CommercialFactures() {
   });
   const selectedInvoiceDetails = useQuery({
     queryKey: ["commercial", "factures", "invoice-details", selectedInvoiceId],
-    enabled: Boolean(selectedInvoiceId) && mode === "invoices",
+    enabled: Boolean(selectedInvoiceId) && mode !== "statement",
     queryFn: async () => {
       const inv = invoices.find(x => x.id === selectedInvoiceId);
       if (!inv) return { payments: [], reversals: [], applications: [], returns: [], notes: [] };
@@ -200,10 +202,10 @@ export default function CommercialFactures() {
     {mode !== "statement" && <Card>
       <CardHeader><CardTitle>{mode === "global" ? labels.global : labels.invoices}{buyerId ? " — " + selectedBuyer?.name : ""}</CardTitle><CardDescription>{mode === "global" ? (ar ? "مجموع الفواتير خلال الفترة المحددة للعميل المختار" : "Regroupement des factures du client sur la période sélectionnée") : labels.subtitle}</CardDescription></CardHeader>
       <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead><TableHead>{labels.actions}</TableHead></TableRow></TableHeader><TableBody>
-        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)} TND</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)} TND</TableCell><TableCell>{money(x.paid_amount_dt)} TND</TableCell><TableCell>{money(x.credited_amount_dt)} TND</TableCell><TableCell>{money(x.outstanding_amount_dt)} TND</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button><Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button></div></TableCell></TableRow>})}
+        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)} TND</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)} TND</TableCell><TableCell>{money(x.paid_amount_dt)} TND</TableCell><TableCell>{money(x.credited_amount_dt)} TND</TableCell><TableCell>{money(x.outstanding_amount_dt)} TND</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button>{isAdmin && <Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button>}</div></TableCell></TableRow>})}
         {!filtered.length && <TableRow><TableCell colSpan={12} className="text-center">{labels.noRows}</TableCell></TableRow>}
       </TableBody></Table></div>
-      {selectedInvoiceId && mode === "invoices" && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border bg-muted/30 p-4">
+      {selectedInvoiceId && mode !== "statement" && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border bg-muted/30 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{ar ? "تفاصيل الفاتورة" : "Détail de la facture"} · {selectedInvoice.document_number}</h3><Button size="sm" variant="outline" onClick={print}><Printer className="mr-2 size-4"/>{labels.print}</Button></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===selectedInvoice.buyer_id)?.name ?? "—"}</p></div>
