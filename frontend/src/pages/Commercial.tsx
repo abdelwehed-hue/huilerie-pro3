@@ -297,6 +297,7 @@ export default function Commercial() {
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
+  const millSettings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AnyRecord>("/settings"), enabled: ready && tab === "quality" });
   const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
@@ -631,10 +632,10 @@ export default function Commercial() {
       const payload = {
         oil_lot_id: qualityLotId,
         expected_lot_version: lot.version ?? 1,
-        sample_reference: sampleReference.trim(),
+        sample_reference: String(qualitySampleReference ?? "").trim(),
         sample_date: sampleDate,
         tested_date: testedDate,
-        laboratory_name: laboratoryName.trim(),
+        laboratory_name: configuredLaboratoryName,
         specification_reference: specificationReference.trim(),
         measurements: [],
         acidity: oilAcidity,
@@ -1164,6 +1165,12 @@ export default function Commercial() {
 
   // New preproduction assessments must target trial oil lots; keep a legacy lot selectable only while editing its existing assessment.
   const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && ((lot.lot_purpose === "PREPRODUCTION_SAMPLE" && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id)) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)));
+  const selectedQualityLot = qualityOilLots.find((lot) => lot.id === qualityLotId);
+  const selectedQualitySourceLot = selectedQualityLot?.source_olive_lot_id
+    ? (lots.data ?? []).find((lot) => lot.id === selectedQualityLot.source_olive_lot_id)
+    : undefined;
+  const qualitySampleReference = selectedQualitySourceLot?.batch_code ?? selectedQualityLot?.batch_code ?? sampleReference;
+  const configuredLaboratoryName = String(millSettings.data?.mill_name ?? "").trim() || "Labo Oroverde";
   const canOpenQualityAssessment = (assessment: AnyRecord) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     if (!canRecordLab || !lot || lot.last_quality_assessment_id !== assessment.id) return false;
@@ -1538,14 +1545,14 @@ export default function Commercial() {
               <select required disabled={!!editingQualityAssessmentId || !!correctingQualityAssessmentId} value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => { const eligible = lot.status === "OPEN" && (["PENDING", "REJECTED"].includes(lot.quality_status) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)); return <option key={lot.id} value={lot.id} disabled={!eligible}>{lotCode(lot)} · v{lot.version ?? 1}{eligible ? "" : ` · ${value(lot.quality_status, lot.status)}`}</option>; })}</select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required maxLength={100} value={sampleReference} onChange={(e) => setSampleReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required minLength={2} maxLength={160} value={laboratoryName} onChange={(e) => setLaboratoryName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly maxLength={100} value={qualitySampleReference} className="h-10 rounded-lg border bg-muted px-3 font-normal font-mono" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required readOnly minLength={2} maxLength={160} value={configuredLaboratoryName} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={sampleDate} onChange={(e) => setSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.specification}<input required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             </div>
             <div className="space-y-3 rounded-xl border p-4">
               <h3 className="font-semibold">{l.oilAnalysis}</h3>
+              <label className="mb-3 grid max-w-xl gap-1 text-sm font-medium">{l.specification}<input required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-medium">{l.acidity}<input required type="number" min="0" step="0.01" value={oilAcidity} onChange={(e) => setOilAcidity(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.peroxide}<input type="number" min="0" step="0.01" value={oilPeroxide} onChange={(e) => setOilPeroxide(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
