@@ -29,7 +29,7 @@ export default function CommercialCertificate() {
   const lot = (lotsQuery.data ?? []).find((item) => item.id === assessment?.oil_lot_id);
   const purchase = (purchasesQuery.data ?? []).find((item) => item.id === lot?.source_purchase_id || item.batch_code === assessment?.batch_code);
   const supplier = (suppliersQuery.data ?? []).find((item) => item.id === purchase?.supplier_id);
-  const varietyNames = [...new Set((purchase?.lines ?? []).map((line: AnyRecord) => (varietiesQuery.data ?? []).find((v) => v.id === line.variety_id)?.name || line.variety_id))];
+  const varietyNames = [...new Set((purchase?.lines ?? []).map((line: AnyRecord) => (varietiesQuery.data ?? []).find((v) => v.id === line.variety_id)?.name_fr || line.variety_id))];
   const loading = assessmentQuery.isLoading || lotsQuery.isLoading || purchasesQuery.isLoading || suppliersQuery.isLoading || varietiesQuery.isLoading;
   const failed = assessmentQuery.isError || lotsQuery.isError || purchasesQuery.isError || suppliersQuery.isError || varietiesQuery.isError || (!loading && !assessment);
 
