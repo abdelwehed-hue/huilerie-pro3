@@ -29,6 +29,16 @@ def test_wholesale_sale_requires_positive_kg_and_price():
         )
 
 
+
+def test_wholesale_sale_can_be_created_from_tank_without_selecting_oil_lot():
+    sale = WholesaleSaleDraft(
+        sale_date="2026-11-02", buyer_id="buyer-1",
+        source_tank_id="tank-01", quantity_kg="250.000",
+        unit_price_dt="4.500", idempotency_key="wholesale-sale-tank-key-001",
+    )
+    assert sale.oil_lot_id is None
+
+
 def test_sale_approval_requires_expected_version_and_idempotency():
     command = ApproveWholesaleSaleCommand(
         expected_version=1, idempotency_key="sale-approval-key-001"
