@@ -66,7 +66,7 @@ This package is an isolated commercial domain. It must not change existing olive
 - Laboratory submission records sample metadata, specification reference, and measurements only; it cannot decide RELEASED or REJECTED.
 - A separate reviewer command records the final quality decision. The service rejects self-approval, stale lot versions, superseded assessments, and repeat final decisions.
 - Release/rejection, lot status, release record, and audit event commit in one transaction.
-- Admins retain all commercial permissions. Workers are read-only by default; admins may assign narrowly scoped lab recording, quality release, and audit viewing permissions. Assignments are audited.
+- Admins retain all commercial permissions. Workers are read-only by default; admins may assign narrowly scoped lab recording, quality release, audit viewing, preproduction sample management, and commercial record edit/cancel permissions. `commercial.edit_records` permits supplier profile edits, olive-purchase draft edits, and compensating corrections to customer-custody documents. `commercial.delete_records` permits supplier deactivation, olive-purchase draft cancellation, and compensating cancellation of customer-custody documents. These are separate assignable permissions; backend authorization is authoritative and every change remains audited. Posted purchases and production runs are not physically deleted or rewritten; they require domain-specific compensating workflows.
 - Effective permissions are checked by the backend, not trusted from frontend role claims.
 
 ### Wholesale sales, invoices, and payments
