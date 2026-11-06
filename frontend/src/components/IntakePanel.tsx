@@ -358,8 +358,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           <div className="space-y-1"><Label>Emplacement de réception *</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
           <div className="space-y-1"><Label>Variété *</Label><Select value={supplierVariety || varietyList[0] || null} onValueChange={(v) => setSupplierVariety(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? String(v) : <span className="text-stone-400">Choisir la variété</span>}</SelectValue></SelectTrigger><SelectContent>{varietyList.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>
           <div className="space-y-1"><Label>Quantité d’olives (kg) *</Label><Input inputMode="decimal" value={supplierKg} onChange={(e) => setSupplierKg(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="space-y-1"><Label>Prix d’achat / kg (TND) *</Label><Input inputMode="decimal" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"} TND</div></div>
+          <div className="space-y-1"><Label>Prix d’achat / kg  *</Label><Input inputMode="decimal" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
         </div>
         <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
         <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
@@ -415,7 +415,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                   <span className="min-w-0"><span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-stone-400">Code d’achat</span><span className="font-mono text-xs font-semibold text-blue-900" dir="ltr">{purchase.batch_code ?? purchase.batch_codes?.[0] ?? "—"}</span></span>
                   <span className="text-stone-600">{purchase.purchase_date ?? "—"}</span>
                   <span className="font-medium text-blue-800">{fmtNum(Number(purchase.total_quantity_kg ?? 0))} kg</span>
-                  <span className="text-teal-800">{fmtNum(Number(purchase.total_amount_dt ?? 0), 3)} TND</span>
+                  <span className="text-teal-800">{Number(purchase.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>
                   <span className="text-xs text-stone-500">{purchase.status ?? "—"}</span>
                 </li>)}
               </ul>}
@@ -451,7 +451,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{supplierReceipt.purchase?.batch_code || supplierReceipt.batch_code || "—"}</dd></div>
               <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
               <div><dt className="text-stone-500">Quantité d’olives</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
-              <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{fmtNum(Number(supplierReceipt.purchase?.total_amount_dt), 3)} TND</dd></div>
+              <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{Number(supplierReceipt.purchase?.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</dd></div>
               <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">Réception enregistrée</dd></div>
             </dl>
             <div className="no-print mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-4">
