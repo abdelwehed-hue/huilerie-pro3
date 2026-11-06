@@ -30,7 +30,7 @@ type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "supp
 const labels = {
   fr: {
     permissionsTab: "Droits des employés", editRecordsPermission: "Modification des dossiers commerciaux", deleteRecordsPermission: "Suppression / annulation des dossiers commerciaux", chooseWorker: "Choisir un employé", labPermission: "Saisie des analyses laboratoire", reviewerPermission: "Validation indépendante de la qualité", auditPermission: "Consultation du journal d’audit", savePermissions: "Enregistrer les autorisations", permissionsSaved: "Autorisations mises à jour", noWorkers: "Aucun compte employé actif.",
-    labEntry: "Analyse de l’olive", oilAnalysis: "Analyse de l’huile", acidity: "Acidité", peroxide: "Indice de peroxyde", k232: "K232", k270: "K270", oilContent: "Teneur en huile (%)", classification: "Classification", autoClassification: "Automatique", extraVirgin: "Extra vierge", virgin: "Vierge", lampante: "Lampante", oilType: "Type d’huile", analysisNotes: "Observations", viewCertificate: "Certificat", laboratoryTab: "Laboratoire", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", submitCorrection: "Soumettre la correction pour revue", correctedAnalysis: "Corriger l’analyse approuvée", correctionSubmitted: "Correction transmise pour revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
+    labEntry: "Analyse de l’olive", oilAnalysis: "Analyse de l’huile", acidity: "Acidité", peroxide: "Indice de peroxyde", k232: "K232", k270: "K270", oilContent: "Teneur en huile (%)", oliveType: "Type d’olive", classification: "Classification", autoClassification: "Automatique", extraVirgin: "Extra vierge", virgin: "Vierge", lampante: "Lampante", oilType: "Type d’huile", analysisNotes: "Observations", viewCertificate: "Certificat", laboratoryTab: "Laboratoire", sampleReference: "Référence de l’échantillon", sampleDate: "Date de prélèvement", testedDate: "Date d’analyse", laboratory: "Laboratoire", specification: "Référence de la norme", measurementCode: "Paramètre", measurementValue: "Résultat", measurementUnit: "Unité", addMeasurement: "Ajouter un paramètre", submitAssessment: "Soumettre les résultats", assessmentSaved: "Résultats transmis pour revue indépendante", assessmentList: "Analyses enregistrées", reviewerPanel: "Décision indépendante", chooseAssessment: "Analyse à examiner", decision: "Décision", releaseOil: "Accepter le lot", rejectOil: "Refuser le lot", decisionReason: "Justification de la décision (10 caractères minimum)", decisionSaved: "Décision qualité enregistrée", noAssessment: "Aucune analyse en attente de revue", submitCorrection: "Soumettre la correction pour revue", correctedAnalysis: "Corriger l’analyse approuvée", correctionSubmitted: "Correction transmise pour revue", noLabPermission: "Vous ne disposez pas de la permission de saisie laboratoire.", noReviewPermission: "Vous ne disposez pas de la permission de validation qualité.", awaitingReview: "En attente de revue", reviewed: "Examinée", submitter: "Analyste", reviewer: "Réviseur", qualityLot: "Lot d’huile",
     productionTab: "Production", newProduction: "Nouvelle production", productionDate: "Date de production", inputLots: "Lots d’olives consommés", chooseOliveBalance: "Lot · emplacement · propriétaire", inputQuantity: "Quantité consommée (kg)", outputQuantity: "Huile réellement obtenue (kg)", outputTank: "Cuve de réception", extractionRate: "Rendement réel", completeProduction: "Enregistrer la production", productionSaved: "Production enregistrée et stock mis à jour", productionHistory: "Historique de production", ownerMill: "Maâsra", ownerCustomer: "Client", addInput: "Ajouter un lot", totalInput: "Total olives consommées (kg)", noOliveStock: "Aucun stock d’olives disponible pour la production.", selectTank: "Sélectionnez une cuve.",
     actions: "Actions",
     title: "Gestion Commerciale",
@@ -55,7 +55,7 @@ const labels = {
   },
   ar: {
     permissionsTab: "صلاحيات العمال", editRecordsPermission: "تعديل السجلات التجارية", deleteRecordsPermission: "حذف / إلغاء السجلات التجارية", chooseWorker: "اختيار العامل", labPermission: "تسجيل التحاليل المخبرية", reviewerPermission: "المراجعة المستقلة للجودة", auditPermission: "الاطلاع على سجل التدقيق", savePermissions: "حفظ الصلاحيات", permissionsSaved: "تم تحديث الصلاحيات", noWorkers: "لا توجد حسابات عمال نشطة.",
-    labEntry: "تحليل الزيتون", oilAnalysis: "تحليل الزيت", acidity: "الحموضة", peroxide: "مؤشر البيروكسيد", k232: "K232", k270: "K270", oilContent: "نسبة الزيت (%)", classification: "التصنيف", autoClassification: "آلي", extraVirgin: "بكر ممتاز", virgin: "بكر", lampante: "لامبانتي", oilType: "نوع الزيت", analysisNotes: "ملاحظات", viewCertificate: "شهادة التحليل", laboratoryTab: "المخبر", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", submitCorrection: "إرسال التصحيح للمراجعة", correctedAnalysis: "تصحيح التحليل المعتمد", correctionSubmitted: "تم إرسال التصحيح للمراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
+    labEntry: "تحليل الزيتون", oilAnalysis: "تحليل الزيت", acidity: "الحموضة", peroxide: "مؤشر البيروكسيد", k232: "K232", k270: "K270", oilContent: "نسبة الزيت (%)", oliveType: "نوع الزيتون", classification: "التصنيف", autoClassification: "آلي", extraVirgin: "بكر ممتاز", virgin: "بكر", lampante: "لامبانتي", oilType: "نوع الزيت", analysisNotes: "ملاحظات", viewCertificate: "شهادة التحليل", laboratoryTab: "المخبر", sampleReference: "مرجع العينة", sampleDate: "تاريخ أخذ العينة", testedDate: "تاريخ التحليل", laboratory: "المخبر", specification: "مرجع المواصفة", measurementCode: "المعيار", measurementValue: "النتيجة", measurementUnit: "الوحدة", addMeasurement: "إضافة معيار", submitAssessment: "إرسال النتائج", assessmentSaved: "تم إرسال النتائج للمراجعة المستقلة", assessmentList: "التحاليل المسجلة", reviewerPanel: "قرار الجودة المستقل", chooseAssessment: "التحليل المطلوب مراجعته", decision: "القرار", releaseOil: "قبول الدفعة", rejectOil: "رفض الدفعة", decisionReason: "تعليل القرار (10 أحرف على الأقل)", decisionSaved: "تم تسجيل قرار الجودة", noAssessment: "لا توجد تحاليل تنتظر المراجعة", submitCorrection: "إرسال التصحيح للمراجعة", correctedAnalysis: "تصحيح التحليل المعتمد", correctionSubmitted: "تم إرسال التصحيح للمراجعة", noLabPermission: "ليست لديك صلاحية تسجيل التحاليل.", noReviewPermission: "ليست لديك صلاحية اعتماد الجودة.", awaitingReview: "في انتظار المراجعة", reviewed: "تمت المراجعة", submitter: "المحلل", reviewer: "المراجع", qualityLot: "دفعة الزيت",
     productionTab: "الإنتاج", newProduction: "إنتاج جديد", productionDate: "تاريخ الإنتاج", inputLots: "دفعات الزيتون المستهلكة", chooseOliveBalance: "الدفعة · الموقع · المالك", inputQuantity: "الكمية المستهلكة (كغ)", outputQuantity: "كمية الزيت الفعلية الناتجة (كغ)", outputTank: "خزان الاستلام", extractionRate: "المردودية الفعلية", completeProduction: "تسجيل الإنتاج", productionSaved: "تم تسجيل الإنتاج وتحيين المخزون", productionHistory: "سجل الإنتاج", ownerMill: "المعصرة", ownerCustomer: "الحريف", addInput: "إضافة دفعة", totalInput: "مجموع الزيتون المستهلك (كغ)", noOliveStock: "لا يوجد مخزون زيتون متاح للإنتاج.", selectTank: "يرجى اختيار خزان.",
     actions: "الإجراءات",
     title: "Oro Verde — التسيير التجاري",
@@ -665,12 +665,7 @@ export default function Commercial() {
         k232: oilK232 === "" ? null : oilK232,
         k270: oilK270 === "" ? null : oilK270,
         oil_content_pct: oilContent === "" ? null : oilContent,
-        classification: oilClassification === "auto"
-          ? (Number(oilAcidity) <= 0.8 && (oilPeroxide === "" || Number(oilPeroxide) <= 20) && (oilK232 === "" || Number(oilK232) <= 2.5) && (oilK270 === "" || Number(oilK270) <= 0.22)
-              ? "extra_vierge"
-              : Number(oilAcidity) <= 2 && (oilPeroxide === "" || Number(oilPeroxide) <= 20) && (oilK232 === "" || Number(oilK232) <= 2.6) && (oilK270 === "" || Number(oilK270) <= 0.25)
-                ? "vierge" : "lampante")
-          : oilClassification,
+        classification: oilClassification === "auto" ? liveOilClassification : oilClassification,
         oil_type: oilType.trim() || null,
         notes: analysisNotes.trim(),
         idempotency_key: crypto.randomUUID(),
@@ -1192,6 +1187,28 @@ export default function Commercial() {
     ? (lots.data ?? []).find((lot) => lot.id === selectedQualityLot.source_olive_lot_id)
     : undefined;
   const qualitySampleReference = selectedQualitySourceLot?.batch_code ?? selectedQualityLot?.batch_code ?? sampleReference;
+  const selectedOliveVariety = (varieties.data ?? []).find((variety) =>
+    variety.id === (selectedQualitySourceLot?.variety_id ?? selectedQualityLot?.variety_id)
+  );
+  const selectedOliveType = selectedOliveVariety
+    ? (lang === "ar" ? (selectedOliveVariety.name_ar || selectedOliveVariety.name_fr) : selectedOliveVariety.name_fr || selectedOliveVariety.name_ar)
+    : "";
+  const liveOilClassification = oilAcidity.trim() === "" || !Number.isFinite(Number(oilAcidity))
+    ? ""
+    : Number(oilAcidity) <= 0.8
+      && (oilPeroxide === "" || (Number.isFinite(Number(oilPeroxide)) && Number(oilPeroxide) <= 20))
+      && (oilK232 === "" || (Number.isFinite(Number(oilK232)) && Number(oilK232) <= 2.5))
+      && (oilK270 === "" || (Number.isFinite(Number(oilK270)) && Number(oilK270) <= 0.22))
+        ? "extra_vierge"
+        : Number(oilAcidity) <= 2
+          && (oilPeroxide === "" || (Number.isFinite(Number(oilPeroxide)) && Number(oilPeroxide) <= 20))
+          && (oilK232 === "" || (Number.isFinite(Number(oilK232)) && Number(oilK232) <= 2.6))
+          && (oilK270 === "" || (Number.isFinite(Number(oilK270)) && Number(oilK270) <= 0.25))
+            ? "vierge" : "lampante";
+  const liveOilClassificationLabel = liveOilClassification === "extra_vierge" ? l.extraVirgin
+    : liveOilClassification === "vierge" ? l.virgin
+      : liveOilClassification === "lampante" ? l.lampante : (lang === "ar" ? "بانتظار النتائج" : "En attente des résultats");
+
   const configuredMillName = String(millSettings.data?.mill_name ?? laboratoryName ?? "").trim();
   const configuredLaboratoryName = configuredMillName
     ? (/^labo\b/i.test(configuredMillName) ? configuredMillName : `Labo ${configuredMillName}`)
@@ -1588,9 +1605,11 @@ export default function Commercial() {
                 <label className="grid gap-1 text-sm font-medium">{l.k232}<input type="number" min="0" step="0.001" value={oilK232} onChange={(e) => setOilK232(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.k270}<input type="number" min="0" step="0.001" value={oilK270} onChange={(e) => setOilK270(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oilContent}<input type="number" min="0" step="0.1" value={oilContent} onChange={(e) => setOilContent(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.oliveType}<input readOnly value={selectedOliveType || "—"} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.classification}
-                  <select value={oilClassification} onChange={(e) => setOilClassification(e.target.value as typeof oilClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <div className="flex min-h-10 items-center rounded-lg border bg-muted px-3 font-semibold" aria-live="polite">{liveOilClassificationLabel}</div>
+                  <select aria-label={l.classification} value={oilClassification} onChange={(e) => setOilClassification(e.target.value as typeof oilClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="auto">{l.autoClassification}</option><option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
                   </select>
                 </label>
