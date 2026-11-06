@@ -88,6 +88,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [supplierLocationId, setSupplierLocationId] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
   const [supplierReceipt, setSupplierReceipt] = useState<any | null>(null);
+  const [supplierRequestKey, setSupplierRequestKey] = useState("");
   const suppliersQuery = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<any[]>("/commercial/v1/suppliers"), enabled: receptionType === "supplier" });
   const locationsQuery = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<any[]>("/commercial/v1/locations"), enabled: receptionType === "supplier" });
   const commercialSuppliers = suppliersQuery.data ?? [];
@@ -103,6 +104,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
       setSupplierKg(""); setSupplierPrice(""); setSupplierNotes("");
       setNewSupplier(false); setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId("");
       setSupplierId(result.supplier?.id ?? "");
+      setSupplierRequestKey("");
       toast.success("Réception fournisseur enregistrée et achat créé dans GS");
       qc.invalidateQueries({ queryKey: ["commercial"] });
     },
@@ -284,6 +286,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
       </form> : <form onSubmit={(e) => {
         e.preventDefault();
         if (!chosenLocationId || !(supplierKgValue > 0) || supplierPrice.trim() === "" || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
+        const requestKey = supplierRequestKey || crypto.randomUUID();
+        setSupplierRequestKey(requestKey);
         supplierMutation.mutate({
           supplier_id: newSupplier ? null : supplierId,
           new_supplier_name: newSupplier ? newSupplierName.trim() : null,
@@ -293,7 +297,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           lines: [{ variety_id: supplierVariety || varietyList[0] || "Olives", quantity_kg: supplierKgValue, unit_price_dt: supplierPriceValue }],
           receiving_location_id: chosenLocationId,
           notes: supplierNotes.trim() || null,
-          idempotency_key: crypto.randomUUID(),
+          idempotency_key: requestKey,
         });
       }} className="space-y-5 rounded-2xl border border-blue-200 bg-[#F0F6FC] p-6 shadow-sm" data-testid="supplier-intake-form">
         <div className="flex items-center gap-3 text-blue-950"><div className="grid size-10 place-items-center rounded-xl bg-blue-700 text-white"><Truck className="size-5" /></div><div><h2 className="font-heading text-xl font-bold">Réception fournisseur</h2><p className="text-xs text-blue-800">Création automatique de l’achat et entrée en stock GS</p></div></div>
