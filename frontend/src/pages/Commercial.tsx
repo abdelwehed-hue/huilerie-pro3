@@ -1612,6 +1612,42 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         {!canReviewQuality && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noReviewPermission}</p>}
+        <Card>
+          <CardHeader>
+            <CardTitle>{lang === "ar" ? "سجل تجارب العصر قبل الإنتاج" : "Historique des essais de trituration"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "سجل التجارب الفعلية فقط؛ عينات تحليل الشراء الآلية لا تظهر هنا لأنها لا تستهلك زيتونًا ولا تمثل عملية عصر." : "Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>{lang === "ar" ? "رقم التجربة" : "N° essai"}</TableHead>
+                <TableHead>{lang === "ar" ? "كود الشراء" : "Code achat"}</TableHead>
+                <TableHead>{lang === "ar" ? "دفعة الزيتون" : "Lot d’olives"}</TableHead>
+                <TableHead>{lang === "ar" ? "تاريخ التجربة" : "Date de l’essai"}</TableHead>
+                <TableHead>{lang === "ar" ? "كمية الزيتون المستهلكة (كغ)" : "Olives consommées (kg)"}</TableHead>
+                <TableHead>{lang === "ar" ? "كمية عينة الزيت (كغ)" : "Huile échantillon (kg)"}</TableHead>
+                <TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead>
+                <TableHead>{lang === "ar" ? "ملاحظات" : "Notes"}</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {(preproductionSamples.data ?? []).filter((sample) => !sample.auto_generated_for_purchase_analysis).map((sample) => {
+                  const sourceLot = (lots.data ?? []).find((item) => item.id === sample.source_olive_lot_id);
+                  return <TableRow key={sample.id}>
+                    <TableCell className="font-mono text-xs">{value(sample.document_number)}</TableCell>
+                    <TableCell className="font-mono text-xs">{value(sample.batch_code)}</TableCell>
+                    <TableCell className="font-mono text-xs">{lotCode(sourceLot, sample.source_olive_lot_id)}</TableCell>
+                    <TableCell>{date(sample.trial_date)}</TableCell>
+                    <TableCell>{number(sample.input_olive_quantity_kg)}</TableCell>
+                    <TableCell>{number(sample.sample_oil_quantity_kg)}</TableCell>
+                    <TableCell><Badge variant={sample.status === "COMPLETED" ? "default" : "secondary"}>{sample.status === "COMPLETED" ? (lang === "ar" ? "مكتملة" : "Terminée") : sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulée") : value(sample.status)}</Badge></TableCell>
+                    <TableCell className="max-w-xs whitespace-normal text-xs">{value(sample.notes)}</TableCell>
+                  </TableRow>;
+                })}
+                {(!preproductionSamples.isLoading && !(preproductionSamples.data ?? []).some((sample) => !sample.auto_generated_for_purchase_analysis)) && <EmptyRow colSpan={8} text={l.noRows} />}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
         <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
             <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
