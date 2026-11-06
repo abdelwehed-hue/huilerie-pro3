@@ -46,14 +46,31 @@ async def create_wholesale_sale_draft(
     )
     if not buyer:
         raise ValueError("Unknown or inactive commercial buyer")
-    oil_lot = await db["commercial_lots"].find_one(
-        {"id": draft.oil_lot_id, "product_kind": "OIL", "status": "OPEN"},
-        {"_id": 0, "id": 1, "lot_purpose": 1, "batch_code": 1}, session=session,
+    tank = await db["commercial_tanks"].find_one(
+        {"id": draft.source_tank_id, "active": True, "role": {"$in": ["NORMAL", None]}},
+        {"_id": 0, "id": 1}, session=session,
     )
-    if not oil_lot:
-        raise ValueError("Sale requires an open commercial oil lot")
-    if oil_lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
-        raise ValueError("Preproduction oil samples are laboratory-only and cannot be sold")
+    if not tank:
+        raise ValueError("Source tank does not exist, is inactive, or is not a normal sale tank")
+    # A sale is selected by tank, not by an operator-chosen oil lot. Stock is
+    # allocated from eligible balances in FIFO order when the sale is approved.
+    balances = await db["commercial_stock_balances"].find(
+        {"product_kind": "OIL", "location_id": draft.source_tank_id,
+         "owner.kind": "MILL", "quantity_kg": {"$gt": Decimal128("0.000")}},
+        {"_id": 0, "lot_id": 1, "quantity_kg": 1, "created_at": 1},
+        session=session,
+    ).sort([("created_at", 1), ("lot_id", 1)]).to_list(500)
+    available = Decimal("0")
+    for balance in balances:
+        lot = await db["commercial_lots"].find_one(
+            {"id": balance["lot_id"], "product_kind": "OIL", "status": "OPEN"},
+            {"_id": 0, "lot_purpose": 1}, session=session,
+        )
+        if lot and lot.get("lot_purpose") != "PREPRODUCTION_SAMPLE":
+            raw = balance.get("quantity_kg", Decimal128("0.000"))
+            available += raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
+    if available < draft.quantity_kg:
+        raise ValueError("Insufficient eligible oil stock in the selected tank")
     collection = db["commercial_sales"]
     scope = f"{season_code}:{actor_user_id}"
     fingerprint = _fingerprint(draft)
@@ -72,8 +89,7 @@ async def create_wholesale_sale_draft(
     record = {
         "id": sale_id, "season_code": season_code, "document_type": "VTE",
         "document_number": number, "sale_date": draft.sale_date.isoformat(),
-        "buyer_id": draft.buyer_id, "oil_lot_id": draft.oil_lot_id,
-        "batch_code": oil_lot.get("batch_code"),
+        "buyer_id": draft.buyer_id, "oil_lot_id": None, "batch_code": None,
         "source_tank_id": draft.source_tank_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
         "unit_price_dt": Decimal128(draft.unit_price_dt),
@@ -88,7 +104,8 @@ async def create_wholesale_sale_draft(
         "id": audit_event_id, "entity_type": "commercial_sale", "entity_id": sale_id,
         "action": "SALE_DRAFT_CREATED", "actor_user_id": actor_user_id,
         "created_at": now, "details": {"document_number": number, "buyer_id": draft.buyer_id,
-            "quantity_kg": record["quantity_kg"], "unit_price_dt": record["unit_price_dt"],
+            "source_tank_id": draft.source_tank_id, "quantity_kg": record["quantity_kg"],
+            "unit_price_dt": record["unit_price_dt"],
             "total_amount_dt": record["total_amount_dt"], "status": "DRAFT"},
     }, session=session)
     return record
@@ -126,21 +143,52 @@ async def approve_wholesale_sale(
     )
     if not buyer:
         raise ValueError("Buyer is unknown or inactive")
-    lot = await db["commercial_lots"].find_one(
-        {"id": sale["oil_lot_id"]}, {"_id": 0}, session=session
-    )
-    if not lot or lot.get("product_kind") != "OIL" or lot.get("status") != "OPEN":
-        raise ValueError("Sale requires an open commercial oil lot")
     tank = await db["commercial_tanks"].find_one(
-        {"id": sale["source_tank_id"], "active": True}, {"_id": 0, "id": 1}, session=session
+        {"id": sale["source_tank_id"], "active": True, "role": {"$in": ["NORMAL", None]}},
+        {"_id": 0, "id": 1}, session=session,
     )
     if not tank:
-        raise ValueError("Source tank does not exist or is inactive")
+        raise ValueError("Source tank does not exist, is inactive, or is not a normal sale tank")
+
+    balances = await db["commercial_stock_balances"].find(
+        {"product_kind": "OIL", "location_id": sale["source_tank_id"],
+         "owner.kind": "MILL", "quantity_kg": {"$gt": Decimal128("0.000")}},
+        {"_id": 0, "lot_id": 1, "quantity_kg": 1, "created_at": 1},
+        session=session,
+    ).sort([("created_at", 1), ("lot_id", 1)]).to_list(500)
+    eligible = []
+    for balance in balances:
+        lot = await db["commercial_lots"].find_one(
+            {"id": balance["lot_id"], "product_kind": "OIL", "status": "OPEN"},
+            {"_id": 0, "id": 1, "batch_code": 1, "lot_purpose": 1, "quality_status": 1},
+            session=session,
+        )
+        if not lot or lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
+            continue
+        raw = balance.get("quantity_kg", Decimal128("0.000"))
+        quantity = raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
+        if quantity > 0:
+            eligible.append((balance, lot, quantity))
+    remaining = sale["quantity_kg"].to_decimal()
+    allocations = []
+    for balance, lot, available in eligible:
+        if remaining <= 0:
+            break
+        taken = min(available, remaining)
+        allocations.append({
+            "lot_id": lot["id"], "batch_code": lot.get("batch_code"),
+            "quantity_kg": Decimal128(taken),
+            "quality_status": lot.get("quality_status", "UNSET"),
+        })
+        remaining -= taken
+    if remaining > 0:
+        raise ValueError("Insufficient eligible oil stock in the selected tank")
 
     now = created_at.astimezone(timezone.utc)
     invoice_number = await reserve_document_number(
         db["commercial_counters"], season_code, "FAC", session=session
     )
+    first_quality = allocations[0]["quality_status"] if allocations else "UNSET"
     update = await sales.update_one(
         {"id": sale_id, "status": "DRAFT", "version": command.expected_version},
         {"$set": {
@@ -148,7 +196,9 @@ async def approve_wholesale_sale(
             "approval_idempotency_scope": f"{season_code}:{actor_user_id}",
             "approval_idempotency_key": command.idempotency_key,
             "approval_fingerprint": command_fingerprint,
-            "invoice_id": invoice_id, "quality_status_at_dispatch": lot.get("quality_status", "UNSET"), "updated_at": now,
+            "invoice_id": invoice_id, "oil_lot_id": None, "batch_code": None,
+            "dispatch_allocations": allocations,
+            "quality_status_at_dispatch": first_quality, "updated_at": now,
         }, "$inc": {"version": 1}},
         session=session,
     )
@@ -159,8 +209,8 @@ async def approve_wholesale_sale(
         "id": invoice_id, "season_code": season_code, "document_type": "FAC",
         "document_number": invoice_number, "sale_id": sale_id,
         "sale_document_number": sale["document_number"], "buyer_id": sale["buyer_id"],
-        "batch_code": sale.get("batch_code"),
-        "quality_status_at_sale": lot.get("quality_status", "UNSET"),
+        "batch_code": None, "dispatch_allocations": allocations,
+        "quality_status_at_sale": first_quality,
         "sale_date": sale["sale_date"], "quantity_kg": sale["quantity_kg"],
         "unit_price_dt": sale["unit_price_dt"], "total_amount_dt": sale["total_amount_dt"],
         "paid_amount_dt": Decimal128("0.000"),
@@ -174,32 +224,38 @@ async def approve_wholesale_sale(
     }
     await db["commercial_sales_invoices"].insert_one(invoice, session=session)
 
-    await post_stock_movement(
-        db,
-        StockMovementDraft(
-            movement_kind="DISPATCH", product_kind="OIL",
-            lot_id=sale["oil_lot_id"], quantity_kg=sale["quantity_kg"].to_decimal(),
-            source_location_id=sale["source_tank_id"],
-            source_owner=OwnerRef(kind="MILL"),
-            source_document_type="VTE", source_document_id=sale_id,
-            idempotency_key=hashlib.sha256(
-                f"sale-dispatch:{sale_id}:{command.idempotency_key}".encode()
-            ).hexdigest(),
-            reason=f"Wholesale dispatch {sale['document_number']}",
-        ),
-        season_code=season_code, actor_user_id=actor_user_id, actor_user=actor_user,
-        movement_id=stock_movement_id,
-        audit_event_id=_stable_id("sale-dispatch-audit", f"{sale_id}:{command.idempotency_key}"),
-        created_at=created_at, session=session,
-    )
+    for index, allocation in enumerate(allocations):
+        movement_id = stock_movement_id if index == 0 else _stable_id(
+            "sale-dispatch-movement", f"{sale_id}:{command.idempotency_key}:{allocation['lot_id']}"
+        )
+        await post_stock_movement(
+            db,
+            StockMovementDraft(
+                movement_kind="DISPATCH", product_kind="OIL",
+                lot_id=allocation["lot_id"], quantity_kg=allocation["quantity_kg"].to_decimal(),
+                source_location_id=sale["source_tank_id"],
+                source_owner=OwnerRef(kind="MILL"),
+                source_document_type="VTE", source_document_id=sale_id,
+                idempotency_key=hashlib.sha256(
+                    f"sale-dispatch:{sale_id}:{command.idempotency_key}:{allocation['lot_id']}".encode()
+                ).hexdigest(),
+                reason=f"Wholesale dispatch {sale['document_number']} (FIFO {index + 1})",
+            ),
+            season_code=season_code, actor_user_id=actor_user_id, actor_user=actor_user,
+            movement_id=movement_id,
+            audit_event_id=_stable_id(
+                "sale-dispatch-audit", f"{sale_id}:{command.idempotency_key}:{allocation['lot_id']}"
+            ),
+            created_at=created_at, session=session,
+        )
     await db["commercial_audit_events"].insert_one({
         "id": audit_event_id, "entity_type": "commercial_sale", "entity_id": sale_id,
         "action": "SALE_APPROVED_AND_DISPATCHED", "actor_user_id": actor_user_id,
         "created_at": now,
         "details": {
             "sale_number": sale["document_number"], "invoice_number": invoice_number,
-            "buyer_id": sale["buyer_id"], "oil_lot_id": sale["oil_lot_id"],
-            "quality_status_at_dispatch": lot.get("quality_status", "UNSET"),
+            "buyer_id": sale["buyer_id"], "dispatch_allocations": allocations,
+            "quality_status_at_dispatch": first_quality,
             "source_tank_id": sale.get("source_tank_id"),
             "sale_date": sale.get("sale_date"),
             "quantity_kg": sale["quantity_kg"], "unit_price_dt": sale["unit_price_dt"],
