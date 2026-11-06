@@ -120,7 +120,8 @@ async def record_oil_quality_assessment(
         ).to_list(len(source_ids))
         sample = await db["commercial_preproduction_samples"].find_one(
             {"id": sample_id, "oil_sample_lot_id": lot["id"], "status": "COMPLETED"},
-            {"_id": 0, "id": 1, "source_olive_lot_ids": 1, "source_olive_lot_id": 1}, session=session,
+            {"_id": 0, "id": 1, "source_olive_lot_ids": 1, "source_olive_lot_id": 1,
+             "source_purchase_id": 1}, session=session,
         )
         if (not sample_id or not source_ids or len(source_olive_lots) != len(source_ids)
                 or not sample or sorted(sample.get("source_olive_lot_ids") or [sample.get("source_olive_lot_id")]) != sorted(source_ids)):
@@ -129,6 +130,10 @@ async def record_oil_quality_assessment(
         purchase_ids = {item.get("source_purchase_id") for item in source_olive_lots}
         if len(owner_keys) != 1 or len(purchase_ids) != 1:
             raise ValueError("The preproduction sample combines different owners or purchases")
+        if lot.get("source_purchase_id") and purchase_ids != {lot.get("source_purchase_id")}:
+            raise ValueError("The preproduction sample is not linked to the same approved purchase as its oil lot")
+        if sample.get("source_purchase_id") and purchase_ids != {sample.get("source_purchase_id")}:
+            raise ValueError("The preproduction sample source purchase linkage is inconsistent")
         source_olive_lot = source_olive_lots[0]
         expected_sample_reference = str(source_olive_lot.get("batch_code") or lot.get("batch_code") or "").strip()
         if not expected_sample_reference or draft.sample_reference.strip() != expected_sample_reference:
