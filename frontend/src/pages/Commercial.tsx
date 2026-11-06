@@ -707,9 +707,11 @@ export default function Commercial() {
     mutationFn: () => {
       const assessment = (quality.data ?? []).find((item) => item.id === reviewAssessmentId);
       if (!assessment) throw new Error("Quality assessment is no longer available");
+      const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
+      if (!lot) throw new Error("Le lot d’huile lié à cette analyse est introuvable. Actualisez la page.");
       return apiPost<AnyRecord>("/commercial/v1/quality-assessments/release", {
         assessment_id: assessment.id,
-        expected_lot_version: assessment.lot_version_after_submission,
+        expected_lot_version: lot.version ?? 1,
         decision: reviewDecision,
         decision_reason: reviewReason.trim(),
         idempotency_key: crypto.randomUUID(),
@@ -1228,8 +1230,9 @@ export default function Commercial() {
   const reviewableAssessments = (quality.data ?? []).filter((assessment) => {
     const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.status === "AWAITING_INDEPENDENT_REVIEW"
+      && lot?.status === "OPEN"
       && lot?.last_quality_assessment_id === assessment.id
-      && lot?.version === assessment.lot_version_after_submission;
+      && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
   });
   const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
 
