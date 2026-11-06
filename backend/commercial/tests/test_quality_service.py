@@ -147,7 +147,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
         "oil_sample_lot_id": "oil-1", "status": "COMPLETED",
     })
 
-    draft = make_draft().model_copy(update={"sample_reference": "2627A0008", "laboratory_name": "Oro Verde"})
+    draft = make_draft().model_copy(update={"sample_reference": "2627A0008", "laboratory_name": "Labo Oro Verde"})
     submitted = await record_oil_quality_assessment(
         db, draft, season_code="2627",
         actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
@@ -157,7 +157,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
     assert submitted["lot_purpose"] == "PREPRODUCTION_SAMPLE"
     assert submitted["source_olive_lot_id"] == "olive-source-1"
     assert submitted["sample_reference"] == "2627A0008"
-    assert submitted["laboratory_name"] == "Oro Verde"
+    assert submitted["laboratory_name"] == "Labo Oro Verde"
 
     command = QualityReleaseCommand(
         assessment_id="assessment-preproduction-1", expected_lot_version=2,
