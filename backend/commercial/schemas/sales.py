@@ -10,7 +10,7 @@ class WholesaleSaleDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     sale_date: date
     buyer_id: str = Field(min_length=1, max_length=100)
-    oil_lot_id: str = Field(min_length=1, max_length=100)
+    oil_lot_id: str | None = Field(default=None, min_length=1, max_length=100)
     source_tank_id: str = Field(min_length=1, max_length=100)
     quantity_kg: Decimal = Field(gt=Decimal("0"), max_digits=18, decimal_places=3)
     unit_price_dt: Decimal = Field(gt=Decimal("0"), max_digits=18, decimal_places=3)
