@@ -1546,55 +1546,14 @@ export default function Commercial() {
 
 
       {tab === "quality" && <div className="space-y-4">
-        {canCreatePreproductionSample && <Card>
-          <CardHeader><CardTitle>{lang === "ar" ? "تجربة العصر قبل الإنتاج" : "Essai de trituration avant production"}</CardTitle>
-            <CardDescription>{lang === "ar" ? "اختر دفعة الزيتون في مكان الاستقبال. تُخصم كمية التجربة وتُنشأ دفعة زيت مخصصة للمختبر فقط." : "Choisissez le lot d’olives à l’emplacement de réception. La quantité d’essai est déduite et un lot d’huile réservé au laboratoire est créé."}</CardDescription></CardHeader>
-          <CardContent><form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); createPreproductionSample.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "دفعة الزيتون · مكان الاستقبال" : "Lot d’olives · emplacement de réception"}
-              <select required value={trialBalanceKey} onChange={(e) => { setTrialBalanceKey(e.target.value); setTrialInputKg(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>
-                {availableTrialBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const location = (locations.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id + "::" + ownerIdentity(balance.owner)} value={balance.lot_id + "::" + balance.location_id + "::" + ownerIdentity(balance.owner)}>{lot?.batch_code ?? "—"} · {location?.name ?? location?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "تاريخ التجربة" : "Date de l’essai"}<input required type="date" value={trialDate} onChange={(e) => setTrialDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "كمية الزيتون المستعملة (kg)" : "Olives utilisées (kg)"}
-              <input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => [b.lot_id,b.location_id,ownerIdentity(b.owner)].join("::") === trialBalanceKey)?.quantity_kg ?? undefined} value={trialInputKg} onChange={(e) => setTrialInputKg(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
-            </label>
-            <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "كمية زيت العينة الناتجة (kg)" : "Huile obtenue pour l’échantillon (kg)"}
-              <input required type="number" min="0.001" step="0.001" max={trialInputKg || undefined} value={trialOilKg} onChange={(e) => setTrialOilKg(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
-            </label>
-            <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.notes}<input maxLength={1000} value={trialNotes} onChange={(e) => setTrialNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="md:col-span-2"><Button type="submit" disabled={createPreproductionSample.isPending || !trialBalanceKey || !(Number(trialInputKg) > 0) || !(Number(trialOilKg) > 0) || Number(trialOilKg) > Number(trialInputKg)}>{lang === "ar" ? "إنشاء تجربة العصر" : "Créer l’essai de trituration"}</Button></div>
-          </form></CardContent>
-        </Card>}
-        {(preproductionSamples.data?.length ?? 0) > 0 && <Card>
-          <CardHeader><CardTitle>{lang === "ar" ? "سجل تجارب العصر" : "Historique des essais de trituration"}</CardTitle></CardHeader>
-          <CardContent><Table><TableHeader><TableRow>
-            <TableHead>{l.document}</TableHead><TableHead>{lang === "ar" ? "دفعة الزيتون" : "Lot d’olives"}</TableHead>
-            <TableHead>{l.qualityLot}</TableHead><TableHead>{lang === "ar" ? "زيتون التجربة (kg)" : "Olives essai (kg)"}</TableHead>
-            <TableHead>{lang === "ar" ? "زيت العينة (kg)" : "Huile échantillon (kg)"}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead>
-          </TableRow></TableHeader><TableBody>
-            {(preproductionSamples.data ?? []).map((sample) => {
-              const sampleLot = (lots.data ?? []).find((lot) => lot.id === sample.oil_sample_lot_id);
-              const assessment = (quality.data ?? []).find((item) => item.oil_lot_id === sample.oil_sample_lot_id && item.status === "REVIEWED");
-              return <TableRow key={sample.id}>
-                <TableCell className="font-mono text-xs">{value(sample.batch_code)}</TableCell>
-                <TableCell>{lotCode((lots.data ?? []).find((lot) => lot.id === sample.source_olive_lot_id), sample.source_olive_lot_id)}</TableCell>
-                <TableCell>{lotCode(sampleLot, sample.oil_sample_lot_id)}</TableCell>
-                <TableCell>{number(sample.input_olive_quantity_kg)}</TableCell><TableCell>{number(sample.sample_oil_quantity_kg)}</TableCell>
-                <TableCell>{sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulé") : value(assessment?.decision, lang === "ar" ? "بانتظار التحليل" : "En attente d’analyse")}</TableCell>
-                <TableCell>{canCreatePreproductionSample && sample.status === "COMPLETED" && assessment?.decision === "REJECTED" && <Button type="button" size="sm" variant="destructive" disabled={cancelPreproductionSample.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "اذكر سبب إلغاء التجربة" : "Motif de l’annulation"); if (reason && reason.trim().length >= 5) cancelPreproductionSample.mutate({ id: sample.id, reason: reason.trim() }); }}>{lang === "ar" ? "إلغاء التجربة" : "Annuler l’essai"}</Button>}</TableCell>
-              </TableRow>;
-            })}
-          </TableBody></Table></CardContent>
-        </Card>}
-        {canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : editingQualityAssessmentId ? (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile") : l.labEntry}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
+        {(editingQualityAssessmentId || correctingQualityAssessmentId) && canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile")}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
-              <select required disabled={!!editingQualityAssessmentId || !!correctingQualityAssessmentId} value={qualityLotId} onChange={(e) => setQualityLotId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{qualityOilLots.map((lot) => { const eligible = lot.status === "OPEN" && (["PENDING", "REJECTED"].includes(lot.quality_status) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)); return <option key={lot.id} value={lot.id} disabled={!eligible}>{lotCode(lot)} · v{lot.version ?? 1}{eligible ? "" : ` · ${value(lot.quality_status, lot.status)}`}</option>; })}</select>
+              <select required disabled value={qualityLotId} className="h-10 rounded-lg border bg-muted px-3 font-normal"><option value={qualityLotId}>{lotCode((lots.data ?? []).find((lot) => lot.id === qualityLotId), qualityLotId)}</option></select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly maxLength={100} value={qualitySampleReference} className="h-10 rounded-lg border bg-muted px-3 font-normal font-mono" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required readOnly minLength={2} maxLength={160} value={configuredLaboratoryName} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly value={sampleReference} className="h-10 rounded-lg border bg-muted px-3 font-mono font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required readOnly value={laboratoryName} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={sampleDate} onChange={(e) => setSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             </div>
@@ -1608,25 +1567,15 @@ export default function Commercial() {
                 <label className="grid gap-1 text-sm font-medium">{l.k270}<input type="number" min="0" step="0.001" value={oilK270} onChange={(e) => setOilK270(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oilContent}<input type="number" min="0" step="0.1" value={oilContent} onChange={(e) => setOilContent(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oliveType}<input readOnly value={selectedOliveType || "—"} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.classification}
-                  <select value={qualityClassification || liveOilClassification} onChange={(e) => setQualityClassification(e.target.value as typeof qualityClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                    <option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-medium">{l.oilType}
-                  <input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
-                  <span className="inline-flex w-fit items-center rounded-md border border-amber-400/60 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/50 dark:text-amber-200" aria-live="polite">
-                    {lang === "ar" ? "التصنيف المحسوب آليًا: " : "Classification calculée automatiquement : "}{liveOilClassificationLabel}
-                  </span>
-                </label>
+                <label className="grid gap-1 text-sm font-medium">{l.classification}<select value={qualityClassification || liveOilClassification} onChange={(e) => setQualityClassification(e.target.value as typeof qualityClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option></select></label>
+                <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /><span className="inline-flex w-fit items-center rounded-md border border-amber-400/60 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/50 dark:text-amber-200" aria-live="polite">{lang === "ar" ? "التصنيف المحسوب آليًا: " : "Classification calculée automatiquement : "}{liveOilClassificationLabel}</span></label>
                 <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.analysisNotes}<textarea maxLength={2000} value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} className="min-h-20 rounded-lg border bg-background px-3 py-2 font-normal" /></label>
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{(editingQualityAssessmentId || correctingQualityAssessmentId) && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");  setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(sampleReference ?? "").trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications")}</Button><Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
           </form>
         </CardContent></Card>}
-        {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
         {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
