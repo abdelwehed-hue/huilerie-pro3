@@ -316,6 +316,15 @@ async def auto_complete_preproduction_sample_for_purchase(
         "stock_movement_id": None, "trial_date": created_at.date().isoformat(),
         "notes": "Échantillon automatique pour analyse du code d’achat. Aucun stock consommé; aucune production d’huile réelle.",
         "auto_generated_for_purchase_analysis": True,
+        # The collection has a unique (idempotency_scope, idempotency_key)
+        # index. Automatic samples must participate in that contract too;
+        # omitting both fields makes MongoDB treat every such document as the
+        # same (null, null) key and reject the next purchase.
+        "idempotency_scope": f"{season_code}:{actor_user_id}",
+        "idempotency_key": f"purchase-analysis:{purchase['id']}",
+        "request_fingerprint": hashlib.sha256(
+            f"{season_code}:{purchase['id']}:{batch_code}".encode("utf-8")
+        ).hexdigest(),
         "created_by": actor_user_id, "created_at": created_utc,
     }
     await samples.insert_one(record, session=session)
