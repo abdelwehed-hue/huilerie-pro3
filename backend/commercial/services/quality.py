@@ -106,6 +106,7 @@ async def record_oil_quality_assessment(
         raise ValueError("Oil lot is already released or has an invalid quality state")
     if lot.get("version", 1) != draft.expected_lot_version:
         raise ValueError("Oil lot version conflict; reload before recording the assessment")
+    source_olive_lot = None
     if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE":
         sample_id = lot.get("source_preproduction_sample_id")
         source_olive_lot = await db["commercial_lots"].find_one(
@@ -120,6 +121,13 @@ async def record_oil_quality_assessment(
         )
         if not sample_id or not source_olive_lot or not sample:
             raise ValueError("Only the latest active preproduction trial sample can be analysed")
+        expected_sample_reference = str(source_olive_lot.get("batch_code") or lot.get("batch_code") or "").strip()
+        if not expected_sample_reference or draft.sample_reference.strip() != expected_sample_reference:
+            raise ValueError("Sample reference must match the unified source olive batch code")
+        mill_settings = await db["settings"].find_one({"key": "app"}, {"_id": 0, "mill_name": 1}, session=session)
+        expected_laboratory_name = str((mill_settings or {}).get("mill_name") or "").strip() or "Labo Oroverde"
+        if draft.laboratory_name.strip() != expected_laboratory_name:
+            raise ValueError("Laboratory must match the mill name configured in Campaign settings")
 
     created_utc = created_at.astimezone(timezone.utc)
     record = {
@@ -129,10 +137,10 @@ async def record_oil_quality_assessment(
         "lot_purpose": lot.get("lot_purpose"),
         "source_preproduction_sample_id": lot.get("source_preproduction_sample_id"),
         "source_olive_lot_id": lot.get("source_olive_lot_id"),
-        "sample_reference": draft.sample_reference,
+        "sample_reference": expected_sample_reference if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE" else draft.sample_reference,
         "sample_date": draft.sample_date.isoformat(),
         "tested_date": draft.tested_date.isoformat(),
-        "laboratory_name": draft.laboratory_name,
+        "laboratory_name": expected_laboratory_name if lot.get("lot_purpose") == "PREPRODUCTION_SAMPLE" else draft.laboratory_name,
         "specification_reference": draft.specification_reference,
         "acidity": Decimal128(draft.acidity) if draft.acidity is not None else None,
         "peroxide": Decimal128(draft.peroxide) if draft.peroxide is not None else None,
