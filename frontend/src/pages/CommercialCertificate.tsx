@@ -89,7 +89,7 @@ export default function CommercialCertificate() {
               {t("cert_statement")}
             </p>
             <dl className="mt-8 grid grid-cols-2 gap-4 rounded-xl bg-stone-50 p-5 text-sm md:grid-cols-4">
-              <div><dt className="text-stone-500">Lot d'huile</dt><dd className="font-semibold">{lot.document_number ?? lot.id}</dd></div>
+              <div><dt className="text-stone-500">Lot d'huile</dt><dd className="font-semibold font-mono">{lot.batch_code || assessment.batch_code || lot.document_number || "—"}</dd></div>
               <div><dt className="text-stone-500">Date de prélèvement</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.sample_date)}</dd></div>
               <div><dt className="text-stone-500">Date d'analyse</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.tested_date)}</dd></div>
               <div><dt className="text-stone-500">Laboratoire</dt><dd className="font-semibold">{assessment.laboratory_name || "—"}</dd></div>
