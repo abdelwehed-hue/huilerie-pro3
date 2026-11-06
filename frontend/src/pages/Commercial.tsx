@@ -217,7 +217,6 @@ export default function Commercial() {
   const [oilK232, setOilK232] = useState("");
   const [oilK270, setOilK270] = useState("");
   const [oilContent, setOilContent] = useState("");
-  const [oilClassification, setOilClassification] = useState<"auto" | "extra_vierge" | "vierge" | "lampante">("auto");
   const [oilType, setOilType] = useState("");
   const [analysisNotes, setAnalysisNotes] = useState("");
   const [reviewAssessmentId, setReviewAssessmentId] = useState("");
@@ -665,7 +664,7 @@ export default function Commercial() {
         k232: oilK232 === "" ? null : oilK232,
         k270: oilK270 === "" ? null : oilK270,
         oil_content_pct: oilContent === "" ? null : oilContent,
-        classification: oilClassification === "auto" ? liveOilClassification : oilClassification,
+        classification: liveOilClassification,
         oil_type: oilType.trim() || null,
         notes: analysisNotes.trim(),
         idempotency_key: crypto.randomUUID(),
@@ -682,7 +681,7 @@ export default function Commercial() {
       setSampleReference(""); setLaboratoryName(""); setSpecificationReference("");
       setMeasurements([{ code: "", value: "", unit: "" }]);
       setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");
-      setOilClassification("auto"); setOilType(""); setAnalysisNotes("");
+      setOilType(""); setAnalysisNotes("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "quality"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
@@ -1609,15 +1608,12 @@ export default function Commercial() {
                 <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.classification}
                   <div className="flex min-h-10 items-center rounded-lg border bg-muted px-3 font-semibold" aria-live="polite">{liveOilClassificationLabel}</div>
-                  <select aria-label={l.classification} value={oilClassification} onChange={(e) => setOilClassification(e.target.value as typeof oilClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                    <option value="auto">{l.autoClassification}</option><option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
-                  </select>
                 </label>
                 <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.analysisNotes}<textarea maxLength={2000} value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} className="min-h-20 rounded-lg border bg-background px-3 py-2 font-normal" /></label>
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{(editingQualityAssessmentId || correctingQualityAssessmentId) && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setOilClassification("auto"); setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : editingQualityAssessmentId ? (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications") : l.submitAssessment}</Button>{(editingQualityAssessmentId || correctingQualityAssessmentId) && <Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); setSampleReference(""); setLaboratoryName(""); setSpecificationReference(""); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent("");  setOilType(""); setAnalysisNotes(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div>
           </form>
         </CardContent></Card>}
         {!canRecordLab && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noLabPermission}</p>}
