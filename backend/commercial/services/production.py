@@ -112,14 +112,22 @@ async def complete_commercial_production(
             {"_id": 0, "id": 1, "oil_sample_lot_id": 1,
              "source_purchase_id": 1, "source_olive_lot_ids": 1}, session=session,
         )
+        sample_oil_query = {
+            "id": sample.get("oil_sample_lot_id") if sample else None,
+            "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
+            "source_preproduction_sample_id": sample.get("id") if sample else None,
+            "$or": [{"source_olive_lot_id": line.olive_lot_id},
+                    {"source_olive_lot_ids": line.olive_lot_id}],
+            "status": "OPEN", "quality_status": "RELEASED",
+        }
+        # New purchase-wide automatic samples carry the purchase ID. Legacy
+        # manual samples do not, so preserve their original validation path.
+        if sample and sample.get("source_olive_lot_ids"):
+            sample_oil_query["source_purchase_id"] = lot.get("source_purchase_id")
+            if sample.get("source_purchase_id") != lot.get("source_purchase_id"):
+                raise ValueError("Preproduction sample belongs to a different olive purchase")
         sample_oil_lot = await db["commercial_lots"].find_one(
-            {"id": sample.get("oil_sample_lot_id") if sample else None,
-             "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
-             "source_preproduction_sample_id": sample.get("id") if sample else None,
-             "$or": [{"source_olive_lot_id": line.olive_lot_id},
-                     {"source_olive_lot_ids": line.olive_lot_id}],
-             "source_purchase_id": lot.get("source_purchase_id"),
-             "status": "OPEN", "quality_status": "RELEASED"},
+            sample_oil_query,
             {"_id": 0, "id": 1, "owner": 1, "source_purchase_id": 1}, session=session,
         )
         assessment = await db["commercial_quality_assessments"].find_one(
