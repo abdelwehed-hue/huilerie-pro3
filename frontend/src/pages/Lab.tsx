@@ -43,7 +43,20 @@ export default function Lab() {
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), enabled: isGsCode, retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
   const gsOliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && lot.batch_code === code && lot.status === "OPEN");
-  const gsSample = gsOliveLot ? (gsSamples.data ?? []).find((sample) => sample.source_olive_lot_id === gsOliveLot.id && sample.status === "COMPLETED" && sample.id === gsOliveLot.latest_preproduction_sample_id) : undefined;
+  const gsSample = gsOliveLot ? (gsSamples.data ?? []).find((sample) => (sample.source_olive_lot_id === gsOliveLot.id || (sample.source_olive_lot_ids ?? []).includes(gsOliveLot.id)) && sample.status === "COMPLETED" && sample.id === gsOliveLot.latest_preproduction_sample_id) : undefined;
+  const gsAutoSample = useQuery({
+    queryKey: ["lab-gs-auto-preproduction-sample", code],
+    queryFn: async () => {
+      const created = await apiPost<Record<string, any>>("/commercial/v1/preproduction-samples/auto-complete", { batch_code: code });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["lab-gs-lots"] }),
+        qc.invalidateQueries({ queryKey: ["lab-gs-preproduction-samples"] }),
+      ]);
+      return created;
+    },
+    enabled: isGsCode && gsLots.isSuccess && gsSamples.isSuccess && !!gsOliveLot && !gsSample,
+    retry: false,
+  });
   const gsOilLot = gsSample ? (gsLots.data ?? []).find((lot) => lot.id === gsSample.oil_sample_lot_id && lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.status === "OPEN") : undefined;
   const gsExistingAssessment = gsOilLot ? (gsAssessments.data ?? []).find((assessment) => assessment.oil_lot_id === gsOilLot.id && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && assessment.id === gsOilLot.last_quality_assessment_id) : undefined;
   const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status));
@@ -154,14 +167,20 @@ export default function Lab() {
                 <span className="hidden sm:inline">Scan QR Code</span>
               </Button>
             </div>
+            {isGsCode && gsAutoSample.isLoading && !gsSample && (
+              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Création automatique de l’Échantillon de préproduction pour {code}… Aucun stock ne sera consommé.</div>
+            )}
             {isGsCode && gsOilLot && gsSample && (
-              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Lot d’huile expérimental prêt · {code}</div>
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Échantillon de préproduction créé automatiquement · Lot d’huile prêt · {code}</div>
             )}
             {isGsCode && gsExistingAssessment && (
               <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante pour {code}.</div>
             )}
-            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun Lot d’huile expérimental actif trouvé pour ce code. Créez d’abord l’échantillon d’huile dans GS.</div>
+            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsAutoSample.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && !gsAutoSample.isError && (
+              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun lot de réception ouvert n’est associé à ce code d’achat, ou un échantillon existant doit être vérifié.</div>
+            )}
+            {isGsCode && gsAutoSample.isError && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{errMsg(gsAutoSample.error)}</div>
             )}
             {isGsCode && (gsLots.isError || gsSamples.isError || mill.isError) && (
               <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales.</div>
@@ -238,7 +257,7 @@ export default function Lab() {
             <span className="text-sm font-medium text-stone-600">{t("classification")}</span>
             {finalGrade ? <GradeBadge grade={finalGrade} testId="lab-classification-badge" /> : <span className="text-stone-400">—</span>}
           </div>
-          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || !gsLotCanBeAnalysed || !!gsExistingAssessment || gsLots.isLoading || gsSamples.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
+          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || !gsLotCanBeAnalysed || !!gsExistingAssessment || gsLots.isLoading || gsSamples.isLoading || gsAutoSample.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
             {isGsCode ? "Envoyer à la Décision indépendante" : t("save")}
           </Button>
         </form>
