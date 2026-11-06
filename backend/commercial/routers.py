@@ -35,6 +35,7 @@ from commercial.schemas.purchases import (
     CancelOlivePurchaseDraftCommand,
     OlivePurchaseDraft,
     OlivePurchaseUpdate,
+    OlivePurchaseLine,
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityAssessmentUpdate, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft, CommercialSupplierUpdate
@@ -92,6 +93,19 @@ from lib.db import client, db, run_transaction
 from lib.season import DEFAULT_VARIETIES, active_season, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
+
+
+class OliveReceptionPurchaseCommand(BaseModel):
+    """Create an olive purchase and post its physical reception atomically."""
+    supplier_id: str | None = Field(default=None, min_length=1, max_length=100)
+    new_supplier_name: str | None = Field(default=None, min_length=2, max_length=160)
+    new_supplier_phone: str | None = Field(default=None, max_length=40)
+    new_supplier_tax_identifier: str | None = Field(default=None, max_length=80)
+    purchase_date: date
+    lines: tuple[OlivePurchaseLine, ...] = Field(min_length=1, max_length=100)
+    receiving_location_id: str = Field(min_length=1, max_length=100)
+    notes: str | None = Field(default=None, max_length=1000)
+    idempotency_key: str = Field(min_length=16, max_length=128)
 
 
 class CommercialTankRoleCommand(BaseModel):
@@ -1166,6 +1180,85 @@ async def list_sale_payments(
         doc["reversed_amount_dt"] = Decimal128(reversed_amount)
         doc["remaining_reversible_dt"] = Decimal128(max(Decimal("0.000"), original_amount - reversed_amount))
     return _safe(docs)
+
+
+@router.post("/olive-receptions", status_code=201)
+async def create_olive_reception_purchase(
+    command: OliveReceptionPurchaseCommand,
+    user: dict = Depends(current_user),
+):
+    """Create supplier (when requested), purchase, traceability lot and stock receipt in one transaction."""
+    _authorize(user, "commercial.manage_purchases")
+    season, season_code = await _require_commercial_ready()
+    if season_of(command.purchase_date.isoformat()) != season:
+        raise HTTPException(422, "purchase_date_outside_active_season")
+    if bool(command.supplier_id) == bool(command.new_supplier_name):
+        raise HTTPException(422, "choose_existing_supplier_or_enter_new_supplier")
+    now = datetime.now(timezone.utc)
+    purchase_id, purchase_audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    supplier_audit_id = str(uuid.uuid4())
+    approval_key = f"{command.idempotency_key}:receipt"
+    purchase_draft = OlivePurchaseDraft(
+        supplier_id=command.supplier_id or str(uuid.uuid4()),
+        purchase_date=command.purchase_date,
+        lines=command.lines,
+        notes=command.notes,
+        idempotency_key=command.idempotency_key,
+    )
+    approval = ApproveOlivePurchaseCommand(
+        expected_version=1,
+        receiving_location_id=command.receiving_location_id,
+        idempotency_key=approval_key,
+    )
+
+    async def operation(session):
+        supplier_id = command.supplier_id
+        if command.new_supplier_name:
+            normalized_name = " ".join(command.new_supplier_name.casefold().split())
+            duplicate = await db.commercial_suppliers.find_one(
+                {"normalized_name": normalized_name}, {"_id": 1}, session=session
+            )
+            if duplicate:
+                raise ValueError("commercial_supplier_name_exists")
+            supplier_id = purchase_draft.supplier_id
+            supplier_doc = {
+                "id": supplier_id, "name": command.new_supplier_name.strip(),
+                "phone": command.new_supplier_phone,
+                "tax_identifier": command.new_supplier_tax_identifier,
+                "notes": None, "normalized_name": normalized_name,
+                "active": True, "version": 1, "created_by": user["id"],
+                "created_at": now,
+            }
+            await db.commercial_suppliers.insert_one(supplier_doc, session=session)
+            await db.commercial_audit_events.insert_one({
+                "id": supplier_audit_id, "entity_type": "commercial_supplier",
+                "entity_id": supplier_id, "action": "SUPPLIER_CREATED",
+                "actor_user_id": user["id"], "created_at": now,
+                "details": {"created_values": {
+                    "name": supplier_doc["name"], "phone": supplier_doc["phone"],
+                    "tax_identifier": supplier_doc["tax_identifier"], "notes": None,
+                }, "active": True, "source": "OLIVE_RECEPTION"},
+            }, session=session)
+        purchase_draft_final = purchase_draft.model_copy(update={"supplier_id": supplier_id})
+        created = await create_olive_purchase_draft(
+            db, purchase_draft_final, season_code=season_code,
+            actor_user=user, actor_user_id=user["id"], purchase_id=purchase_id,
+            audit_event_id=purchase_audit_id, created_at=now, session=session,
+        )
+        approved = await approve_olive_purchase(
+            db, purchase_id, approval, actor_user=user, actor_user_id=user["id"],
+            created_at=now, session=session,
+        )
+        supplier = await db.commercial_suppliers.find_one(
+            {"id": supplier_id}, {"_id": 0}, session=session
+        )
+        return {"purchase": approved, "supplier": supplier,
+                "receipt_status": "RECEIVED", "batch_code": approved.get("batch_code")}
+
+    try:
+        return _safe(await run_transaction(operation))
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.post("/olive-purchases", status_code=201)
