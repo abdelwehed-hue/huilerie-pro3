@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
