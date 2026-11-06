@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpenCheck, FileSpreadsheet, FileText, Printer, Search } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { BookOpenCheck, FileSpreadsheet, FileText, Printer, Search, Pencil, Save, X } from "lucide-react";
+import { apiGet, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,18 +32,24 @@ export default function CommercialFactures() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [editingInvoiceId, setEditingInvoiceId] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Tunis" }));
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
+  const [paymentReference, setPaymentReference] = useState("");
+  const qc = useQueryClient();
   const labels = ar ? {
     title: "فواتير التسيير التجاري", subtitle: "فواتير وحسابات عملاء GS مستقلة عن التطبيق العادي",
     invoices: "الفواتير", statement: "كشف حساب العملاء", global: "الفواتير الإجمالية للعملاء",
     buyer: "العميل", choose: "اختر العميل", search: "ابحث برقم الفاتورة أو العميل أو كود التتبع",
     number: "رقم الفاتورة", date: "التاريخ", code: "كود التتبع", quantity: "الكمية (كغ)", unit: "السعر للوحدة", total: "الإجمالي", paid: "المدفوع", credited: "التخفيضات/الإشعارات الدائنة", balance: "المتبقي", status: "حالة الدفع",
-    from: "من", to: "إلى", print: "طباعة / PDF", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء"
+    from: "من", to: "إلى", print: "طباعة / PDF", actions: "الإجراءات", editInvoice: "تعديل الفاتورة", newPayment: "مبلغ الدفعة الجديدة", paymentDate: "تاريخ الدفع", paymentMethod: "طريقة الدفع", reference: "المرجع", save: "حفظ الدفعة", cancel: "إلغاء", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء"
   } : {
     title: "Factures — Gestion Commerciale", subtitle: "Factures et comptes clients GS, séparés de l’application Oro Verde",
     invoices: "Factures", statement: "Relevé de compte clients", global: "Factures globales clients",
     buyer: "Client", choose: "Choisir un client", search: "Rechercher facture, client ou code de traçabilité",
     number: "N° facture", date: "Date", code: "Code de traçabilité", quantity: "Quantité (kg)", unit: "Prix unitaire", total: "Total", paid: "Payé", credited: "Avoirs", balance: "Reste dû", status: "Paiement",
-    from: "Du", to: "Au", print: "Imprimer / PDF", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients"
+    from: "Du", to: "Au", print: "Imprimer / PDF", actions: "Actions", editInvoice: "Modifier la facture", newPayment: "Nouvelle somme payée", paymentDate: "Date du paiement", paymentMethod: "Mode de paiement", reference: "Référence", save: "Enregistrer le paiement", cancel: "Annuler", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients"
   };
   const buyersQuery = useQuery({ queryKey: ["commercial", "factures", "buyers"], queryFn: () => page<Row>("/commercial/v1/buyers?limit=500") });
   const invoicesQuery = useQuery({ queryKey: ["commercial", "factures", "invoices"], queryFn: () => page<Row>("/commercial/v1/sales-invoices?limit=500") });
@@ -60,6 +68,30 @@ export default function CommercialFactures() {
   }, [buyerInvoices, buyers, search, start, end]);
   const selectedBuyer = buyers.find(x => x.id === buyerId);
   const selectedInvoice = invoices.find(x => x.id === selectedInvoiceId);
+  const editingInvoice = invoices.find(x => x.id === editingInvoiceId);
+  const addPayment = useMutation({
+    mutationFn: async () => {
+      if (!editingInvoice) throw new Error("Invoice not found");
+      const amount = Number(paymentAmount.replace(",", "."));
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error(ar ? "أدخل مبلغًا صحيحًا" : "Saisissez un montant valide");
+      if (amount > Number(editingInvoice.outstanding_amount_dt ?? 0)) throw new Error(ar ? "المبلغ يتجاوز الرصيد المتبقي" : "Le montant dépasse le reste dû");
+      if (paymentMethod !== "CASH" && !paymentReference.trim()) throw new Error(ar ? "المرجع مطلوب" : "La référence est obligatoire");
+      return apiPost<Row>(`/commercial/v1/sales-invoices/${encodeURIComponent(editingInvoice.id)}/payments`, {
+        payment_date: paymentDate, amount_dt: amount, method: paymentMethod,
+        reference: paymentReference.trim() || null, notes: null,
+        expected_invoice_version: Number(editingInvoice.version), idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: () => {
+      toast.success(ar ? "تم تسجيل الدفعة وتحديث الفاتورة" : "Paiement enregistré et facture mise à jour");
+      setEditingInvoiceId(""); setPaymentAmount(""); setPaymentReference("");
+      qc.invalidateQueries({ queryKey: ["commercial", "factures", "invoices"] });
+      qc.invalidateQueries({ queryKey: ["commercial", "factures", "invoice-details"] });
+      qc.invalidateQueries({ queryKey: ["commercial", "factures", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["commercial", "factures", "summary"] });
+    },
+    onError: (error: any) => toast.error(error?.message || (ar ? "تعذر تسجيل الدفعة" : "Impossible d’enregistrer le paiement")),
+  });
   const selectedInvoiceDetails = useQuery({
     queryKey: ["commercial", "factures", "invoice-details", selectedInvoiceId],
     enabled: Boolean(selectedInvoiceId) && mode === "invoices",
@@ -167,11 +199,11 @@ export default function CommercialFactures() {
     </Card>}
     {mode !== "statement" && <Card>
       <CardHeader><CardTitle>{mode === "global" ? labels.global : labels.invoices}{buyerId ? " — " + selectedBuyer?.name : ""}</CardTitle><CardDescription>{mode === "global" ? (ar ? "مجموع الفواتير خلال الفترة المحددة للعميل المختار" : "Regroupement des factures du client sur la période sélectionnée") : labels.subtitle}</CardDescription></CardHeader>
-      <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead></TableRow></TableHeader><TableBody>
-        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)} TND</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)} TND</TableCell><TableCell>{money(x.paid_amount_dt)} TND</TableCell><TableCell>{money(x.credited_amount_dt)} TND</TableCell><TableCell>{money(x.outstanding_amount_dt)} TND</TableCell><TableCell>{statusText(x)}</TableCell></TableRow>})}
-        {!filtered.length && <TableRow><TableCell colSpan={11} className="text-center">{labels.noRows}</TableCell></TableRow>}
+      <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead><TableHead>{labels.actions}</TableHead></TableRow></TableHeader><TableBody>
+        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)} TND</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)} TND</TableCell><TableCell>{money(x.paid_amount_dt)} TND</TableCell><TableCell>{money(x.credited_amount_dt)} TND</TableCell><TableCell>{money(x.outstanding_amount_dt)} TND</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button><Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button></div></TableCell></TableRow>})}
+        {!filtered.length && <TableRow><TableCell colSpan={12} className="text-center">{labels.noRows}</TableCell></TableRow>}
       </TableBody></Table></div>
-      {selectedInvoiceId && mode === "invoices" && selectedInvoice && <div className="mt-4 rounded-xl border bg-muted/30 p-4">
+      {selectedInvoiceId && mode === "invoices" && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border bg-muted/30 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{ar ? "تفاصيل الفاتورة" : "Détail de la facture"} · {selectedInvoice.document_number}</h3><Button size="sm" variant="outline" onClick={print}><Printer className="mr-2 size-4"/>{labels.print}</Button></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===selectedInvoice.buyer_id)?.name ?? "—"}</p></div>
@@ -191,6 +223,26 @@ export default function CommercialFactures() {
       </div>}
       </CardContent>
     </Card>}
-    <style>{`@media print { body * { visibility: hidden !important; } .commercial-factures-print, .commercial-factures-print * { visibility: visible !important; } .commercial-factures-print { position: absolute !important; inset: 0 !important; width: 100% !important; padding: 0 !important; background: white !important; } .commercial-factures-print button, .commercial-factures-print input, .commercial-factures-print select { display: none !important; } }`}</style>
+    {editingInvoice && <div className="no-print fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"><div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-background p-4 shadow-2xl">
+      <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{labels.editInvoice} · {editingInvoice.document_number}</h2><Button size="icon" variant="ghost" onClick={()=>setEditingInvoiceId("")}><X className="size-4"/></Button></div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-3 rounded-xl bg-muted p-3 text-sm">
+          <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===editingInvoice.buyer_id)?.name ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">{labels.date}</span><p className="font-semibold">{dateText(editingInvoice.sale_date ?? editingInvoice.created_at)}</p></div>
+          <div><span className="text-muted-foreground">{labels.total}</span><p className="font-semibold">{money(editingInvoice.total_amount_dt)} TND</p></div>
+          <div><span className="text-muted-foreground">{labels.paid}</span><p className="font-semibold text-emerald-700">{money(editingInvoice.paid_amount_dt)} TND</p></div>
+          <div><span className="text-muted-foreground">{labels.credited}</span><p className="font-semibold">{money(editingInvoice.credited_amount_dt)} TND</p></div>
+          <div><span className="text-muted-foreground">{labels.balance}</span><p className="font-semibold text-rose-700">{money(editingInvoice.outstanding_amount_dt)} TND</p></div>
+        </div>
+        <p className="text-sm text-muted-foreground">{ar ? "أدخل الدفعة الجديدة فقط، ولا تدخل مجموع الدفعات السابقة. سيتم تحديث المدفوع والمتبقي تلقائيًا مع تسجيل العملية في سجل التدقيق." : "Saisissez uniquement le nouveau paiement à ajouter, pas le cumul déjà payé. Le payé et le reste dû seront recalculés automatiquement et l’opération sera auditée."}</p>
+        <label className="grid gap-1 text-sm font-medium">{labels.newPayment}<Input inputMode="decimal" value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} placeholder="0,000"/></label>
+        <label className="grid gap-1 text-sm font-medium">{labels.paymentDate}<Input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
+        <label className="grid gap-1 text-sm font-medium">{labels.paymentMethod}<select className="h-10 rounded-md border bg-background px-3" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE")}><option value="CASH">{ar ? "نقدًا" : "Espèces"}</option><option value="BANK_TRANSFER">{ar ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{ar ? "صك" : "Chèque"}</option></select></label>
+        {paymentMethod !== "CASH" && <label className="grid gap-1 text-sm font-medium">{labels.reference}<Input value={paymentReference} onChange={e=>setPaymentReference(e.target.value)} placeholder={labels.reference}/></label>}
+        {editingInvoice.version == null && <p className="text-sm text-destructive">{ar ? "تعذر تعديل الفاتورة: إصدار السجل غير متوفر." : "Modification impossible : version de facture indisponible."}</p>}
+      </div>
+      <div className="mt-4 flex justify-end gap-2 border-t pt-3"><Button variant="outline" onClick={()=>setEditingInvoiceId("")}>{labels.cancel}</Button><Button disabled={addPayment.isPending || !paymentAmount.trim() || !paymentDate || editingInvoice.version == null} onClick={()=>addPayment.mutate()}><Save className="mr-2 size-4"/>{addPayment.isPending ? (ar ? "جار الحفظ…" : "Enregistrement…") : labels.save}</Button></div>
+    </div></div>}
+    <style>{`@media print { body * { visibility: hidden !important; } .gs-invoice-detail-print, .gs-invoice-detail-print * { visibility: visible !important; } .gs-invoice-detail-print { position: absolute !important; inset: 0 !important; width: 100% !important; padding: 12mm !important; background: white !important; border: 0 !important; } .gs-invoice-detail-print button { display: none !important; } }`}</style>
   </div>;
 }
