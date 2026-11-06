@@ -415,9 +415,9 @@ async def create_commercial_supplier(
 async def update_commercial_supplier(
     supplier_id: str,
     draft: CommercialSupplierUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
-    _authorize(user, "commercial.manage_purchases")
+    _authorize(user, "commercial.edit_records")
     await _require_commercial_ready()
     now = datetime.now(timezone.utc)
     normalized_name = " ".join(draft.name.casefold().split())
@@ -477,10 +477,10 @@ async def update_commercial_supplier(
 @router.delete("/suppliers/{supplier_id}")
 async def deactivate_commercial_supplier(
     supplier_id: str,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
     """Soft-delete a supplier; historical purchases retain their supplier reference."""
-    _authorize(user, "commercial.manage_purchases")
+    _authorize(user, "commercial.delete_records")
     await _require_commercial_ready()
     now = datetime.now(timezone.utc)
     audit_id = str(uuid.uuid4())
@@ -1196,9 +1196,9 @@ async def create_olive_purchase(
 async def update_olive_purchase(
     purchase_id: str,
     draft: OlivePurchaseUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
-    _authorize(user, "commercial.manage_purchases")
+    _authorize(user, "commercial.edit_records")
     season, _ = await _require_commercial_ready()
     if season_of(draft.purchase_date.isoformat()) != season:
         raise HTTPException(422, "purchase_date_outside_active_season")
@@ -1220,9 +1220,9 @@ async def update_olive_purchase(
 async def cancel_olive_purchase(
     purchase_id: str,
     command: CancelOlivePurchaseDraftCommand,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
-    _authorize(user, "commercial.manage_purchases")
+    _authorize(user, "commercial.delete_records")
     now = datetime.now(timezone.utc)
     try:
         result = await run_transaction(
@@ -1678,8 +1678,9 @@ async def receive_customer_custody_olives(
 async def cancel_customer_custody_receipt(
     receipt_id: str,
     command: CancelCustomerCustodyDocumentCommand,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
+    _authorize(user, "commercial.delete_records")
     _authorize(user, "commercial.manage_custody")
     _season, season_code = await _require_commercial_ready()
     reversal_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
@@ -1703,8 +1704,9 @@ async def cancel_customer_custody_receipt(
 async def correct_customer_custody_receipt(
     receipt_id: str,
     command: CorrectCustomerOliveCustodyReceiptCommand,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
+    _authorize(user, "commercial.edit_records")
     _season, season_code = await _require_commercial_ready()
     _authorize(user, "commercial.manage_custody")
     if season_of(command.replacement.receipt_date.isoformat()) != _season:
@@ -1779,8 +1781,9 @@ async def release_customer_custody_oil(
 async def cancel_customer_custody_release(
     release_id: str,
     command: CancelCustomerCustodyDocumentCommand,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
+    _authorize(user, "commercial.delete_records")
     _authorize(user, "commercial.manage_custody")
     _season, season_code = await _require_commercial_ready()
     reversal_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
@@ -1804,8 +1807,9 @@ async def cancel_customer_custody_release(
 async def correct_customer_custody_release(
     release_id: str,
     command: CorrectCustomerOilCustodyReleaseCommand,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(current_user),
 ):
+    _authorize(user, "commercial.edit_records")
     _season, season_code = await _require_commercial_ready()
     _authorize(user, "commercial.manage_custody")
     if season_of(command.replacement.release_date.isoformat()) != _season:
