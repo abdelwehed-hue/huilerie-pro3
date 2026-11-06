@@ -118,9 +118,9 @@ export default function CommercialFactures() {
     const rows: Row[] = allRows.filter((row: Row) => {
       const d = String(row.date ?? "").slice(0,10);
       return (!start || d >= start) && (!end || d <= end);
-    }).map(row => {
+    }).map((row: Row): Row => {
       balance = Math.round((balance + Number(row.debit ?? 0) - Number(row.credit ?? 0)) * 1000) / 1000;
-      return { ...row, running: balance };
+      return { ...row, running: balance } as Row;
     });
     return { opening, rows, final: balance };
   }, [ledgerQuery.data, start, end]);
