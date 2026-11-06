@@ -66,7 +66,7 @@ export default function CommercialFactures() {
   });
   const ledgerQuery = useQuery({
     queryKey: ["commercial", "factures", "ledger", buyerId, buyerInvoices.map(x => x.id).join("|")],
-    enabled: Boolean(buyerId) && mode === "statement" && buyerInvoices.length > 0,
+    enabled: Boolean(buyerId) && mode === "statement" && buyerInvoices.length > 0 && notesQuery.isSuccess,
     queryFn: async () => {
       const details = await Promise.all(buyerInvoices.map(async invoice => {
         const base = `/commercial/v1/sales-invoices/${encodeURIComponent(invoice.id)}`;
@@ -107,7 +107,7 @@ export default function CommercialFactures() {
   const totalPaid = filtered.reduce((sum, x) => sum + Number(x.paid_amount_dt ?? 0) + Number(x.applied_credit_amount_dt ?? 0), 0);
   const totalOutstanding = filtered.reduce((sum, x) => sum + Number(x.outstanding_amount_dt ?? 0), 0);
   const statusText = (x: Row) => x.payment_status === "PAID" ? (ar ? "مدفوعة" : "Payée") : x.payment_status === "PARTIALLY_PAID" ? (ar ? "مدفوعة جزئياً" : "Partielle") : x.payment_status === "CREDITED" ? (ar ? "مغطاة بإشعار دائن" : "Créditée") : (ar ? "غير مدفوعة" : "Impayée");
-  return <div className="space-y-4 pb-24" dir={ar ? "rtl" : "ltr"}>
+  return <div className="commercial-factures-print space-y-4 pb-24" dir={ar ? "rtl" : "ltr"}>
     <Card className="commercial-card commercial-card--violet">
       <CardHeader><CardTitle>{labels.title}</CardTitle><CardDescription>{labels.subtitle}</CardDescription></CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-3">
@@ -152,6 +152,6 @@ export default function CommercialFactures() {
       {selectedInvoiceId && mode === "invoices" && <p className="mt-3 text-xs text-muted-foreground">{ar ? "تم تحديد الفاتورة. تفاصيل الدفع والتسويات والمرتجعات محفوظة ضمن سجل المبيعات." : "Facture sélectionnée. Les paiements, affectations et retours sont conservés dans l’historique des ventes."}</p>}
       </CardContent>
     </Card>}
-    <style>{`@media print { body * { visibility: hidden !important; } .commercial-workspace, .commercial-workspace * { visibility: visible !important; } }`}</style>
+    <style>{`@media print { body * { visibility: hidden !important; } .commercial-factures-print, .commercial-factures-print * { visibility: visible !important; } .commercial-factures-print { position: absolute !important; inset: 0 !important; width: 100% !important; padding: 0 !important; background: white !important; } .commercial-factures-print button, .commercial-factures-print input, .commercial-factures-print select { display: none !important; } }`}</style>
   </div>;
 }
