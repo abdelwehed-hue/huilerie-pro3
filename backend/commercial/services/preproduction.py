@@ -335,7 +335,6 @@ async def auto_complete_preproduction_sample_for_purchase(
         result = await db["commercial_lots"].update_one(
             {"id": source["id"], "product_kind": "OLIVE", "status": "OPEN",
              "batch_code": batch_code, "source_purchase_id": purchase["id"],
-             "version": source.get("version", 1),
              "latest_preproduction_sample_id": {"$exists": False}},
             {"$set": {
                 "preproduction_quality_status": "PENDING",
