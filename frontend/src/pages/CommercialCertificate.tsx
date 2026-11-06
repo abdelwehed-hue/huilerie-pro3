@@ -5,7 +5,7 @@ import { ArrowLeft, Droplets, Printer } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { apiGet } from "@/lib/api";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
-import { GradeBadge } from "@/components/shared";
+import { CodeBadge, GradeBadge } from "@/components/shared";
 
 type AnyRecord = Record<string, any>;
 
@@ -25,12 +25,14 @@ export default function CommercialCertificate() {
   const purchasesQuery = useQuery({ queryKey: ["commercial-certificate-purchases"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/olive-purchases?limit=500`), retry: false });
   const suppliersQuery = useQuery({ queryKey: ["commercial-certificate-suppliers"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/suppliers?limit=500`), retry: false });
   const varietiesQuery = useQuery({ queryKey: ["commercial-certificate-varieties"], queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/varieties?limit=500`), retry: false });
+  const millQuery = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), retry: false });
   const assessment = (assessmentQuery.data ?? []).find((item) => item.id === id);
   const lot = (lotsQuery.data ?? []).find((item) => item.id === assessment?.oil_lot_id);
   const purchase = (purchasesQuery.data ?? []).find((item) => item.id === lot?.source_purchase_id || item.batch_code === assessment?.batch_code);
   const supplier = (suppliersQuery.data ?? []).find((item) => item.id === purchase?.supplier_id);
   const varietyNames = [...new Set((purchase?.lines ?? []).map((line: AnyRecord) => (varietiesQuery.data ?? []).find((v) => v.id === line.variety_id)?.name_fr || line.variety_id))];
-  const loading = assessmentQuery.isLoading || lotsQuery.isLoading || purchasesQuery.isLoading || suppliersQuery.isLoading || varietiesQuery.isLoading;
+  const mill = millQuery.data ?? {};
+  const loading = assessmentQuery.isLoading || lotsQuery.isLoading || purchasesQuery.isLoading || suppliersQuery.isLoading || varietiesQuery.isLoading || millQuery.isLoading;
   const failed = assessmentQuery.isError || lotsQuery.isError || purchasesQuery.isError || suppliersQuery.isError || varietiesQuery.isError || (!loading && !assessment);
 
   const rows = [
@@ -63,18 +65,20 @@ export default function CommercialCertificate() {
                   <Droplets className="size-6 text-white" />
                 </div>
                 <div>
-                  <div className="font-heading text-xl font-bold text-stone-900">Oro Verde</div>
-                  <div className="text-sm text-stone-600">Certificat d'analyse d'huile</div>
+                  <div className="font-heading text-xl font-bold text-stone-900" data-testid="certificate-mill-name">{mill.mill_name || "Oro Verde"}</div>
+                  {mill.mill_address && <div className="text-sm text-stone-600">{mill.mill_address}</div>}
+                  {mill.mill_phone && <div className="text-sm text-stone-600" dir="ltr">{mill.mill_phone}</div>}
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="flex flex-col items-center gap-1 text-center">
                   <QRCodeSVG value={window.location.href} size={84} level="M" marginSize={1} />
                   <span className="text-[10px] text-stone-600">Scanner pour consulter l'analyse</span>
+                  <span dir="rtl" className="text-[10px] text-stone-600">امسح لعرض التحليل</span>
                 </div>
                 <div className="text-end">
                   <div className="text-xs uppercase tracking-wider text-stone-500">CODE ACHAT</div>
-                  <div className="font-mono text-lg font-bold text-stone-900">{assessment.batch_code || lot.batch_code || lot.document_number || lot.id}</div>
+                  <CodeBadge code={String(assessment.batch_code || lot.batch_code || lot.document_number || lot.id)} testId="certificate-code" />
                 </div>
               </div>
             </div>
@@ -82,7 +86,7 @@ export default function CommercialCertificate() {
               Certificat d'analyse <span className="text-stone-300">|</span> شهادة تحليل
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-center text-sm text-stone-600">
-              Résultats de l'analyse de l'huile correspondant au lot indiqué.
+              {t("cert_statement")}
             </p>
             <dl className="mt-8 grid grid-cols-2 gap-4 rounded-xl bg-stone-50 p-5 text-sm md:grid-cols-4">
               <div><dt className="text-stone-500">Lot d'huile</dt><dd className="font-semibold">{lot.document_number ?? lot.id}</dd></div>
@@ -97,10 +101,12 @@ export default function CommercialCertificate() {
               <thead><tr className="border-b-2 border-stone-200 text-stone-500">
                 <th className="py-2 text-start font-semibold">Paramètre</th>
                 <th className="py-2 text-end font-semibold">Résultat</th>
+                <th className="py-2 text-end font-semibold">{t("limit_ev")}</th>
               </tr></thead>
               <tbody>{rows.map((row) => <tr key={row.label} className="border-b border-stone-100">
                 <td className="py-2.5">{row.label}</td>
                 <td className="py-2.5 text-end font-semibold" dir="ltr">{row.value == null ? "—" : fmtNum(row.value, row.digits)}</td>
+                <td className="py-2.5 text-end text-stone-500" dir="ltr">{row.label === t("acidity") ? "≤ 0,8" : row.label === t("peroxide") ? "≤ 20" : row.label === "K232" ? "≤ 2,50" : row.label === "K270" ? "≤ 0,22" : "—"}</td>
               </tr>)}</tbody>
             </table>
             <div className="mt-8 flex flex-wrap items-center justify-between gap-6">
