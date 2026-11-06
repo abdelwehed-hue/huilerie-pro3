@@ -59,6 +59,7 @@ export default function CommercialFactures() {
     });
   }, [buyerInvoices, buyers, search, start, end]);
   const selectedBuyer = buyers.find(x => x.id === buyerId);
+  const selectedInvoice = invoices.find(x => x.id === selectedInvoiceId);
   const buyerSummary = useQuery({
     queryKey: ["commercial", "factures", "summary", buyerId],
     queryFn: () => apiGet<Row>(`/commercial/v1/buyers/${encodeURIComponent(buyerId)}/account-summary`),
@@ -126,10 +127,10 @@ export default function CommercialFactures() {
         <div className="md:col-span-4 flex justify-end"><Button variant="outline" onClick={print}><Printer className="mr-2 size-4"/>{labels.print}</Button></div>
       </CardContent>
     </Card>
-    {mode !== "statement" && <div className="grid gap-3 sm:grid-cols-3">
+    {mode !== "statement" && <div className="grid gap-3 sm:grid-cols-4">
       <Card><CardHeader className="pb-2"><CardDescription>{labels.count}</CardDescription><CardTitle>{filtered.length}</CardTitle></CardHeader></Card>
       <Card><CardHeader className="pb-2"><CardDescription>{labels.gross}</CardDescription><CardTitle>{money(totalGross)} TND</CardTitle></CardHeader></Card>
-      <Card><CardHeader className="pb-2"><CardDescription>{labels.outstanding}</CardDescription><CardTitle>{money(totalOutstanding)} TND</CardTitle></CardHeader></Card>
+      <Card><CardHeader className="pb-2"><CardDescription>{labels.paid}</CardDescription><CardTitle>{money(totalPaid)} TND</CardTitle></CardHeader></Card><Card><CardHeader className="pb-2"><CardDescription>{labels.outstanding}</CardDescription><CardTitle>{money(totalOutstanding)} TND</CardTitle></CardHeader></Card>
     </div>}
     {mode === "statement" && !buyerId && <p className="rounded-xl border p-6 text-center text-muted-foreground">{labels.noBuyer}</p>}
     {mode === "statement" && buyerId && <Card>
@@ -149,7 +150,19 @@ export default function CommercialFactures() {
         {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)} TND</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)} TND</TableCell><TableCell>{money(x.paid_amount_dt)} TND</TableCell><TableCell>{money(x.credited_amount_dt)} TND</TableCell><TableCell>{money(x.outstanding_amount_dt)} TND</TableCell><TableCell>{statusText(x)}</TableCell></TableRow>})}
         {!filtered.length && <TableRow><TableCell colSpan={11} className="text-center">{labels.noRows}</TableCell></TableRow>}
       </TableBody></Table></div>
-      {selectedInvoiceId && mode === "invoices" && <p className="mt-3 text-xs text-muted-foreground">{ar ? "تم تحديد الفاتورة. تفاصيل الدفع والتسويات والمرتجعات محفوظة ضمن سجل المبيعات." : "Facture sélectionnée. Les paiements, affectations et retours sont conservés dans l’historique des ventes."}</p>}
+      {selectedInvoiceId && mode === "invoices" && selectedInvoice && <div className="mt-4 rounded-xl border bg-muted/30 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{ar ? "تفاصيل الفاتورة" : "Détail de la facture"} · {selectedInvoice.document_number}</h3><Button size="sm" variant="outline" onClick={print}><Printer className="mr-2 size-4"/>{labels.print}</Button></div>
+        <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===selectedInvoice.buyer_id)?.name ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">{labels.date}</span><p className="font-semibold">{dateText(selectedInvoice.sale_date ?? selectedInvoice.created_at)}</p></div>
+          <div><span className="text-muted-foreground">{labels.code}</span><p className="font-mono font-semibold">{selectedInvoice.batch_code ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">{labels.status}</span><p className="font-semibold">{statusText(selectedInvoice)}</p></div>
+          <div><span className="text-muted-foreground">{labels.quantity}</span><p className="font-semibold">{money(selectedInvoice.quantity_kg)}</p></div>
+          <div><span className="text-muted-foreground">{labels.unit}</span><p className="font-semibold">{money(selectedInvoice.unit_price_dt)} TND</p></div>
+          <div><span className="text-muted-foreground">{labels.total}</span><p className="font-semibold">{money(selectedInvoice.total_amount_dt)} TND</p></div>
+          <div><span className="text-muted-foreground">{labels.balance}</span><p className="font-semibold">{money(selectedInvoice.outstanding_amount_dt)} TND</p></div>
+        </div>
+      </div>}
       </CardContent>
     </Card>}
     <style>{`@media print { body * { visibility: hidden !important; } .commercial-factures-print, .commercial-factures-print * { visibility: visible !important; } .commercial-factures-print { position: absolute !important; inset: 0 !important; width: 100% !important; padding: 0 !important; background: white !important; } .commercial-factures-print button, .commercial-factures-print input, .commercial-factures-print select { display: none !important; } }`}</style>
