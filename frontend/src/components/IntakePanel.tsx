@@ -283,7 +283,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
 
       </form> : <form onSubmit={(e) => {
         e.preventDefault();
-        if (!chosenLocationId || !(supplierKgValue > 0) || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
+        if (!chosenLocationId || !(supplierKgValue > 0) || supplierPrice.trim() === "" || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
         supplierMutation.mutate({
           supplier_id: newSupplier ? null : supplierId,
           new_supplier_name: newSupplier ? newSupplierName.trim() : null,
@@ -316,7 +316,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         </div>
         <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
         <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
-        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
+        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || supplierPrice.trim() === "" || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
       </form>}
       </div>
       <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
