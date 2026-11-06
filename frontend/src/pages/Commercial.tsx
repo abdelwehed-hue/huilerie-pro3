@@ -1769,7 +1769,7 @@ export default function Commercial() {
                 <TableHead>{l.location}</TableHead>
                 <TableHead>{l.owner}</TableHead>
                 <TableHead>{l.qualityStatus}</TableHead>
-                {(canEditRecords || canDeleteRecords) && <TableHead>{lang === "ar" ? "إجراء" : "Action"}</TableHead>}
+                {canEditRecords && <TableHead>{lang === "ar" ? "إجراء" : "Action"}</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
                 {eligibleProductionBalances.map((balance) => {
@@ -1783,10 +1783,10 @@ export default function Commercial() {
                     <TableCell>{value(location?.name ?? location?.code, balance.location_id)}</TableCell>
                     <TableCell>{displayOwnerLabel(balance.owner ?? lot?.owner)}</TableCell>
                     <TableCell>{lang === "ar" ? "مقبولة" : "Approuvée"}</TableCell>
-                    {(isAdmin || canEditRecords || canDeleteRecords) && <TableCell><div className="flex flex-wrap gap-2">{isAdmin && <Button size="sm" variant="outline" onClick={() => setProductionInputs([{ balance_key: balanceKey, quantity_kg: "" }])}>{lang === "ar" ? "اختيار للإنتاج" : "Sélectionner"}</Button>}{canEditRecords && <Button size="sm" variant="outline" onClick={() => { setAdjustingReadyBalance({ balance, lot }); setReadyBalanceTarget(String(balance.quantity_kg)); setReadyBalanceReason(""); document.getElementById("ready-lots-adjustment")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canEditRecords && canDeleteRecords && <Button size="sm" variant="destructive" disabled={adjustReadyLotBalance.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيُصفّر هذا الإجراء رصيد الدفعة المتاح في هذا الموقع ويسجّل حركة مخزون عكسية. هل تؤكد؟" : "Cette action mettra à zéro le solde disponible à cet emplacement et enregistrera un mouvement compensatoire. Confirmer ?")) return; const reason = window.prompt(lang === "ar" ? "سبب إزالة الرصيد (5 أحرف على الأقل):" : "Motif de retrait (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) adjustReadyLotBalance.mutate({ balance, lot, target: "0", reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Retirer"}</Button>}</div></TableCell>}
+                    {canEditRecords && <TableCell><div className="flex flex-wrap gap-2">{isAdmin && <Button size="sm" variant="outline" onClick={() => setProductionInputs([{ balance_key: balanceKey, quantity_kg: "" }])}>{lang === "ar" ? "اختيار للإنتاج" : "Sélectionner"}</Button>}{canEditRecords && <Button size="sm" variant="outline" onClick={() => { setAdjustingReadyBalance({ balance, lot }); setReadyBalanceTarget(String(balance.quantity_kg)); setReadyBalanceReason(""); document.getElementById("ready-lots-adjustment")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canEditRecords && canDeleteRecords && <Button size="sm" variant="destructive" disabled={adjustReadyLotBalance.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيُصفّر هذا الإجراء رصيد الدفعة المتاح في هذا الموقع ويسجّل حركة مخزون عكسية. هل تؤكد؟" : "Cette action mettra à zéro le solde disponible à cet emplacement et enregistrera un mouvement compensatoire. Confirmer ?")) return; const reason = window.prompt(lang === "ar" ? "سبب إزالة الرصيد (5 أحرف على الأقل):" : "Motif de retrait (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) adjustReadyLotBalance.mutate({ balance, lot, target: "0", reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Retirer"}</Button>}</div></TableCell>}
                   </TableRow>;
                 })}
-                {eligibleProductionBalances.length === 0 && <EmptyRow colSpan={(canEditRecords || canDeleteRecords) ? 6 : 5} text={lang === "ar" ? "لا توجد دفعات جاهزة للإنتاج حاليًا." : "Aucun lot prêt pour la production pour le moment."} />}
+                {eligibleProductionBalances.length === 0 && <EmptyRow colSpan={canEditRecords ? 6 : 5} text={lang === "ar" ? "لا توجد دفعات جاهزة للإنتاج حاليًا." : "Aucun lot prêt pour la production pour le moment."} />}
               </TableBody>
             </Table>
           </CardContent>
