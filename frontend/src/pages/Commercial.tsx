@@ -288,8 +288,6 @@ export default function Commercial() {
     refetchInterval: 30_000,
   });
   const ready = status.data?.ready === true;
-  const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
-  const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const tanks = useQuery({ queryKey: ["commercial", "tanks"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/tanks"), enabled: ready });
   const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/lots", 500), enabled: ready });
   const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-balances", 1000), enabled: ready });
@@ -298,6 +296,8 @@ export default function Commercial() {
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
   const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
+  const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
+  const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
