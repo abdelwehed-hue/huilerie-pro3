@@ -1576,7 +1576,9 @@ async def adjust_ready_olive_lot_balance(
     draft: OliveLotBalanceAdjustmentDraft,
     user: dict = Depends(current_user),
 ):
-    _authorize(user, "commercial.delete_records" if draft.target_quantity_kg == 0 else "commercial.edit_records")
+    _authorize(user, "commercial.edit_records")
+    if draft.target_quantity_kg == 0:
+        _authorize(user, "commercial.delete_records")
     _, season_code = await _require_commercial_ready()
     adjustment_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
