@@ -59,6 +59,7 @@ def make_db():
             "id": "oil-1", "product_kind": "OIL", "status": "OPEN",
             "quality_status": "PENDING", "version": 1,
         }]),
+        "settings": Collection([{"key": "app", "mill_name": "Oro Verde"}]),
         "commercial_quality_assessments": Collection(),
         "commercial_quality_releases": Collection(),
         "commercial_audit_events": Collection(),
@@ -136,6 +137,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
     })
     source_lot = {
         "id": "olive-source-1", "product_kind": "OLIVE", "status": "OPEN",
+        "batch_code": "2627A0008",
         "preproduction_quality_status": "PENDING",
         "latest_preproduction_sample_id": "trial-1",
     }
@@ -145,14 +147,17 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
         "oil_sample_lot_id": "oil-1", "status": "COMPLETED",
     })
 
+    draft = make_draft().model_copy(update={"sample_reference": "2627A0008", "laboratory_name": "Oro Verde"})
     submitted = await record_oil_quality_assessment(
-        db, make_draft(), season_code="2627",
+        db, draft, season_code="2627",
         actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
         actor_user_id="lab-tech-1", assessment_id="assessment-preproduction-1",
         created_at=datetime(2026, 11, 2, tzinfo=timezone.utc), session=object(),
     )
     assert submitted["lot_purpose"] == "PREPRODUCTION_SAMPLE"
     assert submitted["source_olive_lot_id"] == "olive-source-1"
+    assert submitted["sample_reference"] == "2627A0008"
+    assert submitted["laboratory_name"] == "Oro Verde"
 
     command = QualityReleaseCommand(
         assessment_id="assessment-preproduction-1", expected_lot_version=2,
@@ -181,6 +186,7 @@ async def test_old_preproduction_sample_cannot_be_submitted_after_a_new_trial_is
     })
     source_lot = {
         "id": "olive-source-1", "product_kind": "OLIVE", "status": "OPEN",
+        "batch_code": "2627A0008",
         "preproduction_quality_status": "PENDING",
         "latest_preproduction_sample_id": "trial-new",
     }
