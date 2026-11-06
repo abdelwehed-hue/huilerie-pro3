@@ -77,6 +77,8 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [created, setCreated] = useState<Load | null>(null);
   const [receptionType, setReceptionType] = useState<"client" | "supplier">("client");
   const [supplierId, setSupplierId] = useState("");
+  const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState("");
   const [newSupplier, setNewSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
@@ -92,6 +94,15 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const suppliersQuery = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<any[]>("/commercial/v1/suppliers"), enabled: receptionType === "supplier" });
   const locationsQuery = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<any[]>("/commercial/v1/locations"), enabled: receptionType === "supplier" });
   const commercialSuppliers = suppliersQuery.data ?? [];
+  const normalizeSupplierSearch = (value: string) => value.trim().toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+  const supplierSearchTerm = normalizeSupplierSearch(supplierSearch);
+  const filteredSuppliers = commercialSuppliers.filter((supplier) =>
+    normalizeSupplierSearch(supplier.name ?? "").includes(supplierSearchTerm) ||
+    normalizeSupplierSearch(supplier.phone ?? "").includes(supplierSearchTerm) ||
+    normalizeSupplierSearch(supplier.tax_id ?? "").includes(supplierSearchTerm)
+  );
+  const supplierPurchasesQuery = useQuery({ queryKey: ["commercial", "supplier-history", supplierId], queryFn: () => apiGet<any[]>("/commercial/v1/olive-purchases"), enabled: receptionType === "supplier" && !!supplierId });
+  const supplierPurchases = (supplierPurchasesQuery.data ?? []).filter((purchase) => purchase.supplier_id === supplierId);
   const oliveLocations = locationsQuery.data ?? [];
   const chosenLocationId = supplierLocationId || oliveLocations.find((location) => /réception|reception|receiving/i.test((location.name || "") + " " + (location.code || "")))?.id || "";
   const supplierKgValue = Number(supplierKg.replace(",", "."));
@@ -107,6 +118,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
       setSupplierRequestKey("");
       toast.success("Réception fournisseur enregistrée et achat créé dans GS");
       qc.invalidateQueries({ queryKey: ["commercial"] });
+      qc.invalidateQueries({ queryKey: ["commercial", "supplier-history", result.supplier?.id ?? supplierId] });
     },
     onError: (error) => toast.error(errMsg(error)),
   });
@@ -301,15 +313,44 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         });
       }} className="space-y-5 rounded-2xl border border-blue-200 bg-[#F0F6FC] p-6 shadow-sm" data-testid="supplier-intake-form">
         <div className="flex items-center gap-3 text-blue-950"><div className="grid size-10 place-items-center rounded-xl bg-blue-700 text-white"><Truck className="size-5" /></div><div><h2 className="font-heading text-xl font-bold">Réception fournisseur</h2><p className="text-xs text-blue-800">Création automatique de l’achat et entrée en stock GS</p></div></div>
-        <div className="space-y-2"><Label>Fournisseur</Label><div className="flex flex-wrap gap-2">
-          <Button type="button" variant={!newSupplier ? "default" : "outline"} onClick={() => setNewSupplier(false)} className="rounded-xl">Fournisseur existant</Button>
-          <Button type="button" variant={newSupplier ? "default" : "outline"} onClick={() => setNewSupplier(true)} className="rounded-xl"><UserPlus className="size-4"/> Nouveau fournisseur</Button>
+        <div className="space-y-2">
+          <Label>Fournisseur</Label>
+          <div className="flex gap-2">
+            {!newSupplier ? <div className="relative min-w-0 flex-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSupplierDropdownOpen(false); }}>
+              <button type="button" aria-haspopup="listbox" aria-expanded={supplierDropdownOpen}
+                onClick={() => { setSupplierDropdownOpen((open) => !open); setSupplierSearch(""); }}
+                className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-input bg-white px-3 text-left text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                data-testid="intake-supplier-select">
+                <span className={supplierId && commercialSuppliers.some((x) => x.id === supplierId) ? "truncate text-stone-900" : "truncate text-stone-400"}>
+                  {supplierId ? (commercialSuppliers.find((x) => x.id === supplierId)?.name ?? "Choisir un fournisseur") : "Choisir un fournisseur"}
+                </span><span className="text-stone-400" aria-hidden="true">▾</span>
+              </button>
+              {supplierDropdownOpen && <div className="absolute inset-x-0 top-full z-50 mt-1">
+                <div role="listbox" aria-label="Fournisseurs" className="max-h-72 overflow-y-auto rounded-xl border border-blue-200 bg-white p-1 shadow-xl shadow-blue-900/10">
+                  <div className="sticky top-0 z-10 border-b border-blue-100 bg-white p-2">
+                    <Input autoFocus value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par nom, téléphone ou identifiant..." aria-label="Rechercher un fournisseur" data-testid="intake-supplier-search-input" className="h-10 rounded-lg" />
+                  </div>
+                  {filteredSuppliers.length ? filteredSuppliers.map((supplier) => <button type="button" role="option" aria-selected={supplierId === supplier.id} key={supplier.id}
+                    onPointerDown={(e) => { e.preventDefault(); setSupplierId(supplier.id); setSupplierDropdownOpen(false); setSupplierSearch(""); }}
+                    onClick={() => { setSupplierId(supplier.id); setSupplierDropdownOpen(false); setSupplierSearch(""); }}
+                    data-testid={`intake-supplier-option-${supplier.id}`}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none">
+                    <span className="min-w-0 truncate font-medium text-stone-900">{supplier.name}</span><span className="shrink-0 text-xs text-stone-400" dir="ltr">{supplier.phone || supplier.tax_id || ""}</span>
+                  </button>) : <p className="px-3 py-4 text-center text-sm text-stone-500">Aucun fournisseur trouvé</p>}
+                </div>
+              </div>}
+            </div> : <div className="flex h-11 min-w-0 flex-1 items-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-900">Nouveau fournisseur</div>}
+            <Button type="button" onClick={() => { setNewSupplier((value) => !value); setSupplierDropdownOpen(false); if (newSupplier) { setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId(""); } else setSupplierId(""); }}
+              data-testid="intake-new-supplier-button" className="h-11 shrink-0 rounded-xl bg-teal-600 hover:bg-teal-700">
+              <UserPlus className="size-4"/> {newSupplier ? "Choisir un fournisseur" : "Nouveau fournisseur"}
+            </Button>
+          </div>
+          {newSupplier && <div className="grid gap-3 rounded-xl border border-blue-200 bg-white p-3 md:grid-cols-2">
+            <div className="space-y-1"><Label>Nom du fournisseur *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+            <div className="space-y-1"><Label>Téléphone</Label><Input dir="ltr" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+            <div className="space-y-1 md:col-span-2"><Label>Identifiant fiscal</Label><Input value={newSupplierTaxId} onChange={(e) => setNewSupplierTaxId(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          </div>}
         </div>
-        {!newSupplier ? <Select value={supplierId || null} onValueChange={(v) => setSupplierId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (commercialSuppliers.find((x) => x.id === v)?.name ?? "Fournisseur sélectionné") : <span className="text-stone-400">Choisir un fournisseur</span>}</SelectValue></SelectTrigger><SelectContent>{commercialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}{supplier.phone ? " · " + supplier.phone : ""}</SelectItem>)}</SelectContent></Select> : <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1"><Label>Nom du fournisseur *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="space-y-1"><Label>Téléphone</Label><Input dir="ltr" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="space-y-1 md:col-span-2"><Label>Identifiant fiscal</Label><Input value={newSupplierTaxId} onChange={(e) => setNewSupplierTaxId(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-        </div>}</div>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1"><Label>Date d’achat / réception *</Label><Input type="date" value={supplierDate} onChange={(e) => setSupplierDate(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
           <div className="space-y-1"><Label>Emplacement de réception *</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
@@ -326,7 +367,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
       <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
 
       <div className="space-y-6">
-        {histPhone && h && (
+        {receptionType === "client" && histPhone && h && (
           <div data-testid="intake-client-history" className="rounded-xl border border-teal-200 bg-white p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-semibold text-teal-900"><History className="size-4 text-teal-600" /> {t("client_quick_history")}</div>
@@ -355,6 +396,27 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                 ))}
               </ul>
             )}
+          </div>
+        )}
+        {receptionType === "supplier" && supplierId && !newSupplier && (
+          <div className="rounded-xl border border-blue-200 bg-white p-4" data-testid="intake-supplier-history">
+            <div className="mb-3 flex items-center gap-2 font-semibold text-blue-950"><History className="size-4 text-blue-700" /> Historique du fournisseur</div>
+            <div className="mb-3 grid grid-cols-2 gap-2 text-center text-xs">
+              <div className="rounded-lg bg-blue-50 p-2"><div className="text-stone-500">Achats enregistrés</div><div className="text-base font-bold text-blue-900">{supplierPurchases.length}</div></div>
+              <div className="rounded-lg bg-sky-50 p-2"><div className="text-stone-500">Quantité totale</div><div className="text-base font-bold text-sky-900">{fmtNum(supplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0))} kg</div></div>
+            </div>
+            <div className="mb-1 text-xs font-semibold text-stone-500">Achats précédents</div>
+            {supplierPurchasesQuery.isLoading ? <p className="text-sm text-stone-500">Chargement de l’historique…</p> :
+              supplierPurchases.length === 0 ? <p className="text-sm text-stone-500">Aucun achat précédent pour ce fournisseur.</p> :
+              <ul className="max-h-56 divide-y divide-stone-100 overflow-auto text-sm">
+                {supplierPurchases.slice(0, 10).map((purchase) => <li key={purchase.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid={`intake-supplier-history-${purchase.id}`}>
+                  <span className="font-mono text-xs text-stone-600" dir="ltr">{purchase.document_number ?? purchase.id}</span>
+                  <span className="text-stone-600">{purchase.purchase_date ?? "—"}</span>
+                  <span className="font-medium text-blue-800">{fmtNum(Number(purchase.total_quantity_kg ?? 0))} kg</span>
+                  <span className="text-teal-800">{fmtNum(Number(purchase.total_amount_dt ?? 0), 3)} TND</span>
+                  <span className="text-xs text-stone-500">{purchase.status ?? "—"}</span>
+                </li>)}
+              </ul>}
           </div>
         )}
         {supplierReceipt && receptionType === "supplier" && (
