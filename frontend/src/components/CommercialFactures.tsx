@@ -290,7 +290,7 @@ export default function CommercialFactures() {
         </div>
         <div className="mt-4"><h4 className="mb-2 font-semibold">{ar ? "التسويات والمرتجعات" : "Affectations et retours"}</h4><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{ar ? "الوثيقة" : "Document"}</TableHead><TableHead>{labels.operation}</TableHead><TableHead>{labels.status}</TableHead></TableRow></TableHeader><TableBody>{(selectedInvoiceDetails.data?.applications ?? []).map(a=><TableRow key={a.id}><TableCell>{dateText(a.created_at)}</TableCell><TableCell>{a.document_number}</TableCell><TableCell>{labels.creditApply}</TableCell><TableCell>{a.status}</TableCell></TableRow>)}{(selectedInvoiceDetails.data?.returns ?? []).map(r=><TableRow key={r.id}><TableCell>{dateText(r.received_at ?? r.created_at)}</TableCell><TableCell>{r.document_number}</TableCell><TableCell>{ar ? "مرتجع" : "Retour physique"}</TableCell><TableCell>{r.commercial_acceptance_status ?? r.status}</TableCell></TableRow>)}{!selectedInvoiceDetails.data?.applications?.length && !selectedInvoiceDetails.data?.returns?.length && <TableRow><TableCell colSpan={4}>{labels.noRows}</TableCell></TableRow>}</TableBody></Table></div>
       </div>}
-        <article dir={ar ? "rtl" : "ltr"} className="gs-invoice-print hidden mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
+        {selectedInvoice && selectedInvoiceId && <article dir={ar ? "rtl" : "ltr"} className="gs-invoice-print hidden mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
           <header dir="ltr" className="flex items-start justify-between gap-5 border-b pb-5">
             <div className="flex shrink-0 items-start">{selectedInvoice.mill_logo ? <img src={selectedInvoice.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/> : null}</div>
             <div dir={ar ? "rtl" : "ltr"} className={ar ? "text-right" : "text-left"}>
@@ -333,7 +333,7 @@ export default function CommercialFactures() {
             <p dir="ltr" className="text-right text-sm italic text-stone-600">{amountInWords(Number(selectedInvoice.outstanding_amount_dt ?? 0), ar)}</p>
           </div>
           <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{ar ? "شكراً على ثقتكم." : "Merci pour votre confiance."}</footer>
-        </article>
+        </article>}
       </CardContent>
     </Card>}
     {editingInvoice && <div className="no-print fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"><div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-background p-4 shadow-2xl">
