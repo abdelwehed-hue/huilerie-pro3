@@ -41,7 +41,7 @@ export default function Lab() {
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
-  const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), enabled: isGsCode || true, retry: false });
+  const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), retry: false });
   const gsVarieties = useQuery({ queryKey: ["lab-gs-varieties"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/varieties?limit=500"), retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
   const gsOliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && lot.batch_code === code && lot.status === "OPEN");
@@ -286,7 +286,7 @@ export default function Lab() {
             </TableHeader>
             <TableBody>
               {rows.length === 0 && gsAnalysisRows.length === 0 && (
-                <TableRow><TableCell colSpan={11} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
               )}
               {gsAnalysisRows.map((r) => (
                 <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
@@ -298,7 +298,7 @@ export default function Lab() {
                   <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
                   <TableCell>{r.classification ? <GradeBadge grade={r.classification} /> : "—"}</TableCell>
-                  <TableCell className="text-sm font-medium text-stone-800">{(() => { const purchase = (gsPurchases.data ?? []).find((p) => p.batch_code === (r.batch_code || r.sample_reference)); const varietyIds = (purchase?.lines ?? []).map((line: any) => line.variety_id); const names = varietyIds.map((id: string) => (gsVarieties.data ?? []).find((v) => v.id === id)?.name || id); return [...new Set(names)].join(", ") || "—"; })()}</TableCell>
+                  <TableCell className="text-sm font-medium text-stone-800">{(() => { const purchase = (gsPurchases.data ?? []).find((p) => p.batch_code === (r.batch_code || r.sample_reference)); const varietyIds = (purchase?.lines ?? []).map((line: any) => line.variety_id); const names = varietyIds.map((id: string) => (gsVarieties.data ?? []).find((v) => v.id === id)?.name_fr || id); return [...new Set(names)].join(", ") || "—"; })()}</TableCell>
                   <TableCell className="text-sm font-medium text-stone-800">{r.oil_type || "—"}</TableCell>
                   <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.tested_date || r.created_at)}</TableCell>
                   <TableCell className="text-end">{<Link to={`/commercial/certificate/${r.id}`} data-testid={`lab-gs-certificate-${r.batch_code || r.sample_reference}`} className={buttonVariants({ variant: "outline", size: "sm" })}><Award className="size-4 text-emerald-600" /> {t("view_certificate")}</Link>}</TableCell>
