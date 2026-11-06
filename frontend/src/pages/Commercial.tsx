@@ -187,6 +187,9 @@ export default function Commercial() {
   const [productionOutputKg, setProductionOutputKg] = useState("");
   const [productionTankId, setProductionTankId] = useState("");
   const [productionNotes, setProductionNotes] = useState("");
+  const [adjustingReadyBalance, setAdjustingReadyBalance] = useState<AnyRecord | null>(null);
+  const [readyBalanceTarget, setReadyBalanceTarget] = useState("");
+  const [readyBalanceReason, setReadyBalanceReason] = useState("");
   const [trialBalanceKey, setTrialBalanceKey] = useState("");
   const [trialInputKg, setTrialInputKg] = useState("");
   const [trialOilKg, setTrialOilKg] = useState("");
@@ -262,6 +265,7 @@ export default function Commercial() {
   const [custodyReceiptAck, setCustodyReceiptAck] = useState("");
   const [custodySourceReference, setCustodySourceReference] = useState("");
   const [custodyReceiptKey, setCustodyReceiptKey] = useState(() => crypto.randomUUID());
+  const [editingCustodyReceipt, setEditingCustodyReceipt] = useState<AnyRecord | null>(null);
   const [pickupCustomerId, setPickupCustomerId] = useState("");
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10));
   const [pickupBalanceKey, setPickupBalanceKey] = useState("");
@@ -269,6 +273,7 @@ export default function Commercial() {
   const [pickupAck, setPickupAck] = useState("");
   const [pickupReason, setPickupReason] = useState("");
   const [pickupKey, setPickupKey] = useState(() => crypto.randomUUID());
+  const [editingCustodyRelease, setEditingCustodyRelease] = useState<AnyRecord | null>(null);
   const [internalMovementKind, setInternalMovementKind] = useState<"TRANSFER" | "OWNERSHIP_TRANSFER">("TRANSFER");
   const [internalProductKind, setInternalProductKind] = useState<"OLIVE" | "OIL">("OIL");
   const [internalSourceBalanceKey, setInternalSourceBalanceKey] = useState("");
@@ -386,6 +391,19 @@ export default function Commercial() {
       await queryClient.invalidateQueries({ queryKey: ["commercial", "locations"] });
     },
     onError: () => toast.error(l.warning),
+  });
+  const cancelPurchase = useMutation({
+    mutationFn: ({ purchase, reason }: { purchase: AnyRecord; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/olive-purchases/${encodeURIComponent(purchase.id)}/cancel`, {
+        expected_version: purchase.version ?? 1,
+        reason,
+      }),
+    onSuccess: async (_result, { purchase }) => {
+      toast.success(lang === "ar" ? "أُلغيت مسودة الشراء مع الاحتفاظ بسجل التدقيق" : "Brouillon d’achat annulé; l’audit est conservé");
+      if (editingPurchase?.id === purchase.id) cancelPurchaseEdit();
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "purchases"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const createPurchase = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/olive-purchases", {
@@ -524,6 +542,29 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const adjustReadyLotBalance = useMutation({
+    mutationFn: ({ balance, lot, target, reason }: { balance: AnyRecord; lot: AnyRecord; target: string; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/lots/${encodeURIComponent(lot.id)}/adjust-balance`, {
+        expected_version: lot.version ?? 1,
+        location_id: balance.location_id,
+        target_quantity_kg: target,
+        reason: reason.trim(),
+      }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تعديل رصيد الدفعة وتسجيل الحركة" : "Stock du lot corrigé et mouvement enregistré");
+      setAdjustingReadyBalance(null);
+      setReadyBalanceTarget("");
+      setReadyBalanceReason("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -922,18 +963,32 @@ export default function Commercial() {
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const receiveCustomerCustody = useMutation({
-    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", {
-      customer_phone: custodyCustomerPhone,
-      receipt_date: custodyReceiptDate,
-      variety_id: custodyVarietyId,
-      quantity_kg: custodyReceiptQuantity,
-      receiving_location_id: custodyReceivingLocationId,
-      customer_acknowledgement_reference: custodyReceiptAck.trim(),
-      source_reference: custodySourceReference.trim() || null,
-      idempotency_key: custodyReceiptKey,
-    }),
+    mutationFn: (correctionReason?: string) => {
+      const payload = {
+        customer_phone: custodyCustomerPhone,
+        receipt_date: custodyReceiptDate,
+        variety_id: custodyVarietyId,
+        quantity_kg: custodyReceiptQuantity,
+        receiving_location_id: custodyReceivingLocationId,
+        customer_acknowledgement_reference: custodyReceiptAck.trim(),
+        source_reference: custodySourceReference.trim() || null,
+        idempotency_key: custodyReceiptKey,
+      };
+      if (editingCustodyReceipt) {
+        if (!correctionReason) throw new Error("A reason is required to correct a posted custody receipt");
+        return apiPost<AnyRecord>(`/commercial/v1/customer-custody/receipts/${encodeURIComponent(editingCustodyReceipt.id)}/correct`, {
+          expected_version: editingCustodyReceipt.version ?? 1,
+          reason: correctionReason,
+          replacement: payload,
+        });
+      }
+      return apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", payload);
+    },
     onSuccess: async () => {
-      toast.success(lang === "ar" ? "تم استلام زيتون الحريف وتسجيله كأمانة" : "Olives du client reçues en garde");
+      toast.success(editingCustodyReceipt
+        ? (lang === "ar" ? "تم حفظ التصحيح مع الاحتفاظ بالمستند السابق" : "Correction enregistrée; le document précédent est conservé")
+        : (lang === "ar" ? "تم استلام زيتون الحريف وتسجيله كأمانة" : "Olives du client reçues en garde"));
+      setEditingCustodyReceipt(null);
       setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference("");
       setCustodyReceiptKey(crypto.randomUUID());
       await Promise.all([
@@ -943,28 +998,74 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const cancelCustodyReceipt = useMutation({
+    mutationFn: ({ item, reason }: { item: AnyRecord; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/customer-custody/receipts/${encodeURIComponent(item.id)}/cancel`, {
+        expected_version: item.version ?? 1,
+        reason,
+      }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "أُلغي الاستلام بقيد عكسي محفوظ في سجل المخزون" : "Réception annulée par une écriture compensatoire conservée");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-receipts"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
   const releaseCustomerCustody = useMutation({
-    mutationFn: () => {
-      const owner = (custodyOwners.data ?? []).find((item) => item.id === pickupCustomerId);
+    mutationFn: (correctionReason?: string) => {
+      const selectedOwner = (custodyOwners.data ?? []).find((item) => item.id === pickupCustomerId);
+      if (!selectedOwner) throw new Error("Customer is no longer available");
       const balance = (balances.data ?? []).find((item) => item.lot_id + "::" + item.location_id === pickupBalanceKey);
-      if (!owner || !balance) throw new Error("Customer or stock balance is no longer available");
-      return apiPost<AnyRecord>("/commercial/v1/customer-custody/releases", {
-        customer_id: owner.id,
-        release_date: pickupDate,
-        oil_lot_id: balance.lot_id,
-        source_tank_id: balance.location_id,
-        quantity_kg: pickupQuantity,
-        customer_acknowledgement_reference: pickupAck.trim(),
-        reason: pickupReason.trim(),
-        idempotency_key: pickupKey,
-      });
+      const payload = editingCustodyRelease
+        ? {
+            customer_id: editingCustodyRelease.customer_id,
+            release_date: pickupDate,
+            oil_lot_id: editingCustodyRelease.oil_lot_id,
+            source_tank_id: editingCustodyRelease.source_tank_id,
+            quantity_kg: pickupQuantity,
+            customer_acknowledgement_reference: pickupAck.trim(),
+            reason: pickupReason.trim(),
+            idempotency_key: pickupKey,
+          }
+        : balance ? {
+            customer_id: selectedOwner.id,
+            release_date: pickupDate,
+            oil_lot_id: balance.lot_id,
+            source_tank_id: balance.location_id,
+            quantity_kg: pickupQuantity,
+            customer_acknowledgement_reference: pickupAck.trim(),
+            reason: pickupReason.trim(),
+            idempotency_key: pickupKey,
+          } : null;
+      if (!payload) throw new Error("Customer stock balance is no longer available");
+      if (editingCustodyRelease) {
+        if (!correctionReason) throw new Error("A reason is required to correct a posted custody release");
+        return apiPost<AnyRecord>(`/commercial/v1/customer-custody/releases/${encodeURIComponent(editingCustodyRelease.id)}/correct`, {
+          expected_version: editingCustodyRelease.version ?? 1,
+          reason: correctionReason,
+          replacement: payload,
+        });
+      }
+      return apiPost<AnyRecord>("/commercial/v1/customer-custody/releases", payload);
     },
     onSuccess: async () => {
-      toast.success(lang === "ar" ? "تم تسليم زيت الحريف وتخفيض المخزون" : "Huile du client restituée et stock débité");
+      toast.success(editingCustodyRelease
+        ? (lang === "ar" ? "تم حفظ تصحيح التسليم مع الاحتفاظ بالمستند السابق" : "Correction enregistrée; le document précédent est conservé")
+        : (lang === "ar" ? "تم تسليم زيت الحريف وتخفيض المخزون" : "Huile du client restituée et stock débité"));
+      setEditingCustodyRelease(null);
       setPickupQuantity(""); setPickupAck(""); setPickupReason(""); setPickupBalanceKey("");
       setPickupKey(crypto.randomUUID());
       await Promise.all([
@@ -973,10 +1074,55 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const cancelCustodyRelease = useMutation({
+    mutationFn: ({ item, reason }: { item: AnyRecord; reason: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/customer-custody/releases/${encodeURIComponent(item.id)}/cancel`, {
+        expected_version: item.version ?? 1,
+        reason,
+      }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "أُلغي التسليم بقيد عكسي محفوظ في سجل المخزون" : "Restitution annulée par une écriture compensatoire conservée");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-releases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const beginCustodyReceiptEdit = (item: AnyRecord) => {
+    setEditingCustodyReceipt(item);
+    setCustodyCustomerPhone(item.customer_phone ?? "");
+    setCustodyReceiptDate(String(item.receipt_date ?? "").slice(0, 10));
+    setCustodyVarietyId(item.variety_id ?? "");
+    setCustodyReceiptQuantity(String(item.quantity_kg?.$numberDecimal ?? item.quantity_kg ?? ""));
+    setCustodyReceivingLocationId(item.receiving_location_id ?? "");
+    setCustodyReceiptAck(item.customer_acknowledgement_reference ?? "");
+    setCustodySourceReference(item.source_reference ?? "");
+    setCustodyReceiptKey(crypto.randomUUID());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const beginCustodyReleaseEdit = (item: AnyRecord) => {
+    setEditingCustodyRelease(item);
+    setPickupCustomerId(item.customer_id ?? "");
+    setPickupDate(String(item.release_date ?? "").slice(0, 10));
+    setPickupBalanceKey(item.oil_lot_id + "::" + item.source_tank_id);
+    setPickupQuantity(String(item.quantity_kg?.$numberDecimal ?? item.quantity_kg ?? ""));
+    setPickupAck(item.customer_acknowledgement_reference ?? "");
+    setPickupReason(item.reason ?? "");
+    setPickupKey(crypto.randomUUID());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const saveWorkerPermissions = useMutation({
     mutationFn: () => apiPost<AnyRecord>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
       permissions: ["commercial.read", ...assignedPermissions],
@@ -1512,13 +1658,13 @@ export default function Commercial() {
         <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
           {(purchases.data ?? []).map((purchase) => <TableRow key={purchase.id}>
             <TableCell className="font-mono text-xs font-semibold">{purchase.status === "DRAFT" && isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</button> : value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
-            <TableCell className="font-mono text-xs">{value(purchase.document_number)}</TableCell>
+            <TableCell className="font-mono text-xs">{purchase.status === "DRAFT" && isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{value(purchase.document_number)}</button> : value(purchase.document_number)}</TableCell>
             <TableCell>{value((suppliers.data ?? []).find((s) => s.id === purchase.supplier_id)?.name, purchase.supplier_id)}</TableCell>
             <TableCell>{date(purchase.purchase_date)}</TableCell>
             <TableCell>{number(purchase.total_quantity_kg)}</TableCell>
             <TableCell>{number(purchase.total_amount_dt)}</TableCell>
-            <TableCell>{purchase.status === "APPROVED" ? l.approved : l.draft}</TableCell>
-            <TableCell>{isAdmin && purchase.status === "DRAFT" ? <Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button> : "—"}</TableCell>
+            <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
+            <TableCell>{isAdmin && purchase.status === "DRAFT" ? <div className="flex flex-wrap gap-2"><Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button><Button size="sm" variant="destructive" disabled={cancelPurchase.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيتم إلغاء مسودة الشراء مع الاحتفاظ بها في سجل التدقيق. هل تؤكد؟" : "Annuler ce brouillon en conservant sa trace d’audit ?")) return; const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelPurchase.mutate({ purchase, reason: reason.trim() }); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div> : "—"}</TableCell>
           </TableRow>)}
           {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}
         </TableBody></Table></CardContent></Card>
@@ -1586,12 +1732,18 @@ export default function Commercial() {
             </form>
           </CardContent>
         </Card>}
-        <Card>
+        <Card id="ready-lots-adjustment">
           <CardHeader>
             <CardTitle>{lang === "ar" ? "دفعات جاهزة للإنتاج" : "Lots prêts pour production"}</CardTitle>
             <CardDescription>{lang === "ar" ? "تظهر هنا دفعات الزيتون التي اجتازت التحليل المسبق وما زالت لها كمية متاحة." : "Seuls les lots d’olives approuvés par le contrôle préalable et disposant d’un stock sont affichés."}</CardDescription>
           </CardHeader>
           <CardContent>
+            {adjustingReadyBalance && <form className="mb-4 grid gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (readyBalanceReason.trim().length >= 5 && Number(readyBalanceTarget) >= 0) adjustReadyLotBalance.mutate({ balance: adjustingReadyBalance.balance, lot: adjustingReadyBalance.lot, target: readyBalanceTarget, reason: readyBalanceReason.trim() }); }}>
+              <div className="md:col-span-3"><p className="font-semibold">{lang === "ar" ? "تعديل رصيد الدفعة" : "Modifier le stock du lot"} · <span className="font-mono">{lotCode(adjustingReadyBalance.lot, adjustingReadyBalance.balance.lot_id)}</span></p><p className="text-xs text-muted-foreground">{lang === "ar" ? "يُسجَّل الفرق كحركة مخزون مدققة. الكمية صفر تزيل الرصيد من قائمة الجاهز." : "L’écart est enregistré comme mouvement audité. Une quantité nulle retire le solde de la liste des lots prêts."}</p></div>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "الرصيد الجديد (kg)" : "Nouveau solde (kg)"}<input required type="number" min="0" step="0.001" value={readyBalanceTarget} onChange={(e) => setReadyBalanceTarget(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.notes}<input required minLength={5} maxLength={500} value={readyBalanceReason} onChange={(e) => setReadyBalanceReason(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+              <div className="md:col-span-3 flex gap-2"><Button type="submit" disabled={adjustReadyLotBalance.isPending || !(Number(readyBalanceTarget) >= 0) || readyBalanceReason.trim().length < 5}>{lang === "ar" ? "حفظ التعديل" : "Enregistrer"}</Button><Button type="button" variant="outline" onClick={() => { setAdjustingReadyBalance(null); setReadyBalanceTarget(""); setReadyBalanceReason(""); }}>{l.cancelEdit}</Button></div>
+            </form>}
             <Table>
               <TableHeader><TableRow>
                 <TableHead>{lang === "ar" ? "كود الدفعة" : "Code du lot"}</TableHead>
@@ -1607,12 +1759,12 @@ export default function Commercial() {
                   const location = (locations.data ?? []).find((item) => item.id === balance.location_id);
                   const balanceKey = [balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::");
                   return <TableRow key={balanceKey}>
-                    <TableCell className="font-mono text-xs font-semibold">{lotCode(lot, balance.lot_id)}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold">{isAdmin ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل رصيد الدفعة" : "Cliquer pour corriger le solde du lot"} onClick={() => { setAdjustingReadyBalance({ balance, lot }); setReadyBalanceTarget(String(balance.quantity_kg)); setReadyBalanceReason(""); document.getElementById("ready-lots-adjustment")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{lotCode(lot, balance.lot_id)}</button> : lotCode(lot, balance.lot_id)}</TableCell>
                     <TableCell>{number(balance.quantity_kg)} kg</TableCell>
                     <TableCell>{value(location?.name ?? location?.code, balance.location_id)}</TableCell>
                     <TableCell>{displayOwnerLabel(balance.owner ?? lot?.owner)}</TableCell>
                     <TableCell>{lang === "ar" ? "مقبولة" : "Approuvée"}</TableCell>
-                    {isAdmin && <TableCell><Button size="sm" variant="outline" onClick={() => setProductionInputs([{ balance_key: balanceKey, quantity_kg: "" }])}>{lang === "ar" ? "اختيار" : "Sélectionner"}</Button></TableCell>}
+                    {isAdmin && <TableCell><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setProductionInputs([{ balance_key: balanceKey, quantity_kg: "" }])}>{lang === "ar" ? "اختيار للإنتاج" : "Sélectionner"}</Button><Button size="sm" variant="outline" onClick={() => { setAdjustingReadyBalance({ balance, lot }); setReadyBalanceTarget(String(balance.quantity_kg)); setReadyBalanceReason(""); document.getElementById("ready-lots-adjustment")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{lang === "ar" ? "تعديل" : "Modifier"}</Button><Button size="sm" variant="destructive" disabled={adjustReadyLotBalance.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيُصفّر هذا الإجراء رصيد الدفعة المتاح في هذا الموقع ويسجّل حركة مخزون عكسية. هل تؤكد؟" : "Cette action mettra à zéro le solde disponible à cet emplacement et enregistrera un mouvement compensatoire. Confirmer ?")) return; const reason = window.prompt(lang === "ar" ? "سبب إزالة الرصيد (5 أحرف على الأقل):" : "Motif de retrait (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) adjustReadyLotBalance.mutate({ balance, lot, target: "0", reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Retirer"}</Button></div></TableCell>}
                   </TableRow>;
                 })}
                 {eligibleProductionBalances.length === 0 && <EmptyRow colSpan={isAdmin ? 6 : 5} text={lang === "ar" ? "لا توجد دفعات جاهزة للإنتاج حاليًا." : "Aucun lot prêt pour la production pour le moment."} />}
@@ -1636,9 +1788,9 @@ export default function Commercial() {
       </div>}
 
       {tab === "custody" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{l.custodyReceiptTitle}</CardTitle><CardDescription>{l.custodyReceiptNote}</CardDescription></CardHeader><CardContent>
+        {isAdmin && <Card><CardHeader><CardTitle>{editingCustodyReceipt ? (lang === "ar" ? "تصحيح استلام الأمانة" : "Corriger la réception en garde") : l.custodyReceiptTitle}</CardTitle><CardDescription>{editingCustodyReceipt ? (lang === "ar" ? "سيُسجّل التصحيح بقيد عكسي مع الاحتفاظ بالمستند السابق." : "La correction crée une écriture inverse et conserve le document précédent.") : l.custodyReceiptNote}</CardDescription></CardHeader><CardContent>
           {(custodyClients.data?.length ?? 0) === 0 && <p className="mb-3 text-sm text-amber-700">{l.noCustodyClients}</p>}
-          <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); receiveCustomerCustody.mutate(); }}>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (editingCustodyReceipt) { const reason = window.prompt(lang === "ar" ? "سبب تصحيح المستند (5 أحرف على الأقل):" : "Motif de correction (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) receiveCustomerCustody.mutate(reason.trim()); } else receiveCustomerCustody.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{l.custodyCustomer}<select required value={custodyCustomerPhone} onChange={(e) => { setCustodyCustomerPhone(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyClients.data ?? []).map((client) => <option key={client.phone} value={client.phone}>{client.client_name} · {client.phone}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyDate}<input required type="date" value={custodyReceiptDate} onChange={(e) => { setCustodyReceiptDate(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyVariety}<select required value={custodyVarietyId} onChange={(e) => { setCustodyVarietyId(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(varieties.data ?? []).filter((variety) => variety.active).map((variety) => <option key={variety.id} value={variety.id}>{lang === "ar" ? (variety.name_ar || variety.name_fr) : variety.name_fr}</option>)}</select></label>
@@ -1646,31 +1798,58 @@ export default function Commercial() {
             <label className="grid gap-1 text-sm font-medium">{l.custodyLocation}<select required value={custodyReceivingLocationId} onChange={(e) => { setCustodyReceivingLocationId(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(locations.data ?? []).filter((location) => location.active && ["OLIVE_STORAGE", "STAGING"].includes(location.kind)).map((location) => <option key={location.id} value={location.id}>{location.code} · {location.name}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyAck}<input required minLength={3} maxLength={120} value={custodyReceiptAck} onChange={(e) => { setCustodyReceiptAck(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.custodySource}<input maxLength={120} value={custodySourceReference} onChange={(e) => { setCustodySourceReference(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="flex items-end"><Button type="submit" disabled={receiveCustomerCustody.isPending || !custodyCustomerPhone || !custodyVarietyId || !custodyReceivingLocationId || !(Number(custodyReceiptQuantity) > 0) || custodyReceiptAck.trim().length < 3}>{l.receiveCustody}</Button></div>
+            <div className="flex items-end gap-2"><Button type="submit" disabled={receiveCustomerCustody.isPending || !custodyCustomerPhone || !custodyVarietyId || !custodyReceivingLocationId || !(Number(custodyReceiptQuantity) > 0) || custodyReceiptAck.trim().length < 3}>{editingCustodyReceipt ? (lang === "ar" ? "حفظ التصحيح" : "Enregistrer la correction") : l.receiveCustody}</Button>{editingCustodyReceipt && <Button type="button" variant="outline" onClick={() => { setEditingCustodyReceipt(null); setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference(""); }}>{l.cancelEdit}</Button>}</div>
           </form>
         </CardContent></Card>}
 
-        {isAdmin && <Card><CardHeader><CardTitle>{l.custodyReleaseTitle}</CardTitle><CardDescription>{l.custodyReleaseNote}</CardDescription></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (window.confirm(lang === "ar" ? "هل تؤكد تسليم هذه الكمية إلى مالكها؟ سيتم خصمها من المخزون ولن تُسجّل كعملية بيع." : "Confirmer la restitution au propriétaire ? La quantité sera débitée du stock et ne sera pas enregistrée comme une vente.")) releaseCustomerCustody.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyCustomer}<select required value={pickupCustomerId} onChange={(e) => { setPickupCustomerId(e.target.value); setPickupBalanceKey(""); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyOwners.data ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}</select></label>
+        {isAdmin && <Card><CardHeader><CardTitle>{editingCustodyRelease ? (lang === "ar" ? "تصحيح تسليم الأمانة" : "Corriger la restitution en garde") : l.custodyReleaseTitle}</CardTitle><CardDescription>{editingCustodyRelease ? (lang === "ar" ? "سيُسجّل التصحيح بقيد عكسي مع الاحتفاظ بالمستند السابق." : "La correction crée une écriture inverse et conserve le document précédent.") : l.custodyReleaseNote}</CardDescription></CardHeader><CardContent>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (editingCustodyRelease) { const reason = window.prompt(lang === "ar" ? "سبب تصحيح المستند (5 أحرف على الأقل):" : "Motif de correction (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) releaseCustomerCustody.mutate(reason.trim()); } else if (window.confirm(lang === "ar" ? "هل تؤكد تسليم هذه الكمية إلى مالكها؟ سيتم خصمها من المخزون ولن تُسجّل كعملية بيع." : "Confirmer la restitution au propriétaire ? La quantité sera débitée du stock et ne sera pas enregistrée comme une vente.")) releaseCustomerCustody.mutate(); }}>
+            <label className="grid gap-1 text-sm font-medium">{l.custodyCustomer}<select required disabled={!!editingCustodyRelease} value={pickupCustomerId} onChange={(e) => { setPickupCustomerId(e.target.value); setPickupBalanceKey(""); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyOwners.data ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyDate}<input required type="date" value={pickupDate} onChange={(e) => { setPickupDate(e.target.value); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyOilLot}<select required value={pickupBalanceKey} onChange={(e) => { setPickupBalanceKey(e.target.value); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{availableCustomerOilBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id} value={balance.lot_id + "::" + balance.location_id}>{lot?.batch_code ?? "—"} · {tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyQuantity}<input required type="number" min="0.001" step="0.001" max={selectedPickupBalance?.quantity_kg ?? undefined} value={pickupQuantity} disabled={!selectedPickupBalance} onChange={(e) => { setPickupQuantity(e.target.value); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{l.custodyOilLot}<select required disabled={!!editingCustodyRelease} value={pickupBalanceKey} onChange={(e) => { setPickupBalanceKey(e.target.value); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{editingCustodyRelease && <option value={editingCustodyRelease.oil_lot_id + "::" + editingCustodyRelease.source_tank_id}>{editingCustodyRelease.batch_code ?? editingCustodyRelease.oil_lot_id} · {value((tanks.data ?? []).find((tank) => tank.id === editingCustodyRelease.source_tank_id)?.code, editingCustodyRelease.source_tank_id)}</option>}{availableCustomerOilBalances.map((balance) => { const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id); const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id); return <option key={balance.lot_id + "::" + balance.location_id} value={balance.lot_id + "::" + balance.location_id}>{lot?.batch_code ?? "—"} · {tank?.code ?? balance.location_id} · {number(balance.quantity_kg)} kg</option>; })}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{l.custodyQuantity}<input required type="number" min="0.001" step="0.001" max={editingCustodyRelease ? Number(editingCustodyRelease.quantity_kg) + Number(selectedPickupBalance?.quantity_kg ?? 0) : selectedPickupBalance?.quantity_kg ?? undefined} value={pickupQuantity} disabled={!selectedPickupBalance && !editingCustodyRelease} onChange={(e) => { setPickupQuantity(e.target.value); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyAck}<input required minLength={3} maxLength={120} value={pickupAck} onChange={(e) => { setPickupAck(e.target.value); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyReason}<input required minLength={5} maxLength={500} value={pickupReason} onChange={(e) => { setPickupReason(e.target.value); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="md:col-span-3 flex flex-wrap items-center gap-3"><Button type="submit" disabled={releaseCustomerCustody.isPending || !pickupCustomerId || !pickupBalanceKey || !(Number(pickupQuantity) > 0) || Number(pickupQuantity) > Number(selectedPickupBalance?.quantity_kg ?? 0) || pickupAck.trim().length < 3 || pickupReason.trim().length < 5}>{l.releaseCustody}</Button>{pickupCustomerId && availableCustomerOilBalances.length === 0 && <span className="text-xs text-amber-700">{l.noCustomerOil}</span>}</div>
+            <div className="md:col-span-3 flex flex-wrap items-center gap-3"><Button type="submit" disabled={releaseCustomerCustody.isPending || !pickupCustomerId || !pickupBalanceKey || !(Number(pickupQuantity) > 0) || Number(pickupQuantity) > Number(editingCustodyRelease ? Number(editingCustodyRelease.quantity_kg) + Number(selectedPickupBalance?.quantity_kg ?? 0) : selectedPickupBalance?.quantity_kg ?? 0) || pickupAck.trim().length < 3 || pickupReason.trim().length < 5}>{editingCustodyRelease ? (lang === "ar" ? "حفظ التصحيح" : "Enregistrer la correction") : l.releaseCustody}</Button>{editingCustodyRelease && <Button type="button" variant="outline" onClick={() => { setEditingCustodyRelease(null); setPickupQuantity(""); setPickupAck(""); setPickupReason(""); setPickupBalanceKey(""); }}>{l.cancelEdit}</Button>}{!editingCustodyRelease && pickupCustomerId && availableCustomerOilBalances.length === 0 && <span className="text-xs text-amber-700">{l.noCustomerOil}</span>}</div>
           </form>
         </CardContent></Card>}
 
         <Card><CardHeader><CardTitle>{l.custodyStatementTitle}</CardTitle><CardDescription>{l.selectCustodyOwner}</CardDescription><label className="mt-2 grid max-w-xl gap-1 text-sm font-medium">{l.custodyCustomer}<select value={pickupCustomerId} onChange={(e) => { setPickupCustomerId(e.target.value); setPickupBalanceKey(""); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyOwners.data ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}</select></label></CardHeader><CardContent>
           {pickupCustomerId && custodyStatement.data ? <><div className="mb-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{l.olive}</p><p className="text-2xl font-semibold">{number(custodyStatement.data.current_balances_kg?.OLIVE)} kg</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{l.oil}</p><p className="text-2xl font-semibold">{number(custodyStatement.data.current_balances_kg?.OIL)} kg</p></div></div><Table><TableHeader><TableRow><TableHead>{l.custodyRecordedAt}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.custodyProduct}</TableHead><TableHead>{l.custodyMovement}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyDelta}</TableHead><TableHead>{l.custodyBalance}</TableHead></TableRow></TableHeader><TableBody>{(custodyStatement.data.movements ?? []).map((movement: AnyRecord) => <TableRow key={movement.id}><TableCell>{date(movement.created_at)}</TableCell><TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === movement.lot_id), movement.document_number)}</TableCell><TableCell>{movement.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{value(movement.movement_kind)}</TableCell><TableCell>{number(movement.quantity_kg)} kg</TableCell><TableCell className={Number(movement.delta_kg) < 0 ? "text-red-700" : Number(movement.delta_kg) > 0 ? "text-emerald-700" : ""}>{Number(movement.delta_kg) > 0 ? "+" : ""}{number(movement.delta_kg)} kg</TableCell><TableCell>{number(movement.balance_after_kg)} kg</TableCell></TableRow>)}{(!custodyStatement.isLoading && !(custodyStatement.data.movements?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></> : <p className="text-sm text-muted-foreground">{pickupCustomerId ? (lang === "ar" ? "جار تحميل كشف الأمانة…" : "Chargement de l’état de garde…") : l.selectCustodyOwner}</p>}
         </CardContent></Card>
-        <Card><CardHeader><CardTitle>{l.custodyReceipts}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyVariety}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyLocation}</TableHead><TableHead>{l.custodyAck}</TableHead></TableRow></TableHeader><TableBody>
-          {(custodyReceipts.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.batch_code)}</TableCell><TableCell>{date(item.receipt_date)}</TableCell><TableCell>{value(item.customer_name, item.customer_phone)}</TableCell><TableCell>{value((varieties.data ?? []).find((variety) => variety.id === item.variety_id)?.name_fr, item.variety_id)}</TableCell><TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((locations.data ?? []).find((location) => location.id === item.receiving_location_id)?.code, item.receiving_location_id)}</TableCell><TableCell>{value(item.customer_acknowledgement_reference)}</TableCell></TableRow>)}{(!custodyReceipts.isLoading && !(custodyReceipts.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}
-        </TableBody></Table></CardContent></Card>
-        <Card><CardHeader><CardTitle>{l.custodyReleases}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyOilLot}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodySourceTank}</TableHead><TableHead>{l.custodyAck}</TableHead></TableRow></TableHeader><TableBody>
-          {(custodyReleases.data ?? []).map((item) => <TableRow key={item.id}><TableCell className="font-mono text-xs">{value(item.document_number)}</TableCell><TableCell>{date(item.release_date)}</TableCell><TableCell>{value(item.customer_name, item.customer_phone)}</TableCell><TableCell>{lotCode((lots.data ?? []).find((lot) => lot.id === item.oil_lot_id), item.oil_lot_id)}</TableCell><TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.source_tank_id)?.code, item.source_tank_id)}</TableCell><TableCell>{value(item.customer_acknowledgement_reference)}</TableCell></TableRow>)}{(!custodyReleases.isLoading && !(custodyReleases.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}
-        </TableBody></Table></CardContent></Card>
+        <Card><CardHeader><CardTitle>{l.custodyReceipts}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyVariety}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyLocation}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
+            {(custodyReceipts.data ?? []).map((item) => {
+              const canCorrect = item.status === "RECEIVED";
+              return <TableRow key={item.id}>
+                <TableCell className="font-mono text-xs">{canCorrect && isAdmin ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
+                <TableCell>{date(item.receipt_date)}</TableCell><TableCell>{value(item.customer_name, item.customer_phone)}</TableCell>
+                <TableCell>{value((varieties.data ?? []).find((variety) => variety.id === item.variety_id)?.name_fr, item.variety_id)}</TableCell>
+                <TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((locations.data ?? []).find((location) => location.id === item.receiving_location_id)?.code, item.receiving_location_id)}</TableCell>
+                <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
+                <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
+                <TableCell>{isAdmin && canCorrect && <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => beginCustodyReceiptEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button><Button size="sm" variant="destructive" disabled={cancelCustodyReceipt.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyReceipt.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button></div>}</TableCell>
+              </TableRow>;
+            })}
+            {(!custodyReceipts.isLoading && !(custodyReceipts.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}
+          </TableBody></Table>
+        </CardContent></Card><Card><CardHeader><CardTitle>{l.custodyReleases}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyOilLot}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodySourceTank}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
+            {(custodyReleases.data ?? []).map((item) => {
+              const canCorrect = item.status === "APPROVED";
+              return <TableRow key={item.id}>
+                <TableCell className="font-mono text-xs">{canCorrect && isAdmin ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReleaseEdit(item)}>{value(item.document_number)}</button> : value(item.document_number)}</TableCell>
+                <TableCell>{date(item.release_date)}</TableCell><TableCell>{value(item.customer_name, item.customer_phone)}</TableCell>
+                <TableCell>{lotCode((lots.data ?? []).find((lot) => lot.id === item.oil_lot_id), item.oil_lot_id)}</TableCell>
+                <TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === item.source_tank_id)?.code, item.source_tank_id)}</TableCell>
+                <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
+                <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
+                <TableCell>{isAdmin && canCorrect && <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => beginCustodyReleaseEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button><Button size="sm" variant="destructive" disabled={cancelCustodyRelease.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyRelease.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button></div>}</TableCell>
+              </TableRow>;
+            })}
+            {(!custodyReleases.isLoading && !(custodyReleases.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}
+          </TableBody></Table>
+        </CardContent></Card>
       </div>}
 
       {tab === "buyers" && <div className="space-y-4">

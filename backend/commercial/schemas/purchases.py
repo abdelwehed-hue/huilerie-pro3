@@ -55,3 +55,11 @@ class ApproveOlivePurchaseCommand(BaseModel):
     expected_version: int = Field(ge=1)
     receiving_location_id: str = Field(min_length=1, max_length=100)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+
+class CancelOlivePurchaseDraftCommand(BaseModel):
+    """Audited cancellation of an unapproved olive purchase draft."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=5, max_length=500)

@@ -13,6 +13,9 @@ from commercial.permissions import require_commercial_permission
 from commercial.schemas.customer_custody import (
     CustomerOliveCustodyReceiptDraft,
     CustomerOilCustodyReleaseDraft,
+    CancelCustomerCustodyDocumentCommand,
+    CorrectCustomerOliveCustodyReceiptCommand,
+    CorrectCustomerOilCustodyReleaseCommand,
 )
 from commercial.schemas.inventory import OwnerRef, StockMovementDraft
 from commercial.services.numbering import reserve_document_number, reserve_batch_code
@@ -569,3 +572,269 @@ async def get_customer_custody_statement(db: Any, customer_id: str) -> dict[str,
         "movement_count": len(rows),
         "movements": rows,
     }
+
+
+
+async def _post_customer_custody_reversal(
+    db: Any, *, season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    product_kind: str, lot_id: str, quantity: Decimal, movement_kind: str,
+    source_location_id: str | None, destination_location_id: str | None,
+    source_owner: OwnerRef | None, destination_owner: OwnerRef | None,
+    original_document_type: str, original_document_id: str, reason: str,
+    reversal_document_id: str, stock_movement_id: str, audit_event_id: str,
+    created_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Post a compensating movement through the append-only stock ledger."""
+    scope = f"{season_code}:{actor_user_id}"
+    idempotency_key = _movement_key(f"custody-reversal:{reversal_document_id}")
+    now = created_at.astimezone(timezone.utc)
+    number = await reserve_document_number(db["commercial_counters"], season_code, "INT", session=session)
+    source_owner_doc = source_owner.model_dump(exclude_none=True) if source_owner else None
+    destination_owner_doc = destination_owner.model_dump(exclude_none=True) if destination_owner else None
+    ledger_draft = StockMovementDraft(
+        movement_kind=movement_kind, product_kind=product_kind, lot_id=lot_id,
+        quantity_kg=quantity, source_location_id=source_location_id,
+        destination_location_id=destination_location_id, source_owner=source_owner,
+        destination_owner=destination_owner, source_document_type="INT",
+        source_document_id=reversal_document_id, idempotency_key=idempotency_key,
+        reason=f"Reversal of {original_document_type} {original_document_id}: {reason}"[:500],
+    )
+    document = {
+        "id": reversal_document_id, "season_code": season_code,
+        "document_type": "INT", "document_number": number,
+        "movement_kind": movement_kind, "product_kind": product_kind,
+        "lot_id": lot_id, "quantity_kg": Decimal128(quantity),
+        "source_location_id": source_location_id,
+        "destination_location_id": destination_location_id,
+        "source_owner": source_owner_doc, "destination_owner": destination_owner_doc,
+        "status": "APPROVED", "correction_of_type": original_document_type,
+        "correction_of_id": original_document_id, "reason": reason,
+        "idempotency_scope": scope, "idempotency_key": idempotency_key,
+        "request_fingerprint": _fingerprint(ledger_draft),
+        "created_by": actor_user_id, "created_at": now,
+    }
+    await db["commercial_internal_movements"].insert_one(document, session=session)
+    ledger = await post_stock_movement(
+        db, ledger_draft, season_code=season_code, actor_user_id=actor_user_id,
+        actor_user=actor_user, movement_id=stock_movement_id,
+        audit_event_id=f"{audit_event_id}:movement", created_at=created_at,
+        session=session,
+    )
+    await db["commercial_internal_movements"].update_one(
+        {"id": reversal_document_id, "status": "APPROVED"},
+        {"$set": {"stock_movement_id": ledger["id"]}}, session=session,
+    )
+    return ledger
+
+
+async def cancel_customer_olive_custody_receipt(
+    db: Any, receipt_id: str, command: CancelCustomerCustodyDocumentCommand, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    reversal_document_id: str, stock_movement_id: str, audit_event_id: str,
+    cancelled_at: datetime, session: Any,
+) -> dict[str, Any]:
+    require_commercial_permission(actor_user, "commercial.manage_custody")
+    reason = command.reason.strip()
+    if len(reason) < 5 or cancelled_at.tzinfo is None:
+        raise ValueError("A cancellation reason and timezone-aware timestamp are required")
+    receipts = db["commercial_customer_custody_receipts"]
+    receipt = await receipts.find_one({"id": receipt_id}, {"_id": 0}, session=session)
+    if not receipt:
+        raise ValueError("Customer custody receipt does not exist")
+    if receipt.get("status") == "CANCELLED":
+        return receipt
+    if receipt.get("status") != "RECEIVED":
+        raise ValueError("Only an active customer custody receipt can be cancelled")
+    if int(receipt.get("version", 1)) != command.expected_version:
+        raise ValueError("Customer custody receipt version conflict")
+
+    lot_id = receipt["olive_lot_id"]
+    movements = await db["commercial_stock_movements"].find(
+        {"lot_id": lot_id},
+        {"_id": 0, "id": 1, "source_document_type": 1, "source_document_id": 1},
+        session=session,
+    ).to_list(None)
+    if (len(movements) != 1 or movements[0].get("id") != receipt.get("stock_movement_id")
+            or movements[0].get("source_document_type") != "CIN"
+            or movements[0].get("source_document_id") != receipt_id):
+        raise ValueError("This custody receipt has later stock activity and cannot be cancelled")
+    lot = await db["commercial_lots"].find_one(
+        {"id": lot_id, "product_kind": "OLIVE", "status": "OPEN"},
+        {"_id": 0, "id": 1}, session=session,
+    )
+    if not lot:
+        raise ValueError("The olive lot is no longer available for cancellation")
+    customer_owner = OwnerRef(kind="CUSTOMER", customer_id=receipt["customer_id"])
+    quantity = _decimal_quantity(receipt["quantity_kg"])
+    balance = await db["commercial_stock_balances"].find_one(
+        {"product_kind": "OLIVE", "lot_id": lot_id,
+         "owner.kind": "CUSTOMER", "owner.customer_id": receipt["customer_id"],
+         "location_id": receipt["receiving_location_id"]},
+        {"_id": 0, "quantity_kg": 1}, session=session,
+    )
+    if not balance or _decimal_quantity(balance.get("quantity_kg")) != quantity:
+        raise ValueError("The custody receipt balance changed; use a reviewed stock correction")
+
+    now = cancelled_at.astimezone(timezone.utc)
+    movement_season_code = receipt.get("season_code") or season_code
+    ledger = await _post_customer_custody_reversal(
+        db, season_code=movement_season_code, actor_user=actor_user, actor_user_id=actor_user_id,
+        product_kind="OLIVE", lot_id=lot_id, quantity=quantity, movement_kind="DISPATCH",
+        source_location_id=receipt["receiving_location_id"], destination_location_id=None,
+        source_owner=customer_owner, destination_owner=None,
+        original_document_type="CIN", original_document_id=receipt_id, reason=reason,
+        reversal_document_id=reversal_document_id, stock_movement_id=stock_movement_id,
+        audit_event_id=audit_event_id, created_at=cancelled_at, session=session,
+    )
+    update = await receipts.update_one(
+        {"id": receipt_id, "status": "RECEIVED", "version": command.expected_version},
+        {"$set": {"status": "CANCELLED", "cancel_reason": reason,
+                  "cancelled_by": actor_user_id, "cancelled_at": now,
+                  "reversal_movement_id": ledger["id"]}, "$inc": {"version": 1}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Customer custody receipt changed concurrently")
+    closed = await db["commercial_lots"].update_one(
+        {"id": lot_id, "status": "OPEN"},
+        {"$set": {"status": "CLOSED", "closed_at": now, "updated_at": now},
+         "$inc": {"version": 1}},
+        session=session,
+    )
+    if closed.matched_count != 1:
+        raise ValueError("Customer olive lot changed during cancellation")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id, "entity_type": "customer_custody_receipt",
+        "entity_id": receipt_id, "action": "CUSTOMER_CUSTODY_RECEIPT_CANCELLED",
+        "actor_user_id": actor_user_id, "created_at": now,
+        "details": {"reason": reason, "reversal_movement_id": ledger["id"],
+                    "reversal_document_id": reversal_document_id},
+    }, session=session)
+    return await receipts.find_one({"id": receipt_id}, {"_id": 0}, session=session)
+
+
+async def cancel_customer_oil_custody_release(
+    db: Any, release_id: str, command: CancelCustomerCustodyDocumentCommand, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    reversal_document_id: str, stock_movement_id: str, audit_event_id: str,
+    cancelled_at: datetime, session: Any,
+) -> dict[str, Any]:
+    require_commercial_permission(actor_user, "commercial.manage_custody")
+    reason = command.reason.strip()
+    if len(reason) < 5 or cancelled_at.tzinfo is None:
+        raise ValueError("A cancellation reason and timezone-aware timestamp are required")
+    releases = db["commercial_customer_custody_releases"]
+    release = await releases.find_one({"id": release_id}, {"_id": 0}, session=session)
+    if not release:
+        raise ValueError("Customer custody release does not exist")
+    if release.get("status") == "CANCELLED":
+        return release
+    if release.get("status") != "APPROVED":
+        raise ValueError("Only an active customer custody release can be cancelled")
+    if int(release.get("version", 1)) != command.expected_version:
+        raise ValueError("Customer custody release version conflict")
+
+    rows = await db["commercial_stock_movements"].find(
+        {"lot_id": release["oil_lot_id"]},
+        {"_id": 0, "id": 1, "document_number": 1, "created_at": 1},
+        session=session,
+    ).sort([("created_at", 1), ("document_number", 1)]).to_list(None)
+    original_index = next(
+        (index for index, movement in enumerate(rows)
+         if movement.get("id") == release.get("stock_movement_id")),
+        None,
+    )
+    if original_index is None or original_index != len(rows) - 1:
+        raise ValueError("This custody release has later stock activity and cannot be cancelled")
+
+    customer_owner = OwnerRef(kind="CUSTOMER", customer_id=release["customer_id"])
+    quantity = _decimal_quantity(release["quantity_kg"])
+    now = cancelled_at.astimezone(timezone.utc)
+    movement_season_code = release.get("season_code") or season_code
+    ledger = await _post_customer_custody_reversal(
+        db, season_code=movement_season_code, actor_user=actor_user, actor_user_id=actor_user_id,
+        product_kind="OIL", lot_id=release["oil_lot_id"], quantity=quantity,
+        movement_kind="RECEIPT", source_location_id=None,
+        destination_location_id=release["source_tank_id"], source_owner=None,
+        destination_owner=customer_owner, original_document_type="CUS",
+        original_document_id=release_id, reason=reason,
+        reversal_document_id=reversal_document_id, stock_movement_id=stock_movement_id,
+        audit_event_id=audit_event_id, created_at=cancelled_at, session=session,
+    )
+    update = await releases.update_one(
+        {"id": release_id, "status": "APPROVED", "version": command.expected_version},
+        {"$set": {"status": "CANCELLED", "cancel_reason": reason,
+                  "cancelled_by": actor_user_id, "cancelled_at": now,
+                  "reversal_movement_id": ledger["id"]}, "$inc": {"version": 1}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Customer custody release changed concurrently")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id, "entity_type": "customer_custody_release",
+        "entity_id": release_id, "action": "CUSTOMER_CUSTODY_RELEASE_CANCELLED",
+        "actor_user_id": actor_user_id, "created_at": now,
+        "details": {"reason": reason, "reversal_movement_id": ledger["id"],
+                    "reversal_document_id": reversal_document_id},
+    }, session=session)
+    return await releases.find_one({"id": release_id}, {"_id": 0}, session=session)
+
+
+async def correct_customer_olive_custody_receipt(
+    db: Any, receipt_id: str, command: CorrectCustomerOliveCustodyReceiptCommand, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    reversal_document_id: str, reversal_movement_id: str, cancel_audit_event_id: str,
+    replacement_receipt_id: str, custody_owner_id: str, olive_lot_id: str,
+    receipt_movement_id: str, replacement_audit_event_id: str,
+    corrected_at: datetime, session: Any,
+) -> dict[str, Any]:
+    existing = await db["commercial_customer_custody_receipts"].find_one(
+        {"id": receipt_id}, {"_id": 0, "status": 1}, session=session,
+    )
+    if not existing or existing.get("status") != "RECEIVED":
+        raise ValueError("Only an active customer custody receipt can be corrected")
+    cancel_command = CancelCustomerCustodyDocumentCommand(
+        expected_version=command.expected_version, reason=command.reason,
+    )
+    await cancel_customer_olive_custody_receipt(
+        db, receipt_id, cancel_command, season_code=season_code, actor_user=actor_user,
+        actor_user_id=actor_user_id, reversal_document_id=reversal_document_id,
+        stock_movement_id=reversal_movement_id, audit_event_id=cancel_audit_event_id,
+        cancelled_at=corrected_at, session=session,
+    )
+    return await receive_customer_olive_custody(
+        db, command.replacement, season_code=season_code, actor_user=actor_user,
+        actor_user_id=actor_user_id, receipt_id=replacement_receipt_id,
+        custody_owner_id=custody_owner_id, olive_lot_id=olive_lot_id,
+        stock_movement_id=receipt_movement_id, audit_event_id=replacement_audit_event_id,
+        created_at=corrected_at, session=session,
+    )
+
+
+async def correct_customer_oil_custody_release(
+    db: Any, release_id: str, command: CorrectCustomerOilCustodyReleaseCommand, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    reversal_document_id: str, reversal_movement_id: str, cancel_audit_event_id: str,
+    replacement_release_id: str, receipt_movement_id: str,
+    replacement_audit_event_id: str, corrected_at: datetime, session: Any,
+) -> dict[str, Any]:
+    existing = await db["commercial_customer_custody_releases"].find_one(
+        {"id": release_id}, {"_id": 0, "status": 1}, session=session,
+    )
+    if not existing or existing.get("status") != "APPROVED":
+        raise ValueError("Only an active customer custody release can be corrected")
+    cancel_command = CancelCustomerCustodyDocumentCommand(
+        expected_version=command.expected_version, reason=command.reason,
+    )
+    await cancel_customer_oil_custody_release(
+        db, release_id, cancel_command, season_code=season_code, actor_user=actor_user,
+        actor_user_id=actor_user_id, reversal_document_id=reversal_document_id,
+        stock_movement_id=reversal_movement_id, audit_event_id=cancel_audit_event_id,
+        cancelled_at=corrected_at, session=session,
+    )
+    return await release_customer_oil_custody(
+        db, command.replacement, season_code=season_code, actor_user=actor_user,
+        actor_user_id=actor_user_id, release_id=replacement_release_id,
+        stock_movement_id=receipt_movement_id,
+        audit_event_id=replacement_audit_event_id, created_at=corrected_at, session=session,
+    )

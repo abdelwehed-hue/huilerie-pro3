@@ -261,3 +261,52 @@ async def update_olive_purchase_draft(
         },
     }, session=session)
     return await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
+
+
+
+async def cancel_olive_purchase_draft(
+    db: Any, purchase_id: str, command: Any, *, actor_user: dict[str, Any],
+    actor_user_id: str, audit_event_id: str, cancelled_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Soft-cancel a draft only; approved stock receipts remain immutable."""
+    require_commercial_permission(actor_user, "commercial.manage_purchases")
+    if not actor_user_id or cancelled_at.tzinfo is None:
+        raise ValueError("Authenticated actor and timezone-aware timestamp are required")
+    purchases = db["commercial_olive_purchases"]
+    purchase = await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
+    if not purchase:
+        raise ValueError("Olive purchase does not exist")
+    if purchase.get("status") == "CANCELLED":
+        return purchase
+    if purchase.get("status") != "DRAFT":
+        raise ValueError("Only a draft olive purchase can be cancelled")
+    if int(purchase.get("version", 1)) != command.expected_version:
+        raise ValueError("Olive purchase version conflict")
+    reason = command.reason.strip()
+    if len(reason) < 5:
+        raise ValueError("A cancellation reason of at least five characters is required")
+
+    now = cancelled_at.astimezone(timezone.utc)
+    update = await purchases.update_one(
+        {"id": purchase_id, "status": "DRAFT", "version": command.expected_version},
+        {"$set": {
+            "status": "CANCELLED", "cancel_reason": reason,
+            "cancelled_by": actor_user_id, "cancelled_at": now,
+            "updated_at": now, "updated_by": actor_user_id,
+        }, "$inc": {"version": 1}},
+        session=session,
+    )
+    if update.matched_count != 1:
+        raise ValueError("Olive purchase changed concurrently; reload and retry")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id, "entity_type": "olive_purchase",
+        "entity_id": purchase_id, "action": "DRAFT_CANCELLED",
+        "actor_user_id": actor_user_id, "created_at": now,
+        "details": {
+            "document_number": purchase.get("document_number"),
+            "batch_code": purchase.get("batch_code"),
+            "reason": reason, "previous_version": command.expected_version,
+            "lines": purchase.get("lines", []),
+        },
+    }, session=session)
+    return await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)

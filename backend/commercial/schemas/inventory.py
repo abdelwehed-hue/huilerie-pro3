@@ -102,3 +102,14 @@ class CommercialLocationDraft(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     kind: Literal["OLIVE_STORAGE", "STAGING"]
     notes: str | None = Field(default=None, max_length=500)
+
+
+
+class OliveLotBalanceAdjustmentDraft(BaseModel):
+    """Audited correction of an available olive lot balance at one location."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    expected_version: int = Field(ge=1)
+    location_id: str = Field(min_length=1, max_length=100)
+    target_quantity_kg: Decimal = Field(ge=Decimal("0"), max_digits=18, decimal_places=3)
+    reason: str = Field(min_length=5, max_length=500)

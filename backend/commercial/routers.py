@@ -26,12 +26,13 @@ from commercial.inventory_bootstrap import (
     provision_nine_tanks,
 )
 from commercial.permissions import ASSIGNABLE_COMMERCIAL_PERMISSIONS, effective_commercial_permissions, require_commercial_permission
-from commercial.schemas.inventory import CommercialLocationDraft, StockMovementDraft
+from commercial.schemas.inventory import CommercialLocationDraft, OliveLotBalanceAdjustmentDraft, StockMovementDraft
 from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.production import CommercialProductionDraft
 from commercial.schemas.preproduction import PreproductionSampleDraft, CancelPreproductionSampleCommand
 from commercial.schemas.purchases import (
     ApproveOlivePurchaseCommand,
+    CancelOlivePurchaseDraftCommand,
     OlivePurchaseDraft,
     OlivePurchaseUpdate,
 )
@@ -44,13 +45,23 @@ from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCom
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.return_rejection import RejectSaleReturnCommand
-from commercial.schemas.customer_custody import CustomerOliveCustodyReceiptDraft, CustomerOilCustodyReleaseDraft
+from commercial.schemas.customer_custody import (
+    CancelCustomerCustodyDocumentCommand,
+    CorrectCustomerOliveCustodyReceiptCommand,
+    CorrectCustomerOilCustodyReleaseCommand,
+    CustomerOliveCustodyReceiptDraft,
+    CustomerOilCustodyReleaseDraft,
+)
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
 from commercial.schemas.payment_reversal import PaymentReversalDraft
 from commercial.services.production import complete_commercial_production
 from commercial.services.preproduction import create_preproduction_sample, cancel_preproduction_sample
 from commercial.services.purchase_approval import approve_olive_purchase
-from commercial.services.purchases import create_olive_purchase_draft, update_olive_purchase_draft
+from commercial.services.purchases import (
+    cancel_olive_purchase_draft,
+    create_olive_purchase_draft,
+    update_olive_purchase_draft,
+)
 from commercial.services.quality import (
     record_oil_quality_assessment,
     release_oil_quality_assessment,
@@ -58,12 +69,21 @@ from commercial.services.quality import (
     delete_oil_quality_assessment,
 )
 from commercial.services.stock_ledger import post_stock_movement
+from commercial.services.lot_adjustments import adjust_olive_lot_balance
 from commercial.services.internal_movements import create_internal_movement
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
 from commercial.services.return_rejection import reject_sale_return_and_dispatch_to_buyer
-from commercial.services.customer_custody import receive_customer_olive_custody, release_customer_oil_custody, get_customer_custody_statement
+from commercial.services.customer_custody import (
+    cancel_customer_oil_custody_release,
+    cancel_customer_olive_custody_receipt,
+    correct_customer_oil_custody_release,
+    correct_customer_olive_custody_receipt,
+    get_customer_custody_statement,
+    receive_customer_olive_custody,
+    release_customer_oil_custody,
+)
 from commercial.services.credit_application import apply_buyer_credit_to_invoice
 from commercial.services.payment_reversal import reverse_sale_payment
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
@@ -1196,6 +1216,27 @@ async def update_olive_purchase(
         _raise_domain_error(exc)
 
 
+@router.post("/olive-purchases/{purchase_id}/cancel")
+async def cancel_olive_purchase(
+    purchase_id: str,
+    command: CancelOlivePurchaseDraftCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_purchases")
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: cancel_olive_purchase_draft(
+                db, purchase_id, command, actor_user=user,
+                actor_user_id=user["id"], audit_event_id=str(uuid.uuid4()),
+                cancelled_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
 @router.get("/olive-purchases")
 async def list_olive_purchases(
     limit: int = Query(default=100, ge=1, le=500),
@@ -1529,6 +1570,30 @@ async def list_commercial_lots(
     return _safe(docs)
 
 
+@router.post("/lots/{lot_id}/adjust-balance")
+async def adjust_ready_olive_lot_balance(
+    lot_id: str,
+    draft: OliveLotBalanceAdjustmentDraft,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_lots")
+    _, season_code = await _require_commercial_ready()
+    adjustment_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: adjust_olive_lot_balance(
+                db, lot_id, draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], adjustment_document_id=adjustment_document_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                adjusted_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
 @router.post("/stock-movements", status_code=201)
 async def create_stock_movement(
     draft: StockMovementDraft,
@@ -1609,6 +1674,66 @@ async def receive_customer_custody_olives(
         _raise_domain_error(exc)
 
 
+@router.post("/customer-custody/receipts/{receipt_id}/cancel")
+async def cancel_customer_custody_receipt(
+    receipt_id: str,
+    command: CancelCustomerCustodyDocumentCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_custody")
+    _season, season_code = await _require_commercial_ready()
+    reversal_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: cancel_customer_olive_custody_receipt(
+                db, receipt_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                reversal_document_id=reversal_document_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                cancelled_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/customer-custody/receipts/{receipt_id}/correct")
+async def correct_customer_custody_receipt(
+    receipt_id: str,
+    command: CorrectCustomerOliveCustodyReceiptCommand,
+    user: dict = Depends(require_admin),
+):
+    _season, season_code = await _require_commercial_ready()
+    _authorize(user, "commercial.manage_custody")
+    if season_of(command.replacement.receipt_date.isoformat()) != _season:
+        raise HTTPException(422, "custody_receipt_date_outside_active_season")
+    reversal_document_id, reversal_movement_id, cancel_audit_id = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
+    replacement_receipt_id, owner_id, lot_id, receipt_movement_id, replacement_audit_id = (
+        str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: correct_customer_olive_custody_receipt(
+                db, receipt_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                reversal_document_id=reversal_document_id,
+                reversal_movement_id=reversal_movement_id,
+                cancel_audit_event_id=cancel_audit_id,
+                replacement_receipt_id=replacement_receipt_id,
+                custody_owner_id=owner_id, olive_lot_id=lot_id,
+                receipt_movement_id=receipt_movement_id,
+                replacement_audit_event_id=replacement_audit_id,
+                corrected_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
 @router.get("/customer-custody/receipts")
 async def list_customer_custody_receipts(
     customer_id: str | None = None,
@@ -1620,7 +1745,7 @@ async def list_customer_custody_receipts(
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_receipts.find(
-        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "created_at": 1}
+        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
@@ -1650,6 +1775,63 @@ async def release_customer_custody_oil(
         _raise_domain_error(exc)
 
 
+@router.post("/customer-custody/releases/{release_id}/cancel")
+async def cancel_customer_custody_release(
+    release_id: str,
+    command: CancelCustomerCustodyDocumentCommand,
+    user: dict = Depends(require_admin),
+):
+    _authorize(user, "commercial.manage_custody")
+    _season, season_code = await _require_commercial_ready()
+    reversal_document_id, movement_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: cancel_customer_oil_custody_release(
+                db, release_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                reversal_document_id=reversal_document_id,
+                stock_movement_id=movement_id, audit_event_id=audit_id,
+                cancelled_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/customer-custody/releases/{release_id}/correct")
+async def correct_customer_custody_release(
+    release_id: str,
+    command: CorrectCustomerOilCustodyReleaseCommand,
+    user: dict = Depends(require_admin),
+):
+    _season, season_code = await _require_commercial_ready()
+    _authorize(user, "commercial.manage_custody")
+    if season_of(command.replacement.release_date.isoformat()) != _season:
+        raise HTTPException(422, "custody_release_date_outside_active_season")
+    reversal_document_id, reversal_movement_id, cancel_audit_id = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
+    replacement_release_id, receipt_movement_id, replacement_audit_id = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: correct_customer_oil_custody_release(
+                db, release_id, command, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                reversal_document_id=reversal_document_id,
+                reversal_movement_id=reversal_movement_id,
+                cancel_audit_event_id=cancel_audit_id,
+                replacement_release_id=replacement_release_id,
+                receipt_movement_id=receipt_movement_id,
+                replacement_audit_event_id=replacement_audit_id,
+                corrected_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
 @router.get("/customer-custody/releases")
 async def list_customer_custody_releases(
     customer_id: str | None = None,
@@ -1661,7 +1843,7 @@ async def list_customer_custody_releases(
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_releases.find(
-        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "oil_lot_id": 1, "source_tank_id": 1, "quantity_kg": 1, "release_date": 1, "customer_acknowledgement_reference": 1, "reason": 1, "status": 1, "created_at": 1}
+        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "oil_lot_id": 1, "source_tank_id": 1, "quantity_kg": 1, "release_date": 1, "customer_acknowledgement_reference": 1, "reason": 1, "status": 1, "version": 1, "created_at": 1}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 

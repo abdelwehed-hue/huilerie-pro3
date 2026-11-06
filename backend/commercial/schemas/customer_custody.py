@@ -43,3 +43,19 @@ class CustomerOilCustodyReleaseDraft(BaseModel):
     customer_acknowledgement_reference: str = Field(min_length=3, max_length=120)
     reason: str = Field(min_length=5, max_length=500)
     idempotency_key: str = Field(min_length=16, max_length=128)
+
+
+class CancelCustomerCustodyDocumentCommand(BaseModel):
+    """Audited cancellation of a custody movement that can still be reversed."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=5, max_length=500)
+
+
+class CorrectCustomerOliveCustodyReceiptCommand(CancelCustomerCustodyDocumentCommand):
+    replacement: CustomerOliveCustodyReceiptDraft
+
+
+class CorrectCustomerOilCustodyReleaseCommand(CancelCustomerCustodyDocumentCommand):
+    replacement: CustomerOilCustodyReleaseDraft
