@@ -230,6 +230,14 @@ export default function CommercialFactures() {
   const totalPaid = filtered.reduce((sum, x) => sum + Number(x.paid_amount_dt ?? 0) + Number(x.applied_credit_amount_dt ?? 0), 0);
   const totalOutstanding = filtered.reduce((sum, x) => sum + Number(x.outstanding_amount_dt ?? 0), 0);
   const statusText = (x: Row) => x.payment_status === "PAID" ? (ar ? "مدفوعة" : "Payée") : x.payment_status === "PARTIALLY_PAID" ? (ar ? "مدفوعة جزئياً" : "Partielle") : x.payment_status === "CREDITED" ? (ar ? "مغطاة بإشعار دائن" : "Créditée") : (ar ? "غير مدفوعة" : "Impayée");
+  const mill = invoices.find(x => x.mill_name || x.mill_logo || x.mill_address || x.mill_phone) ?? invoices[0];
+  const printBuyerName = selectedBuyer?.name ?? (ar ? "جميع العملاء" : "Tous les clients");
+  const printPeriod = start || end
+    ? `${start ? formatPrintDate(start, ar) : "—"} — ${end ? formatPrintDate(end, ar) : "—"}`
+    : (ar ? "كل الفترات" : "Toutes les périodes");
+  const statementDebit = ledgerData.rows.reduce((sum, row) => sum + Number(row.debit ?? 0), 0);
+  const statementCredit = ledgerData.rows.reduce((sum, row) => sum + Number(row.credit ?? 0), 0);
+
   return <div className="commercial-factures-print space-y-4 pb-24" dir={ar ? "rtl" : "ltr"}>
     <Card className="commercial-card commercial-card--violet">
       <CardHeader><CardTitle>{labels.title}</CardTitle><CardDescription>{labels.subtitle}</CardDescription></CardHeader>
@@ -336,6 +344,82 @@ export default function CommercialFactures() {
         </article>}
       </CardContent>
     </Card>}
+    {mode !== "invoices" && <article dir={ar ? "rtl" : "ltr"} className={`gs-account-print hidden mx-auto max-w-5xl border border-stone-200 bg-white p-8 text-stone-900 ${mode === "statement" ? "gs-account-print-statement" : "gs-account-print-global"}`}>
+      <header dir="ltr" className="mb-6 flex items-start justify-between gap-5 border-b border-stone-300 pb-5">
+        <div className="flex min-w-0 items-start gap-3">
+          {mill?.mill_logo ? <img src={mill.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/> : null}
+          <div dir={ar ? "rtl" : "ltr"} className={ar ? "text-right" : "text-left"}>
+            <h1 className="text-2xl font-bold">{mill?.mill_name || "Huilerie Oro Verde"}</h1>
+            {mill?.mill_address ? <p className="text-sm text-stone-600">{mill.mill_address}</p> : null}
+            {mill?.mill_phone ? <p className="text-sm text-stone-600">{mill.mill_phone}</p> : null}
+          </div>
+        </div>
+        <div dir={ar ? "rtl" : "ltr"} className="shrink-0 text-right">
+          <h2 className="text-xl font-bold">{mode === "statement" ? labels.statement : labels.global}</h2>
+          <p className="mt-1 font-semibold">{printBuyerName}</p>
+          {selectedBuyer?.phone ? <p className="text-sm text-stone-600">{selectedBuyer.phone}</p> : null}
+          {selectedBuyer?.address ? <p className="text-sm text-stone-600">{selectedBuyer.address}</p> : null}
+          <p className="mt-2 text-xs text-stone-500">{ar ? "تاريخ الطباعة" : "Date d’impression"} : {formatPrintDate(new Date().toISOString(), ar)}</p>
+          <p className="text-xs text-stone-500">{printPeriod}</p>
+        </div>
+      </header>
+      {mode === "global" ? <>
+        <div className="mb-5 grid grid-cols-4 gap-3">
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.count}</p><strong>{filtered.length}</strong></div>
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.gross}</p><strong>{money(totalGross)}</strong></div>
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.paid}</p><strong>{money(totalPaid)}</strong></div>
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.outstanding}</p><strong>{money(totalOutstanding)}</strong></div>
+        </div>
+        <table className="w-full table-fixed border-collapse text-[9pt]">
+          <colgroup><col style={{width:"12%"}}/><col style={{width:"15%"}}/><col style={{width:"16%"}}/><col style={{width:"10%"}}/><col style={{width:"12%"}}/><col style={{width:"12%"}}/><col style={{width:"11%"}}/><col style={{width:"12%"}}/></colgroup>
+          <thead><tr className="bg-stone-100">{[labels.date,labels.number,labels.code,labels.quantity,labels.total,labels.paid,labels.credited,labels.balance].map(label=><th key={label} className="border border-stone-300 p-2 text-start">{label}</th>)}</tr></thead>
+          <tbody>
+            {filtered.map(x=><tr key={x.id} className="gs-print-row">
+              <td className="border-b border-stone-200 p-2">{dateText(x.sale_date ?? x.created_at)}</td>
+              <td className="border-b border-stone-200 p-2 font-semibold">{x.document_number}</td>
+              <td className="border-b border-stone-200 p-2 font-mono">{x.batch_code ?? "—"}</td>
+              <td className="border-b border-stone-200 p-2">{printNumber(x.quantity_kg, ar)} L</td>
+              <td className="border-b border-stone-200 p-2">{money(x.total_amount_dt)}</td>
+              <td className="border-b border-stone-200 p-2">{money(x.paid_amount_dt)}</td>
+              <td className="border-b border-stone-200 p-2">{money(x.credited_amount_dt)}</td>
+              <td className="border-b border-stone-200 p-2 font-semibold">{money(x.outstanding_amount_dt)}</td>
+            </tr>)}
+            {!filtered.length && <tr><td colSpan={8} className="p-5 text-center">{labels.noRows}</td></tr>}
+            <tr className="border-t-2 border-stone-400 bg-stone-50 font-bold">
+              <td colSpan={4} className="p-2">{ar ? "المجموع النهائي" : "Total final"}</td>
+              <td className="p-2">{money(totalGross)}</td><td className="p-2">{money(totalPaid)}</td><td className="p-2">{money(filtered.reduce((sum,x)=>sum+Number(x.credited_amount_dt ?? 0),0))}</td><td className="p-2">{money(totalOutstanding)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </> : <>
+        <div className="mb-5 grid grid-cols-3 gap-3">
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.opening}</p><strong>{money(ledgerData.opening)}</strong></div>
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.debit}</p><strong>{money(statementDebit)}</strong></div>
+          <div className="rounded-lg border border-stone-200 p-3"><p className="text-xs text-stone-500">{labels.credit}</p><strong>{money(statementCredit)}</strong></div>
+        </div>
+        <table className="w-full table-fixed border-collapse text-[9pt]">
+          <colgroup><col style={{width:"14%"}}/><col style={{width:"34%"}}/><col style={{width:"15%"}}/><col style={{width:"15%"}}/><col style={{width:"22%"}}/></colgroup>
+          <thead><tr className="bg-stone-100">{[labels.date,labels.operation,labels.number,labels.debit,labels.credit,labels.balance].map(label=><th key={label} className="border border-stone-300 p-2 text-start">{label}</th>)}</tr></thead>
+          <tbody>
+            <tr><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">{labels.opening}</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2">—</td><td className="border-b border-stone-200 p-2 font-semibold">{money(ledgerData.opening)}</td></tr>
+            {ledgerData.rows.map(row=><tr key={row.id} className="gs-print-row">
+              <td className="border-b border-stone-200 p-2">{dateText(row.date)}</td>
+              <td className="border-b border-stone-200 p-2">{row.label}{row.detail ? <small className="block text-stone-500">{row.detail}</small> : null}</td>
+              <td className="border-b border-stone-200 p-2 font-mono">{row.invoice ?? "—"}</td>
+              <td className="border-b border-stone-200 p-2">{Number(row.debit) ? money(row.debit) : "—"}</td>
+              <td className="border-b border-stone-200 p-2">{Number(row.credit) ? money(row.credit) : "—"}</td>
+              <td className="border-b border-stone-200 p-2 font-semibold">{row.informational ? "—" : money(row.running)}</td>
+            </tr>)}
+            {!ledgerData.rows.length && <tr><td colSpan={6} className="p-5 text-center">{labels.noRows}</td></tr>}
+            <tr className="border-t-2 border-stone-400 bg-stone-50 font-bold">
+              <td colSpan={3} className="p-2">{labels.final}</td><td className="p-2">{money(statementDebit)}</td><td className="p-2">{money(statementCredit)}</td><td className="p-2">{money(ledgerData.final)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="mt-3 text-xs text-stone-500">{labels.note}</p>
+      </>}
+      <footer className="mt-12 border-t border-stone-300 pt-4 text-center text-xs text-stone-500">{ar ? "مع الشكر على ثقتكم." : "Merci pour votre confiance."}</footer>
+    </article>}
     {editingInvoice && <div className="no-print fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"><div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-background p-4 shadow-2xl">
       <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{labels.editInvoice} · {editingInvoice.document_number}</h2><Button size="icon" variant="ghost" onClick={()=>setEditingInvoiceId("")}><X className="size-4"/></Button></div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
@@ -356,6 +440,6 @@ export default function CommercialFactures() {
       </div>
       <div className="mt-4 flex justify-end gap-2 border-t pt-3"><Button variant="outline" onClick={()=>setEditingInvoiceId("")}>{labels.cancel}</Button><Button disabled={addPayment.isPending || !paymentAmount.trim() || !paymentDate || editingInvoice.version == null} onClick={()=>addPayment.mutate()}><Save className="mr-2 size-4"/>{addPayment.isPending ? (ar ? "جار الحفظ…" : "Enregistrement…") : labels.save}</Button></div>
     </div></div>}
-    <style>{`@media print { body * { visibility: hidden !important; } .gs-invoice-print, .gs-invoice-print * { visibility: visible !important; } .gs-invoice-print { display: block !important; position: absolute !important; inset: 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 12mm !important; background: white !important; border: 0 !important; } }`}</style>
+    <style>{`@media print { body * { visibility: hidden !important; } ${mode === "invoices" ? ".gs-invoice-print, .gs-invoice-print * { visibility: visible !important; } .gs-invoice-print { display: block !important; position: absolute !important; inset: 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 12mm !important; background: white !important; border: 0 !important; }" : ".gs-account-print, .gs-account-print * { visibility: visible !important; } .gs-account-print { display: block !important; position: absolute !important; inset: 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 12mm !important; background: white !important; border: 0 !important; }"} .gs-print-row { break-inside: avoid !important; page-break-inside: avoid !important; } .gs-account-print table { width: 100% !important; } .gs-account-print th, .gs-account-print td { overflow-wrap: anywhere !important; padding: 5px 6px !important; } .gs-account-print thead { display: table-header-group !important; } .gs-account-print tfoot { display: table-footer-group !important; } }`}</style>
   </div>;
 }
