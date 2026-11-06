@@ -19,6 +19,73 @@ const dateText = (v: unknown) => {
   const d = new Date(String(v));
   return Number.isNaN(d.getTime()) ? String(v) : new Intl.DateTimeFormat("fr-TN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Africa/Tunis" }).format(d);
 };
+const formatPrintDate = (value: unknown, ar: boolean) => {
+  const date = new Date(String(value ?? ""));
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(ar ? "ar-TN" : "fr-TN", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Africa/Tunis",
+  }).format(date);
+};
+const printNumber = (value: unknown, ar: boolean, digits = 3) =>
+  new Intl.NumberFormat(ar ? "ar-TN" : "fr-TN", {
+    minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).format(Number(value ?? 0));
+const frSmall = ["zéro","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize"];
+function frWordsUnder100(n: number): string {
+  if (n <= 16) return frSmall[n];
+  if (n < 20) return "dix-" + frSmall[n - 10];
+  if (n < 70) {
+    const tens = ["","","vingt","trente","quarante","cinquante","soixante"][Math.floor(n / 10)];
+    const unit = n % 10;
+    return tens + (unit === 0 ? "" : unit === 1 ? " et un" : "-" + frSmall[unit]);
+  }
+  if (n < 80) return "soixante-" + frWordsUnder100(n - 60);
+  return "quatre-vingt" + (n === 80 ? "s" : "-" + frWordsUnder100(n - 80));
+}
+function frWords(n: number): string {
+  if (n < 100) return frWordsUnder100(n);
+  if (n < 1000) {
+    const h = Math.floor(n / 100), r = n % 100;
+    return (h === 1 ? "cent" : frSmall[h] + " cent" + (r === 0 ? "s" : "")) + (r ? " " + frWords(r) : "");
+  }
+  if (n < 1_000_000) {
+    const k = Math.floor(n / 1000), r = n % 1000;
+    return (k === 1 ? "mille" : frWords(k) + " mille") + (r ? " " + frWords(r) : "");
+  }
+  const m = Math.floor(n / 1_000_000), r = n % 1_000_000;
+  return frWords(m) + " million" + (m > 1 ? "s" : "") + (r ? " " + frWords(r) : "");
+}
+const arSmall = ["صفر","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة","عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر","ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
+function arWords(n: number): string {
+  if (n < 20) return arSmall[n];
+  if (n < 100) {
+    const tens = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"][Math.floor(n / 10)];
+    return n % 10 ? arSmall[n % 10] + " و" + tens : tens;
+  }
+  if (n < 1000) {
+    const hundreds = ["","مائة","مائتان","ثلاثمائة","أربعمائة","خمسمائة","ستمائة","سبعمائة","ثمانمائة","تسعمائة"];
+    return hundreds[Math.floor(n / 100)] + (n % 100 ? " و" + arWords(n % 100) : "");
+  }
+  if (n < 1_000_000) {
+    const k = Math.floor(n / 1000), r = n % 1000;
+    const part = k === 1 ? "ألف" : k === 2 ? "ألفان" : arWords(k) + " آلاف";
+    return part + (r ? " و" + arWords(r) : "");
+  }
+  const m = Math.floor(n / 1_000_000), r = n % 1_000_000;
+  const part = m === 1 ? "مليون" : m === 2 ? "مليونان" : arWords(m) + " ملايين";
+  return part + (r ? " و" + arWords(r) : "");
+}
+function amountInWords(amount: number, ar: boolean): string {
+  const millimes = Math.max(0, Math.round((Number(amount) || 0) * 1000));
+  const dinars = Math.floor(millimes / 1000), rest = millimes % 1000;
+  if (ar) {
+    const main = dinars === 0 ? "صفر دينار" : arWords(dinars) + (dinars === 1 ? " دينار" : dinars === 2 ? " ديناران" : " دينارًا");
+    return main + (rest ? " و" + arWords(rest) + " مليم" : "");
+  }
+  return frWords(dinars) + (dinars > 1 ? " dinars" : " dinar")
+    + (rest ? " et " + frWords(rest) + " millime" + (rest > 1 ? "s" : "") : "");
+};
+
 const page = async <T,>(url: string): Promise<T[]> => {
   const result = await apiGet<T[]>(url);
   return Array.isArray(result) ? result : [];
@@ -223,6 +290,50 @@ export default function CommercialFactures() {
         </div>
         <div className="mt-4"><h4 className="mb-2 font-semibold">{ar ? "التسويات والمرتجعات" : "Affectations et retours"}</h4><Table><TableHeader><TableRow><TableHead>{labels.date}</TableHead><TableHead>{ar ? "الوثيقة" : "Document"}</TableHead><TableHead>{labels.operation}</TableHead><TableHead>{labels.status}</TableHead></TableRow></TableHeader><TableBody>{(selectedInvoiceDetails.data?.applications ?? []).map(a=><TableRow key={a.id}><TableCell>{dateText(a.created_at)}</TableCell><TableCell>{a.document_number}</TableCell><TableCell>{labels.creditApply}</TableCell><TableCell>{a.status}</TableCell></TableRow>)}{(selectedInvoiceDetails.data?.returns ?? []).map(r=><TableRow key={r.id}><TableCell>{dateText(r.received_at ?? r.created_at)}</TableCell><TableCell>{r.document_number}</TableCell><TableCell>{ar ? "مرتجع" : "Retour physique"}</TableCell><TableCell>{r.commercial_acceptance_status ?? r.status}</TableCell></TableRow>)}{!selectedInvoiceDetails.data?.applications?.length && !selectedInvoiceDetails.data?.returns?.length && <TableRow><TableCell colSpan={4}>{labels.noRows}</TableCell></TableRow>}</TableBody></Table></div>
       </div>}
+        <article dir={ar ? "rtl" : "ltr"} className="gs-invoice-print hidden mx-auto max-w-3xl border border-stone-200 p-8 print:border-0">
+          <header dir="ltr" className="flex items-start justify-between gap-5 border-b pb-5">
+            <div className="flex shrink-0 items-start">{selectedInvoice.mill_logo ? <img src={selectedInvoice.mill_logo} alt="Logo" className="max-h-20 max-w-28 object-contain"/> : null}</div>
+            <div dir={ar ? "rtl" : "ltr"} className={ar ? "text-right" : "text-left"}>
+              <h1 className="text-2xl font-bold">{selectedInvoice.mill_name || "Huilerie Oro Verde"}</h1>
+              <p>{selectedInvoice.mill_address || ""}</p><p>{selectedInvoice.mill_phone || ""}</p>
+            </div>
+            <div className="ml-auto shrink-0 text-right"><p className="text-sm text-stone-500">{labels.date}</p><strong>{formatPrintDate(selectedInvoice.sale_date ?? selectedInvoice.created_at, ar)}</strong></div>
+          </header>
+          <section dir="ltr" className="my-5 mb-6 flex items-start justify-between gap-6">
+            <div dir={ar ? "rtl" : "ltr"} className={ar ? "min-w-0 flex-1 text-right" : "min-w-0 flex-1 text-left"}>
+              <h2 className="text-3xl font-bold tracking-wide">{ar ? "فاتورة" : "FACTURE"}</h2>
+              <p className="mt-2"><strong>{selectedInvoice.document_number}</strong></p>
+            </div>
+            <div dir={ar ? "rtl" : "ltr"} className="min-w-0 flex-1 rounded-lg bg-stone-50 p-4 text-right print:bg-white">
+              <p className="text-sm text-stone-500">{ar ? "الحريف" : "Facturé à"}</p>
+              <h3 className="text-lg font-bold">{buyers.find(b => b.id === selectedInvoice.buyer_id)?.name ?? "—"}</h3>
+              <p>{buyers.find(b => b.id === selectedInvoice.buyer_id)?.phone ?? ""}</p>
+              <p>{buyers.find(b => b.id === selectedInvoice.buyer_id)?.address ?? ""}</p>
+            </div>
+          </section>
+          <table dir={ar ? "rtl" : "ltr"} className="w-full border-collapse text-sm">
+            <thead><tr className="border-y">
+              <th className="p-3 text-left">{ar ? "المنتج" : "Désignation"}</th>
+              <th className="p-3 text-right">{ar ? "الكمية" : "Quantité"}</th>
+              <th className="p-3 text-right">{ar ? "السعر للوحدة / لتر" : "Prix unitaire / L"}</th>
+              <th className="p-3 text-right">{ar ? "المجموع" : "Total"}</th>
+            </tr></thead>
+            <tbody><tr className="border-b">
+              <td className="p-3">{ar ? "زيت زيتون" : "Huile d’olive"}</td>
+              <td className="p-3 text-right">{printNumber(selectedInvoice.quantity_kg, ar, 3)} L</td>
+              <td className="p-3 text-right">{printNumber(selectedInvoice.unit_price_dt, ar, 3)}</td>
+              <td className="p-3 text-right">{printNumber(selectedInvoice.total_amount_dt, ar, 3)}</td>
+            </tr></tbody>
+          </table>
+          <div dir="ltr" className="mt-8 w-full space-y-3 text-left">
+            <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "المجموع" : "Total"}</strong><strong>{printNumber(selectedInvoice.total_amount_dt, ar)}</strong></div>
+            <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "المدفوع" : "Payé"}</strong><strong>{printNumber(selectedInvoice.paid_amount_dt, ar)}</strong></div>
+            {Number(selectedInvoice.credited_amount_dt ?? 0) > 0 && <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "الإشعارات الدائنة" : "Avoirs"}</strong><strong>{printNumber(selectedInvoice.credited_amount_dt, ar)}</strong></div>}
+            <div className="flex w-full items-center justify-between gap-4 border-t pt-3 text-lg"><strong>{ar ? "الرصيد المتبقي" : "Reste dû"}</strong><strong>{printNumber(selectedInvoice.outstanding_amount_dt, ar)}</strong></div>
+            <p dir="ltr" className="text-right text-sm italic text-stone-600">{amountInWords(Number(selectedInvoice.outstanding_amount_dt ?? 0), ar)}</p>
+          </div>
+          <footer className="mt-16 border-t pt-4 text-center text-xs text-stone-500">{ar ? "شكراً على ثقتكم." : "Merci pour votre confiance."}</footer>
+        </article>
       </CardContent>
     </Card>}
     {editingInvoice && <div className="no-print fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"><div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-background p-4 shadow-2xl">
@@ -245,6 +356,6 @@ export default function CommercialFactures() {
       </div>
       <div className="mt-4 flex justify-end gap-2 border-t pt-3"><Button variant="outline" onClick={()=>setEditingInvoiceId("")}>{labels.cancel}</Button><Button disabled={addPayment.isPending || !paymentAmount.trim() || !paymentDate || editingInvoice.version == null} onClick={()=>addPayment.mutate()}><Save className="mr-2 size-4"/>{addPayment.isPending ? (ar ? "جار الحفظ…" : "Enregistrement…") : labels.save}</Button></div>
     </div></div>}
-    <style>{`@media print { body * { visibility: hidden !important; } .gs-invoice-detail-print, .gs-invoice-detail-print * { visibility: visible !important; } .gs-invoice-detail-print { position: absolute !important; inset: 0 !important; width: 100% !important; padding: 12mm !important; background: white !important; border: 0 !important; } .gs-invoice-detail-print button { display: none !important; } }`}</style>
+    <style>{`@media print { body * { visibility: hidden !important; } .gs-invoice-print, .gs-invoice-print * { visibility: visible !important; } .gs-invoice-print { display: block !important; position: absolute !important; inset: 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 12mm !important; background: white !important; border: 0 !important; } }`}</style>
   </div>;
 }
