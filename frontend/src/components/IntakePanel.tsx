@@ -93,7 +93,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const locationsQuery = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<any[]>("/commercial/v1/locations"), enabled: receptionType === "supplier" });
   const commercialSuppliers = suppliersQuery.data ?? [];
   const oliveLocations = locationsQuery.data ?? [];
-  const chosenLocationId = supplierLocationId || oliveLocations[0]?.id || "";
+  const chosenLocationId = supplierLocationId || oliveLocations.find((location) => /réception|reception|receiving/i.test((location.name || "") + " " + (location.code || "")))?.id || "";
   const supplierKgValue = Number(supplierKg.replace(",", "."));
   const supplierPriceValue = Number(supplierPrice.replace(",", "."));
   const supplierTotal = supplierKgValue * supplierPriceValue;
