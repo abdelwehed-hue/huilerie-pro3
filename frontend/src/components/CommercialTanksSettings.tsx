@@ -58,8 +58,8 @@ export default function CommercialTanksSettings() {
     title: "Cuves",
     description: "Définissez la capacité et le rôle de chaque cuve et consultez le stock d’huile.",
     actions: "Actions",
-    quantity: "Quantité actuelle (kg)",
-    capacity: "Capacité maximale (kg)",
+    quantity: "Quantité actuelle (L)",
+    capacity: "Capacité maximale (L)",
     flexible: "Flexible — capacité non définie",
     save: "Enregistrer",
     role: "Rôle de la cuve",
@@ -212,7 +212,7 @@ export default function CommercialTanksSettings() {
                         <div
                           className="h-5 min-w-[90px] flex-1 overflow-hidden rounded-full bg-stone-200 shadow-inner"
                           role="progressbar"
-                          aria-label={labels.quantity + ": " + formatQuantity(quantity) + " kg"}
+                          aria-label={labels.quantity + ": " + formatQuantity(quantity) + " L"}
                           aria-valuemin={0}
                           aria-valuemax={scale}
                           aria-valuenow={quantity}
@@ -222,7 +222,7 @@ export default function CommercialTanksSettings() {
                             style={{ width: formatPercent(fillPercent), backgroundColor: "hsl(" + (120 - (fillPercent * 1.2)) + " 75% 40%)" }}
                           />
                         </div>
-                        <span className="whitespace-nowrap font-bold tabular-nums">{formatQuantity(quantity)} kg</span>
+                        <span className="whitespace-nowrap font-bold tabular-nums">{formatQuantity(quantity)} L</span>
                       </div>
                     </TableCell>
                     <TableCell>{tank.capacity_kg == null ? labels.flexible : formatQuantity(tank.capacity_kg)}</TableCell>
