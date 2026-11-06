@@ -286,7 +286,7 @@ export default function Commercial() {
   const [internalProductKind, setInternalProductKind] = useState<"OLIVE" | "OIL">("OIL");
   const [internalSourceBalanceKey, setInternalSourceBalanceKey] = useState("");
   const [internalDestinationLocationId, setInternalDestinationLocationId] = useState("");
-  const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("MILL");
+  const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("");
   const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
   const [internalMovementReason, setInternalMovementReason] = useState("");
   const [internalMovementKey, setInternalMovementKey] = useState(() => crypto.randomUUID());
@@ -352,7 +352,7 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && tab === "custody" });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers") });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
@@ -601,6 +601,17 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const resolveInternalDestinationOwner = useMutation({
+    mutationFn: (phone: string) => apiPost<AnyRecord>("/commercial/v1/customer-custody/owners/resolve", { customer_phone: phone }),
+    onSuccess: async (owner) => {
+      setInternalDestinationOwnerKey("CUSTOMER:" + owner.id);
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "custody-owners"] });
+    },
+    onError: (error) => {
+      setInternalDestinationOwnerKey("");
+      toast.error(error instanceof Error ? error.message : l.warning);
+    },
+  });
   const postInternalMovement = useMutation({
     mutationFn: () => {
       const balance = (balances.data ?? []).find((item) =>
@@ -633,7 +644,7 @@ export default function Commercial() {
       toast.success(l.internalMovementSaved);
       setInternalSourceBalanceKey("");
       setInternalDestinationLocationId("");
-      setInternalDestinationOwnerKey("MILL");
+      setInternalDestinationOwnerKey("");
       setInternalMovementQuantity("");
       setInternalMovementReason("");
       setInternalMovementKey(crypto.randomUUID());
@@ -1324,9 +1335,14 @@ export default function Commercial() {
     : (locations.data ?? []).filter((item) => item.active);
   const internalDestinationOwnerOptions = selectedInternalBalance?.owner?.kind === "CUSTOMER"
     ? [{ key: "MILL", label: l.mill }]
-    : (custodyOwners.data ?? [])
-      .filter((owner) => owner.active !== false)
-      .map((owner) => ({ key: "CUSTOMER:" + owner.id, label: l.customer + ": " + owner.client_name + " · " + owner.client_phone }));
+    : (custodyClients.data ?? []).flatMap((client) => {
+        const existingOwner = (custodyOwners.data ?? []).find((owner) => owner.client_phone === client.phone);
+        if (existingOwner && existingOwner.active === false) return [];
+        return [{
+          key: existingOwner ? "CUSTOMER:" + existingOwner.id : "CLIENT:" + client.phone,
+          label: l.customer + ": " + client.client_name + " · " + client.phone,
+        }];
+      });
 
   const availableCustomerOilBalances = (balances.data ?? []).filter((balance) =>
     balance.product_kind === "OIL" && Number(balance.quantity_kg) > 0
@@ -1474,19 +1490,19 @@ export default function Commercial() {
             {canPostStock && <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-medium">{l.movementType}
-                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey("MILL"); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="TRANSFER">{l.transferType}</option>
                     <option value="OWNERSHIP_TRANSFER">{l.ownershipTransferType}</option>
                   </select>
                 </label>
                 <label className="grid gap-1 text-sm font-medium">{l.productKind}
-                  <select value={internalProductKind} onChange={(e) => { setInternalProductKind(e.target.value as "OLIVE" | "OIL"); setInternalSourceBalanceKey(""); setInternalDestinationLocationId(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={internalProductKind} onChange={(e) => { setInternalProductKind(e.target.value as "OLIVE" | "OIL"); setInternalSourceBalanceKey(""); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="OIL">{l.oil}</option><option value="OLIVE">{l.olive}</option>
                   </select>
                 </label>
               </div>
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
-                <select required value={internalSourceBalanceKey} onChange={(e) => { setInternalSourceBalanceKey(e.target.value); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey("MILL"); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                   <option value="">—</option>
                   {availableInternalBalances.map((balance) => {
                     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
@@ -1505,7 +1521,7 @@ export default function Commercial() {
                     {internalDestinationLocations.filter((item) => item.id !== selectedInternalBalance?.location_id).map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name ?? item.code}</option>)}
                   </select>
                 </label> : <label className="grid gap-1 text-sm font-medium">{l.targetOwner}
-                  <select required value={internalDestinationOwnerKey} onChange={(e) => { setInternalDestinationOwnerKey(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select required value={internalDestinationOwnerKey} onChange={(e) => { const selectedKey = e.target.value; setInternalDestinationOwnerKey(selectedKey); setInternalMovementKey(crypto.randomUUID()); if (selectedKey.startsWith("CLIENT:")) resolveInternalDestinationOwner.mutate(selectedKey.slice("CLIENT:".length)); }} disabled={!selectedInternalBalance || resolveInternalDestinationOwner.isPending} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="">—</option>
                     {internalDestinationOwnerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
                   </select>
@@ -1520,7 +1536,7 @@ export default function Commercial() {
               </label>
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey))}>
                   {l.postInternalMovement}
                 </Button>
               </div>
