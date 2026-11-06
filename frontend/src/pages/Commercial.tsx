@@ -1299,12 +1299,12 @@ export default function Commercial() {
   const activeSaleTankIds = new Set((tanks.data ?? [])
     .filter((tank) => tank.active && (tank.role ?? "NORMAL") === "NORMAL")
     .map((tank) => tank.id));
-  const saleTankBalances = (balances.data ?? []).filter((balance) => {
-    if (balance.product_kind !== "OIL" || balance.owner?.kind !== "MILL"
-      || Number(balance.quantity_kg) <= 0 || !activeSaleTankIds.has(balance.location_id)) return false;
-    const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
-    return !!lot && lot.status === "OPEN" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE";
-  });
+  // Sale stock is based on every positive mill-owned oil balance in an
+  // active normal tank. Lot status/purpose/quality restrictions are not applied.
+  const saleTankBalances = (balances.data ?? []).filter((balance) =>
+    balance.product_kind === "OIL" && balance.owner?.kind === "MILL"
+    && Number(balance.quantity_kg) > 0 && activeSaleTankIds.has(balance.location_id)
+  );
   const saleTankOptions = Array.from(new Set(saleTankBalances.map((balance) => balance.location_id)))
     .map((locationId) => ({
       locationId,
