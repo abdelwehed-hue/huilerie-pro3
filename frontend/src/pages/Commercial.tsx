@@ -310,7 +310,7 @@ export default function Commercial() {
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "custody") });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "purchases" || tab === "suppliers") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "production" });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
@@ -1192,7 +1192,9 @@ export default function Commercial() {
   );
   const selectedOliveType = selectedOliveVariety
     ? (lang === "ar" ? (selectedOliveVariety.name_ar || selectedOliveVariety.name_fr) : selectedOliveVariety.name_fr || selectedOliveVariety.name_ar)
-    : "";
+    : (lang === "ar"
+      ? (selectedQualitySourceLot?.variety_name_ar || selectedQualitySourceLot?.variety_name || selectedQualitySourceLot?.variety_name_fr || selectedQualityLot?.variety_name_ar || selectedQualityLot?.variety_name || selectedQualityLot?.variety_name_fr || "")
+      : (selectedQualitySourceLot?.variety_name_fr || selectedQualitySourceLot?.variety_name || selectedQualitySourceLot?.variety_name_ar || selectedQualityLot?.variety_name_fr || selectedQualityLot?.variety_name || selectedQualityLot?.variety_name_ar || ""));
   const liveOilClassification = oilAcidity.trim() === "" || !Number.isFinite(Number(oilAcidity))
     ? ""
     : Number(oilAcidity) <= 0.8
