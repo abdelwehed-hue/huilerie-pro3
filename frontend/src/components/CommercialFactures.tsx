@@ -93,7 +93,7 @@ export default function CommercialFactures() {
       return events.sort((a,b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
     }
   });
-  const ledger = useMemo(() => {
+  const ledger = useMemo<Row[]>(() => {
     let balance = 0;
     return (ledgerQuery.data ?? []).filter(row => {
       const d = String(row.date ?? "").slice(0,10);
