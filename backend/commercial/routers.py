@@ -1197,9 +1197,9 @@ async def create_olive_reception_purchase(
     now = datetime.now(timezone.utc)
     purchase_id, purchase_audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     supplier_audit_id = str(uuid.uuid4())
-    approval_key = f"{command.idempotency_key}:receipt"
+    approval_key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"oroverde:olive-reception-approval:{command.idempotency_key}"))
     purchase_draft = OlivePurchaseDraft(
-        supplier_id=command.supplier_id or str(uuid.uuid4()),
+        supplier_id=command.supplier_id or str(uuid.uuid5(uuid.NAMESPACE_URL, f"oroverde:olive-reception-supplier:{command.idempotency_key}")),
         purchase_date=command.purchase_date,
         lines=command.lines,
         notes=command.notes,
@@ -1218,27 +1218,32 @@ async def create_olive_reception_purchase(
             duplicate = await db.commercial_suppliers.find_one(
                 {"normalized_name": normalized_name}, {"_id": 1}, session=session
             )
-            if duplicate:
-                raise ValueError("commercial_supplier_name_exists")
             supplier_id = purchase_draft.supplier_id
-            supplier_doc = {
-                "id": supplier_id, "name": command.new_supplier_name.strip(),
-                "phone": command.new_supplier_phone,
-                "tax_identifier": command.new_supplier_tax_identifier,
-                "notes": None, "normalized_name": normalized_name,
-                "active": True, "version": 1, "created_by": user["id"],
-                "created_at": now,
-            }
-            await db.commercial_suppliers.insert_one(supplier_doc, session=session)
-            await db.commercial_audit_events.insert_one({
-                "id": supplier_audit_id, "entity_type": "commercial_supplier",
-                "entity_id": supplier_id, "action": "SUPPLIER_CREATED",
-                "actor_user_id": user["id"], "created_at": now,
-                "details": {"created_values": {
-                    "name": supplier_doc["name"], "phone": supplier_doc["phone"],
-                    "tax_identifier": supplier_doc["tax_identifier"], "notes": None,
-                }, "active": True, "source": "OLIVE_RECEPTION"},
-            }, session=session)
+            if duplicate:
+                existing_supplier = await db.commercial_suppliers.find_one(
+                    {"normalized_name": normalized_name}, {"_id": 0}, session=session
+                )
+                if existing_supplier.get("id") != supplier_id:
+                    raise ValueError("commercial_supplier_name_exists")
+            else:
+                supplier_doc = {
+                    "id": supplier_id, "name": command.new_supplier_name.strip(),
+                    "phone": command.new_supplier_phone,
+                    "tax_identifier": command.new_supplier_tax_identifier,
+                    "notes": None, "normalized_name": normalized_name,
+                    "active": True, "version": 1, "created_by": user["id"],
+                    "created_at": now,
+                }
+                await db.commercial_suppliers.insert_one(supplier_doc, session=session)
+                await db.commercial_audit_events.insert_one({
+                    "id": supplier_audit_id, "entity_type": "commercial_supplier",
+                    "entity_id": supplier_id, "action": "SUPPLIER_CREATED",
+                    "actor_user_id": user["id"], "created_at": now,
+                    "details": {"created_values": {
+                        "name": supplier_doc["name"], "phone": supplier_doc["phone"],
+                        "tax_identifier": supplier_doc["tax_identifier"], "notes": None,
+                    }, "active": True, "source": "OLIVE_RECEPTION"},
+                }, session=session)
         purchase_draft_final = purchase_draft.model_copy(update={"supplier_id": supplier_id})
         created = await create_olive_purchase_draft(
             db, purchase_draft_final, season_code=season_code,
