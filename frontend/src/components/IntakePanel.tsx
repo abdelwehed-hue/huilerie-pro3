@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { History, Printer, Plus, Sprout, UserPlus } from "lucide-react";
+import { History, Printer, Plus, Sprout, UserPlus, Truck, UserRound } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +75,39 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const [phone, setPhone] = useState("");
   const [kg, setKg] = useState("");
   const [created, setCreated] = useState<Load | null>(null);
+  const [receptionType, setReceptionType] = useState<"client" | "supplier">("client");
+  const [supplierId, setSupplierId] = useState("");
+  const [newSupplier, setNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [newSupplierPhone, setNewSupplierPhone] = useState("");
+  const [newSupplierTaxId, setNewSupplierTaxId] = useState("");
+  const [supplierDate, setSupplierDate] = useState(new Date().toISOString().slice(0, 10));
+  const [supplierVariety, setSupplierVariety] = useState("");
+  const [supplierKg, setSupplierKg] = useState("");
+  const [supplierPrice, setSupplierPrice] = useState("");
+  const [supplierLocationId, setSupplierLocationId] = useState("");
+  const [supplierNotes, setSupplierNotes] = useState("");
+  const [supplierReceipt, setSupplierReceipt] = useState<any | null>(null);
+  const suppliersQuery = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGet<any[]>("/commercial/v1/suppliers"), enabled: receptionType === "supplier" });
+  const locationsQuery = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGet<any[]>("/commercial/v1/locations"), enabled: receptionType === "supplier" });
+  const commercialSuppliers = suppliersQuery.data ?? [];
+  const oliveLocations = locationsQuery.data ?? [];
+  const chosenLocationId = supplierLocationId || oliveLocations[0]?.id || "";
+  const supplierKgValue = Number(supplierKg.replace(",", "."));
+  const supplierPriceValue = Number(supplierPrice.replace(",", "."));
+  const supplierTotal = supplierKgValue * supplierPriceValue;
+  const supplierMutation = useMutation({
+    mutationFn: (body: Record<string, unknown>) => apiPost<any>("/commercial/v1/olive-receptions", body),
+    onSuccess: (result) => {
+      setSupplierReceipt(result);
+      setSupplierKg(""); setSupplierPrice(""); setSupplierNotes("");
+      setNewSupplier(false); setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId("");
+      setSupplierId(result.supplier?.id ?? "");
+      toast.success("Réception fournisseur enregistrée et achat créé dans GS");
+      qc.invalidateQueries({ queryKey: ["commercial"] });
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
 
 
   const pick = (c: ClientSummary) => {
@@ -122,7 +156,12 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
 
   return (
     <div className={stacked ? "grid gap-6" : "grid gap-6 xl:grid-cols-[1fr_1fr]"}>
-      <form
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-stone-200 bg-white p-2">
+          <button type="button" onClick={() => setReceptionType("client")} className={receptionType === "client" ? "flex items-center justify-center gap-2 rounded-xl bg-lime-700 px-3 py-3 text-sm font-semibold text-white" : "flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-stone-600 hover:bg-stone-50"}><UserRound className="size-4" /> Client · Oro Verde</button>
+          <button type="button" onClick={() => setReceptionType("supplier")} className={receptionType === "supplier" ? "flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-3 text-sm font-semibold text-white" : "flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-stone-600 hover:bg-stone-50"}><Truck className="size-4" /> Fournisseur · GS</button>
+        </div>
+      {receptionType === "client" ? <form
         onSubmit={(e) => {
           e.preventDefault();
           if (valid) m.mutate({ client_name: name, phone, olive_kg: kgVal, bags: bagsVal, variety: variety || null, notes: notes.trim() || null, initial_status: initStatus });
@@ -242,7 +281,44 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           {t("register_arrival")}
         </Button>
 
-      </form>
+      </form> : <form onSubmit={(e) => {
+        e.preventDefault();
+        if (!chosenLocationId || !(supplierKgValue > 0) || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
+        supplierMutation.mutate({
+          supplier_id: newSupplier ? null : supplierId,
+          new_supplier_name: newSupplier ? newSupplierName.trim() : null,
+          new_supplier_phone: newSupplier ? (newSupplierPhone.trim() || null) : null,
+          new_supplier_tax_identifier: newSupplier ? (newSupplierTaxId.trim() || null) : null,
+          purchase_date: supplierDate,
+          lines: [{ variety_id: supplierVariety || varietyList[0] || "Olives", quantity_kg: supplierKgValue, unit_price_dt: supplierPriceValue }],
+          receiving_location_id: chosenLocationId,
+          notes: supplierNotes.trim() || null,
+          idempotency_key: crypto.randomUUID(),
+        });
+      }} className="space-y-5 rounded-2xl border border-blue-200 bg-[#F0F6FC] p-6 shadow-sm" data-testid="supplier-intake-form">
+        <div className="flex items-center gap-3 text-blue-950"><div className="grid size-10 place-items-center rounded-xl bg-blue-700 text-white"><Truck className="size-5" /></div><div><h2 className="font-heading text-xl font-bold">Réception fournisseur</h2><p className="text-xs text-blue-800">Création automatique de l’achat et entrée en stock GS</p></div></div>
+        <div className="space-y-2"><Label>Fournisseur</Label><div className="flex flex-wrap gap-2">
+          <Button type="button" variant={!newSupplier ? "default" : "outline"} onClick={() => setNewSupplier(false)} className="rounded-xl">Fournisseur existant</Button>
+          <Button type="button" variant={newSupplier ? "default" : "outline"} onClick={() => setNewSupplier(true)} className="rounded-xl"><UserPlus className="size-4"/> Nouveau fournisseur</Button>
+        </div>
+        {!newSupplier ? <Select value={supplierId || null} onValueChange={(v) => setSupplierId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (commercialSuppliers.find((x) => x.id === v)?.name ?? "Fournisseur sélectionné") : <span className="text-stone-400">Choisir un fournisseur</span>}</SelectValue></SelectTrigger><SelectContent>{commercialSuppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}{supplier.phone ? " · " + supplier.phone : ""}</SelectItem>)}</SelectContent></Select> : <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1"><Label>Nom du fournisseur *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1"><Label>Téléphone</Label><Input dir="ltr" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1 md:col-span-2"><Label>Identifiant fiscal</Label><Input value={newSupplierTaxId} onChange={(e) => setNewSupplierTaxId(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+        </div>}</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1"><Label>Date d’achat / réception *</Label><Input type="date" value={supplierDate} onChange={(e) => setSupplierDate(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1"><Label>Emplacement de réception *</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
+          <div className="space-y-1"><Label>Variété *</Label><Select value={supplierVariety || varietyList[0] || null} onValueChange={(v) => setSupplierVariety(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? String(v) : <span className="text-stone-400">Choisir la variété</span>}</SelectValue></SelectTrigger><SelectContent>{varietyList.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-1"><Label>Quantité d’olives (kg) *</Label><Input inputMode="decimal" value={supplierKg} onChange={(e) => setSupplierKg(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1"><Label>Prix d’achat / kg (TND) *</Label><Input inputMode="decimal" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"} TND</div></div>
+        </div>
+        <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
+        <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
+        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
+      </form>}
+      </div>
       <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
 
       <div className="space-y-6">
@@ -277,7 +353,22 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             )}
           </div>
         )}
-        {created && (
+        {supplierReceipt && receptionType === "supplier" && (
+          <div className="print-area rounded-2xl border-2 border-dashed border-blue-300 bg-white p-6 shadow-sm" data-testid="supplier-reception-ticket">
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold text-stone-900">ORO VERDE · GESTION COMMERCIALE</div><div className="text-sm text-stone-500">Bon de réception fournisseur</div></div><div className="text-right"><div className="font-mono text-2xl font-bold text-blue-800" dir="ltr">{supplierReceipt.batch_code}</div><div className="text-xs text-stone-500">Code unique de traçabilité</div></div></div>
+            <div className="grid grid-cols-[1fr_auto] gap-4 py-5"><div className="space-y-2 text-sm">
+              <div><span className="text-stone-500">Fournisseur :</span> <strong>{supplierReceipt.supplier?.name}</strong></div>
+              <div><span className="text-stone-500">Téléphone :</span> {supplierReceipt.supplier?.phone || "—"}</div>
+              <div><span className="text-stone-500">N° achat :</span> <strong>{supplierReceipt.purchase?.document_number}</strong></div>
+              <div><span className="text-stone-500">Date :</span> {supplierReceipt.purchase?.purchase_date}</div>
+              <div><span className="text-stone-500">Quantité :</span> {fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</div>
+              <div><span className="text-stone-500">Total :</span> {fmtNum(Number(supplierReceipt.purchase?.total_amount_dt), 3)} TND</div>
+              <div><span className="text-stone-500">Statut :</span> Réception enregistrée</div>
+            </div><div className="flex flex-col items-center gap-1"><QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(supplierReceipt.purchase?.id ?? "") + "&batch=" + encodeURIComponent(supplierReceipt.batch_code ?? "")} size={112} level="H" includeMargin /><span className="text-[10px] text-stone-500">QR Code GS</span></div></div>
+            <div className="no-print flex flex-wrap gap-2 border-t border-stone-200 pt-4"><Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button><Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button></div>
+          </div>
+        )}
+        {created && receptionType === "client" && (
           <ReceptionTicket load={created}>
             <div className="no-print mt-8 flex gap-3">
               <Button onClick={() => window.print()} variant="outline" className="rounded-xl" data-testid="intake-print-button">
