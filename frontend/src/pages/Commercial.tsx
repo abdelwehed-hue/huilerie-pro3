@@ -1608,12 +1608,16 @@ export default function Commercial() {
                 <label className="grid gap-1 text-sm font-medium">{l.k270}<input type="number" min="0" step="0.001" value={oilK270} onChange={(e) => setOilK270(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oilContent}<input type="number" min="0" step="0.1" value={oilContent} onChange={(e) => setOilContent(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.oliveType}<input readOnly value={selectedOliveType || "—"} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
-                <label className="grid gap-1 text-sm font-medium">{l.oilType}<input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
                 <label className="grid gap-1 text-sm font-medium">{l.classification}
                   <select value={qualityClassification || liveOilClassification} onChange={(e) => setQualityClassification(e.target.value as typeof qualityClassification)} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="extra_vierge">{l.extraVirgin}</option><option value="vierge">{l.virgin}</option><option value="lampante">{l.lampante}</option>
                   </select>
-                  <span className="text-xs text-muted-foreground" aria-live="polite">{lang === "ar" ? "التصنيف المحسوب آليًا: " : "Classification calculée automatiquement : "}{liveOilClassificationLabel}</span>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">{l.oilType}
+                  <input maxLength={100} value={oilType} onChange={(e) => setOilType(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  <span className="inline-flex w-fit items-center rounded-md border border-amber-400/60 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/50 dark:text-amber-200" aria-live="polite">
+                    {lang === "ar" ? "التصنيف المحسوب آليًا: " : "Classification calculée automatiquement : "}{liveOilClassificationLabel}
+                  </span>
                 </label>
                 <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.analysisNotes}<textarea maxLength={2000} value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} className="min-h-20 rounded-lg border bg-background px-3 py-2 font-normal" /></label>
               </div>
