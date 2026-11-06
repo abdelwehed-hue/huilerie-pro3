@@ -131,14 +131,6 @@ async def approve_wholesale_sale(
     )
     if not lot or lot.get("product_kind") != "OIL" or lot.get("status") != "OPEN":
         raise ValueError("Sale requires an open commercial oil lot")
-    if lot.get("quality_status") != "RELEASED":
-        raise ValueError("Oil lot has not been released by quality control")
-    release = await db["commercial_quality_releases"].find_one(
-        {"id": lot.get("quality_decision_id"), "oil_lot_id": lot["id"], "decision": "RELEASED"},
-        {"_id": 0, "id": 1}, session=session,
-    )
-    if not release:
-        raise ValueError("A recorded quality release is required before sale")
     tank = await db["commercial_tanks"].find_one(
         {"id": sale["source_tank_id"], "active": True}, {"_id": 0, "id": 1}, session=session
     )
@@ -156,7 +148,7 @@ async def approve_wholesale_sale(
             "approval_idempotency_scope": f"{season_code}:{actor_user_id}",
             "approval_idempotency_key": command.idempotency_key,
             "approval_fingerprint": command_fingerprint,
-            "invoice_id": invoice_id, "updated_at": now,
+            "invoice_id": invoice_id, "quality_status_at_dispatch": lot.get("quality_status", "UNSET"), "updated_at": now,
         }, "$inc": {"version": 1}},
         session=session,
     )
@@ -168,6 +160,7 @@ async def approve_wholesale_sale(
         "document_number": invoice_number, "sale_id": sale_id,
         "sale_document_number": sale["document_number"], "buyer_id": sale["buyer_id"],
         "batch_code": sale.get("batch_code"),
+        "quality_status_at_sale": lot.get("quality_status", "UNSET"),
         "sale_date": sale["sale_date"], "quantity_kg": sale["quantity_kg"],
         "unit_price_dt": sale["unit_price_dt"], "total_amount_dt": sale["total_amount_dt"],
         "paid_amount_dt": Decimal128("0.000"),
@@ -206,6 +199,7 @@ async def approve_wholesale_sale(
         "details": {
             "sale_number": sale["document_number"], "invoice_number": invoice_number,
             "buyer_id": sale["buyer_id"], "oil_lot_id": sale["oil_lot_id"],
+            "quality_status_at_dispatch": lot.get("quality_status", "UNSET"),
             "source_tank_id": sale.get("source_tank_id"),
             "sale_date": sale.get("sale_date"),
             "quantity_kg": sale["quantity_kg"], "unit_price_dt": sale["unit_price_dt"],
