@@ -1552,8 +1552,8 @@ export default function Commercial() {
               <select required disabled value={qualityLotId} className="h-10 rounded-lg border bg-muted px-3 font-normal"><option value={qualityLotId}>{lotCode((lots.data ?? []).find((lot) => lot.id === qualityLotId), qualityLotId)}</option></select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly value={sampleReference} className="h-10 rounded-lg border bg-muted px-3 font-mono font-normal" /></label>
-              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required readOnly value={laboratoryName} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly value={qualitySampleReference} className="h-10 rounded-lg border bg-muted px-3 font-mono font-normal" /></label>
+              <label className="grid gap-1 text-sm font-medium">{l.laboratory}<input required readOnly value={configuredLaboratoryName} className="h-10 rounded-lg border bg-muted px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.sampleDate}<input required type="date" value={sampleDate} onChange={(e) => setSampleDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
               <label className="grid gap-1 text-sm font-medium">{l.testedDate}<input required type="date" min={sampleDate} value={testedDate} onChange={(e) => setTestedDate(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             </div>
@@ -1573,7 +1573,7 @@ export default function Commercial() {
               </div>
               <p className="text-xs text-muted-foreground">{l.qualityRule}</p>
             </div>
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(sampleReference ?? "").trim() || !laboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications")}</Button><Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={submitQualityAssessment.isPending || millSettings.isLoading || millSettings.isError || !qualityLotId || !String(qualitySampleReference ?? "").trim() || !configuredLaboratoryName.trim() || !specificationReference.trim() || oilAcidity === ""}>{correctingQualityAssessmentId ? l.submitCorrection : (lang === "ar" ? "حفظ التعديلات" : "Enregistrer les modifications")}</Button><Button type="button" variant="outline" onClick={() => { setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setQualityLotId(""); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
           </form>
         </CardContent></Card>}
         {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
