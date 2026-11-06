@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory,
+  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
   Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin,
 } from "lucide-react";
@@ -13,6 +13,7 @@ import { useMe } from "@/lib/useMe";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import CommercialFactures from "@/components/CommercialFactures";
 
 type AnyRecord = Record<string, any>;
 type CommercialStatus = {
@@ -23,7 +24,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
 
 const labels = {
   fr: {
@@ -33,7 +34,7 @@ const labels = {
     actions: "Actions",
     title: "Gestion Commerciale",
     subtitle: "Stocks, lots, production et contrôle qualité, indépendamment des opérations de trituration.",
-    overview: "Vue générale", tanks: "Cuves", lots: "Lots", movements: "Mouvements", quality: "Qualité", audit: "Audit",
+    overview: "Vue générale", facturesTab: "Factures", tanks: "Cuves", lots: "Lots", movements: "Mouvements", quality: "Qualité", audit: "Audit",
     season: "Saison active", tanksCount: "Cuves configurées", locations: "Emplacements actifs",
     counters: "Compteurs de documents", readiness: "État du module", ready: "Prêt après initialisation",
     notReady: "Initialisation requise", bootstrap: "Initialiser le module commercial", bootstrapping: "Initialisation…",
@@ -58,7 +59,7 @@ const labels = {
     actions: "الإجراءات",
     title: "Oro Verde — التسيير التجاري",
     subtitle: "المخزون والدفعات والإنتاج ومراقبة الجودة، بصورة مستقلة عن عمليات العصر.",
-    overview: "نظرة عامة", tanks: "الخزانات", lots: "الدفعات", movements: "الحركات", quality: "الجودة", audit: "التدقيق",
+    overview: "نظرة عامة", facturesTab: "الفواتير", tanks: "الخزانات", lots: "الدفعات", movements: "الحركات", quality: "الجودة", audit: "التدقيق",
     season: "الموسم الحالي", tanksCount: "الخزانات المهيأة", locations: "المواقع النشطة",
     counters: "عدادات الوثائق", readiness: "حالة الوحدة", ready: "جاهزة بعد التهيئة",
     notReady: "تتطلب التهيئة", bootstrap: "تهيئة الوحدة التجارية", bootstrapping: "جار التهيئة…",
@@ -1291,6 +1292,7 @@ export default function Commercial() {
     { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
+    { id: "factures", label: l.facturesTab, icon: FileText },
     // Supporting/setup sections are grouped after the operational flow.
   ];
   if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
@@ -1883,6 +1885,8 @@ export default function Commercial() {
           </div>
         </CardContent></Card>}
       </div>}
+
+      {tab === "factures" && ready && <CommercialFactures />}
 
       {tab === "sales" && <div className="space-y-4">
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{availableMillOilLots.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
