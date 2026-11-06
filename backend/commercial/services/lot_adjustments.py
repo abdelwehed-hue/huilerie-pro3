@@ -37,8 +37,7 @@ async def adjust_olive_lot_balance(
     adjusted_at: datetime,
     session: Any,
 ) -> dict[str, Any]:
-    require_commercial_permission(actor_user, "commercial.manage_lots")
-    require_commercial_permission(actor_user, "commercial.post_stock")
+    require_commercial_permission(actor_user, "commercial.edit_records")
     if not actor_user_id or adjusted_at.tzinfo is None:
         raise ValueError("Authenticated actor and timezone-aware timestamp are required")
 
