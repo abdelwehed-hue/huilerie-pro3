@@ -239,7 +239,6 @@ export default function Commercial() {
   const [buyerAddress, setBuyerAddress] = useState("");
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [saleBuyerId, setSaleBuyerId] = useState("");
-  const [saleLotId, setSaleLotId] = useState("");
   const [saleTankId, setSaleTankId] = useState("");
   const [saleQuantity, setSaleQuantity] = useState("");
   const [saleUnitPrice, setSaleUnitPrice] = useState("");
@@ -826,7 +825,7 @@ export default function Commercial() {
   });
   const createSale = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/sales", {
-      sale_date: saleDate, buyer_id: saleBuyerId, oil_lot_id: saleLotId,
+      sale_date: saleDate, buyer_id: saleBuyerId,
       source_tank_id: saleTankId, quantity_kg: saleQuantity,
       unit_price_dt: saleUnitPrice, notes: saleNotes.trim() || null,
       idempotency_key: saleIdempotencyKey,
@@ -1297,27 +1296,15 @@ export default function Commercial() {
   });
   const maxFlexibleTankStock = Math.max(1, ...tankOilStocks.map((item) => item.quantity));
 
-  const saleEligibleOilLots = (lots.data ?? []).filter((lot) =>
-    lot.product_kind === "OIL" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE"
-    && lot.status === "OPEN"
-  );
-  const saleEligibleOilLotIds = new Set(saleEligibleOilLots.map((lot) => lot.id));
   const activeSaleTankIds = new Set((tanks.data ?? [])
     .filter((tank) => tank.active && (tank.role ?? "NORMAL") === "NORMAL")
     .map((tank) => tank.id));
-  const saleEligibleBalances = (balances.data ?? []).filter((balance) =>
-    balance.product_kind === "OIL" && balance.owner?.kind === "MILL"
-    && Number(balance.quantity_kg) > 0 && saleEligibleOilLotIds.has(balance.lot_id)
-    && activeSaleTankIds.has(balance.location_id)
-  );
-  const availableMillOilLots = saleEligibleOilLots.filter((lot) =>
-    saleEligibleBalances.some((balance) => balance.lot_id === lot.id
-      && (!saleTankId || balance.location_id === saleTankId))
-  );
-  const saleTankBalances = saleEligibleBalances.filter((balance) =>
-    availableMillOilLots.some((lot) => lot.id === balance.lot_id)
-    && (!saleLotId || balance.lot_id === saleLotId)
-  );
+  const saleTankBalances = (balances.data ?? []).filter((balance) => {
+    if (balance.product_kind !== "OIL" || balance.owner?.kind !== "MILL"
+      || Number(balance.quantity_kg) <= 0 || !activeSaleTankIds.has(balance.location_id)) return false;
+    const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
+    return !!lot && lot.status === "OPEN" && lot.lot_purpose !== "PREPRODUCTION_SAMPLE";
+  });
   const saleTankOptions = Array.from(new Set(saleTankBalances.map((balance) => balance.location_id)))
     .map((locationId) => ({
       locationId,
@@ -2093,17 +2080,16 @@ export default function Commercial() {
       {tab === "factures" && ready && <CommercialFactures />}
 
       {tab === "sales" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{availableMillOilLots.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
+        {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{saleTankOptions.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleDate(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectBuyer}<select required value={saleBuyerId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleBuyerId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(buyers.data ?? []).filter((buyer) => buyer.active).map((buyer) => <option key={buyer.id} value={buyer.id}>{buyer.name}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.selectOilLot}<select required value={saleLotId} onChange={(e) => { const nextLotId = e.target.value; setSaleIdempotencyKey(crypto.randomUUID()); setSaleLotId(nextLotId); if (!nextLotId || (saleTankId && !saleEligibleBalances.some((balance) => balance.lot_id === nextLotId && balance.location_id === saleTankId))) setSaleTankId(""); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{availableMillOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lotCode(lot)} · {lot.quality_status}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.selectTank}<select required value={saleTankId} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleTankId(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">{saleTankOptions.length ? "—" : salesText.noSaleTank}</option>{saleTankOptions.map(({ locationId, tank, quantity }) => <option key={locationId} value={locationId}>{tank?.code ?? locationId} · {number(quantity)} L</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={(balances.data ?? []).find((b) => b.product_kind === "OIL" && b.lot_id === saleLotId && b.location_id === saleTankId && b.owner?.kind === "MILL")?.quantity_kg ?? undefined} value={saleQuantity} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleQuantity(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            <label className="grid gap-1 text-sm font-medium">{salesText.saleQty}<input required type="number" min="0.001" step="0.001" max={saleTankOptions.find((option) => option.locationId === saleTankId)?.quantity ?? undefined} value={saleQuantity} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleQuantity(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium">{salesText.salePrice}<input required type="number" min="0.001" step="0.001" value={saleUnitPrice} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleUnitPrice(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium md:col-span-3">{l.notes}<input maxLength={1000} value={saleNotes} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleNotes(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <p className="text-xs text-amber-700 md:col-span-3">{salesText.taxNotice}</p>
-            <Button type="submit" disabled={createSale.isPending || !saleBuyerId || !saleLotId || !saleTankId || !(Number(saleQuantity) > 0) || !(Number(saleUnitPrice) > 0)}><ShoppingCart className="size-4" />{salesText.createSale}</Button>
+            <Button type="submit" disabled={createSale.isPending || !saleBuyerId || !saleTankId || !(Number(saleQuantity) > 0) || !(Number(saleUnitPrice) > 0)}><ShoppingCart className="size-4" />{salesText.createSale}</Button>
           </form>
         </CardContent></Card>}
         
@@ -2118,8 +2104,8 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
 <Card><CardHeader><CardTitle>{salesText.saleHistory}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.saleDate}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.selectOilLot}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
-            <TableBody>{(sales.data ?? []).map((sale) => <TableRow key={sale.id}><TableCell className="font-mono text-xs">{value(sale.batch_code ?? sale.document_number)}</TableCell><TableCell>{date(sale.sale_date)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === sale.buyer_id)?.name, sale.buyer_id)}</TableCell><TableCell>{lotCode((lots.data ?? []).find((lot) => lot.id === sale.oil_lot_id), sale.oil_lot_id)}</TableCell><TableCell>{number(sale.quantity_kg)}</TableCell><TableCell>{money(sale.total_amount_dt)}</TableCell><TableCell>{sale.status === "DRAFT" ? (lang === "ar" ? "مسودة" : "Brouillon") : value(sale.status)}</TableCell><TableCell>{isAdmin && sale.status === "DRAFT" ? <div className="flex flex-wrap gap-1">
+          <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{salesText.saleDate}</TableHead><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.selectTank}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{salesText.total}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+            <TableBody>{(sales.data ?? []).map((sale) => <TableRow key={sale.id}><TableCell className="font-mono text-xs">{value(sale.batch_code ?? sale.document_number)}</TableCell><TableCell>{date(sale.sale_date)}</TableCell><TableCell>{value((buyers.data ?? []).find((b) => b.id === sale.buyer_id)?.name, sale.buyer_id)}</TableCell><TableCell>{value((tanks.data ?? []).find((tank) => tank.id === sale.source_tank_id)?.code, sale.source_tank_id)}</TableCell><TableCell>{number(sale.quantity_kg)}</TableCell><TableCell>{money(sale.total_amount_dt)}</TableCell><TableCell>{sale.status === "DRAFT" ? (lang === "ar" ? "مسودة" : "Brouillon") : value(sale.status)}</TableCell><TableCell>{isAdmin && sale.status === "DRAFT" ? <div className="flex flex-wrap gap-1">
               <Button size="sm" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => approveSale.mutate(sale)}>{salesText.approveSale}</Button>
               <Button size="sm" variant="outline" disabled={approveSale.isPending || cancelSale.isPending} onClick={() => { const reason = window.prompt(salesText.cancelSalePrompt); if (reason && reason.trim().length >= 5) cancelSale.mutate({ sale, reason: reason.trim() }); else if (reason !== null) toast.error(lang === "ar" ? "سبب الإلغاء يجب أن يكون 5 أحرف على الأقل" : "Le motif doit contenir au moins 5 caractères"); }}><Ban className="size-3.5" />{salesText.cancelSale}</Button>
             </div> : value((salesInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number)}</TableCell></TableRow>)}{(!sales.isLoading && !(sales.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
