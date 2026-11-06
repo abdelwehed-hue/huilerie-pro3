@@ -183,6 +183,9 @@ export default function Commercial() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
   const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [selectedBuyerId, setSelectedBuyerId] = useState("");
+  const [buyerSearch, setBuyerSearch] = useState("");
+  const [showBuyerForm, setShowBuyerForm] = useState(false);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -317,7 +320,7 @@ export default function Commercial() {
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
   const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "sales" });
-  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "sales" });
+  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && (tab === "sales" || tab === "buyers") });
   const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-returns", 500), enabled: ready && tab === "sales" });
   const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-return-rejections", 500), enabled: ready && tab === "sales" });
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" });
@@ -336,6 +339,29 @@ export default function Commercial() {
   const allSupplierPurchaseCount = purchaseRows.length;
   const allSupplierPurchaseKg = purchaseRows.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0);
   const allSupplierPurchaseAmount = purchaseRows.reduce((sum, purchase) => sum + Number(purchase.total_amount_dt ?? 0), 0);
+  const buyerRows = buyers.data ?? [];
+  const invoiceRows = salesInvoices.data ?? [];
+  const selectedBuyer = buyerRows.find((buyer) => buyer.id === selectedBuyerId) ?? null;
+  const selectedBuyerInvoices = invoiceRows.filter((invoice) => invoice.buyer_id === selectedBuyerId)
+    .sort((a, b) => String(b.sale_date ?? b.created_at ?? "").localeCompare(String(a.sale_date ?? a.created_at ?? "")));
+  const buyerInvoiceCount = selectedBuyerInvoices.length;
+  const buyerGrossAmount = selectedBuyerInvoices.reduce((sum, invoice) => sum + Number(invoice.total_amount_dt ?? 0), 0);
+  const buyerPaidAmount = selectedBuyerInvoices.reduce((sum, invoice) => sum + Number(invoice.paid_amount_dt ?? 0), 0);
+  const buyerOutstandingAmount = selectedBuyerInvoices.reduce((sum, invoice) => sum + Number(invoice.outstanding_amount_dt ?? 0), 0);
+  const buyerCreditedAmount = selectedBuyerInvoices.reduce((sum, invoice) => sum + Number(invoice.credited_amount_dt ?? 0), 0);
+  const allBuyerInvoiceCount = invoiceRows.length;
+  const allBuyerGrossAmount = invoiceRows.reduce((sum, invoice) => sum + Number(invoice.total_amount_dt ?? 0), 0);
+  const allBuyerOutstandingAmount = invoiceRows.reduce((sum, invoice) => sum + Number(invoice.outstanding_amount_dt ?? 0), 0);
+  const filteredBuyerRows = buyerRows.filter((buyer) =>
+    String(buyer.name ?? "").toLowerCase().includes(buyerSearch.toLowerCase()) ||
+    String(buyer.phone ?? "").toLowerCase().includes(buyerSearch.toLowerCase()) ||
+    String(buyer.contact_name ?? "").toLowerCase().includes(buyerSearch.toLowerCase()) ||
+    String(buyer.tax_identifier ?? "").toLowerCase().includes(buyerSearch.toLowerCase())
+  );
+  useEffect(() => {
+    if (!selectedBuyerId && buyerRows.length) setSelectedBuyerId(buyerRows[0].id);
+    if (selectedBuyerId && !buyerRows.some((buyer) => buyer.id === selectedBuyerId)) setSelectedBuyerId(buyerRows[0]?.id ?? "");
+  }, [selectedBuyerId, buyerRows]);
   useEffect(() => {
     if (!selectedSupplierId && supplierRows.length) setSelectedSupplierId(supplierRows[0].id);
     if (selectedSupplierId && !supplierRows.some((supplier) => supplier.id === selectedSupplierId)) setSelectedSupplierId(supplierRows[0]?.id ?? "");
@@ -759,7 +785,7 @@ export default function Commercial() {
     onSuccess: async () => {
       toast.success(salesText.buyerSaved);
       setBuyerName(""); setBuyerContact(""); setBuyerPhone(""); setBuyerEmail("");
-      setBuyerTaxId(""); setBuyerAddress(""); setEditingBuyerId("");
+      setBuyerTaxId(""); setBuyerAddress(""); setEditingBuyerId(""); setShowBuyerForm(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyers"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "buyer-account-summary"] }),
@@ -1992,47 +2018,76 @@ export default function Commercial() {
         </CardContent></Card>
       </div>}
 
-      {tab === "buyers" && <div className="space-y-4">
-        {isAdmin && <Card><CardHeader><CardTitle>{editingBuyerId ? salesText.editBuyer : salesText.addBuyer}</CardTitle></CardHeader><CardContent>
-          <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); saveBuyer.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{salesText.buyerName}<input required minLength={2} maxLength={160} value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.buyerContact}<input maxLength={120} value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.buyerPhone}<input maxLength={40} value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.buyerTax}<input maxLength={80} value={buyerTaxId} onChange={(e) => setBuyerTaxId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{salesText.buyerEmail}<input type="email" maxLength={160} value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium md:col-span-2">{salesText.buyerAddress}<input maxLength={500} value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={saveBuyer.isPending || !buyerName.trim()}><UserRound className="size-4" />{editingBuyerId ? salesText.saveBuyer : salesText.addBuyer}</Button>
-              {editingBuyerId && <Button type="button" variant="outline" onClick={resetBuyerEditor}><X className="size-4" />{salesText.cancelEdit}</Button>}
-            </div>
-          </form>
-        </CardContent></Card>}
-        <Card><CardHeader><CardTitle>{salesText.buyers}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{salesText.buyerName}</TableHead><TableHead>{salesText.buyerContact}</TableHead><TableHead>{salesText.buyerPhone}</TableHead><TableHead>{salesText.buyerTax}</TableHead><TableHead>{salesText.buyerAddress}</TableHead><TableHead>{l.status}</TableHead><TableHead>{salesText.account}</TableHead>{isAdmin && <TableHead>{l.actions}</TableHead>}</TableRow></TableHeader>
-            <TableBody>{(buyers.data ?? []).map((buyer) => <TableRow key={buyer.id}>
-              <TableCell className="font-semibold">{isAdmin ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" title={salesText.editBuyer} onClick={() => startBuyerEdit(buyer)}>{value(buyer.name)}</button> : value(buyer.name)}</TableCell><TableCell>{value(buyer.contact_name)}</TableCell><TableCell>{value(buyer.phone)}</TableCell><TableCell>{value(buyer.tax_identifier)}</TableCell><TableCell>{value(buyer.address)}</TableCell>
-              <TableCell><span className={buyer.active ? "text-emerald-700" : "text-muted-foreground"}>{buyer.active ? salesText.activeBuyer : salesText.inactiveBuyer}</span></TableCell>
-              <TableCell><Button size="sm" variant="outline" onClick={() => setSelectedBuyerAccountId(buyer.id)}><Wallet className="size-3.5" />{salesText.account}</Button></TableCell>
-              {isAdmin && <TableCell><div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="outline" onClick={() => startBuyerEdit(buyer)}><Pencil className="size-3.5" />{salesText.editBuyer}</Button>
-                {buyer.active ? <Button size="sm" variant="destructive" disabled={changeBuyerStatus.isPending} onClick={() => { if (window.confirm(salesText.confirmDeleteBuyer)) changeBuyerStatus.mutate(buyer); }}><Trash2 className="size-3.5" />{salesText.deleteBuyer}</Button> : <Button size="sm" variant="outline" disabled={changeBuyerStatus.isPending} onClick={() => changeBuyerStatus.mutate(buyer)}><UserCheck className="size-3.5" />{salesText.reactivateBuyer}</Button>}
-              </div></TableCell>}
-            </TableRow>)}{(!buyers.isLoading && !(buyers.data?.length)) && <EmptyRow colSpan={isAdmin ? 8 : 7} text={l.noRows} />}</TableBody>
-          </Table>
-        </CardContent></Card>
-        {selectedBuyerAccountId && <Card><CardHeader><CardTitle>{salesText.account} · {value(buyerAccountSummary.data?.buyer?.name)}</CardTitle></CardHeader><CardContent>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.accountInvoices}</p><p className="text-xl font-semibold">{buyerAccountSummary.data?.summary?.invoice_count ?? "—"}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.grossTotal}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.gross_invoiced_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.creditNotesTotal}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.credited_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.netReceivable}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.total_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.paidAmount}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.paid_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.appliedCredit}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.applied_credit_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.settledAmount}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.settled_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.outstanding}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.outstanding_amount_dt)}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{salesText.buyerCreditBalance}</p><p className="text-xl font-semibold">{money(buyerAccountSummary.data?.summary?.buyer_credit_balance_dt)}</p></div>
+      {tab === "buyers" && <div className="space-y-5">
+        <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+          <div className="rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
+            {isAdmin && <Button type="button" className="mb-3 w-full rounded-xl bg-indigo-600 hover:bg-indigo-700" onClick={() => { resetBuyerEditor(); setShowBuyerForm((v) => !v); }}>
+              <Plus className="mr-2 size-4"/>{lang === "ar" ? "إضافة حريف جديد" : "Nouvel acheteur"}
+            </Button>}
+            {showBuyerForm && isAdmin && <form className="mb-4 space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3" onSubmit={(event) => { event.preventDefault(); if (buyerName.trim().length >= 2) saveBuyer.mutate(); }}>
+              <div className="font-semibold text-indigo-900">{editingBuyerId ? salesText.editBuyer : salesText.addBuyer}</div>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerName}<input required minLength={2} maxLength={160} value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerContact}<input maxLength={120} value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerPhone}<input maxLength={40} value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerTax}<input maxLength={80} value={buyerTaxId} onChange={(e) => setBuyerTaxId(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerEmail}<input type="email" maxLength={160} value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <label className="grid gap-1 text-sm font-medium">{salesText.buyerAddress}<input maxLength={500} value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-10 rounded-xl border bg-white px-3 font-normal"/></label>
+              <div className="flex gap-2"><Button type="submit" disabled={saveBuyer.isPending || buyerName.trim().length < 2} className="rounded-xl bg-indigo-600 hover:bg-indigo-700">{editingBuyerId ? salesText.saveBuyer : salesText.addBuyer}</Button><Button type="button" variant="outline" className="rounded-xl" onClick={() => { resetBuyerEditor(); setShowBuyerForm(false); }}>{salesText.cancelEdit}</Button></div>
+            </form>}
+            <div className="relative mb-3"><Search className="absolute left-3 top-3 size-4 text-stone-400"/><input value={buyerSearch} onChange={(e) => setBuyerSearch(e.target.value)} placeholder={lang === "ar" ? "البحث عن حريف..." : "Rechercher un acheteur..."} className="h-10 w-full rounded-xl border bg-white pl-9 pr-3 text-sm"/></div>
+            {filteredBuyerRows.length === 0 && <p className="py-10 text-center text-sm text-stone-500">{l.noRows}</p>}
+            <ul className="max-h-[65vh] space-y-1 overflow-y-auto">
+              {filteredBuyerRows.map((buyer) => {
+                const count = invoiceRows.filter((invoice) => invoice.buyer_id === buyer.id).length;
+                const outstanding = invoiceRows.filter((invoice) => invoice.buyer_id === buyer.id).reduce((sum, invoice) => sum + Number(invoice.outstanding_amount_dt ?? 0), 0);
+                return <li key={buyer.id}><button type="button" onClick={() => { setSelectedBuyerId(buyer.id); setSelectedBuyerAccountId(buyer.id); setShowBuyerForm(false); resetBuyerEditor(); }} className={`w-full rounded-xl px-3 py-2.5 text-start transition-colors duration-200 ${buyer.id === selectedBuyerId ? "bg-indigo-50 ring-1 ring-indigo-300" : "hover:bg-stone-50"}`}>
+                  <div className="flex items-center justify-between gap-2"><span className="truncate font-medium text-stone-900">{value(buyer.name)}</span><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">{count}×</span></div>
+                  <div className="mt-0.5 flex justify-between gap-2 text-xs text-stone-500"><span dir="ltr">{value(buyer.phone)}</span><span>{money(outstanding)}</span></div>
+                  <div className="mt-1"><span className={buyer.active ? "text-xs font-medium text-emerald-700" : "text-xs font-medium text-stone-400"}>{buyer.active ? salesText.activeBuyer : salesText.inactiveBuyer}</span></div>
+                </button></li>;
+              })}
+            </ul>
           </div>
-        </CardContent></Card>}
+          <div>
+            {!selectedBuyer && <div className="grid min-h-72 place-items-center rounded-2xl border-2 border-dashed border-stone-200 bg-white/60 p-8 text-center text-stone-500"><div><BookUser className="mx-auto mb-3 size-10 text-indigo-400"/>{lang === "ar" ? "اختر حريفاً لعرض ملفه وسجل مبيعاته" : "Sélectionnez un acheteur pour consulter son dossier"}</div></div>}
+            {selectedBuyer && <div className="code-reveal space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+                <div><div className="text-xs font-semibold uppercase tracking-wider text-stone-500">{lang === "ar" ? "الحريف" : "Acheteur"}</div><div className="font-heading text-3xl font-bold text-stone-900">{value(selectedBuyer.name)}</div><div className="mt-1 flex items-center gap-2 text-sm text-stone-600"><Phone className="size-4"/><span dir="ltr">{value(selectedBuyer.phone)}</span></div><div className="mt-1 text-xs text-stone-500">{salesText.buyerContact}: {value(selectedBuyer.contact_name)} · {salesText.buyerTax}: {value(selectedBuyer.tax_identifier)}</div><div className="mt-1 text-xs text-stone-500">{salesText.buyerEmail}: {value(selectedBuyer.email)} · {salesText.buyerAddress}: {value(selectedBuyer.address)}</div></div>
+                <div className="flex gap-2">{isAdmin && <Button variant="outline" onClick={() => { startBuyerEdit(selectedBuyer); setShowBuyerForm(true); }} className="rounded-xl border-indigo-300 text-indigo-800 hover:bg-indigo-50"><Pencil className="size-4"/>{salesText.editBuyer}</Button>}{isAdmin && (selectedBuyer.active ? <Button variant="outline" onClick={() => window.confirm(salesText.confirmDeleteBuyer) && changeBuyerStatus.mutate(selectedBuyer)} disabled={changeBuyerStatus.isPending} className="rounded-xl border-red-200 text-red-700 hover:bg-red-50"><Trash2 className="size-4"/>{salesText.deleteBuyer}</Button> : <Button variant="outline" onClick={() => changeBuyerStatus.mutate(selectedBuyer)} disabled={changeBuyerStatus.isPending} className="rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50"><UserCheck className="size-4"/>{salesText.reactivateBuyer}</Button>)}</div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <StatCard tone="rose" label={lang === "ar" ? "عدد الفواتير" : "Factures"} value={buyerInvoiceCount} icon={<FileText />} />
+                <StatCard tone="olive" label={lang === "ar" ? "إجمالي المبيعات" : "Ventes brutes"} value={money(buyerGrossAmount)} icon={<ShoppingCart />} />
+                <StatCard tone="gold" label={lang === "ar" ? "الإشعارات الدائنة" : "Avoirs" } value={money(buyerCreditedAmount)} icon={<ClipboardList />} />
+                <StatCard tone="sky" label={lang === "ar" ? "المبالغ المسددة" : "Montant payé"} value={money(buyerPaidAmount)} icon={<ShieldCheck />} />
+                <StatCard tone="violet" label={lang === "ar" ? "الرصيد المتبقي" : "Reste à recevoir"} value={money(buyerOutstandingAmount)} icon={<Wallet />} />
+              </div>
+              {selectedBuyerAccountId === selectedBuyer.id && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard tone="sky" label={salesText.accountInvoices} value={buyerAccountSummary.data?.summary?.invoice_count ?? "—"} icon={<FileText />} />
+                <StatCard tone="violet" label={salesText.netReceivable} value={money(buyerAccountSummary.data?.summary?.total_amount_dt)} icon={<Wallet />} />
+                <StatCard tone="emerald" label={salesText.settledAmount} value={money(buyerAccountSummary.data?.summary?.settled_amount_dt)} icon={<ShieldCheck />} />
+                <StatCard tone="gold" label={salesText.buyerCreditBalance} value={money(buyerAccountSummary.data?.summary?.buyer_credit_balance_dt)} icon={<Activity />} />
+              </div>}
+              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل فواتير الحريف" : "Historique des factures"}</div>
+                <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
+                  <TableHead className="text-start">{salesText.invoiceNo}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-end">{salesText.saleQty}</TableHead><TableHead className="text-end">{salesText.salePrice}</TableHead><TableHead className="text-end">{salesText.total}</TableHead><TableHead className="text-end">{salesText.paidAmount}</TableHead><TableHead className="text-end">{salesText.outstanding}</TableHead><TableHead className="text-start">{salesText.paymentStatus}</TableHead>
+                </TableRow></TableHeader><TableBody>
+                  {selectedBuyerInvoices.map((invoice) => <TableRow key={invoice.id}>
+                    <TableCell className="font-mono text-xs font-semibold">{value(invoice.document_number)}</TableCell><TableCell className="text-xs text-stone-500" dir="ltr">{date(invoice.sale_date ?? invoice.created_at)}</TableCell><TableCell className="font-mono text-xs">{value(invoice.batch_code, "—")}</TableCell><TableCell className="text-end font-semibold text-lime-800">{number(invoice.quantity_kg)} L</TableCell><TableCell className="text-end">{money(invoice.unit_price_dt)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(invoice.total_amount_dt)}</TableCell><TableCell className="text-end text-emerald-700">{money(invoice.paid_amount_dt)}</TableCell><TableCell className="text-end font-semibold text-rose-700">{money(invoice.outstanding_amount_dt)}</TableCell><TableCell>{invoice.payment_status === "PAID" ? (lang === "ar" ? "مسددة" : "Payée") : invoice.payment_status === "PARTIALLY_PAID" ? (lang === "ar" ? "جزئية" : "Partielle") : invoice.payment_status === "CREDITED" ? (lang === "ar" ? "مغطاة بإشعار دائن" : "Créditée") : (lang === "ar" ? "غير مسددة" : "Impayée")}</TableCell>
+                  </TableRow>)}
+                  {!selectedBuyerInvoices.length && <EmptyRow colSpan={9} text={l.noRows}/>}
+                </TableBody></Table></div>
+              </div>
+            </div>}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard tone="sky" label={lang === "ar" ? "عدد الحرفاء" : "Acheteurs"} value={buyerRows.length} icon={<UserRound />} />
+          <StatCard tone="violet" label={lang === "ar" ? "عدد الفواتير" : "Factures émises"} value={allBuyerInvoiceCount} icon={<FileText />} />
+          <StatCard tone="emerald" label={lang === "ar" ? "إجمالي المبيعات" : "Ventes totales"} value={money(allBuyerGrossAmount)} icon={<ShoppingCart />} />
+          <StatCard tone="gold" label={lang === "ar" ? "المبالغ غير المسددة" : "Reste à recevoir"} value={money(allBuyerOutstandingAmount)} icon={<Wallet />} />
+        </div>
       </div>}
 
       {tab === "factures" && ready && <CommercialFactures />}
