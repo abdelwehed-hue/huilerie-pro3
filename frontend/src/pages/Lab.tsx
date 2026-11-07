@@ -171,40 +171,7 @@ export default function Lab() {
   return (
     <div>
       <PageHeader title={t("lab_title")} sub={t("lab_sub")} accent="bg-cyan-500" />
-        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
-          <div className="border-b border-amber-100 px-5 py-4">
-            <h2 className="font-heading text-lg font-bold text-stone-900">Lots d’huile en attente d’analyse</h2>
-            <p className="mt-1 text-sm text-stone-500">Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives.</p>
-          </div>
-          <div className="overflow-x-auto p-4">
-            <Table>
-              <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {(gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
-                  const purchase = (gsPurchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
-                  const types = [...new Set((purchase?.lines ?? []).map((line: any) => {
-                    const item = (gsVarieties.data ?? []).find((v) => v.id === line.variety_id);
-                    return String(item?.name_fr || item?.name || line.variety_id || "").trim();
-                  }).filter(Boolean))].join(", ");
-                  return <TableRow key={lot.id}>
-                    <TableCell className="font-mono text-xs font-semibold">{String(lot.batch_code || lot.document_number || lot.id)}</TableCell>
-                    <TableCell>{String(purchase?.document_number || "—")}</TableCell>
-                    <TableCell>{types || "—"}</TableCell>
-                    <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
-                  </TableRow>;
-                })}
-                {pendingLoads.map((load) => <TableRow key={load.id}>
-                  <TableCell className="font-mono text-xs font-semibold">{load.code}</TableCell>
-                  <TableCell>{load.client_name || "—"}</TableCell>
-                  <TableCell>{load.variety || "—"}</TableCell>
-                  <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
-                </TableRow>)}
-                {(!gsLots.isLoading && pendingLoads.length === 0 && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_1fr]">
+      <div className="grid items-start gap-6 xl:grid-cols-2">
         <form
           data-testid="lab-form"
           onSubmit={(e) => {
@@ -356,86 +323,120 @@ export default function Lab() {
             {isGsCode ? (selectedGsAssessment ? "Enregistrer les modifications" : "Envoyer à la Décision indépendante") : t("save")}
           </Button>
         </form>
+          <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+            <div className="border-b border-amber-100 px-5 py-4">
+              <h2 className="font-heading text-lg font-bold text-stone-900">Lots d’huile en attente d’analyse</h2>
+              <p className="mt-1 text-sm text-stone-500">Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives.</p>
+            </div>
+            <div className="overflow-x-auto p-4">
+              <Table>
+                <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
+                    const purchase = (gsPurchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
+                    const types = [...new Set((purchase?.lines ?? []).map((line: any) => {
+                      const item = (gsVarieties.data ?? []).find((v) => v.id === line.variety_id);
+                      return String(item?.name_fr || item?.name || line.variety_id || "").trim();
+                    }).filter(Boolean))].join(", ");
+                    return <TableRow key={lot.id}>
+                      <TableCell className="font-mono text-xs font-semibold">{String(lot.batch_code || lot.document_number || lot.id)}</TableCell>
+                      <TableCell>{String(purchase?.document_number || "—")}</TableCell>
+                      <TableCell>{types || "—"}</TableCell>
+                      <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                    </TableRow>;
+                  })}
+                  {pendingLoads.map((load) => <TableRow key={load.id}>
+                    <TableCell className="font-mono text-xs font-semibold">{load.code}</TableCell>
+                    <TableCell>{load.client_name || "—"}</TableCell>
+                    <TableCell>{load.variety || "—"}</TableCell>
+                    <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                  </TableRow>)}
+                  {(!gsLots.isLoading && pendingLoads.length === 0 && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
 
-        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-          <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold text-stone-900">{t("analyses")}</div>
-          <Table data-testid="lab-table">
-            <TableHeader className="bg-stone-50">
-              <TableRow>
-                <TableHead className="text-start">{t("code")}</TableHead>
-                <TableHead className="text-start">{t("client")}</TableHead>
-                <TableHead className="text-end">{t("acidity")}</TableHead>
-                <TableHead className="text-end">Perox.</TableHead>
-                <TableHead className="text-end">K232</TableHead>
-                <TableHead className="text-end">K270</TableHead>
-                <TableHead className="text-end">%</TableHead>
-                <TableHead className="text-start">{t("classification")}</TableHead>
-                <TableHead className="text-start">Type d’olive</TableHead>
-                <TableHead className="text-start">{t("oil_type")}</TableHead>
-                <TableHead className="text-start">{t("date")}</TableHead>
-                <TableHead className="text-end">{t("certificate")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 && gsAnalysisRows.length === 0 && (
-                <TableRow><TableCell colSpan={12} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
-              )}
-              {gsAnalysisRows.map((r) => (
-                <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
-                  <TableCell>
-                    {r.status === "AWAITING_INDEPENDENT_REVIEW" ? (
-                      <button type="button" title="Modifier l’analyse avant Décision" className="rounded-lg hover:opacity-80" onClick={() => {
-                        setSelectedGsAssessment(r);
-                        setF({ ...EMPTY, code: String(r.batch_code || r.sample_reference || ""), acidity: r.acidity == null ? "" : String(r.acidity), peroxide: r.peroxide == null ? "" : String(r.peroxide), k232: r.k232 == null ? "" : String(r.k232), k270: r.k270 == null ? "" : String(r.k270), oil: r.oil_content_pct == null ? "" : String(r.oil_content_pct), notes: r.notes || "", oilType: r.oil_type || "", grade: r.classification || "auto" });
-                        setSpecificationReference(r.specification_reference || "");
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}>
-                        <CodeBadge code={String(r.batch_code || r.sample_reference)} />
-                      </button>
-                    ) : <span title="Décision enregistrée : analyse verrouillée"><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
-                  </TableCell>
-                  <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
-                  <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
-                  <TableCell>{r.classification ? <GradeBadge grade={r.classification} /> : "—"}</TableCell>
-                  <TableCell className="text-sm font-medium text-stone-800">{(() => { const purchase = (gsPurchases.data ?? []).find((p) => p.batch_code === (r.batch_code || r.sample_reference)); const varietyIds = (purchase?.lines ?? []).map((line: any) => line.variety_id); const names = varietyIds.map((id: string) => (gsVarieties.data ?? []).find((v) => v.id === id)?.name_fr || id); return [...new Set(names)].join(", ") || "—"; })()}</TableCell>
-                  <TableCell className="text-sm font-medium text-stone-800">{r.oil_type || "—"}</TableCell>
-                  <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.tested_date || r.created_at)}</TableCell>
-                  <TableCell className="text-end">{<Link to={`/commercial/certificate/${r.id}?from=lab`} data-testid={`lab-gs-certificate-${r.batch_code || r.sample_reference}`} className={buttonVariants({ variant: "outline", size: "sm" })}><Award className="size-4 text-emerald-600" /> {t("view_certificate")}</Link>}</TableCell>
-                </TableRow>
-              ))}
-              {rows.map((r) => (
-                <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
-                  <TableCell>
-                    <button type="button" onClick={() => { setF({ ...EMPTY, code: r.code }); window.scrollTo({ top: 0, behavior: "smooth" }); }} data-testid={`lab-row-code-${r.code}`} title={t("lab_edit")} className="rounded-lg transition-transform duration-150 hover:scale-105">
-                      <CodeBadge code={r.code} />
+
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold text-stone-900">{t("analyses")}</div>
+        <Table data-testid="lab-table">
+          <TableHeader className="bg-stone-50">
+            <TableRow>
+              <TableHead className="text-start">{t("code")}</TableHead>
+              <TableHead className="text-start">{t("client")}</TableHead>
+              <TableHead className="text-end">{t("acidity")}</TableHead>
+              <TableHead className="text-end">Perox.</TableHead>
+              <TableHead className="text-end">K232</TableHead>
+              <TableHead className="text-end">K270</TableHead>
+              <TableHead className="text-end">%</TableHead>
+              <TableHead className="text-start">{t("classification")}</TableHead>
+              <TableHead className="text-start">Type d’olive</TableHead>
+              <TableHead className="text-start">{t("oil_type")}</TableHead>
+              <TableHead className="text-start">{t("date")}</TableHead>
+              <TableHead className="text-end">{t("certificate")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 && gsAnalysisRows.length === 0 && (
+              <TableRow><TableCell colSpan={12} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+            )}
+            {gsAnalysisRows.map((r) => (
+              <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
+                <TableCell>
+                  {r.status === "AWAITING_INDEPENDENT_REVIEW" ? (
+                    <button type="button" title="Modifier l’analyse avant Décision" className="rounded-lg hover:opacity-80" onClick={() => {
+                      setSelectedGsAssessment(r);
+                      setF({ ...EMPTY, code: String(r.batch_code || r.sample_reference || ""), acidity: r.acidity == null ? "" : String(r.acidity), peroxide: r.peroxide == null ? "" : String(r.peroxide), k232: r.k232 == null ? "" : String(r.k232), k270: r.k270 == null ? "" : String(r.k270), oil: r.oil_content_pct == null ? "" : String(r.oil_content_pct), notes: r.notes || "", oilType: r.oil_type || "", grade: r.classification || "auto" });
+                      setSpecificationReference(r.specification_reference || "");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}>
+                      <CodeBadge code={String(r.batch_code || r.sample_reference)} />
                     </button>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {r.client_name}
-                    {r.notes && <div className="max-w-48 truncate text-xs text-stone-500">{r.notes}</div>}
-                  </TableCell>
-                  <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
-                  <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
-                  <TableCell><GradeBadge grade={r.classification} /></TableCell>
-                  <TableCell className="text-sm font-medium text-stone-800" data-testid={`lab-row-oil-type-${r.code}`}>{r.oil_type || "—"}</TableCell>
-                  <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.created_at)}</TableCell>
-                  <TableCell className="text-end">
-                    <Link to={`/certificate/${r.id}`} data-testid={`lab-certificate-${r.code}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                      <Award className="size-4 text-emerald-600" /> {t("view_certificate")}
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  ) : <span title="Décision enregistrée : analyse verrouillée"><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
+                </TableCell>
+                <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
+                <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
+                <TableCell>{r.classification ? <GradeBadge grade={r.classification} /> : "—"}</TableCell>
+                <TableCell className="text-sm font-medium text-stone-800">{(() => { const purchase = (gsPurchases.data ?? []).find((p) => p.batch_code === (r.batch_code || r.sample_reference)); const varietyIds = (purchase?.lines ?? []).map((line: any) => line.variety_id); const names = varietyIds.map((id: string) => (gsVarieties.data ?? []).find((v) => v.id === id)?.name_fr || id); return [...new Set(names)].join(", ") || "—"; })()}</TableCell>
+                <TableCell className="text-sm font-medium text-stone-800">{r.oil_type || "—"}</TableCell>
+                <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.tested_date || r.created_at)}</TableCell>
+                <TableCell className="text-end">{<Link to={`/commercial/certificate/${r.id}?from=lab`} data-testid={`lab-gs-certificate-${r.batch_code || r.sample_reference}`} className={buttonVariants({ variant: "outline", size: "sm" })}><Award className="size-4 text-emerald-600" /> {t("view_certificate")}</Link>}</TableCell>
+              </TableRow>
+            ))}
+            {rows.map((r) => (
+              <TableRow key={r.id} data-testid={`lab-row-${r.code}`}>
+                <TableCell>
+                  <button type="button" onClick={() => { setF({ ...EMPTY, code: r.code }); window.scrollTo({ top: 0, behavior: "smooth" }); }} data-testid={`lab-row-code-${r.code}`} title={t("lab_edit")} className="rounded-lg transition-transform duration-150 hover:scale-105">
+                    <CodeBadge code={r.code} />
+                  </button>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {r.client_name}
+                  {r.notes && <div className="max-w-48 truncate text-xs text-stone-500">{r.notes}</div>}
+                </TableCell>
+                <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.k270, 3)}</TableCell>
+                <TableCell className="text-end">{fmtNum(r.oil_content_pct, 1)}</TableCell>
+                <TableCell><GradeBadge grade={r.classification} /></TableCell>
+                <TableCell className="text-sm font-medium text-stone-800" data-testid={`lab-row-oil-type-${r.code}`}>{r.oil_type || "—"}</TableCell>
+                <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.created_at)}</TableCell>
+                <TableCell className="text-end">
+                  <Link to={`/certificate/${r.id}`} data-testid={`lab-certificate-${r.code}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    <Award className="size-4 text-emerald-600" /> {t("view_certificate")}
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
       <QrScanDialog
         open={scanOpen}
