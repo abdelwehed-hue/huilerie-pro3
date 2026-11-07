@@ -49,6 +49,13 @@ From the repository root:
 
 The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env`: the current bootstrap needs them whenever the database is empty. Restrict access to this file and never share or commit it.
 
+After the first startup, run the authenticated HTTP smoke test from the repository root. It verifies the local frontend shell, API health, first-admin login, session cookie, `/me`, and logout invalidation without printing the password:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Test-LocalHttp.ps1
+```
+
+
 7. Install the desktop shortcut:
 
    ```powershell
