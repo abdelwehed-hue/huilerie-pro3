@@ -47,7 +47,7 @@ if ($insertResult -notmatch "MARKER_WRITTEN") { throw "Could not confirm persist
 $stopScript = Join-Path $PSScriptRoot "Stop-OroVerde.ps1"
 $startScript = Join-Path $PSScriptRoot "Start-OroVerde.ps1"
 try {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $stopScript
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $stopScript -Port $Port
   if ($LASTEXITCODE -ne 0) { throw "Could not stop Oro Verde cleanly." }
 
   & powershell -NoProfile -ExecutionPolicy Bypass -File $startScript -Port $Port
