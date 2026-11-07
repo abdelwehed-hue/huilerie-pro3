@@ -1,6 +1,6 @@
 param(
   [string]$EnvPath = ".\backend\.env",
-  [string]$ServiceName = "MongoDB",
+  [string]$ServiceName = "",
   [int]$WaitSeconds = 60
 )
 
@@ -19,8 +19,9 @@ Get-Content -LiteralPath $EnvPath | ForEach-Object {
 }
 $uri = $values["MONGO_URL"]
 $dbName = $values["DB_NAME"]
+if (-not $ServiceName) { $ServiceName = if ($values["MONGODB_SERVICE_NAME"]) { $values["MONGODB_SERVICE_NAME"] } else { "MongoDB" } }
 if ($dbName -ne "oroverde_local" -or
-    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)" -or
+    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)" -or
     $uri -match "mongodb\+srv://|mongodb\.net" -or
     $uri -notmatch "(^|[?&])replicaSet=rs0(&|$)") {
   throw "Refusing to start MongoDB unless backend/.env targets local oroverde_local with replicaSet=rs0."
