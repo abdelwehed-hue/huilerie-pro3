@@ -11,9 +11,15 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC a
 
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server, and MongoDB Shell. Configure MongoDB as a single-node replica set named `rs0` and start its Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient.
+Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and MongoDB Database Tools (`mongodump`/`mongorestore`). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient. Initialize the local replica set once:
 
-From the repository root:
+Run this one-time initialization from the repository root after MongoDB is running:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Initialize-LocalReplicaSet.ps1
+```
+
+Wait for MongoDB to elect a PRIMARY. Then continue:
 
 1. Copy `deploy/windows/backend.env.example` to `backend/.env`.
 2. Edit `backend/.env`: set a random JWT secret (32+ characters), a unique first-admin username, and a unique password (16+ characters). Keep `APP_ENV=production`, `AUTH_DISABLED=false`, `SERVE_FRONTEND=true`, local Mongo URL, and `DB_NAME=oroverde_local`. Never use Atlas credentials.
@@ -35,7 +41,7 @@ From the repository root:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Start-OroVerde.ps1
    ```
 
-The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. After confirming that the administrator can log in, remove both `INITIAL_ADMIN_*` lines from `backend/.env`.
+The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env` for now: the current production bootstrap checks them whenever the database is empty. Restrict access to this file and never share or commit it.
 
 6. Install the desktop shortcut:
 
