@@ -1,5 +1,5 @@
 # Build the frontend for a same-origin local Windows deployment.
-# This repository currently has no package-lock.json, so use npm install rather than npm ci.
+# This repository currently has no package-lock.json; npm resolves the pinned manifest dependencies.
 # Run from the repository root after Node.js LTS is installed.
 $ErrorActionPreference = "Stop"
 $frontendDir = Join-Path (Get-Location) "frontend"
@@ -10,7 +10,7 @@ Push-Location $frontendDir
 try {
   $env:VITE_API_SAME_ORIGIN = "true"
   Remove-Item Env:VITE_API_ORIGIN -ErrorAction SilentlyContinue
-  npm install --no-audit --no-fund
+  npm install --legacy-peer-deps --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) { throw "npm install failed." }
   npm run build
   if ($LASTEXITCODE -ne 0) { throw "Frontend build failed." }
