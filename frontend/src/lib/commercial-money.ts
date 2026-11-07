@@ -3,7 +3,7 @@
  */
 export function millimesInputToDinars(value: string): string {
   const raw = String(value ?? "").trim();
-  if (!/^\\d+$/.test(raw)) throw new Error("Enter the amount as whole millimes");
+  if (!/^\d+$/.test(raw)) throw new Error("Enter the amount as whole millimes");
   const millimes = BigInt(raw);
   const dinars = millimes / 1000n;
   const remainder = String(millimes % 1000n).padStart(3, "0");
@@ -18,7 +18,7 @@ export function dinarsToMillimesInput(value: unknown): string {
 
 export function millimesInputNumber(value: string): number {
   const raw = String(value ?? "").trim();
-  if (!/^\\d+$/.test(raw)) return Number.NaN;
+  if (!/^\d+$/.test(raw)) return Number.NaN;
   const amount = Number(raw);
   return Number.isSafeInteger(amount) ? amount : Number.NaN;
 }
