@@ -2,7 +2,8 @@
 # Run from the repository root after installing Python, Node.js, and MongoDB Shell.
 # This script does not install software, change MongoDB, or start application services.
 param(
-  [string]$EnvPath = ".\\backend\\.env"
+  [string]$EnvPath = ".\\backend\\.env",
+  [int]$Port = 8000
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +21,7 @@ if (-not $resolvedEnv) {
 }
 
 # Reuse the stricter isolation/secret checks before any runtime probe.
-& powershell -NoProfile -ExecutionPolicy Bypass -File ".\\deploy\\windows\\Test-LocalConfig.ps1" -EnvPath $resolvedEnv.Path
+& powershell -NoProfile -ExecutionPolicy Bypass -File ".\\deploy\\windows\\Test-LocalConfig.ps1" -EnvPath $resolvedEnv.Path -Port $Port
 if ($LASTEXITCODE -ne 0) { throw "Local configuration validation failed." }
 
 Require-Command "python" "Install Python 3.11+ and add it to PATH."
