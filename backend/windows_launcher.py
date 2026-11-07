@@ -137,6 +137,19 @@ def main() -> None:
         deadline = time.monotonic() + 90
         def poll_startup() -> None:
             if backend_healthy():
+                # The initial credentials are only needed to seed the first admin.
+                # Remove them from the persistent env file after successful bootstrap.
+                env_file = DATA_DIR / ".env"
+                if env_file.exists():
+                    lines = env_file.read_text(encoding="utf-8").splitlines()
+                    env_file.write_text(
+                        "\\n".join(
+                            line for line in lines
+                            if not line.startswith("INITIAL_ADMIN_USERNAME=")
+                            and not line.startswith("INITIAL_ADMIN_PASSWORD=")
+                        ) + "\\n",
+                        encoding="utf-8",
+                    )
                 status.set("Oro Verde is running on this computer.")
                 open_button.configure(state="normal")
                 return
