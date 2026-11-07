@@ -95,6 +95,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Restore-Loc
 
 By default restore does not drop existing collections. For replacement of collections present in the archive, use `-DropTarget`; this prompts for the literal confirmation `RESTORE-OROVERDE-LOCAL`. MongoDB's `--drop` does not remove collections absent from the archive, so this is not a full database wipe. Never use that option without a separate verified backup. A restore is not proven until you restart the app and inspect important records.
 
+To prove that a backup can actually be restored (rather than merely parsed), run the isolated restore-verification test while Oro Verde is stopped:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalBackupRestore.ps1
+```
+
+This creates a fresh backup, checks its SHA-256 checksum, restores it under a uniquely named temporary database, compares collection names and document counts against `oroverde_local`, then drops the temporary database. It does not overwrite the live local database. It requires enough disk space for both the archive and the temporary restored copy. It is a collection-count verification, not a record-by-record comparison or a disaster-recovery certification.
+
 ## LAN and security
 
 - The initial launcher binds to `127.0.0.1:8000` only. This intentionally limits the first stage to the Windows PC; worker phones cannot connect yet.
