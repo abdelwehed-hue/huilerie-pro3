@@ -15,7 +15,7 @@ if(-not(Get-Command mongorestore -ErrorAction SilentlyContinue)){ throw "mongore
 $values=@{}
 Get-Content $EnvPath | ForEach-Object { $line=$_.Trim(); if($line -and -not $line.StartsWith("#") -and $line.Contains("=")){ $p=$line -split "=",2; $values[$p[0].Trim()]=$p[1].Trim() } }
 $uri=$values["MONGO_URL"]; $db=$values["DB_NAME"]
-if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)"){ throw "Refusing restore unless MongoDB URL is local." }
+if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)"){ throw "Refusing restore unless MongoDB URL is local." }
 if($db -ne "oroverde_local"){ throw "Refusing restore: DB_NAME must be oroverde_local." }
 $archivePath=(Resolve-Path $Archive).Path
 $checksumFile="$archivePath.sha256"
