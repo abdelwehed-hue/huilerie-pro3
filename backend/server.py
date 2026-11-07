@@ -27,13 +27,24 @@ from routers import auth as auth_router, loads as loads_router, lab as lab_route
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_runtime_security()
-    app.state.index_task = asyncio.create_task(ensure_indexes())
+    # Local-first mode must finish index creation before accepting requests.
+    # Keep the existing non-blocking startup behavior for the Render deployment.
+    if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}:
+        await ensure_indexes()
+    else:
+        app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_defaults()
     await migrate_season_ids()
     app.state.reminder_task = asyncio.create_task(reminder_loop())
-    yield
-    app.state.reminder_task.cancel()
-    client.close()
+    try:
+        yield
+    finally:
+        app.state.reminder_task.cancel()
+        try:
+            await app.state.reminder_task
+        except asyncio.CancelledError:
+            pass
+        client.close()
 
 
 app = FastAPI(lifespan=lifespan)
