@@ -45,7 +45,7 @@ def initial_admin_credentials() -> tuple[str, str, str]:
             raise RuntimeError("Set INITIAL_ADMIN_USERNAME and a unique INITIAL_ADMIN_PASSWORD of at least 16 characters before first production startup")
         if username.casefold() in {"admin", "administrator"}:
             raise RuntimeError("Choose a non-default INITIAL_ADMIN_USERNAME")
-        return username, "Administrateur", password
+        return username.lower(), "Administrateur", password
     return "admin", "Administrateur", "admin123"
 
 
