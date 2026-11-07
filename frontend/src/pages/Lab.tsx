@@ -301,7 +301,7 @@ export default function Lab() {
                   <TableCell className="text-sm font-medium text-stone-800">{(() => { const purchase = (gsPurchases.data ?? []).find((p) => p.batch_code === (r.batch_code || r.sample_reference)); const varietyIds = (purchase?.lines ?? []).map((line: any) => line.variety_id); const names = varietyIds.map((id: string) => (gsVarieties.data ?? []).find((v) => v.id === id)?.name_fr || id); return [...new Set(names)].join(", ") || "—"; })()}</TableCell>
                   <TableCell className="text-sm font-medium text-stone-800">{r.oil_type || "—"}</TableCell>
                   <TableCell className="text-xs text-stone-500" dir="ltr">{fmtDate(r.tested_date || r.created_at)}</TableCell>
-                  <TableCell className="text-end">{<Link to={`/commercial/certificate/${r.id}`} data-testid={`lab-gs-certificate-${r.batch_code || r.sample_reference}`} className={buttonVariants({ variant: "outline", size: "sm" })}><Award className="size-4 text-emerald-600" /> {t("view_certificate")}</Link>}</TableCell>
+                  <TableCell className="text-end">{<Link to={`/commercial/certificate/${r.id}?from=lab`} data-testid={`lab-gs-certificate-${r.batch_code || r.sample_reference}`} className={buttonVariants({ variant: "outline", size: "sm" })}><Award className="size-4 text-emerald-600" /> {t("view_certificate")}</Link>}</TableCell>
                 </TableRow>
               ))}
               {rows.map((r) => (
