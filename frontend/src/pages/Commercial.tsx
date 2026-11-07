@@ -175,7 +175,7 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "production", "custody", "transfers", "buyers", "sales", "permissions"];
+  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "production", "custody", "transfers", "buyers", "sales"];
   const initialTab: TabKey = qrBatchCode ? "lots" : requestedTab && validTabs.includes(requestedTab) ? requestedTab : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
