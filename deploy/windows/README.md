@@ -13,6 +13,18 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 
 Install Python 3.11+, Node.js LTS, MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). The default Windows service name is `MongoDB`; if your installation uses another service name, set `MONGODB_SERVICE_NAME=YourServiceName` in `backend/.env`. Both initialization and normal app startup read this setting. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
+**Important MongoDB service configuration:** the standard MongoDB Windows service does not necessarily start with replica-set mode enabled. Before running the initializer, locate the service's config file (from an elevated PowerShell window, run `sc.exe qc MongoDB` and inspect the `--config` path in `BINARY_PATH_NAME`). Open that YAML file as Administrator. Preserve its existing settings and add the following keys at the top level; if a `net:` section already exists, add/confirm these values there rather than creating a duplicate section:
+
+```yaml
+net:
+  port: 27017
+  bindIp: 127.0.0.1
+replication:
+  replSetName: rs0
+```
+
+If the config already contains `net:`, keep its other settings and ensure `bindIp` remains localhost-only for this first phase. Save the file and restart the MongoDB service from an elevated PowerShell window (`Restart-Service MongoDB`, substituting the configured service name if different). Do not expose port 27017 to the LAN or internet. The Oro Verde initialization script initializes the replica set but deliberately does not edit MongoDB's service configuration.
+
 From the repository root:
 
 1. Copy `deploy/windows/backend.env.example` to `backend/.env`.
