@@ -92,3 +92,6 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Windows local launcher runtime files (PIDs and logs)
+deploy/windows/runtime/
