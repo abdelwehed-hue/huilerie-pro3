@@ -1697,7 +1697,7 @@ export default function Commercial() {
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>{lang === "ar" ? "كود التتبع الموحد" : "Code de traçabilité"}</TableHead><TableHead>{lang === "ar" ? "الشراء" : "Achat"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead><TableHead>{lang === "ar" ? "الإجراء" : "Action"}</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>{lang === "ar" ? "كود التتبع الموحد" : "Code de traçabilité"}</TableHead><TableHead>{lang === "ar" ? "الشراء" : "Achat"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {(lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
                   const purchase = (purchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
@@ -1705,10 +1705,10 @@ export default function Commercial() {
                     <TableCell className="font-mono text-xs font-semibold">{value(lot.batch_code, lot.document_number ?? lot.id)}</TableCell>
                     <TableCell>{value(purchase?.document_number, "—")}</TableCell>
                     <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{lang === "ar" ? "في انتظار التحليل" : "En attente d’analyse"}</span></TableCell>
-                    <TableCell><Button type="button" size="sm" variant="outline" disabled={!canRecordLab} onClick={() => { setQualityLotId(lot.id); setEditingQualityAssessmentId(""); setCorrectingQualityAssessmentId(""); setShowNewQualityAssessment(true); setSampleReference(String(lot.batch_code || "")); setSampleDate(new Date().toISOString().slice(0,10)); setTestedDate(new Date().toISOString().slice(0,10)); setOilAcidity(""); setOilPeroxide(""); setOilK232(""); setOilK270(""); setOilContent(""); setQualityClassification(""); setOilType(""); setAnalysisNotes(""); window.scrollTo({top:0,behavior:"smooth"}); }}>{lang === "ar" ? "فتح التحليل" : "Ouvrir l’analyse"}</Button></TableCell>
+                    
                   </TableRow>;
                 })}
-                {(!lots.isLoading && !(lots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <EmptyRow colSpan={4} text={l.noRows} />}
+                {(!lots.isLoading && !(lots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <EmptyRow colSpan={3} text={l.noRows} />}
               </TableBody>
             </Table>
           </CardContent>
