@@ -162,6 +162,23 @@ function Brand() {
   const { t } = useI18n();
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
+
+  // Use the mill logo configured in Settings > Campagne as the browser/app icon.
+  useEffect(() => {
+    const logo = m?.mill_logo;
+    const iconLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'));
+    const appleLink = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+
+    for (const link of iconLinks) {
+      if (!link.dataset.defaultHref) link.dataset.defaultHref = link.href;
+      link.href = logo || link.dataset.defaultHref;
+    }
+    if (appleLink) {
+      if (!appleLink.dataset.defaultHref) appleLink.dataset.defaultHref = appleLink.href;
+      appleLink.href = logo || appleLink.dataset.defaultHref;
+    }
+  }, [m?.mill_logo]);
+
   return (
     <div className="flex items-center gap-2" data-testid="header-brand">
       {m?.mill_logo ? (
