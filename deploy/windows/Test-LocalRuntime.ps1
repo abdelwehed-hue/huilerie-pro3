@@ -50,7 +50,10 @@ if ($LASTEXITCODE -ne 0) {
 try {
   $status = ($mongoOutput | Out-String | ConvertFrom-Json)
 } catch {
-  throw "mongosh returned an unexpected status response: $mongoOutput"
+  $rawOutput = $mongoOutput | Out-String
+  $jsonLine = [regex]::Matches($rawOutput, "(?m)^\\s*\\{.*\\}\\s*$") | Select-Object -Last 1
+  if (-not $jsonLine) { throw "mongosh returned an unexpected status response: $rawOutput" }
+  try { $status = $jsonLine.Value | ConvertFrom-Json } catch { throw "Could not parse replica-set status: $rawOutput" }
 }
 if ($status.set -ne "rs0" -or $status.state -ne 1 -or -not $status.primary) {
   throw "MongoDB is reachable but is not a PRIMARY in replica set rs0. Returned: $($mongoOutput | Out-String)"
