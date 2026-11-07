@@ -31,7 +31,7 @@ Name: "{autodesktop}\Oro Verde"; Filename: "{app}\{#AppExeName}"
 Name: "{autoprograms}\Oro Verde"; Filename: "{app}\{#AppExeName}"
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch Oro Verde"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "Launch Oro Verde"; Flags: postinstall nowait skipifsilent runasoriginaluser
 
 [UninstallDelete]
 ; Intentionally do not remove the current user's %LOCALAPPDATA%\OroVerde folder.
