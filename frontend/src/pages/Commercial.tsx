@@ -28,7 +28,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "permissions";
+type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales";
 
 const labels = {
   fr: {
@@ -243,8 +243,6 @@ export default function Commercial() {
   const [qualityQrScanOpen, setQualityQrScanOpen] = useState(false);
   const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
   const [reviewReason, setReviewReason] = useState("");
-  const [selectedWorkerId, setSelectedWorkerId] = useState("");
-  const [assignedPermissions, setAssignedPermissions] = useState<string[]>([]);
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [editingBuyerId, setEditingBuyerId] = useState("");
@@ -326,8 +324,6 @@ export default function Commercial() {
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
-  const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
-  const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
@@ -1207,17 +1203,7 @@ export default function Commercial() {
     setPickupKey(crypto.randomUUID());
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const saveWorkerPermissions = useMutation({
-    mutationFn: () => apiPost<AnyRecord>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
-      permissions: ["commercial.read", ...assignedPermissions],
-    }),
-    onSuccess: async () => {
-      toast.success(l.permissionsSaved);
-      await queryClient.invalidateQueries({ queryKey: ["commercial", "worker-permissions", selectedWorkerId] });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
-  });
-  const bootstrap = useMutation({
+
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
       toast.success(l.bootstrapSuccess);
@@ -1233,10 +1219,6 @@ export default function Commercial() {
   const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
   const canCreatePreproductionSample = permissions.data?.permissions.includes("commercial.manage_preproduction_samples") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
-  useEffect(() => {
-    setAssignedPermissions(targetPermissions.data?.permissions.filter((permission) => permission !== "commercial.read") ?? []);
-  }, [targetPermissions.data, selectedWorkerId]);
-
   // New preproduction assessments must target trial oil lots; keep a legacy lot selectable only while editing its existing assessment.
   const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && ((lot.lot_purpose === "PREPRODUCTION_SAMPLE" && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id)) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)));
   const selectedQualityLot = qualityOilLots.find((lot) => lot.id === qualityLotId);
@@ -1429,7 +1411,6 @@ export default function Commercial() {
     { id: "factures", label: l.facturesTab, icon: FileText },
     // Supporting/setup sections are grouped after the operational flow.
   ];
-  if (isAdmin) tabs.push({ id: "permissions", label: l.permissionsTab, icon: ShieldCheck });
 
   return (
     <div className="commercial-workspace mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -2287,26 +2268,6 @@ export default function Commercial() {
 
       {tab === "quality" && <QrScanDialog open={qualityQrScanOpen} onClose={() => setQualityQrScanOpen(false)} onScan={handleQualityQrScan} />}
 
-      {tab === "permissions" && isAdmin && <Card>
-        <CardHeader><CardTitle>{l.permissionsTab}</CardTitle><CardDescription>{l.noPermission}</CardDescription></CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <label className="grid max-w-xl gap-1 text-sm font-medium">{l.chooseWorker}
-              <select value={selectedWorkerId} onChange={(e) => setSelectedWorkerId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(workers.data ?? []).filter((worker) => worker.role === "worker" && worker.active).map((worker) => <option key={worker.id} value={worker.id}>{worker.full_name} · {worker.username}</option>)}</select>
-            </label>
-            {(workers.data ?? []).filter((worker) => worker.role === "worker" && worker.active).length === 0 && <p className="text-sm text-muted-foreground">{l.noWorkers}</p>}
-            {selectedWorkerId && <div className="space-y-3 rounded-xl border p-4">
-              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.edit_records")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.edit_records"] : current.filter((item) => item !== "commercial.edit_records"))} />{l.editRecordsPermission}</label>
-              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.delete_records")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.delete_records"] : current.filter((item) => item !== "commercial.delete_records"))} />{l.deleteRecordsPermission}</label>
-              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.lab_record")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.lab_record"] : current.filter((item) => item !== "commercial.lab_record"))} />{l.labPermission}</label>
-               <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.manage_preproduction_samples")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.manage_preproduction_samples"] : current.filter((item) => item !== "commercial.manage_preproduction_samples"))} />{lang === "ar" ? "إجراء تجارب العصر قبل الإنتاج" : "Gérer les essais de trituration préproduction"}</label>
-              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.quality_release")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.quality_release"] : current.filter((item) => item !== "commercial.quality_release"))} />{l.reviewerPermission}</label>
-              <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={assignedPermissions.includes("commercial.view_audit")} onChange={(e) => setAssignedPermissions((current) => e.target.checked ? [...current, "commercial.view_audit"] : current.filter((item) => item !== "commercial.view_audit"))} />{l.auditPermission}</label>
-              <Button disabled={saveWorkerPermissions.isPending || targetPermissions.isLoading || targetPermissions.isError} onClick={() => saveWorkerPermissions.mutate()}>{l.savePermissions}</Button>
-            </div>}
-          </div>
-        </CardContent>
-      </Card>}
     </div>
   );
 }
