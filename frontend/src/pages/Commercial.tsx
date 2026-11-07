@@ -1982,10 +1982,11 @@ export default function Commercial() {
                       {selectedBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedBalance.quantity_kg)} kg</span>}
                     </label>
                     
-                    {selectedBalance && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm md:col-span-3 md:grid-cols-3">
+                    {selectedBalance && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm md:col-span-3 md:grid-cols-2 lg:grid-cols-4">
                       <div><span className="text-muted-foreground">{lang === "ar" ? "الدفعة" : "Lot"} : </span><strong>{lotCode(selectedLot, selectedBalance.lot_id)}</strong></div>
                       <div><span className="text-muted-foreground">{l.location} : </span><strong>{value((locations.data ?? []).find((item) => item.id === selectedBalance.location_id)?.name ?? (locations.data ?? []).find((item) => item.id === selectedBalance.location_id)?.code, selectedBalance.location_id)}</strong></div>
                       <div><span className="text-muted-foreground">{l.owner} : </span><strong>{displayOwnerLabel(selectedBalance.owner ?? selectedLot?.owner)}</strong></div>
+                      <div><span className="text-muted-foreground">{l.oliveType} : </span><strong>{(() => { const variety = (varieties.data ?? []).find((item) => item.id === selectedLot?.variety_id); return value(lang === "ar" ? (variety?.name_ar || variety?.name_fr || selectedLot?.variety_name_ar || selectedLot?.variety_name || selectedLot?.variety_name_fr) : (variety?.name_fr || variety?.name_ar || selectedLot?.variety_name_fr || selectedLot?.variety_name || selectedLot?.variety_name_ar)); })()}</strong></div>
                     </div>}
                   </div>;
                 })}
