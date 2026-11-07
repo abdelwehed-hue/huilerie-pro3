@@ -9,7 +9,7 @@ Get-Content -LiteralPath $EnvPath | ForEach-Object {
     $values[$parts[0].Trim()] = $parts[1].Trim()
   }
 }
-foreach ($key in @("APP_ENV","MONGO_URL","DB_NAME","JWT_SECRET","CORS_ORIGINS","AUTH_DISABLED","SERVE_FRONTEND","INITIAL_ADMIN_USERNAME","INITIAL_ADMIN_PASSWORD","COOKIE_SECURE","COOKIE_SAMESITE")) {
+foreach ($key in @("APP_ENV","MONGO_URL","DB_NAME","JWT_SECRET","CORS_ORIGINS","AUTH_DISABLED","SERVE_FRONTEND","COOKIE_SECURE","COOKIE_SAMESITE")) {
   if (-not $values.ContainsKey($key) -or -not $values[$key]) { throw "Missing required setting: $key" }
 }
 if ($values["APP_ENV"] -ne "production") { throw "APP_ENV must be production locally so known demo accounts are never seeded." }
@@ -22,6 +22,11 @@ if ($values["SERVE_FRONTEND"] -notmatch "^(1|true|yes|on)$") { throw "SERVE_FRON
 if ($values["CORS_ORIGINS"] -match "\*") { throw "CORS_ORIGINS cannot contain wildcard origins." }
 if ($values["COOKIE_SAMESITE"] -notin @("lax","strict","none")) { throw "COOKIE_SAMESITE must be lax, strict, or none." }
 if ($values["COOKIE_SAMESITE"] -eq "none" -and $values["COOKIE_SECURE"] -notmatch "^(1|true|yes|on)$") { throw "SameSite=None requires COOKIE_SECURE=true." }
-if ($values["INITIAL_ADMIN_USERNAME"] -match "REPLACE|admin|administrator" -or $values["INITIAL_ADMIN_USERNAME"].Length -lt 4) { throw "Set a unique non-default INITIAL_ADMIN_USERNAME (at least 4 characters)." }
-if ($values["INITIAL_ADMIN_PASSWORD"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["INITIAL_ADMIN_PASSWORD"].Length -lt 16) { throw "Set a unique INITIAL_ADMIN_PASSWORD of at least 16 characters." }
-Write-Host "Local configuration passed: isolated DB, production auth, explicit first-admin credentials." -ForegroundColor Green
+$hasAdminUsername = $values.ContainsKey("INITIAL_ADMIN_USERNAME") -and [bool]$values["INITIAL_ADMIN_USERNAME"]
+$hasAdminPassword = $values.ContainsKey("INITIAL_ADMIN_PASSWORD") -and [bool]$values["INITIAL_ADMIN_PASSWORD"]
+if ($hasAdminUsername -xor $hasAdminPassword) { throw "Set both INITIAL_ADMIN_USERNAME and INITIAL_ADMIN_PASSWORD, or remove both after the first admin account has been created." }
+if ($hasAdminUsername) {
+  if ($values["INITIAL_ADMIN_USERNAME"] -match "REPLACE|admin|administrator" -or $values["INITIAL_ADMIN_USERNAME"].Length -lt 4) { throw "Set a unique non-default INITIAL_ADMIN_USERNAME (at least 4 characters)." }
+  if ($values["INITIAL_ADMIN_PASSWORD"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["INITIAL_ADMIN_PASSWORD"].Length -lt 16) { throw "Set a unique INITIAL_ADMIN_PASSWORD of at least 16 characters." }
+}
+Write-Host "Local configuration passed: isolated DB and production authentication." -ForegroundColor Green
