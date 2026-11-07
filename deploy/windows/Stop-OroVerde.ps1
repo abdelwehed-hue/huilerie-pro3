@@ -12,7 +12,7 @@ $expectedPort = "--port\s+$Port(?:\s|$)"
 if ($commandLine -notmatch "uvicorn\s+server:app(?:\s|$)" -or
     $commandLine -notmatch "--host\s+127\.0\.0\.1(?:\s|$)" -or
     $commandLine -notmatch $expectedPort) {
-  throw "Refusing to stop PID $processId: command line does not match Oro Verde on localhost port $Port."
+  throw "Refusing to stop PID ${processId}: command line does not match Oro Verde on localhost port $Port."
 }
 Stop-Process -Id $processId -Force
 Remove-Item $pidFile -Force
