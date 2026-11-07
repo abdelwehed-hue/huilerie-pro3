@@ -38,7 +38,7 @@ if (Test-Path $pidFile) {
   Remove-Item $pidFile -Force
 }
 if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) { throw "Port $Port is already in use. Stop the other service or choose another port." }
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalRuntime.ps1") -EnvPath $envPath
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalRuntime.ps1") -EnvPath $envPath -Port $Port
 if ($LASTEXITCODE -ne 0) { throw "Runtime preflight failed; backend was not started." }
 $process = Start-Process -FilePath $python -ArgumentList @("-m","uvicorn","server:app","--host","127.0.0.1","--port",$Port.ToString()) -WorkingDirectory (Join-Path $repoRoot "backend") -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 Set-Content -LiteralPath $pidFile -Value $process.Id -NoNewline
