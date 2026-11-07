@@ -17,7 +17,7 @@ The EXE packaging branch builds an installer named `OroVerde-Setup.exe`. The ins
 
 The installer does not require Python or Node.js on the target PC. It creates a desktop shortcut named **Oro Verde**. The first launch asks for a unique administrator username and a password of at least 16 characters. The application remains bound to localhost; it is not accessible from worker phones or other computers in this packaging stage.
 
-Application files are installed under Program Files. The writable configuration, logs, database backups, and other local data are kept separately under `%LOCALAPPDATA%\\OroVerde`. Uninstall intentionally preserves that data directory.
+Application files are installed under Program Files. The private configuration and launcher logs are kept under `%LOCALAPPDATA%\\OroVerde`; MongoDB database files remain in the separate data path configured for the MongoDB Windows service. Uninstall intentionally preserves the user's configuration/log directory and does not remove MongoDB data. The EXE preview does not yet provide an in-app backup screen; keep database backups on a separate protected drive.
 
 This is a packaging preview until the installer has been installed and tested on the actual Windows 11 mill PC. A successful GitHub Actions build is not a substitute for testing MongoDB startup, login/session cookies, PDFs (including Arabic), app restart, backup/restore, and upgrade behavior on that machine.
 
