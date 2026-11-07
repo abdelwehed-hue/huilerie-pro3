@@ -21,6 +21,9 @@ if ($values["JWT_SECRET"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["JWT_SECR
 if ($values["AUTH_DISABLED"] -match "^(1|true|yes|on)$") { throw "AUTH_DISABLED must remain false." }
 if ($values["SERVE_FRONTEND"] -notmatch "^(1|true|yes|on)$") { throw "SERVE_FRONTEND=true is required." }
 if ($values["CORS_ORIGINS"] -match "\*") { throw "CORS_ORIGINS cannot contain wildcard origins." }
+$allowedOrigins = @($values["CORS_ORIGINS"] -split "," | ForEach-Object { $_.Trim().TrimEnd("/") })
+$expectedOrigin = "http://127.0.0.1:$Port"
+if ($expectedOrigin -notin $allowedOrigins) { throw "CORS_ORIGINS must explicitly include $expectedOrigin for the local browser and WebSocket origin." }
 if ($values["COOKIE_SAMESITE"] -notin @("lax","strict","none")) { throw "COOKIE_SAMESITE must be lax, strict, or none." }
 if ($values["COOKIE_SAMESITE"] -eq "none" -and $values["COOKIE_SECURE"] -notmatch "^(1|true|yes|on)$") { throw "SameSite=None requires COOKIE_SECURE=true." }
 $hasAdminUsername = $values.ContainsKey("INITIAL_ADMIN_USERNAME") -and [bool]$values["INITIAL_ADMIN_USERNAME"]
