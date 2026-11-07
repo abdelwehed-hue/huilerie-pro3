@@ -72,3 +72,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Test-Loc
 ```
 
 The preflight re-runs the local isolation/secret checks, verifies the required command-line tools are on `PATH`, and asks `mongosh` whether the local `rs0` replica set has an elected PRIMARY. It is read-only: it does not install packages, initialize or modify MongoDB, start the backend, or launch the frontend. A failure gives the missing prerequisite; it is not a substitute for the remaining application and LAN acceptance tests.
+
+
+## Same-origin local frontend build (implemented; not yet Windows-tested)
+
+The local runtime can now serve the compiled React frontend from FastAPI on the same origin as the API. This avoids a separate Vite development server and prevents the local browser build from silently falling back to Render:
+
+1. From the repository root on Windows, run:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Build-LocalFrontend.ps1
+   ```
+
+   The script uses `npm ci` and builds with `VITE_API_SAME_ORIGIN=true`. The resulting frontend uses relative `/api` requests and a WebSocket derived from the page's own host. It deliberately unsets `VITE_API_ORIGIN` for this build.
+2. Set `SERVE_FRONTEND=true` in `backend/.env` (the Windows sample now includes it).
+3. Start FastAPI from the backend directory on the chosen local port (the planned default is 8000). FastAPI serves `frontend/dist` at `/` only when `SERVE_FRONTEND=true`; the option is off by default and therefore does not change Render's existing frontend hosting.
+4. Open the local server address in a browser. The authenticated WebSocket accepts the exact same-origin host for this opt-in local mode; authentication remains required.
+
+This is a deployment building block, not a complete installer: MongoDB service installation/replica-set initialization, first-admin provisioning, backend virtual-environment setup, firewall rules, launcher/desktop shortcut, backup/restore, and LAN acceptance tests remain outstanding. Do not use for live mill operations until those checks pass.
