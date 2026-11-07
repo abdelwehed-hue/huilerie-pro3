@@ -27,6 +27,8 @@ Require-Command "python" "Install Python 3.11+ and add it to PATH."
 Require-Command "node" "Install the current Node.js LTS release and add it to PATH."
 Require-Command "npm" "Install Node.js LTS (npm is included)."
 Require-Command "mongosh" "Install MongoDB Shell and add mongosh.exe to PATH."
+Require-Command "mongodump" "Install MongoDB Database Tools and add mongodump.exe to PATH."
+Require-Command "mongorestore" "Install MongoDB Database Tools and add mongorestore.exe to PATH."
 
 $values = @{}
 Get-Content -LiteralPath $resolvedEnv.Path | ForEach-Object {
