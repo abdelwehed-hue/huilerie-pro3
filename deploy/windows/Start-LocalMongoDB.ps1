@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($WaitSeconds -lt 10 -or $WaitSeconds -gt 300) { throw "WaitSeconds must be between 10 and 300." }
 if (-not (Test-Path -LiteralPath $EnvPath)) { throw "Missing backend .env." }
 if (-not (Get-Command mongosh -ErrorAction SilentlyContinue)) { throw "mongosh is required; install MongoDB Shell first." }
 
@@ -31,7 +32,7 @@ if (-not $service) {
 }
 if ($service.Status -ne "Running") {
   Write-Host "Starting MongoDB Windows service '$ServiceName'..." -ForegroundColor Cyan
-  Start-Service -Name $ServiceName
+  try { Start-Service -Name $ServiceName } catch { throw "Could not start MongoDB service '$ServiceName'. Check Windows service permissions or run the launcher with an authorized account. Details: $($_.Exception.Message)" }
 }
 
 $deadline = (Get-Date).AddSeconds($WaitSeconds)
