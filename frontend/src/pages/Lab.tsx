@@ -70,6 +70,12 @@ export default function Lab() {
   const gsCodeAssessmentReviewed = !!gsCodeAssessment && !gsCodeAssessmentPending;
   const gsAnalysisLocked = isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment;
   const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status)) && !gsCodeAssessment;
+  const gsPurchaseForCode = (gsPurchases.data ?? []).find((purchase) => String(purchase.batch_code || "").trim().toUpperCase() === code.toUpperCase());
+  const gsOliveVariety = [...new Set((gsPurchaseForCode?.lines ?? []).map((line: any) => {
+    const variety = (gsVarieties.data ?? []).find((item) => item.id === line.variety_id);
+    return String(variety?.name_fr || variety?.name || line.variety_id || "").trim();
+  }).filter(Boolean))].join(", ");
+  const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -218,6 +224,11 @@ export default function Lab() {
             {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
                 <CheckCircle2 className="size-4 text-green-600" /> {found.client_name} · {fmtNum(found.olive_kg)} {t("kg")}
+              </div>
+            )}
+            {oliveVarietyLabel && (
+              <div data-testid="lab-olive-variety" className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+                Variété d’olives : <span className="font-bold">{oliveVarietyLabel}</span>
               </div>
             )}
             {found && existing && (
