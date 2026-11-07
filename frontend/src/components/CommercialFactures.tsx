@@ -31,6 +31,10 @@ const printNumber = (value: unknown, ar: boolean, digits = 3) =>
   new Intl.NumberFormat(ar ? "ar-TN" : "fr-TN", {
     minimumFractionDigits: digits, maximumFractionDigits: digits,
   }).format(Number(value ?? 0));
+const quantityNumber = (value: unknown, ar: boolean) =>
+  new Intl.NumberFormat(ar ? "ar-TN" : "fr-TN", {
+    minimumFractionDigits: 0, maximumFractionDigits: 3,
+  }).format(Number(value ?? 0));
 const frSmall = ["zéro","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize"];
 function frWordsUnder100(n: number): string {
   if (n <= 16) return frSmall[n];
@@ -290,7 +294,7 @@ export default function CommercialFactures() {
     {mode !== "statement" && <Card className="border-slate-300 bg-slate-50 shadow-sm">
       <CardHeader className="border-b border-slate-100 bg-slate-200"><CardTitle className="text-slate-900">{mode === "global" ? labels.global : labels.invoices}{buyerId ? " — " + selectedBuyer?.name : ""}</CardTitle><CardDescription>{mode === "global" ? (ar ? "مجموع الفواتير خلال الفترة المحددة للعميل المختار" : "Regroupement des factures du client sur la période sélectionnée") : labels.subtitle}</CardDescription></CardHeader>
       <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead><TableHead>{labels.actions}</TableHead></TableRow></TableHeader><TableBody>
-        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{money(x.quantity_kg)}</TableCell><TableCell>{money(x.unit_price_dt)}</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)}</TableCell><TableCell>{money(x.paid_amount_dt)}</TableCell><TableCell>{money(x.credited_amount_dt)}</TableCell><TableCell>{money(x.outstanding_amount_dt)}</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button>{isAdmin && <Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button>}</div></TableCell></TableRow>})}
+        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{quantityNumber(x.quantity_kg, ar)}</TableCell><TableCell>{money(x.unit_price_dt)}</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)}</TableCell><TableCell>{money(x.paid_amount_dt)}</TableCell><TableCell>{money(x.credited_amount_dt)}</TableCell><TableCell>{money(x.outstanding_amount_dt)}</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button>{isAdmin && <Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button>}</div></TableCell></TableRow>})}
         {!filtered.length && <TableRow><TableCell colSpan={12} className="text-center">{labels.noRows}</TableCell></TableRow>}
       </TableBody></Table></div>
       {selectedInvoiceId && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border bg-muted/30 p-4">
@@ -300,7 +304,7 @@ export default function CommercialFactures() {
           <div><span className="text-muted-foreground">{labels.date}</span><p className="font-semibold">{dateText(selectedInvoice.sale_date ?? selectedInvoice.created_at)}</p></div>
           <div><span className="text-muted-foreground">{labels.code}</span><p className="font-mono font-semibold">{selectedInvoice.batch_code ?? "—"}</p></div>
           <div><span className="text-muted-foreground">{labels.status}</span><p className="font-semibold">{statusText(selectedInvoice)}</p></div>
-          <div><span className="text-muted-foreground">{labels.quantity}</span><p className="font-semibold">{money(selectedInvoice.quantity_kg)}</p></div>
+          <div><span className="text-muted-foreground">{labels.quantity}</span><p className="font-semibold">{quantityNumber(selectedInvoice.quantity_kg, ar)}</p></div>
           <div><span className="text-muted-foreground">{labels.unit}</span><p className="font-semibold">{money(selectedInvoice.unit_price_dt)}</p></div>
           <div><span className="text-muted-foreground">{labels.total}</span><p className="font-semibold">{money(selectedInvoice.total_amount_dt)}</p></div>
           <div><span className="text-muted-foreground">{labels.balance}</span><p className="font-semibold">{money(selectedInvoice.outstanding_amount_dt)}</p></div>
@@ -341,7 +345,7 @@ export default function CommercialFactures() {
             </tr></thead>
             <tbody><tr className="border-b">
               <td className="p-3">{ar ? "زيت زيتون" : "Huile d’olive"}</td>
-              <td className="p-3 text-right">{printNumber(selectedInvoice.quantity_kg, ar, 3)} L</td>
+              <td className="p-3 text-right">{quantityNumber(selectedInvoice.quantity_kg, ar)} L</td>
               <td className="p-3 text-right">{printNumber(selectedInvoice.unit_price_dt, ar, 3)}</td>
               <td className="p-3 text-right">{printNumber(selectedInvoice.total_amount_dt, ar, 3)}</td>
             </tr></tbody>
@@ -391,7 +395,7 @@ export default function CommercialFactures() {
               <td className="border-b border-stone-200 p-2">{dateText(x.sale_date ?? x.created_at)}</td>
               <td className="border-b border-stone-200 p-2 font-semibold">{x.document_number}</td>
               <td className="border-b border-stone-200 p-2 font-mono">{x.batch_code ?? "—"}</td>
-              <td className="border-b border-stone-200 p-2">{printNumber(x.quantity_kg, ar)} L</td>
+              <td className="border-b border-stone-200 p-2">{quantityNumber(x.quantity_kg, ar)} L</td>
               <td className="border-b border-stone-200 p-2">{money(x.total_amount_dt)}</td>
               <td className="border-b border-stone-200 p-2">{money(x.paid_amount_dt)}</td>
               <td className="border-b border-stone-200 p-2">{money(x.credited_amount_dt)}</td>
