@@ -11,7 +11,7 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). Keep the default service name `MongoDB` unless you plan to pass a different name to `Start-LocalMongoDB.ps1`. The application uses MongoDB transactions; standalone MongoDB is insufficient.
+Install Python 3.11+, Node.js LTS, MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). The default Windows service name is `MongoDB`; if your installation uses another service name, set `MONGODB_SERVICE_NAME=YourServiceName` in `backend/.env`. Both initialization and normal app startup read this setting. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
 From the repository root:
 
@@ -23,7 +23,7 @@ From the repository root:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Initialize-LocalReplicaSet.ps1
    ```
 
-   The script starts the existing MongoDB Windows service if needed, waits until MongoDB accepts local connections, initializes `rs0` if it is not already initialized, and waits for a PRIMARY. If the service uses a non-default name, pass `-ServiceName YourServiceName`. It does not install or reconfigure the service.
+   The script starts the existing MongoDB Windows service if needed, waits until MongoDB accepts local connections, initializes `rs0` if it is not already initialized, and waits for a PRIMARY. If the service uses a non-default name, set `MONGODB_SERVICE_NAME=YourServiceName` in `backend/.env` before running this command. The same setting is used by the desktop launcher. It does not install or reconfigure the service.
 
    Then verify the environment and required command-line tools:
 
