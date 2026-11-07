@@ -12,8 +12,8 @@ This is a packaging plan, not a claim that a tested installer already exists.
 - Do not merge to `main` or deploy to Render as part of packaging.
 - Keep the Windows database named `oroverde_local`, with a localhost-only MongoDB connection.
 - Never reuse a Render/Atlas connection string or copy web data into the local database.
-- Keep `.env`, MongoDB data, logs, uploads, and backups in a writable data directory outside the installed application directory (for example, under `%ProgramData%\OroVerde\`).
-- Upgrades and uninstall must preserve local database files and backups by default. Data deletion must be a separate, explicit operation.
+- Keep `.env` and launcher logs in the current Windows user's `%LOCALAPPDATA%\\OroVerde\\` directory, outside the installed application directory. MongoDB stores database files in the separate path configured for its Windows service; do not move or delete that path during app upgrades or uninstall. Backups must be written to a separate protected location and copied to another drive.
+- Upgrades and uninstall must preserve the user's local configuration/log directory and MongoDB service data by default. Data deletion must be a separate, explicit operation.
 - Bind the first release to `127.0.0.1` only. LAN/mobile access is out of scope until HTTPS, secure cookies, and firewall controls are implemented and tested.
 
 ## Packaging architecture
