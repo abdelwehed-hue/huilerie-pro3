@@ -1457,50 +1457,6 @@ export default function Commercial() {
         <Card className="commercial-card commercial-card--amber"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.counters}</CardDescription><ClipboardList className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/16</CardTitle></CardHeader></Card>
       </div>}
 
-      {tab === "overview" && ready && <Card className="commercial-card">
-        <CardHeader><CardTitle>{lang === "ar" ? "متابعة عمليات شراء الزيتون" : "Suivi des achats d’olives"}</CardTitle>
-          <CardDescription>{lang === "ar" ? "تتبع كود الشراء وموقعه في مراحل الإنتاج" : "Suivi du code d’achat et de son avancement dans le processus de production"}</CardDescription>
-        </CardHeader>
-        <CardContent><div className="overflow-x-auto"><Table>
-          <TableHeader><TableRow>
-            <TableHead>{lang === "ar" ? "كود الشراء" : "Code d’achat"}</TableHead>
-            <TableHead>{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
-            <TableHead>{l.supplier}</TableHead>
-            <TableHead>{lang === "ar" ? "صنف الزيتون" : "Variété d’olives"}</TableHead>
-            <TableHead>{l.status}</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>{[...purchaseRows].sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? ""))).map((purchase) => {
-            const linkedLots = (lots.data ?? []).filter((lot) => lot.source_purchase_id === purchase.id || (purchase.batch_codes ?? [purchase.batch_code]).filter(Boolean).includes(lot.batch_code));
-            const productionForPurchase = (productionRuns.data ?? []).filter((run) => linkedLots.some((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id));
-            const varietyIds = Array.from(new Set(linkedLots.map((lot) => lot.variety_id).concat((purchase.lines ?? []).map((line: AnyRecord) => line.variety_id)).filter(Boolean)));
-            const varietyLabels = varietyIds.map((id) => {
-              const variety = (varieties.data ?? []).find((item) => item.id === id);
-              return variety ? (lang === "ar" ? variety.name_ar || variety.name_fr : variety.name_fr || variety.name_ar) : "";
-            }).filter(Boolean);
-            const availableOlives = linkedLots.some((lot) => (balances.data ?? []).some((balance) => balance.product_kind === "OLIVE" && balance.lot_id === lot.id && Number(balance.quantity_kg ?? 0) > 0));
-            const stage = purchase.status === "DRAFT"
-              ? (lang === "ar" ? "مسودة شراء" : "Brouillon d’achat")
-              : purchase.status === "CANCELLED"
-                ? (lang === "ar" ? "شراء ملغى" : "Achat annulé")
-                : productionForPurchase.length
-                  ? (lang === "ar" ? "تم تسجيل الإنتاج" : "Production enregistrée")
-                  : availableOlives
-                    ? (lang === "ar" ? "مخزون زيتون — بانتظار الإنتاج" : "Stock d’olives — en attente de production")
-                    : linkedLots.length
-                      ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
-                      : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
-            return <TableRow key={purchase.id}>
-              <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
-              <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
-              <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
-              <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
-              <TableCell><span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">{stage}</span></TableCell>
-            </TableRow>;
-          })}
-          {(!purchases.isLoading && !purchaseRows.length) && <EmptyRow colSpan={5} text={l.noRows} />}
-          </TableBody></Table></div></CardContent>
-      </Card>}
-
       {tab === "overview" && ready && showTankLevels && <div id="commercial-tank-levels"><Card className="commercial-card commercial-card--blue">
         <CardHeader className="pb-2">
           <CardTitle>{lang === "ar" ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</CardTitle>
@@ -1577,6 +1533,51 @@ export default function Commercial() {
         </div>
       )}
 
+      {tab === "overview" && ready && <Card className="commercial-card">
+        <CardHeader><CardTitle>{lang === "ar" ? "متابعة عمليات شراء الزيتون" : "Suivi des achats d’olives"}</CardTitle>
+          <CardDescription>{lang === "ar" ? "تتبع كود الشراء وموقعه في مراحل الإنتاج" : "Suivi du code d’achat et de son avancement dans le processus de production"}</CardDescription>
+        </CardHeader>
+        <CardContent><div className="overflow-x-auto"><Table>
+          <TableHeader><TableRow>
+            <TableHead>{lang === "ar" ? "كود الشراء" : "Code d’achat"}</TableHead>
+            <TableHead>{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
+            <TableHead>{l.supplier}</TableHead>
+            <TableHead>{lang === "ar" ? "صنف الزيتون" : "Variété d’olives"}</TableHead>
+            <TableHead>{l.status}</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>{[...purchaseRows].sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? ""))).map((purchase) => {
+            const linkedLots = (lots.data ?? []).filter((lot) => lot.source_purchase_id === purchase.id || (purchase.batch_codes ?? [purchase.batch_code]).filter(Boolean).includes(lot.batch_code));
+            const productionForPurchase = (productionRuns.data ?? []).filter((run) => linkedLots.some((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id));
+            const varietyIds = Array.from(new Set(linkedLots.map((lot) => lot.variety_id).concat((purchase.lines ?? []).map((line: AnyRecord) => line.variety_id)).filter(Boolean)));
+            const varietyLabels = varietyIds.map((id) => {
+              const variety = (varieties.data ?? []).find((item) => item.id === id);
+              return variety ? (lang === "ar" ? variety.name_ar || variety.name_fr : variety.name_fr || variety.name_ar) : "";
+            }).filter(Boolean);
+            const availableOlives = linkedLots.some((lot) => (balances.data ?? []).some((balance) => balance.product_kind === "OLIVE" && balance.lot_id === lot.id && Number(balance.quantity_kg ?? 0) > 0));
+            const stage = purchase.status === "DRAFT"
+              ? (lang === "ar" ? "مسودة شراء" : "Brouillon d’achat")
+              : purchase.status === "CANCELLED"
+                ? (lang === "ar" ? "شراء ملغى" : "Achat annulé")
+                : productionForPurchase.length
+                  ? (lang === "ar" ? "تم تسجيل الإنتاج" : "Production enregistrée")
+                  : availableOlives
+                    ? (lang === "ar" ? "مخزون زيتون — بانتظار الإنتاج" : "Stock d’olives — en attente de production")
+                    : linkedLots.length
+                      ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
+                      : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
+            return <TableRow key={purchase.id}>
+              <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+              <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
+              <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
+              <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
+              <TableCell><span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">{stage}</span></TableCell>
+            </TableRow>;
+          })}
+          {(!purchases.isLoading && !purchaseRows.length) && <EmptyRow colSpan={5} text={l.noRows} />}
+          </TableBody></Table></div></CardContent>
+      </Card>}
+
+      
 
       {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
