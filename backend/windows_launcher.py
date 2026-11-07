@@ -143,11 +143,11 @@ def main() -> None:
                 if env_file.exists():
                     lines = env_file.read_text(encoding="utf-8").splitlines()
                     env_file.write_text(
-                        "\\n".join(
+                        "\n".join(
                             line for line in lines
                             if not line.startswith("INITIAL_ADMIN_USERNAME=")
                             and not line.startswith("INITIAL_ADMIN_PASSWORD=")
-                        ) + "\\n",
+                        ) + "\n",
                         encoding="utf-8",
                     )
                 status.set("Oro Verde is running on this computer.")
