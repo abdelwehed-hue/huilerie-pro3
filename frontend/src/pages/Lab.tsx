@@ -171,7 +171,7 @@ export default function Lab() {
   return (
     <div>
       <PageHeader title={t("lab_title")} sub={t("lab_sub")} accent="bg-cyan-500" />
-      <div className="grid items-start gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <form
           data-testid="lab-form"
           onSubmit={(e) => {
@@ -323,12 +323,12 @@ export default function Lab() {
             {isGsCode ? (selectedGsAssessment ? "Enregistrer les modifications" : "Envoyer à la Décision indépendante") : t("save")}
           </Button>
         </form>
-          <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
             <div className="border-b border-amber-100 px-5 py-4">
               <h2 className="font-heading text-lg font-bold text-stone-900">Lots d’huile en attente d’analyse</h2>
               <p className="mt-1 text-sm text-stone-500">Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives.</p>
             </div>
-            <div className="overflow-x-auto p-4">
+            <div className="min-h-0 flex-1 overflow-auto p-4">
               <Table>
                 <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -339,14 +339,14 @@ export default function Lab() {
                       return String(item?.name_fr || item?.name || line.variety_id || "").trim();
                     }).filter(Boolean))].join(", ");
                     return <TableRow key={lot.id}>
-                      <TableCell className="font-mono text-xs font-semibold">{String(lot.batch_code || lot.document_number || lot.id)}</TableCell>
+                      <TableCell><button type="button" onClick={() => { const selectedCode = String(lot.batch_code || lot.document_number || lot.id); setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: selectedCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{String(lot.batch_code || lot.document_number || lot.id)}</button></TableCell>
                       <TableCell>{String(purchase?.document_number || "—")}</TableCell>
                       <TableCell>{types || "—"}</TableCell>
                       <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
                     </TableRow>;
                   })}
                   {pendingLoads.map((load) => <TableRow key={load.id}>
-                    <TableCell className="font-mono text-xs font-semibold">{load.code}</TableCell>
+                    <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: load.code }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{load.code}</button></TableCell>
                     <TableCell>{load.client_name || "—"}</TableCell>
                     <TableCell>{load.variety || "—"}</TableCell>
                     <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
