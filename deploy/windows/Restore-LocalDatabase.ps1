@@ -1,12 +1,13 @@
 param(
  [Parameter(Mandatory=$true)][string]$Archive,
  [string]$EnvPath = ".\backend\.env",
- [switch]$DropTarget
+ [switch]$DropTarget,
+ [int]$Port = 8000
 )
 $ErrorActionPreference = "Stop"
 # Never restore while the application can still write to the target database.
-if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) {
- throw "A process is listening on local port 8000. Stop Oro Verde before restoring."
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+ throw "A process is listening on local port $Port. Stop Oro Verde before restoring."
 }
 if(-not(Test-Path $EnvPath)){ throw "Missing backend .env." }
 if(-not(Test-Path $Archive)){ throw "Backup archive not found: $Archive" }
