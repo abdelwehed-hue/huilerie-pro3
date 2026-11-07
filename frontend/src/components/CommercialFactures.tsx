@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMe } from "@/lib/useMe";
 import { BookOpenCheck, FileSpreadsheet, FileText, Printer, Search, Pencil, Save, X } from "lucide-react";
 import { apiGet, apiPost } from "@/lib/api";
+import { millimesInputNumber, millimesInputToDinars } from "@/lib/commercial-money";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,13 +113,13 @@ export default function CommercialFactures() {
     invoices: "الفواتير", statement: "كشف حساب العملاء", global: "الفواتير الإجمالية للعملاء",
     buyer: "العميل", choose: "اختر العميل", search: "ابحث برقم الفاتورة أو العميل أو كود التتبع",
     number: "رقم الفاتورة", date: "التاريخ", code: "كود التتبع", quantity: "الكمية (لتر)", unit: "السعر للوحدة/لتر", total: "الإجمالي", paid: "المدفوع", credited: "التخفيضات/الإشعارات الدائنة", balance: "المتبقي", status: "حالة الدفع",
-    from: "من", to: "إلى", print: "طباعة / PDF", actions: "الإجراءات", editInvoice: "تعديل الفاتورة", newPayment: "مبلغ الدفعة الجديدة", paymentDate: "تاريخ الدفع", paymentMethod: "طريقة الدفع", reference: "المرجع", save: "حفظ الدفعة", cancel: "إلغاء", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء"
+    from: "من", to: "إلى", print: "طباعة / PDF", actions: "الإجراءات", editInvoice: "تعديل الفاتورة", newPayment: "مبلغ الدفعة الجديدة (مليم)", paymentDate: "تاريخ الدفع", paymentMethod: "طريقة الدفع", reference: "المرجع", save: "حفظ الدفعة", cancel: "إلغاء", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء"
   } : {
     title: "Factures — Gestion Commerciale", subtitle: "Factures et comptes clients GS, séparés de l’application Oro Verde",
     invoices: "Factures", statement: "Relevé de compte clients", global: "Factures globales clients",
     buyer: "Client", choose: "Choisir un client", search: "Rechercher facture, client ou code de traçabilité",
     number: "N° facture", date: "Date", code: "Code de traçabilité", quantity: "Quantité (L)", unit: "Prix unitaire/L", total: "Total", paid: "Payé", credited: "Avoirs", balance: "Reste dû", status: "Paiement",
-    from: "Du", to: "Au", print: "Imprimer / PDF", actions: "Actions", editInvoice: "Modifier la facture", newPayment: "Nouvelle somme payée", paymentDate: "Date du paiement", paymentMethod: "Mode de paiement", reference: "Référence", save: "Enregistrer le paiement", cancel: "Annuler", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients"
+    from: "Du", to: "Au", print: "Imprimer / PDF", actions: "Actions", editInvoice: "Modifier la facture", newPayment: "Nouvelle somme payée (millimes)", paymentDate: "Date du paiement", paymentMethod: "Mode de paiement", reference: "Référence", save: "Enregistrer le paiement", cancel: "Annuler", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients"
   };
   const buyersQuery = useQuery({ queryKey: ["commercial", "factures", "buyers"], queryFn: () => page<Row>("/commercial/v1/buyers?limit=500") });
   const invoicesQuery = useQuery({ queryKey: ["commercial", "factures", "invoices"], queryFn: () => page<Row>("/commercial/v1/sales-invoices?limit=500") });
@@ -141,9 +142,10 @@ export default function CommercialFactures() {
   const addPayment = useMutation({
     mutationFn: async () => {
       if (!editingInvoice) throw new Error("Invoice not found");
-      const amount = Number(paymentAmount.replace(",", "."));
-      if (!Number.isFinite(amount) || amount <= 0) throw new Error(ar ? "أدخل مبلغًا صحيحًا" : "Saisissez un montant valide");
-      if (amount > Number(editingInvoice.outstanding_amount_dt ?? 0)) throw new Error(ar ? "المبلغ يتجاوز الرصيد المتبقي" : "Le montant dépasse le reste dû");
+      const millimes = millimesInputNumber(paymentAmount);
+      if (!Number.isSafeInteger(millimes) || millimes <= 0) throw new Error(ar ? "أدخل مبلغًا صحيحًا بالمليم" : "Saisissez un montant entier en millimes");
+      const amount = millimesInputToDinars(paymentAmount);
+      if (Number(amount) > Number(editingInvoice.outstanding_amount_dt ?? 0)) throw new Error(ar ? "المبلغ يتجاوز الرصيد المتبقي" : "Le montant dépasse le reste dû");
       if (paymentMethod !== "CASH" && !paymentReference.trim()) throw new Error(ar ? "المرجع مطلوب" : "La référence est obligatoire");
       return apiPost<Row>(`/commercial/v1/sales-invoices/${encodeURIComponent(editingInvoice.id)}/payments`, {
         payment_date: paymentDate, amount_dt: amount, method: paymentMethod,
@@ -431,8 +433,8 @@ export default function CommercialFactures() {
           <div><span className="text-muted-foreground">{labels.credited}</span><p className="font-semibold">{money(editingInvoice.credited_amount_dt)}</p></div>
           <div><span className="text-muted-foreground">{labels.balance}</span><p className="font-semibold text-rose-700">{money(editingInvoice.outstanding_amount_dt)}</p></div>
         </div>
-        <p className="text-sm text-muted-foreground">{ar ? "أدخل الدفعة الجديدة فقط، ولا تدخل مجموع الدفعات السابقة. سيتم تحديث المدفوع والمتبقي تلقائيًا مع تسجيل العملية في سجل التدقيق." : "Saisissez uniquement le nouveau paiement à ajouter, pas le cumul déjà payé. Le payé et le reste dû seront recalculés automatiquement et l’opération sera auditée."}</p>
-        <label className="grid gap-1 text-sm font-medium">{labels.newPayment}<Input inputMode="decimal" value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} placeholder="0,000"/></label>
+        <p className="text-sm text-muted-foreground">{ar ? "أدخل المبلغ بالمليم: 1500 تعني 1,500 دينار. أدخل الدفعة الجديدة فقط؛ سيتم تحديث المدفوع والمتبقي تلقائيًا." : "Saisissez le montant en millimes : 1500 = 1,500 TND. Saisissez uniquement le nouveau paiement ; le payé et le reste dû seront recalculés automatiquement."}</p>
+        <label className="grid gap-1 text-sm font-medium">{labels.newPayment}<Input type="number" min="1" step="1" max={Math.floor(Number(editingInvoice.outstanding_amount_dt ?? 0) * 1000)} inputMode="numeric" value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} placeholder="1500"/></label>
         <label className="grid gap-1 text-sm font-medium">{labels.paymentDate}<Input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
         <label className="grid gap-1 text-sm font-medium">{labels.paymentMethod}<select className="h-10 rounded-md border bg-background px-3" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE")}><option value="CASH">{ar ? "نقدًا" : "Espèces"}</option><option value="BANK_TRANSFER">{ar ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{ar ? "صك" : "Chèque"}</option></select></label>
         {paymentMethod !== "CASH" && <label className="grid gap-1 text-sm font-medium">{labels.reference}<Input value={paymentReference} onChange={e=>setPaymentReference(e.target.value)} placeholder={labels.reference}/></label>}
