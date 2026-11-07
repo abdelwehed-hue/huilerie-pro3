@@ -1958,7 +1958,15 @@ export default function Commercial() {
                 </label>
               </div>
               <label className="grid max-w-xl gap-1 text-sm font-medium">{l.outputTank}
-                <select required value={productionTankId} onChange={(e) => setProductionTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active && (tank.role ?? "NORMAL") === "NORMAL").map((tank) => <option key={tank.id} value={tank.id}>{tank.code} · {tank.name}</option>)}</select>
+                <select required value={productionTankId} onChange={(e) => setProductionTankId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(tanks.data ?? []).filter((tank) => tank.active && (tank.role ?? "NORMAL") === "NORMAL").map((tank) => {
+                  const currentOil = (balances.data ?? [])
+                    .filter((balance) => balance.product_kind === "OIL" && balance.location_id === tank.id)
+                    .reduce((sum, balance) => sum + Number(balance.quantity_kg ?? 0), 0);
+                  const maxCapacity = Number(tank.capacity_kg ?? 0);
+                  return <option key={tank.id} value={tank.id}>
+                    {tank.code} · {tank.name} — {lang === "ar" ? "الموجود" : "Stock"}: {number(currentOil)} L / {lang === "ar" ? "السعة القصوى" : "Capacité max."}: {maxCapacity > 0 ? `${number(maxCapacity)} L` : l.flexible}
+                  </option>;
+                })}</select>
               </label>
               <label className="grid gap-1 text-sm font-medium">{l.notes}
                 <input maxLength={1000} value={productionNotes} onChange={(e) => setProductionNotes(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
