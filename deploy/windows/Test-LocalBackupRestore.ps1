@@ -23,7 +23,7 @@ Get-Content -LiteralPath $EnvPath | ForEach-Object {
 $uri = $values["MONGO_URL"]
 $dbName = $values["DB_NAME"]
 if ($dbName -ne "oroverde_local" -or
-    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)" -or
+    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)" -or
     $uri -match "mongodb\+srv://|mongodb\.net") {
   throw "Refusing backup-restore verification unless the target is local oroverde_local."
 }
