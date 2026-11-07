@@ -35,6 +35,7 @@ export default function Lab() {
   const qc = useQueryClient();
   const [f, setF] = useState(EMPTY);
   const [scanOpen, setScanOpen] = useState(false);
+  const [codeListOpen, setCodeListOpen] = useState(false);
   const [specificationReference, setSpecificationReference] = useState("");
   const [selectedGsAssessment, setSelectedGsAssessment] = useState<Record<string, any> | null>(null);
   const code = f.code.trim();
@@ -86,6 +87,9 @@ export default function Lab() {
     retry: false,
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
+  const loadsList = useQuery({ queryKey: ["lab-pending-load-codes"], queryFn: () => apiGet<Load[]>("/loads?limit=500"), retry: false });
+  const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
+  const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
   const rows = list.isError ? [] : (list.data ?? []);
   const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
   const found = lookup.data && !lookup.isError ? lookup.data : null;
@@ -216,12 +220,29 @@ export default function Lab() {
           <div className="space-y-2">
             <Label htmlFor="lc">{t("code")}</Label>
             <div className="flex gap-2">
-              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onChange={(e) => { setSelectedGsAssessment(null); set("code")(e.target.value); }} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
+              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onFocus={() => setCodeListOpen(true)} onChange={(e) => { setSelectedGsAssessment(null); set("code")(e.target.value); setCodeListOpen(true); }} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
               <Button type="button" onClick={() => setScanOpen(true)} data-testid="lab-qr-scan-button" title={t("scan_qr")} aria-label={t("scan_qr")} className="h-11 shrink-0 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 px-3 text-white shadow-md hover:from-cyan-700 hover:to-teal-700">
                 <ScanLine className="size-5" />
                 <span className="hidden sm:inline">Scan QR Code</span>
               </Button>
             </div>
+            {codeListOpen && (
+              <div className="max-h-64 overflow-y-auto rounded-xl border border-cyan-200 bg-white shadow-lg" data-testid="lab-pending-code-options">
+                <div className="border-b bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600">Codes de réception et de lots non analysés</div>
+                {pendingLoads.map((load) => (
+                  <button key={load.id} type="button" onClick={() => { setSelectedGsAssessment(null); set("code")(load.code); setCodeListOpen(false); }} className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-left hover:bg-cyan-50">
+                    <span className="font-mono text-sm font-semibold">{load.code}</span><span className="truncate text-xs text-stone-500">{load.client_name} · {load.olive_kg} kg</span>
+                  </button>
+                ))}
+                {pendingGsCodes.map((pendingCode) => (
+                  <button key={pendingCode} type="button" onClick={() => { setSelectedGsAssessment(null); set("code")(pendingCode); setCodeListOpen(false); }} className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-left hover:bg-cyan-50">
+                    <span className="font-mono text-sm font-semibold">{pendingCode}</span><span className="text-xs text-amber-700">GS · En attente d’analyse</span>
+                  </button>
+                ))}
+                {pendingLoads.length === 0 && pendingGsCodes.length === 0 && <div className="px-3 py-4 text-center text-sm text-stone-500">Aucun code en attente d’analyse</div>}
+                <div className="px-3 py-2 text-xs text-stone-500">Vous pouvez aussi saisir un code manuellement dans le champ.</div>
+              </div>
+            )}
             {isGsCode && gsAutoSample.isLoading && !gsSample && (
               <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Création automatique de l’Échantillon de préproduction pour {code}… Aucun stock ne sera consommé.</div>
             )}
