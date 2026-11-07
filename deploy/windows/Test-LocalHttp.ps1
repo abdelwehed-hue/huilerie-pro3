@@ -15,6 +15,11 @@ if ($home.StatusCode -ne 200 -or $home.Content -notmatch "<html") {
   throw "The local frontend root did not return an HTML application shell."
 }
 
+$route = Invoke-WebRequest -Uri "$base/commercial" -Method Get -TimeoutSec 10 -UseBasicParsing
+if ($route.StatusCode -ne 200 -or $route.Content -notmatch "<html") {
+  throw "A direct visit to the /commercial client-side route did not return the frontend application shell."
+}
+
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $loginBody = @{ username = $username; password = $password } | ConvertTo-Json -Compress
 $login = Invoke-RestMethod -Uri "$base/api/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -WebSession $session -TimeoutSec 10
