@@ -36,6 +36,7 @@ from commercial.schemas.purchases import (
     OlivePurchaseDraft,
     OlivePurchaseUpdate,
     OlivePurchaseLine,
+    OliveReceptionPurchaseLine,
 )
 from commercial.schemas.quality import QualityAssessmentDraft, QualityAssessmentUpdate, QualityReleaseCommand
 from commercial.schemas.suppliers import CommercialSupplierDraft, CommercialSupplierUpdate
@@ -103,7 +104,7 @@ class OliveReceptionPurchaseCommand(BaseModel):
     new_supplier_phone: str | None = Field(default=None, max_length=40)
     new_supplier_tax_identifier: str | None = Field(default=None, max_length=80)
     purchase_date: date
-    lines: tuple[OlivePurchaseLine, ...] = Field(min_length=1, max_length=100)
+    lines: tuple[OliveReceptionPurchaseLine, ...] = Field(min_length=1, max_length=100)
     receiving_location_id: str = Field(min_length=1, max_length=100)
     notes: str | None = Field(default=None, max_length=1000)
     idempotency_key: str = Field(min_length=16, max_length=128)
@@ -1216,7 +1217,14 @@ async def create_olive_reception_purchase(
     purchase_draft = OlivePurchaseDraft(
         supplier_id=command.supplier_id or str(uuid.uuid5(uuid.NAMESPACE_URL, f"oroverde:olive-reception-supplier:{command.idempotency_key}")),
         purchase_date=command.purchase_date,
-        lines=command.lines,
+        lines=tuple(
+            OlivePurchaseLine(
+                variety_id=line.variety_id,
+                quantity_kg=line.quantity_kg,
+                unit_price_dt=line.unit_price_millimes / Decimal("1000"),
+            )
+            for line in command.lines
+        ),
         notes=command.notes,
         idempotency_key=command.idempotency_key,
     )
