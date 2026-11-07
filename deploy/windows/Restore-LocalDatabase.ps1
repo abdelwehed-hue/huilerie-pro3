@@ -4,6 +4,10 @@ param(
  [switch]$DropTarget
 )
 $ErrorActionPreference = "Stop"
+# Never restore while the application can still write to the target database.
+if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) {
+ throw "A process is listening on local port 8000. Stop Oro Verde before restoring."
+}
 if(-not(Test-Path $EnvPath)){ throw "Missing backend .env." }
 if(-not(Test-Path $Archive)){ throw "Backup archive not found: $Archive" }
 if(-not(Get-Command mongorestore -ErrorAction SilentlyContinue)){ throw "mongorestore is required; install MongoDB Database Tools." }
