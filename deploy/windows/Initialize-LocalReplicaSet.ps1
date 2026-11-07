@@ -19,7 +19,7 @@ $uri = $values["MONGO_URL"]
 if (-not $ServiceName) { $ServiceName = if ($values["MONGODB_SERVICE_NAME"]) { $values["MONGODB_SERVICE_NAME"] } else { "MongoDB" } }
 if ($values["DB_NAME"] -ne "oroverde_local") { throw "Refusing initialization unless DB_NAME=oroverde_local." }
 if (-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or
-    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)") {
+    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)") {
   throw "Refusing to initialize anything except a local MongoDB instance."
 }
 try { $mongoUri = [System.Uri]::new($uri) } catch { throw "MONGO_URL is not a valid MongoDB URI." }
