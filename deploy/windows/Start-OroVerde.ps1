@@ -11,7 +11,7 @@ $pidFile = Join-Path $runtimeDir "backend.pid"
 $stdout = Join-Path $runtimeDir "backend.out.log"
 $stderr = Join-Path $runtimeDir "backend.err.log"
 if (-not (Test-Path $envPath)) { throw "Missing backend\.env. Configure it before startup." }
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalConfig.ps1") -EnvPath $envPath
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalConfig.ps1") -EnvPath $envPath -Port $Port
 if ($LASTEXITCODE -ne 0) { throw "Local configuration validation failed; backend was not started." }
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Start-LocalMongoDB.ps1") -EnvPath $envPath
 if ($LASTEXITCODE -ne 0) { throw "Local MongoDB service is not ready; Oro Verde was not started." }
