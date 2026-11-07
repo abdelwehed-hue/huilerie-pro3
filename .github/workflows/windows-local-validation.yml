@@ -94,6 +94,29 @@ jobs:
             throw "Arabic PDF font was not bundled."
           }
 
+      - name: Build desktop launcher
+        working-directory: backend
+        shell: powershell
+        run: python -m PyInstaller --clean --noconfirm OroVerdeLauncher.spec
+
+      - name: Verify desktop launcher
+        shell: powershell
+        run: |
+          if (-not (Test-Path "backend/dist/OroVerde.exe")) { throw "Desktop launcher was not created." }
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: powershell
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found at $iscc" }
+          & $iscc "deploy/windows/installer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          if (-not (Test-Path "release/OroVerde-Setup.exe")) { throw "Installer output missing." }
+
       - name: Upload Windows packaging build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -102,5 +125,6 @@ jobs:
             backend/dist/OroVerdeBackend/
             frontend/dist/
             deploy/windows/EXE-PACKAGING.md
+            release/OroVerde-Setup.exe
           if-no-files-found: error
           retention-days: 7
