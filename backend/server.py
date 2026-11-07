@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     # Local-first mode must finish index creation before accepting requests.
     # Keep the existing non-blocking startup behavior for the Render deployment.
     if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}:
-        await ensure_indexes()
+        await ensure_indexes(raise_on_error=True)
     else:
         app.state.index_task = asyncio.create_task(ensure_indexes())
     await seed_defaults()
