@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import CommercialFactures from "@/components/CommercialFactures";
 import { StatCard } from "@/components/shared";
 import QrScanDialog from "@/components/QrScanDialog";
+import { QRCodeSVG } from "qrcode.react";
 
 type AnyRecord = Record<string, any>;
 type CommercialStatus = {
@@ -320,6 +321,7 @@ export default function Commercial() {
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
+  const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "purchases" });
   const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
