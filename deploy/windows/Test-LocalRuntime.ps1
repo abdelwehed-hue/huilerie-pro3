@@ -51,7 +51,7 @@ try {
   $status = ($mongoOutput | Out-String | ConvertFrom-Json)
 } catch {
   $rawOutput = $mongoOutput | Out-String
-  $jsonLine = [regex]::Matches($rawOutput, "(?m)^\\s*\\{.*\\}\\s*$") | Select-Object -Last 1
+  $jsonLine = [regex]::Matches($rawOutput, "(?m)^\s*\{.*\}\s*$") | Select-Object -Last 1
   if (-not $jsonLine) { throw "mongosh returned an unexpected status response: $rawOutput" }
   try { $status = $jsonLine.Value | ConvertFrom-Json } catch { throw "Could not parse replica-set status: $rawOutput" }
 }
