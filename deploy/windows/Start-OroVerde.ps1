@@ -25,9 +25,9 @@ if (Test-Path $pidFile) {
     try {
       $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$existingPid"
       $commandLine = [string]$proc.CommandLine
-      $expectedPort = "--port\\s+$Port(?:\\s|$)"
-      if ($commandLine -match "uvicorn\\s+server:app(?:\\s|$)" -and
-          $commandLine -match "--host\\s+127\\.0\\.0\\.1(?:\\s|$)" -and
+      $expectedPort = "--port\s+$Port(?:\s|$)"
+      if ($commandLine -match "uvicorn\s+server:app(?:\s|$)" -and
+          $commandLine -match "--host\s+127\.0\.0\.1(?:\s|$)" -and
           $commandLine -match $expectedPort) {
         $health = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/" -TimeoutSec 2 -UseBasicParsing
         if ($health.StatusCode -eq 200) { Start-Process "http://127.0.0.1:$Port"; Write-Host "Oro Verde is already running."; exit 0 }
