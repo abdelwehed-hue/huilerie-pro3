@@ -68,6 +68,7 @@ export default function Lab() {
   const gsExistingAssessment = gsOilLot ? (gsAssessments.data ?? []).find((assessment) => assessment.oil_lot_id === gsOilLot.id && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && assessment.id === gsOilLot.last_quality_assessment_id) : undefined;
   const gsCodeAssessmentPending = gsCodeAssessment?.status === "AWAITING_INDEPENDENT_REVIEW";
   const gsCodeAssessmentReviewed = !!gsCodeAssessment && !gsCodeAssessmentPending;
+  const gsAnalysisLocked = isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment;
   const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status)) && !gsCodeAssessment;
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
@@ -230,31 +231,31 @@ export default function Lab() {
               </div>
             )}
           </div>
-          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}
+          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} disabled={gsAnalysisLocked} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="la">{t("acidity")}</Label>
-              <Input id="la" inputMode="decimal" data-testid="lab-acidity-input" value={f.acidity} onChange={(e) => set("acidity")(e.target.value)} className="h-10 rounded-xl bg-white" />
+              <Input id="la" inputMode="decimal" data-testid="lab-acidity-input" value={f.acidity} disabled={gsAnalysisLocked} onChange={(e) => set("acidity")(e.target.value)} className="h-10 rounded-xl bg-white" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lp">{t("peroxide")}</Label>
-              <Input id="lp" inputMode="decimal" data-testid="lab-peroxide-input" value={f.peroxide} onChange={(e) => set("peroxide")(e.target.value)} className="h-10 rounded-xl bg-white" />
+              <Input id="lp" inputMode="decimal" data-testid="lab-peroxide-input" value={f.peroxide} disabled={gsAnalysisLocked} onChange={(e) => set("peroxide")(e.target.value)} className="h-10 rounded-xl bg-white" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="k2">K232</Label>
-              <Input id="k2" inputMode="decimal" data-testid="lab-k232-input" value={f.k232} onChange={(e) => set("k232")(e.target.value)} className="h-10 rounded-xl bg-white" />
+              <Input id="k2" inputMode="decimal" data-testid="lab-k232-input" value={f.k232} disabled={gsAnalysisLocked} onChange={(e) => set("k232")(e.target.value)} className="h-10 rounded-xl bg-white" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="k7">K270</Label>
-              <Input id="k7" inputMode="decimal" data-testid="lab-k270-input" value={f.k270} onChange={(e) => set("k270")(e.target.value)} className="h-10 rounded-xl bg-white" />
+              <Input id="k7" inputMode="decimal" data-testid="lab-k270-input" value={f.k270} disabled={gsAnalysisLocked} onChange={(e) => set("k270")(e.target.value)} className="h-10 rounded-xl bg-white" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lo">{t("oil_content")}</Label>
-              <Input id="lo" inputMode="decimal" data-testid="lab-oil-content-input" value={f.oil} onChange={(e) => set("oil")(e.target.value)} className="h-10 rounded-xl bg-white" />
+              <Input id="lo" inputMode="decimal" data-testid="lab-oil-content-input" value={f.oil} disabled={gsAnalysisLocked} onChange={(e) => set("oil")(e.target.value)} className="h-10 rounded-xl bg-white" />
             </div>
             <div className="space-y-2">
               <Label>{t("classification")}</Label>
-              <Select value={f.grade} onValueChange={(v: string) => set("grade")(v)}>
+              <Select value={f.grade} disabled={gsAnalysisLocked} onValueChange={(v: string) => set("grade")(v)}>
                 <SelectTrigger className="h-10 w-full rounded-xl bg-white" data-testid="lab-classification-select">
                   <SelectValue>{(v) => GRADE_LABEL[v as string]}</SelectValue>
                 </SelectTrigger>
@@ -269,7 +270,7 @@ export default function Lab() {
           </div>
           <div className="space-y-2">
             <Label>{t("oil_type")}</Label>
-            <Select value={oilType || null} onValueChange={(v) => set("oilType")((v as string) ?? "")}>
+            <Select value={oilType || null} disabled={gsAnalysisLocked} onValueChange={(v) => set("oilType")((v as string) ?? "")}>
               <SelectTrigger className="h-10 w-full rounded-xl bg-white" data-testid="lab-oil-type-select">
                 <SelectValue>{(v) => (v ? String(v) : <span className="text-stone-400">{t("choose_oil_type")}</span>)}</SelectValue>
               </SelectTrigger>
@@ -280,7 +281,7 @@ export default function Lab() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="ln">{t("notes")}</Label>
-            <Textarea id="ln" data-testid="lab-notes-input" value={f.notes} onChange={(e) => set("notes")(e.target.value)} className="rounded-xl bg-white" />
+            <Textarea id="ln" data-testid="lab-notes-input" value={f.notes} disabled={gsAnalysisLocked} onChange={(e) => set("notes")(e.target.value)} className="rounded-xl bg-white" />
           </div>
           <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-3">
             <span className="text-sm font-medium text-stone-600">{t("classification")}</span>
