@@ -52,11 +52,12 @@ $restoreArgs = @(
   "--nsFrom=$dbName.*",
   "--nsTo=$verifyDb.*"
 )
-$createdVerifyDb = $false
+$createdVerifyDb = $true
 try {
+  # Mark for cleanup before invoking mongorestore: a failed import may still have
+  # created the temporary database and some collections.
   & mongorestore @restoreArgs
   if ($LASTEXITCODE -ne 0) { throw "Restoring the archive into the temporary verification database failed." }
-  $createdVerifyDb = $true
 
   $eval = @"
 const source = db.getSiblingDB('$dbName');
