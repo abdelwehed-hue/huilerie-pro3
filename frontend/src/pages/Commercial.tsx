@@ -1692,29 +1692,6 @@ export default function Commercial() {
         {!canReviewQuality && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noReviewPermission}</p>}
         <Card>
           <CardHeader>
-            <CardTitle>{lang === "ar" ? "دفعات الزيت في انتظار التحليل" : "Lots d’huile en attente d’analyse"}</CardTitle>
-            <CardDescription>{lang === "ar" ? "دفعات تحليلية مرتبطة بكود الشراء الموحد. لا تمثل مخزون زيت منتج ولا تستهلك الزيتون." : "Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives."}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader><TableRow><TableHead>{lang === "ar" ? "كود التتبع الموحد" : "Code de traçabilité"}</TableHead><TableHead>{lang === "ar" ? "الشراء" : "Achat"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {(lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
-                  const purchase = (purchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
-                  return <TableRow key={lot.id}>
-                    <TableCell className="font-mono text-xs font-semibold">{value(lot.batch_code, lot.document_number ?? lot.id)}</TableCell>
-                    <TableCell>{value(purchase?.document_number, "—")}</TableCell>
-                    <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{lang === "ar" ? "في انتظار التحليل" : "En attente d’analyse"}</span></TableCell>
-                    
-                  </TableRow>;
-                })}
-                {(!lots.isLoading && !(lots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <EmptyRow colSpan={3} text={l.noRows} />}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
             <CardTitle>{lang === "ar" ? "سجل تجارب العصر قبل الإنتاج" : "Historique des essais de trituration"}</CardTitle>
             <CardDescription>{lang === "ar" ? "سجل التجارب الفعلية فقط؛ عينات تحليل الشراء الآلية لا تظهر هنا لأنها لا تستهلك زيتونًا ولا تمثل عملية عصر." : "Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel."}</CardDescription>
           </CardHeader>
