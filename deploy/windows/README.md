@@ -11,7 +11,7 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and MongoDB Database Tools (`mongodump`/`mongorestore`). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient.
+Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
 From the repository root:
 
@@ -87,13 +87,13 @@ Stop Oro Verde first, then create a compressed backup regularly; this prevents a
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Backup-LocalDatabase.ps1
 ```
 
-The script writes a timestamped MongoDB archive and SHA-256 checksum under `backups/`. Keep both files. To restore, keep Oro Verde stopped and select a known-good archive. The restore script refuses to run while anything is listening on port 8000 (or the alternate port supplied with `-Port`):
+The script writes a timestamped MongoDB archive and SHA-256 checksum under `backups/`. It rejects empty dumps, runs `mongorestore --dryRun` to check that the archive can be parsed before writing the checksum, and uses millisecond timestamps to reduce filename collisions. Keep both files. To restore, keep Oro Verde stopped and select a known-good archive. The restore script verifies the checksum and runs `mongorestore --dryRun` before importing anything. It refuses to run while anything is listening on port 8000 (or the alternate port supplied with `-Port`):
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Restore-LocalDatabase.ps1 -Archive .\backups\oroverde_local-YYYYMMDD-HHMMSS.archive.gz
 ```
 
-By default restore does not drop existing collections. For an exact replacement, use `-DropTarget`; this prompts for the literal confirmation `RESTORE-OROVERDE-LOCAL` and replaces matching target collections. Never use that option without a separate verified backup. A restore is not proven until you restart the app and inspect important records.
+By default restore does not drop existing collections. For replacement of collections present in the archive, use `-DropTarget`; this prompts for the literal confirmation `RESTORE-OROVERDE-LOCAL`. MongoDB's `--drop` does not remove collections absent from the archive, so this is not a full database wipe. Never use that option without a separate verified backup. A restore is not proven until you restart the app and inspect important records.
 
 ## LAN and security
 
