@@ -328,10 +328,10 @@ export default function Commercial() {
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<AnyRecord[]>("/users"), enabled: ready && isAdmin && tab === "permissions" });
   const targetPermissions = useQuery({ queryKey: ["commercial", "worker-permissions", selectedWorkerId], queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`), enabled: ready && isAdmin && tab === "permissions" && !!selectedWorkerId });
-  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "suppliers" || tab === "purchases") });
+  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots") });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "lots") });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
@@ -1456,6 +1456,50 @@ export default function Commercial() {
         <Card className="commercial-card commercial-card--teal"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.locations}</CardDescription><MapPin className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.active_olive_locations ?? "—"}</CardTitle></CardHeader></Card>
         <Card className="commercial-card commercial-card--amber"><CardHeader className="pb-1"><div className="flex items-center justify-between gap-2"><CardDescription>{l.counters}</CardDescription><ClipboardList className="commercial-card-icon size-6" /></div><CardTitle className="text-2xl">{status.data?.season_counters_provisioned ?? "—"}/16</CardTitle></CardHeader></Card>
       </div>}
+
+      {tab === "overview" && ready && <Card className="commercial-card">
+        <CardHeader><CardTitle>{lang === "ar" ? "متابعة عمليات شراء الزيتون" : "Suivi des achats d’olives"}</CardTitle>
+          <CardDescription>{lang === "ar" ? "تتبع كود الشراء وموقعه في مراحل الإنتاج" : "Suivi du code d’achat et de son avancement dans le processus de production"}</CardDescription>
+        </CardHeader>
+        <CardContent><div className="overflow-x-auto"><Table>
+          <TableHeader><TableRow>
+            <TableHead>{lang === "ar" ? "كود الشراء" : "Code d’achat"}</TableHead>
+            <TableHead>{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
+            <TableHead>{l.supplier}</TableHead>
+            <TableHead>{lang === "ar" ? "صنف الزيتون" : "Variété d’olives"}</TableHead>
+            <TableHead>{l.status}</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>{[...purchaseRows].sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? ""))).map((purchase) => {
+            const linkedLots = (lots.data ?? []).filter((lot) => lot.source_purchase_id === purchase.id || (purchase.batch_codes ?? [purchase.batch_code]).filter(Boolean).includes(lot.batch_code));
+            const productionForPurchase = (productionRuns.data ?? []).filter((run) => linkedLots.some((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id));
+            const varietyIds = Array.from(new Set(linkedLots.map((lot) => lot.variety_id).concat((purchase.lines ?? []).map((line: AnyRecord) => line.variety_id)).filter(Boolean)));
+            const varietyLabels = varietyIds.map((id) => {
+              const variety = (varieties.data ?? []).find((item) => item.id === id);
+              return variety ? (lang === "ar" ? variety.name_ar || variety.name_fr : variety.name_fr || variety.name_ar) : "";
+            }).filter(Boolean);
+            const availableOlives = linkedLots.some((lot) => (balances.data ?? []).some((balance) => balance.product_kind === "OLIVE" && balance.lot_id === lot.id && Number(balance.quantity_kg ?? 0) > 0));
+            const stage = purchase.status === "DRAFT"
+              ? (lang === "ar" ? "مسودة شراء" : "Brouillon d’achat")
+              : purchase.status === "CANCELLED"
+                ? (lang === "ar" ? "شراء ملغى" : "Achat annulé")
+                : productionForPurchase.length
+                  ? (lang === "ar" ? "تم تسجيل الإنتاج" : "Production enregistrée")
+                  : availableOlives
+                    ? (lang === "ar" ? "مخزون زيتون — بانتظار الإنتاج" : "Stock d’olives — en attente de production")
+                    : linkedLots.length
+                      ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
+                      : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
+            return <TableRow key={purchase.id}>
+              <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+              <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
+              <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
+              <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
+              <TableCell><span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">{stage}</span></TableCell>
+            </TableRow>;
+          })}
+          {(!purchases.isLoading && !purchaseRows.length) && <EmptyRow colSpan={5} text={l.noRows} />}
+          </TableBody></Table></div></CardContent>
+      </Card>}
 
       {tab === "overview" && ready && showTankLevels && <div id="commercial-tank-levels"><Card className="commercial-card commercial-card--blue">
         <CardHeader className="pb-2">
