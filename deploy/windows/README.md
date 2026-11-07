@@ -11,7 +11,7 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient.
+Install Python 3.11+, Node.js LTS, MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). Keep the default service name `MongoDB` unless you plan to pass a different name to `Start-LocalMongoDB.ps1`. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
 From the repository root:
 
@@ -47,7 +47,7 @@ From the repository root:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Start-OroVerde.ps1
    ```
 
-The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env` for the first successful bootstrap only. After confirming the admin can log in, remove both `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` from that file; the app does not need them while users already exist. If the local database is ever recreated empty, temporarily add a new unique pair before startup. Never share or commit these credentials.
+The launcher validates local-only configuration, starts the existing MongoDB Windows service if it is stopped, waits for the local replica set `rs0` to elect a PRIMARY, then starts FastAPI, waits for `/api/` health, and opens the browser. It does not install MongoDB or create/change the Windows service. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env` for the first successful bootstrap only. After confirming the admin can log in, remove both `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` from that file; the app does not need them while users already exist. If the local database is ever recreated empty, temporarily add a new unique pair before startup. Never share or commit these credentials.
 
 After startup, run the authenticated HTTP smoke test from the repository root. It prompts for an administrator credential without storing or printing the password, then verifies the local frontend shell (including direct navigation to `/commercial`), API health, login, session cookie, `/me`, and logout invalidation:
 
