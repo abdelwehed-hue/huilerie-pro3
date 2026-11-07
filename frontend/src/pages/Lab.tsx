@@ -39,7 +39,7 @@ export default function Lab() {
   const [selectedGsAssessment, setSelectedGsAssessment] = useState<Record<string, any> | null>(null);
   const code = f.code.trim();
   const isGsCode = /^\d{4}A\d{4}$/i.test(code);
-  const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
+  const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: true, retry: false });
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
   const gsCodeAssessments = (gsAssessments.data ?? [])
@@ -303,6 +303,33 @@ export default function Lab() {
           </Button>
         </form>
 
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="border-b border-amber-100 px-5 py-4">
+            <h2 className="font-heading text-lg font-bold text-stone-900">{/* pending sample queue */}{t("lab_title") === "Laboratoire" ? "Lots d’huile en attente d’analyse" : "دفعات الزيت في انتظار التحليل"}</h2>
+            <p className="mt-1 text-sm text-stone-500">Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives.</p>
+          </div>
+          <div className="overflow-x-auto p-4">
+            <Table>
+              <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {(gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
+                  const purchase = (gsPurchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
+                  const types = [...new Set((purchase?.lines ?? []).map((line: any) => {
+                    const item = (gsVarieties.data ?? []).find((v) => v.id === line.variety_id);
+                    return String(item?.name_fr || item?.name || line.variety_id || "").trim();
+                  }).filter(Boolean))].join(", ");
+                  return <TableRow key={lot.id}>
+                    <TableCell className="font-mono text-xs font-semibold">{String(lot.batch_code || lot.document_number || lot.id)}</TableCell>
+                    <TableCell>{String(purchase?.document_number || "—")}</TableCell>
+                    <TableCell>{types || "—"}</TableCell>
+                    <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                  </TableRow>;
+                })}
+                {(!gsLots.isLoading && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
         <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
           <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold text-stone-900">{t("analyses")}</div>
           <Table data-testid="lab-table">
