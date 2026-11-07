@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -142,3 +143,14 @@ logger = logging.getLogger(__name__)
 
 # Include the router in the main app — keep last
 app.include_router(api_router)
+
+
+# Optional single-origin local Windows deployment. Disabled by default, so the
+# existing Render deployment continues to serve its frontend independently.
+if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}:
+    frontend_dist = ROOT_DIR.parent / "frontend" / "dist"
+    if not (frontend_dist / "index.html").is_file():
+        raise RuntimeError(
+            f"SERVE_FRONTEND is enabled but the frontend build is missing: {frontend_dist}"
+        )
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
