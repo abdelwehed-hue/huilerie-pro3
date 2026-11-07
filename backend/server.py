@@ -184,7 +184,7 @@ if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "y
             except StarletteHTTPException as exc:
                 # Client-side routes such as /commercial and /factures must
                 # load index.html on a direct visit or browser refresh.
-                if exc.status_code == 404:
+                if exc.status_code == 404 and not Path(path).suffix:
                     return FileResponse(frontend_index)
                 raise
 
