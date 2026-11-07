@@ -13,13 +13,41 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 
 The EXE packaging branch builds an installer named `OroVerde-Setup.exe`. The installer includes the frontend, a frozen FastAPI backend, and a desktop launcher. The launcher creates the first local administrator account on first start and removes the bootstrap password from its environment file after the backend becomes healthy.
 
-**Important:** the installer does not bundle MongoDB. Before launching Oro Verde, install MongoDB Community Server as a Windows service, MongoDB Shell (`mongosh`), and MongoDB Database Tools (`mongodump`/`mongorestore`). Configure the MongoDB service for a single-node replica set named `rs0` and keep `bindIp: 127.0.0.1`; the detailed service-config steps below still apply. The local database is `oroverde_local`.
+**Important:** the installer does not bundle MongoDB. Before launching Oro Verde, install MongoDB Community Server as a Windows service and MongoDB Shell (`mongosh`). Configure the MongoDB service for a single-node replica set named `rs0`, keep `bindIp: 127.0.0.1`, start the service, and initialize `rs0` as described in **EXE installer MongoDB preparation** below. The local database is `oroverde_local`. MongoDB Database Tools (`mongodump`/`mongorestore`) are additionally required for command-line backup and restore; they are not needed just to launch the app.
 
 The installer does not require Python or Node.js on the target PC. It creates a desktop shortcut named **Oro Verde**. The first launch asks for a unique administrator username and a password of at least 16 characters. The application remains bound to localhost; it is not accessible from worker phones or other computers in this packaging stage.
 
 Application files are installed under Program Files. The private configuration and launcher logs are kept under `%LOCALAPPDATA%\\OroVerde`; MongoDB database files remain in the separate data path configured for the MongoDB Windows service. Uninstall intentionally preserves the user's configuration/log directory and does not remove MongoDB data. The EXE preview does not yet provide an in-app backup screen; keep database backups on a separate protected drive.
 
 This is a packaging preview until the installer has been installed and tested on the actual Windows 11 mill PC. A successful GitHub Actions build is not a substitute for testing MongoDB startup, login/session cookies, PDFs (including Arabic), app restart, backup/restore, and upgrade behavior on that machine.
+
+## EXE installer MongoDB preparation
+
+These steps apply to the downloaded `OroVerde-Setup.exe` installer (not the source-based PowerShell workflow below).
+
+1. Install MongoDB Community Server as a Windows service. Keep the service bound to `127.0.0.1` only.
+2. From an elevated PowerShell window, run `sc.exe qc MongoDB` and inspect the `--config` path in `BINARY_PATH_NAME`. Edit that YAML configuration as Administrator. Preserve existing settings and ensure it contains one top-level configuration for:
+
+   ```yaml
+   net:
+     port: 27017
+     bindIp: 127.0.0.1
+   replication:
+     replSetName: rs0
+   ```
+
+3. Restart the MongoDB service from elevated PowerShell: `Restart-Service MongoDB`. If the service has another name, use that name instead.
+4. Open Command Prompt or PowerShell and run `mongosh`. In the MongoDB shell, initialize the single-node replica set:
+
+   ```javascript
+   rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })
+   ```
+
+   Wait a few seconds, then run `rs.status()` and confirm the member state is `PRIMARY`. If the replica set was already initialized, do not run `rs.initiate()` again; just verify it is PRIMARY.
+5. If your Windows MongoDB service name is not `MongoDB`, install and launch Oro Verde once, then edit `%LOCALAPPDATA%\OroVerde\.env` and set `MONGODB_SERVICE_NAME=YourServiceName`. The launcher checks that configured Windows service is running before starting the backend. The default is `MongoDB`.
+6. Launch Oro Verde from the desktop shortcut. On first launch, create the local administrator credentials. The application will use only `oroverde_local`; it does not connect to Render/Atlas.
+
+**Empty database requirement:** use a fresh local MongoDB installation for the first run. Do not point the installer at an existing production or web database, and do not reuse any Render/Atlas URI. The app creates its local collections as needed. The launcher does not delete or reset an existing database.
 
 ## One-time setup
 
