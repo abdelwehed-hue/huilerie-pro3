@@ -1292,7 +1292,7 @@ export default function Commercial() {
     let purchaseCode = scanned;
     try {
       const parsed = new URL(scanned);
-      const certificateMatch = parsed.pathname.match(/\\/commercial\\/certificate\\/([^/]+)/i);
+      const certificateMatch = parsed.pathname.match(/\/commercial\/certificate\/([^/]+)/i);
       if (certificateMatch) certificateId = decodeURIComponent(certificateMatch[1]);
       purchaseCode = parsed.searchParams.get("code")?.trim() || purchaseCode;
     } catch {
