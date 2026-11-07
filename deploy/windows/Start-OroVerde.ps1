@@ -14,7 +14,6 @@ if (-not (Test-Path $envPath)) { throw "Missing backend\.env. Configure it befor
 if ($LASTEXITCODE -ne 0) { throw "Local configuration validation failed; backend was not started." }
 if (-not (Test-Path $python)) { throw "Backend environment missing. Run Setup-Backend.ps1 first." }
 if (-not (Test-Path $distIndex)) { throw "Frontend build missing. Run Build-LocalFrontend.ps1 first." }
-if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) { throw "Port $Port is already in use. Stop the other service or choose another port." }
 if (-not (Test-Path $runtimeDir)) { New-Item -ItemType Directory -Path $runtimeDir | Out-Null }
 if (Test-Path $pidFile) {
   $existingPid = 0
@@ -31,6 +30,7 @@ if (Test-Path $pidFile) {
   }
   Remove-Item $pidFile -Force
 }
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) { throw "Port $Port is already in use. Stop the other service or choose another port." }
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalRuntime.ps1") -EnvPath $envPath
 if ($LASTEXITCODE -ne 0) { throw "Runtime preflight failed; backend was not started." }
 $process = Start-Process -FilePath $python -ArgumentList @("-m","uvicorn","server:app","--host","127.0.0.1","--port",$Port.ToString()) -WorkingDirectory (Join-Path $repoRoot "backend") -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
