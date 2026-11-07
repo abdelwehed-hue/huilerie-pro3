@@ -4,7 +4,7 @@
 #define AppExeName "OroVerde.exe"
 
 [Setup]
-AppId={{C1D5A3A2-7B2D-4F20-A2B4-OROVERDELOCAL}}
+AppId={{C1D5A3A2-7B2D-4F20-A2B4-6F20D8B4A910}}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
