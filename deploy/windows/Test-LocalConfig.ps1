@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$EnvPath)
+param([Parameter(Mandatory=$true)][string]$EnvPath, [int]$Port = 8000)
 $ErrorActionPreference = "Stop"
 if (-not (Test-Path -LiteralPath $EnvPath)) { throw "Missing environment file: $EnvPath" }
 $values = @{}
@@ -14,7 +14,8 @@ foreach ($key in @("APP_ENV","MONGO_URL","DB_NAME","JWT_SECRET","CORS_ORIGINS","
 }
 if ($values["APP_ENV"] -ne "production") { throw "APP_ENV must be production locally so known demo accounts are never seeded." }
 if ($values["MONGO_URL"] -match "mongodb\+srv://|mongodb\.net") { throw "Remote/Atlas MongoDB URLs are prohibited in this local profile." }
-if ($values["MONGO_URL"] -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)") { throw "MONGO_URL must point to this Windows machine." }
+if ($values["MONGO_URL"] -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)") { throw "MONGO_URL must point to this Windows machine on port 27017." }
+if ($values["MONGO_URL"] -notmatch "(^|[?&])replicaSet=rs0(&|$)") { throw "MONGO_URL must include replicaSet=rs0 because the application uses MongoDB transactions." }
 if ($values["DB_NAME"] -ne "oroverde_local") { throw "Expected isolated database oroverde_local." }
 if ($values["JWT_SECRET"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["JWT_SECRET"].Length -lt 32) { throw "JWT_SECRET must be a random secret of at least 32 characters." }
 if ($values["AUTH_DISABLED"] -match "^(1|true|yes|on)$") { throw "AUTH_DISABLED must remain false." }
