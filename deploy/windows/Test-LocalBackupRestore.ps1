@@ -4,8 +4,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) {
-  throw "Oro Verde is listening on port 8000. Stop the application before verifying backup restoration."
+if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+  throw "A process is listening on port $Port. Stop Oro Verde before verifying backup restoration."
 }
 if (-not (Test-Path -LiteralPath $EnvPath)) { throw "Missing backend .env." }
 foreach ($tool in @("mongosh", "mongorestore")) {
@@ -29,7 +30,7 @@ if ($dbName -ne "oroverde_local" -or
 }
 
 $backupScript = Join-Path $PSScriptRoot "Backup-LocalDatabase.ps1"
-& powershell -NoProfile -ExecutionPolicy Bypass -File $backupScript -EnvPath $EnvPath -BackupDirectory $BackupDirectory
+& powershell -NoProfile -ExecutionPolicy Bypass -File $backupScript -EnvPath $EnvPath -BackupDirectory $BackupDirectory -Port $Port
 if ($LASTEXITCODE -ne 0) { throw "Backup creation failed; restore verification was not attempted." }
 
 $archive = Get-ChildItem -LiteralPath $BackupDirectory -Filter "oroverde_local-*.archive.gz" -File |
