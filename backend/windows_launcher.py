@@ -62,6 +62,33 @@ def write_first_run_config(root: tk.Tk) -> bool:
     return True
 
 
+def mongodb_service_status() -> tuple[bool, str]:
+    """Check the configured Windows MongoDB service before starting the backend."""
+    env_file = DATA_DIR / ".env"
+    service_name = "MongoDB"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("MONGODB_SERVICE_NAME="):
+                service_name = line.split("=", 1)[1].strip() or service_name
+                break
+    try:
+        result = subprocess.run(
+            ["sc.exe", "query", service_name],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False, service_name
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0:
+        return False, service_name
+    if "RUNNING" not in output.upper():
+        return False, service_name
+    return True, service_name
+
+
 def backend_healthy() -> bool:
     try:
         with urllib.request.urlopen(API_HEALTH, timeout=2) as response:
@@ -104,6 +131,19 @@ def main() -> None:
             root.destroy()
             return
         if not write_first_run_config(root):
+            root.destroy()
+            return
+        mongo_running, mongo_service = mongodb_service_status()
+        if not mongo_running:
+            status.set(f"MongoDB service '{mongo_service}' is not running.")
+            messagebox.showerror(
+                "MongoDB is not ready",
+                f"The Windows service '{mongo_service}' was not found or is not running.\\n\\n"
+                "Install MongoDB Community Server, configure replica set rs0, and start the service. "
+                "Then launch Oro Verde again.\\n\\n"
+                "Do not use the web/Atlas database for this local installation.",
+                parent=root,
+            )
             root.destroy()
             return
         if backend_healthy():
