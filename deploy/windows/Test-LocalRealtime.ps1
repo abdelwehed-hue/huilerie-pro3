@@ -28,7 +28,7 @@ try {
   $connected = $true
 
   $ping = [System.Text.Encoding]::UTF8.GetBytes("ping")
-  $segment = New-Object 'System.ArraySegment[byte]' -ArgumentList @(,$ping)
+  $segment = [System.ArraySegment[byte]]::new($ping)
   $socket.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
   Start-Sleep -Seconds 2
   if ($socket.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
