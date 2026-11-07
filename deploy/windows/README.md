@@ -30,3 +30,17 @@ This setup is intended for a **single Windows 11 mill server** with worker phone
 ## Not yet complete
 
 This document is a deployment plan, not a validated installer. The Windows launcher, local database service setup, local HTTPS decision, and end-to-end tests are still pending. Do not use this as a production operating procedure yet.
+
+## Local environment safety check
+
+Copy `deploy/windows/backend.env.example` to `backend/.env` on the Windows PC, then replace the placeholders. Keep this file out of Git and do not paste Atlas credentials into it.
+
+Before launching the backend, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalConfig.ps1 -EnvPath .\backend\.env
+```
+
+The check rejects remote/Atlas MongoDB URLs, a database name other than `oroverde_local`, weak placeholder JWT secrets, disabled authentication, and wildcard CORS. It is a configuration guard only; it does not start services or prove replica-set, LAN, cookie, or WebSocket readiness.
+
+**Important:** the backend's non-production seed path currently creates demo accounts (`admin/admin123` and `ouvrier/ouvrier123`) when the users collection is empty. Rotate/remove these before real mill operations; the eventual Windows installer/launcher must not silently rely on demo credentials. The local deployment still needs a reviewed provisioning flow for its first administrator.
