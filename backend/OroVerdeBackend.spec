@@ -7,8 +7,10 @@ backend_dir = Path(SPECPATH).resolve()
 font_dir = backend_dir / "fonts"
 
 hiddenimports = []
+production_module = lambda name: ".tests" not in name and not name.endswith("_test")
 for package in ("commercial", "lib", "models", "routers"):
-    hiddenimports += collect_submodules(package)
+    hiddenimports += collect_submodules(package, filter=production_module)
+hiddenimports += collect_submodules("uvicorn")
 
 a = Analysis(
     ["server.py"],
