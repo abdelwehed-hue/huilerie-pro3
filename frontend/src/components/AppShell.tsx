@@ -212,7 +212,9 @@ export default function AppShell() {
 
     const connect = () => {
       if (disposed) return;
-      const wsOrigin = API_ORIGIN.replace(/^http/, "ws");
+      const wsOrigin = API_ORIGIN
+        ? API_ORIGIN.replace(/^http/, "ws")
+        : (window.location.protocol === "https:" ? "wss:" : "ws:") + "//" + window.location.host;
       const currentSocket = new WebSocket(`${wsOrigin}/api/realtime`);
       socket = currentSocket;
 
