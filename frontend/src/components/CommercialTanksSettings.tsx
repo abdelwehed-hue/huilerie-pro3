@@ -31,8 +31,14 @@ export default function CommercialTanksSettings() {
   const { lang } = useI18n();
   const queryClient = useQueryClient();
   const [capacityDrafts, setCapacityDrafts] = useState<Record<string, string>>({});
+  const [newTankCapacity, setNewTankCapacity] = useState("");
   const labels = lang === "ar" ? {
     title: "الخزانات",
+    addTank: "إضافة خزان جديد",
+    addTankHelp: "يُنشأ رقم الخزان تلقائيًا. اترك السعة فارغة لتكون مرنة.",
+    createTank: "إضافة",
+    tankCreated: "تمت إضافة الخزان الجديد",
+    tankCreateError: "تعذرت إضافة الخزان",
     description: "تحديد السعة ودور كل خزان ومتابعة كمية الزيت الموجودة فيه.",
     actions: "الإجراءات",
     quantity: "الكمية الحالية (كغ)",
@@ -56,6 +62,11 @@ export default function CommercialTanksSettings() {
     confirmRole: "تأكيد تغيير دور الخزان؟",
   } : {
     title: "Cuves",
+    addTank: "Ajouter une cuve",
+    addTankHelp: "Le numéro est attribué automatiquement. Laissez la capacité vide pour une cuve flexible.",
+    createTank: "Ajouter",
+    tankCreated: "Nouvelle cuve ajoutée",
+    tankCreateError: "Impossible d’ajouter la cuve",
     description: "Définissez la capacité et le rôle de chaque cuve et consultez le stock d’huile.",
     actions: "Actions",
     quantity: "Quantité actuelle (L)",
@@ -95,6 +106,23 @@ export default function CommercialTanksSettings() {
     queryFn: () => fetchAllPages("/commercial/v1/stock-balances", 1000),
     enabled: ready,
   });
+  const createTank = useMutation({
+    mutationFn: () => apiPost<AnyRecord>("/commercial/v1/tanks", {
+      capacity_kg: newTankCapacity.trim() === "" ? null : Number(newTankCapacity),
+      role: "NORMAL",
+    }),
+    onSuccess: async () => {
+      setNewTankCapacity("");
+      toast.success(labels.tankCreated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "tanks"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "status"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : labels.tankCreateError),
+  });
+
   const changeCapacity = useMutation({
     mutationFn: ({ tank, capacity }: { tank: AnyRecord; capacity: string }) =>
       apiPut<AnyRecord>("/commercial/v1/tanks/" + encodeURIComponent(tank.id) + "/capacity", {
@@ -138,6 +166,33 @@ export default function CommercialTanksSettings() {
         <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent>
+        {ready && (
+          <div dir={lang === "ar" ? "rtl" : "ltr"} className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-dashed bg-muted/30 p-4">
+            <div className="min-w-[220px] flex-1">
+              <p className="font-semibold">{labels.addTank}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{labels.addTankHelp}</p>
+            </div>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>{labels.capacity}</span>
+              <input
+                type="number"
+                min="0.001"
+                step="0.001"
+                placeholder={labels.flexible}
+                value={newTankCapacity}
+                onChange={(event) => setNewTankCapacity(event.target.value)}
+                className="h-9 w-44 rounded-lg border bg-background px-2"
+              />
+            </label>
+            <Button
+              disabled={createTank.isPending || (newTankCapacity.trim() !== "" && (!Number.isFinite(Number(newTankCapacity)) || Number(newTankCapacity) <= 0))}
+              onClick={() => createTank.mutate()}
+            >
+              <Warehouse className="mr-2 size-4" />
+              {createTank.isPending ? labels.loading : labels.createTank}
+            </Button>
+          </div>
+        )}
         {status.isLoading && <p className="py-6 text-center text-sm text-muted-foreground">{labels.loading}</p>}
         {(status.isError || tanks.isError || balances.isError) && (
           <p className="py-6 text-center text-sm text-red-700">{labels.loadError}</p>
