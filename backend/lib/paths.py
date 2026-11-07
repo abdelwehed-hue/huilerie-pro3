@@ -1,6 +1,6 @@
 """Filesystem locations for source and frozen Windows deployments.
 
-The installer sets OR0VERDE_APP_DIR to the read-only application root and
+The installer sets OROVERDE_APP_DIR to the read-only application root and
 OROVERDE_DATA_DIR to the writable machine data directory. Source deployments
 retain the existing repository layout when these variables are not set.
 """
