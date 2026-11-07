@@ -9,9 +9,21 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC. 
 - No synchronization is implemented. Local and web data remain separate.
 - Do not merge this branch to `main` or deploy it to Render as part of local setup.
 
+## Windows installer (EXE) — packaging preview
+
+The EXE packaging branch builds an installer named `OroVerde-Setup.exe`. The installer includes the frontend, a frozen FastAPI backend, and a desktop launcher. The launcher creates the first local administrator account on first start and removes the bootstrap password from its environment file after the backend becomes healthy.
+
+**Important:** the installer does not bundle MongoDB. Before launching Oro Verde, install MongoDB Community Server as a Windows service, MongoDB Shell (`mongosh`), and MongoDB Database Tools (`mongodump`/`mongorestore`). Configure the MongoDB service for a single-node replica set named `rs0` and keep `bindIp: 127.0.0.1`; the detailed service-config steps below still apply. The local database is `oroverde_local`.
+
+The installer does not require Python or Node.js on the target PC. It creates a desktop shortcut named **Oro Verde**. The first launch asks for a unique administrator username and a password of at least 16 characters. The application remains bound to localhost; it is not accessible from worker phones or other computers in this packaging stage.
+
+Application files are installed under Program Files. The writable configuration, logs, database backups, and other local data are kept separately under `%ProgramData%\\OroVerde`. Uninstall intentionally preserves that data directory.
+
+This is a packaging preview until the installer has been installed and tested on the actual Windows 11 mill PC. A successful GitHub Actions build is not a substitute for testing MongoDB startup, login/session cookies, PDFs (including Arabic), app restart, backup/restore, and upgrade behavior on that machine.
+
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). The default Windows service name is `MongoDB`; if your installation uses another service name, set `MONGODB_SERVICE_NAME=YourServiceName` in `backend/.env`. Both initialization and normal app startup read this setting. The application uses MongoDB transactions; standalone MongoDB is insufficient.
+On the target PC using the EXE installer, Python and Node.js are not required. For source-based development/testing, install Python 3.11+ and Node.js LTS. In both cases install MongoDB Community Server **as a Windows service**, MongoDB Shell, and a current MongoDB Database Tools release (`mongodump`/`mongorestore` with `--dryRun` support). The default Windows service name is `MongoDB`; if your installation uses another service name, set `MONGODB_SERVICE_NAME=YourServiceName` in `backend/.env`. Both initialization and normal app startup read this setting. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
 **Important MongoDB service configuration:** the standard MongoDB Windows service does not necessarily start with replica-set mode enabled. Before running the initializer, locate the service's config file (from an elevated PowerShell window, run `sc.exe qc MongoDB` and inspect the `--config` path in `BINARY_PATH_NAME`). Open that YAML file as Administrator. Preserve its existing settings and add the following keys at the top level; if a `net:` section already exists, add/confirm these values there rather than creating a duplicate section:
 
