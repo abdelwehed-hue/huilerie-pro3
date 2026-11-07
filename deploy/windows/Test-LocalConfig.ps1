@@ -9,7 +9,7 @@ Get-Content -LiteralPath $EnvPath | ForEach-Object {
     $values[$parts[0].Trim()] = $parts[1].Trim()
   }
 }
-foreach ($key in @("APP_ENV","MONGO_URL","DB_NAME","JWT_SECRET","CORS_ORIGINS","AUTH_DISABLED","SERVE_FRONTEND","INITIAL_ADMIN_USERNAME","INITIAL_ADMIN_PASSWORD")) {
+foreach ($key in @("APP_ENV","MONGO_URL","DB_NAME","JWT_SECRET","CORS_ORIGINS","AUTH_DISABLED","SERVE_FRONTEND","INITIAL_ADMIN_USERNAME","INITIAL_ADMIN_PASSWORD","COOKIE_SECURE","COOKIE_SAMESITE")) {
   if (-not $values.ContainsKey($key) -or -not $values[$key]) { throw "Missing required setting: $key" }
 }
 if ($values["APP_ENV"] -ne "production") { throw "APP_ENV must be production locally so known demo accounts are never seeded." }
