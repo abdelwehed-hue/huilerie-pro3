@@ -31,7 +31,7 @@ $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if (-not $service) { throw "MongoDB Windows service '$ServiceName' was not found. Install MongoDB Community Server as a Windows service first." }
 if ($service.Status -ne "Running") {
   Write-Host "Starting MongoDB Windows service '$ServiceName'..." -ForegroundColor Cyan
-  Start-Service -Name $ServiceName
+  try { Start-Service -Name $ServiceName } catch { throw "Could not start MongoDB service '$ServiceName'. Check Windows service permissions or run this setup step with an authorized account. Details: $($_.Exception.Message)" }
 }
 
 $deadline = (Get-Date).AddSeconds($WaitSeconds)
