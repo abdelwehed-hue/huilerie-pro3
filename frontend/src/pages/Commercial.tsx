@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
-  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
+  RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2, Printer,
   Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers, ScanLine,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
@@ -201,6 +201,7 @@ export default function Commercial() {
   const [showBuyerForm, setShowBuyerForm] = useState(false);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
+  const [selectedPurchaseReceipt, setSelectedPurchaseReceipt] = useState<AnyRecord | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [purchaseLines, setPurchaseLines] = useState([{ variety_id: "", quantity_kg: "", unit_price_dt: "" }]);
@@ -532,7 +533,8 @@ export default function Commercial() {
       receiving_location_id: receivingLocationId,
       idempotency_key: crypto.randomUUID(),
     }),
-    onSuccess: async () => {
+    onSuccess: async (approvedPurchase) => {
+      setSelectedPurchaseReceipt(approvedPurchase);
       toast.success(l.approved);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "purchases"] }),
@@ -1848,6 +1850,32 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         {isAdmin && <Card><CardHeader><CardTitle>{l.receivingLocation}</CardTitle></CardHeader><CardContent><select value={receivingLocationId} onChange={(e) => setReceivingLocationId(e.target.value)} className="h-10 w-full max-w-xl rounded-lg border bg-background px-3"><option value="">—</option>{(locations.data ?? []).map((loc) => <option key={loc.id} value={loc.id}>{loc.code} · {loc.name}</option>)}</select></CardContent></Card>}
+        {selectedPurchaseReceipt && <Card className="print-area border-2 border-dashed border-amber-300 bg-white text-stone-900 shadow-sm">
+          <CardHeader className="no-print flex-row items-center justify-between">
+            <CardTitle>{lang === "ar" ? "وصل شراء الزيتون" : "Bon d’achat d’olives"} · {selectedPurchaseReceipt.document_number}</CardTitle>
+            <div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le reçu"}</Button></div>
+          </CardHeader>
+          <CardContent className="space-y-5 p-6 md:p-8">
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="text-xl font-bold">Oro Verde</div><div className="text-sm text-stone-500">{lang === "ar" ? "وصل شراء واستلام الزيتون" : "Reçu d’achat et de réception des olives"}</div></div><div className="text-right"><div className="text-sm font-semibold">{value(selectedPurchaseReceipt.document_number)}</div><div className="text-xs text-stone-500">{date(selectedPurchaseReceipt.purchase_date)}</div></div></div>
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div><div className="text-stone-500">{l.supplier}</div><strong>{value(supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.name, selectedPurchaseReceipt.supplier_id)}</strong></div>
+              <div><div className="text-stone-500">{l.purchaseCode}</div><strong className="font-mono">{value(selectedPurchaseReceipt.batch_code || selectedPurchaseReceipt.batch_codes?.[0])}</strong></div>
+              <div><div className="text-stone-500">{l.purchaseDate}</div><strong>{date(selectedPurchaseReceipt.purchase_date)}</strong></div>
+              <div><div className="text-stone-500">{l.receivingLocation}</div><strong>{value(locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.name || locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.code, selectedPurchaseReceipt.receiving_location_id)}</strong></div>
+            </div>
+            <div className="overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-y border-stone-300 bg-stone-50"><th className="p-2 text-left">{l.variety}</th><th className="p-2 text-right">{l.quantity} (kg)</th><th className="p-2 text-right">{l.unitPrice}</th><th className="p-2 text-right">{l.totalAmount}</th></tr></thead>
+              <tbody>{(selectedPurchaseReceipt.lines ?? []).map((line: AnyRecord, index: number) => {
+                const variety = varieties.data?.find((v) => v.id === line.variety_id);
+                const quantity = Number(line.quantity_kg?.$numberDecimal ?? line.quantity_kg ?? 0);
+                const unitPrice = Number(line.unit_price_dt?.$numberDecimal ?? line.unit_price_dt ?? 0);
+                const lineTotal = Number(line.line_total_dt?.$numberDecimal ?? line.line_total_dt ?? quantity * unitPrice);
+                return <tr key={index} className="border-b border-stone-200"><td className="p-2">{lang === "ar" ? (variety?.name_ar || variety?.name_fr || line.variety_id) : (variety?.name_fr || line.variety_id)}</td><td className="p-2 text-right">{number(quantity)}</td><td className="p-2 text-right">{money(unitPrice)}</td><td className="p-2 text-right">{money(lineTotal)}</td></tr>;
+              })}</tbody></table></div>
+            <div className="ml-auto grid max-w-sm gap-2 border-t border-stone-300 pt-3 text-sm"><div className="flex justify-between"><span>{l.totalQuantity}</span><strong>{number(Number(selectedPurchaseReceipt.total_quantity_kg?.$numberDecimal ?? selectedPurchaseReceipt.total_quantity_kg ?? 0))} kg</strong></div><div className="flex justify-between text-base"><span>{l.totalAmount}</span><strong>{money(Number(selectedPurchaseReceipt.total_amount_dt?.$numberDecimal ?? selectedPurchaseReceipt.total_amount_dt ?? 0))} TND</strong></div></div>
+            {selectedPurchaseReceipt.notes && <div className="border-t border-stone-200 pt-3 text-sm"><span className="text-stone-500">{l.notes}: </span>{selectedPurchaseReceipt.notes}</div>}
+            <div className="border-t border-stone-200 pt-3 text-center text-xs text-stone-500">{lang === "ar" ? "تم إصدار هذا الوصل بعد اعتماد عملية الشراء واستلام الكمية." : "Reçu émis après approbation et réception de l’achat."}</div>
+          </CardContent>
+        </Card>}
         <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
           {(purchases.data ?? []).map((purchase) => <TableRow key={purchase.id}>
             <TableCell className="font-mono text-xs font-semibold">{purchase.status === "DRAFT" && canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</button> : value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
@@ -1857,7 +1885,7 @@ export default function Commercial() {
             <TableCell>{number(purchase.total_quantity_kg)}</TableCell>
             <TableCell>{money(purchase.total_amount_dt)}</TableCell>
             <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
-            <TableCell>{purchase.status === "DRAFT" ? <div className="flex flex-wrap gap-2">{isAdmin && <Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button>}{canDeleteRecords && <Button size="sm" variant="destructive" disabled={cancelPurchase.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيتم إلغاء مسودة الشراء مع الاحتفاظ بها في سجل التدقيق. هل تؤكد؟" : "Annuler ce brouillon en conservant sa trace d’audit ?")) return; const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelPurchase.mutate({ purchase, reason: reason.trim() }); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div> : "—"}</TableCell>
+            <TableCell>{purchase.status === "DRAFT" ? <div className="flex flex-wrap gap-2">{isAdmin && <Button size="sm" disabled={approvePurchase.isPending || !receivingLocationId} onClick={() => approvePurchase.mutate(purchase)}>{l.approve}</Button>}{canDeleteRecords && <Button size="sm" variant="destructive" disabled={cancelPurchase.isPending} onClick={() => { if (!window.confirm(lang === "ar" ? "سيتم إلغاء مسودة الشراء مع الاحتفاظ بها في سجل التدقيق. هل تؤكد؟" : "Annuler ce brouillon en conservant sa trace d’audit ?")) return; const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelPurchase.mutate({ purchase, reason: reason.trim() }); }}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button>}</div> : purchase.status === "APPROVED" ? <Button size="sm" variant="outline" onClick={() => setSelectedPurchaseReceipt(purchase)}><Printer className="mr-1 size-4" />{lang === "ar" ? "طباعة / إعادة الطباعة" : "Imprimer / Réimprimer"}</Button> : "—"}</TableCell>
           </TableRow>)}
           {(!purchases.isLoading && !(purchases.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}
         </TableBody></Table></CardContent></Card>
