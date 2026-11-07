@@ -52,9 +52,8 @@ The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, 
 After startup, run the authenticated HTTP smoke test from the repository root. It prompts for an administrator credential without storing or printing the password, then verifies the local frontend shell, API health, login, session cookie, `/me`, and logout invalidation:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Test-LocalHttp.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalHttp.ps1
 ```
-
 
 7. Install the desktop shortcut:
 
