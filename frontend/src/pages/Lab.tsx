@@ -88,9 +88,9 @@ export default function Lab() {
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
   const loadsList = useQuery({ queryKey: ["lab-pending-load-codes"], queryFn: () => apiGet<Load[]>("/loads?limit=500"), retry: false });
-  const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
   const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
   const rows = list.isError ? [] : (list.data ?? []);
+  const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
   const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
   const found = lookup.data && !lookup.isError ? lookup.data : null;
   const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
