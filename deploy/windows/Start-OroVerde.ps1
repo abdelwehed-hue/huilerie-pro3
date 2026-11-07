@@ -14,6 +14,7 @@ if (-not (Test-Path $envPath)) { throw "Missing backend\.env. Configure it befor
 if ($LASTEXITCODE -ne 0) { throw "Local configuration validation failed; backend was not started." }
 if (-not (Test-Path $python)) { throw "Backend environment missing. Run Setup-Backend.ps1 first." }
 if (-not (Test-Path $distIndex)) { throw "Frontend build missing. Run Build-LocalFrontend.ps1 first." }
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) { throw "Port $Port is already in use. Stop the other service or choose another port." }
 if (-not (Test-Path $runtimeDir)) { New-Item -ItemType Directory -Path $runtimeDir | Out-Null }
 if (Test-Path $pidFile) {
   $existingPid = 0
@@ -40,7 +41,7 @@ for ($i=0; $i -lt 30; $i++) {
   if ($process.HasExited) { break }
   try {
     $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/" -TimeoutSec 2 -UseBasicParsing
-    if ($response.StatusCode -eq 200) { $ready = $true; break }
+    if ($response.StatusCode -eq 200 -and -not $process.HasExited) { $ready = $true; break }
   } catch { }
 }
 if (-not $ready) {
