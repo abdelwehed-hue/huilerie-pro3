@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2,
-  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers, ScanLine,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { dinarsToMillimesInput, millimesInputNumber, millimesInputToDinars } from "@/lib/commercial-money";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import CommercialFactures from "@/components/CommercialFactures";
 import { StatCard } from "@/components/shared";
+import QrScanDialog from "@/components/QrScanDialog";
 
 type AnyRecord = Record<string, any>;
 type CommercialStatus = {
@@ -237,6 +238,7 @@ export default function Commercial() {
   const [oilType, setOilType] = useState("");
   const [analysisNotes, setAnalysisNotes] = useState("");
   const [reviewAssessmentId, setReviewAssessmentId] = useState("");
+  const [qualityQrScanOpen, setQualityQrScanOpen] = useState(false);
   const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
   const [reviewReason, setReviewReason] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
@@ -1284,6 +1286,31 @@ export default function Commercial() {
       && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
   });
   const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
+  const handleQualityQrScan = useCallback((scannedValue: string) => {
+    const scanned = scannedValue.trim();
+    let certificateId = "";
+    let purchaseCode = scanned;
+    try {
+      const parsed = new URL(scanned);
+      const certificateMatch = parsed.pathname.match(/\\/commercial\\/certificate\\/([^/]+)/i);
+      if (certificateMatch) certificateId = decodeURIComponent(certificateMatch[1]);
+      purchaseCode = parsed.searchParams.get("code")?.trim() || purchaseCode;
+    } catch {
+      // A printed QR may contain the raw purchase traceability code instead of a URL.
+    }
+    const match = reviewableAssessments.find((assessment) =>
+      (certificateId && assessment.id === certificateId)
+      || String(assessment.sample_reference ?? "").trim().toLowerCase() === purchaseCode.toLowerCase()
+      || String(assessment.batch_code ?? "").trim().toLowerCase() === purchaseCode.toLowerCase()
+      || String((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id)?.batch_code ?? "").trim().toLowerCase() === purchaseCode.toLowerCase()
+    );
+    if (!match) {
+      toast.error(lang === "ar" ? "لم يتم العثور على تحليل ينتظر قرار الجودة لهذا الرمز. تأكد من أن الشهادة تخص دفعة تنتظر المراجعة." : "Aucune analyse en attente de décision qualité ne correspond à ce QR code.");
+      return;
+    }
+    setReviewAssessmentId(match.id);
+    toast.success(lang === "ar" ? "تم العثور على التحليل واختياره للمراجعة." : "Analyse trouvée et sélectionnée pour la revue.");
+  }, [reviewableAssessments, lots.data, lang]);
 
   const displayOwnerLabel = (owner: AnyRecord | undefined) => {
     if (owner?.kind !== "CUSTOMER") return ownerLabel(owner, l);
@@ -1623,9 +1650,14 @@ export default function Commercial() {
         </CardContent></Card>}
         {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
-            <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
-              <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
-            </label>
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
+                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
+              </label>
+              <Button type="button" variant="outline" onClick={() => setQualityQrScanOpen(true)} className="h-10 gap-2">
+                <ScanLine className="size-4" />{lang === "ar" ? "مسح QR للشهادة" : "Scanner le QR du certificat"}
+              </Button>
+            </div>
             {selectedReviewAssessment && <div className="space-y-3 rounded-xl border p-4">
               <div className="grid gap-2 text-sm md:grid-cols-2">
                 <p><strong>{l.sampleReference}:</strong> {value(selectedReviewAssessment.sample_reference)}</p>
@@ -2157,6 +2189,8 @@ export default function Commercial() {
           </div>}
         </CardContent></Card>
       </div>}
+
+      {tab === "quality" && <QrScanDialog open={qualityQrScanOpen} onClose={() => setQualityQrScanOpen(false)} onScan={handleQualityQrScan} />}
 
       {tab === "permissions" && isAdmin && <Card>
         <CardHeader><CardTitle>{l.permissionsTab}</CardTitle><CardDescription>{l.noPermission}</CardDescription></CardHeader>
