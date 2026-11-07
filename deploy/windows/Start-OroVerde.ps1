@@ -32,7 +32,7 @@ if (Test-Path $pidFile) {
 }
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "Test-LocalRuntime.ps1") -EnvPath $envPath
 if ($LASTEXITCODE -ne 0) { throw "Runtime preflight failed; backend was not started." }
-$process = Start-Process -FilePath $python -ArgumentList @("-m","uvicorn","server:app","--host","0.0.0.0","--port",$Port.ToString()) -WorkingDirectory (Join-Path $repoRoot "backend") -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+$process = Start-Process -FilePath $python -ArgumentList @("-m","uvicorn","server:app","--host","127.0.0.1","--port",$Port.ToString()) -WorkingDirectory (Join-Path $repoRoot "backend") -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 Set-Content -LiteralPath $pidFile -Value $process.Id -NoNewline
 $ready = $false
 for ($i=0; $i -lt 30; $i++) {
@@ -49,5 +49,5 @@ if (-not $ready) {
   throw "Oro Verde did not become healthy. Review $stderr and $stdout."
 }
 Start-Process "http://127.0.0.1:$Port"
-Write-Host "Oro Verde running on port $Port. LAN devices use this PC's private IPv4 address." -ForegroundColor Green
+Write-Host "Oro Verde running on port $Port. This bootstrap listens on localhost only; LAN access is deliberately disabled until HTTPS and firewall configuration are implemented." -ForegroundColor Green
 Write-Host "Stop with Stop-OroVerde.ps1. Do not expose this port to Public networks or the internet." -ForegroundColor Yellow
