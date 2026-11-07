@@ -47,10 +47,10 @@ The shortcut manually launches the local app. To stop it, run `deploy\windows\St
 
 ## LAN and security
 
-- The backend listens on `0.0.0.0:8000`. On the PC open `http://127.0.0.1:8000`; worker devices would use the PC's private IPv4 address and port 8000.
-- Only allow TCP 8000 on the Windows **Private** firewall profile and trusted mill LAN. Never expose it on Public networks or the internet.
+- The initial launcher binds to `127.0.0.1:8000` only. This intentionally limits the first stage to the Windows PC; worker phones cannot connect yet.
+- The sample uses `COOKIE_SECURE=false` and `COOKIE_SAMESITE=lax` solely for localhost HTTP bootstrap. Do not use this cookie profile over Wi-Fi/LAN or the internet.
+- Before enabling worker phones, configure local HTTPS, change to `COOKIE_SECURE=true` and `COOKIE_SAMESITE=none`, verify certificate trust on every device, then implement and test a restricted Windows Private-profile firewall rule. This work is not included yet.
 - Frontend API calls use relative `/api` paths and the WebSocket derives from the page host. Authentication remains required.
-- LAN binding is not a security boundary. Firewall/router rules and session-cookie behavior must be verified.
 
 ## Not yet approved for live mill operations
 
