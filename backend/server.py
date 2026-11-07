@@ -8,6 +8,7 @@ import os
 import logging
 import jwt
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT_DIR = Path(__file__).parent
@@ -60,7 +61,15 @@ async def broadcast_data_change(resource: str) -> None:
 async def realtime_updates(websocket: WebSocket):
     origin = websocket.headers.get("origin")
     allowed_origins = cors_origins()
-    if not origin or origin not in allowed_origins:
+    same_origin_local = os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}
+    request_host = websocket.headers.get("host", "")
+    parsed_origin = urlsplit(origin or "")
+    is_same_origin_local = (
+        same_origin_local
+        and parsed_origin.scheme in {"http", "https"}
+        and parsed_origin.netloc == request_host
+    )
+    if not origin or (origin not in allowed_origins and not is_same_origin_local):
         await websocket.close(code=4403)
         return
 
