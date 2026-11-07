@@ -114,6 +114,11 @@ class CustomerCustodyOwnerResolveCommand(BaseModel):
     customer_phone: str = Field(min_length=5, max_length=40)
 
 
+class CommercialTankCreateCommand(BaseModel):
+    capacity_kg: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+    role: Literal["NORMAL", "QUARANTINE"] = "NORMAL"
+
+
 class CommercialTankRoleCommand(BaseModel):
     role: Literal["NORMAL", "QUARANTINE"]
     expected_version: int = Field(ge=1)
@@ -199,7 +204,7 @@ async def _require_commercial_ready() -> tuple[str, str]:
     counter_docs = await db.commercial_counters.find({"season_code": season_code}, {"_id": 0, "document_type": 1}).to_list(20)
     required_types = set(COMMERCIAL_DOCUMENT_TYPES)
     counter_types = {item.get("document_type") for item in counter_docs}
-    if tanks != 9 or not required_types.issubset(counter_types):
+    if tanks < 9 or not required_types.issubset(counter_types):
         raise HTTPException(503, "commercial_domain_not_bootstrapped")
     return season, season_code
 
@@ -220,7 +225,7 @@ async def commercial_status(user: dict = Depends(current_user)):
         "tanks_provisioned": tanks,
         "active_olive_locations": locations,
         "season_counters_provisioned": counters,
-        "ready": tanks == 9 and counters == len(required_types),
+        "ready": tanks >= 9 and counters == len(required_types),
     }
 
 
@@ -260,8 +265,56 @@ async def get_my_commercial_permissions(user: dict = Depends(current_user)):
 @router.get("/tanks")
 async def list_commercial_tanks(user: dict = Depends(current_user)):
     _authorize(user, "commercial.read")
-    docs = await db.commercial_tanks.find({}, {"_id": 0}).sort("code", 1).to_list(20)
+    docs = await db.commercial_tanks.find({}, {"_id": 0}).sort("code", 1).to_list(1000)
     return _safe(docs)
+
+
+@router.post("/tanks")
+async def create_commercial_tank(
+    command: CommercialTankCreateCommand,
+    user: dict = Depends(require_admin),
+):
+    """Create the next numbered tank; identity and audit record are persisted atomically."""
+    _authorize(user, "commercial.manage_tanks")
+    await _require_commercial_ready()
+    now = datetime.now(timezone.utc)
+    tank_id = str(uuid.uuid4())
+    audit_id = str(uuid.uuid4())
+
+    async def operation(session):
+        existing = await db["commercial_tanks"].find(
+            {"code": {"$regex": r"^T[0-9]+$"}}, {"_id": 0, "code": 1}, session=session
+        ).to_list(2000)
+        numbers = [
+            int(str(item.get("code", ""))[1:])
+            for item in existing
+            if str(item.get("code", ""))[1:].isdigit()
+        ]
+        next_number = max([9, *numbers]) + 1
+        code = f"T{next_number:02d}"
+        name = f"Cuve {next_number:02d}"
+        tank = {
+            "id": tank_id, "code": code, "name": name, "active": True,
+            "role": command.role, "version": 1,
+            "capacity_kg": Decimal128(command.capacity_kg) if command.capacity_kg is not None else None,
+            "created_at": now, "created_by": user["id"],
+        }
+        await db["commercial_tanks"].insert_one(tank, session=session)
+        await db["commercial_audit_events"].insert_one({
+            "id": audit_id, "entity_type": "commercial_tank",
+            "entity_id": tank_id, "action": "TANK_CREATED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"code": code, "name": name, "role": command.role,
+                        "capacity_kg": tank["capacity_kg"]},
+        }, session=session)
+        return tank
+
+    try:
+        return _safe(await run_transaction(operation))
+    except Exception as exc:
+        if "duplicate key" in str(exc).lower():
+            raise HTTPException(409, "tank_code_conflict_retry") from exc
+        _raise_domain_error(exc)
 
 
 @router.post("/tanks/{tank_id}/role")
