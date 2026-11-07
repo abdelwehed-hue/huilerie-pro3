@@ -75,7 +75,6 @@ export default function Lab() {
     const variety = (gsVarieties.data ?? []).find((item) => item.id === line.variety_id);
     return String(variety?.name_fr || variety?.name || line.variety_id || "").trim();
   }).filter(Boolean))].join(", ");
-  const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -90,6 +89,7 @@ export default function Lab() {
   const rows = list.isError ? [] : (list.data ?? []);
   const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
   const found = lookup.data && !lookup.isError ? lookup.data : null;
+  const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
   // Existing analysis of this receipt (rows are newest first) -> prefill the form so it can be edited.
   const existing = found ? rows.find((r) => r.load_id === found.id) : undefined;
   const [prefillFor, setPrefillFor] = useState("");
@@ -228,7 +228,7 @@ export default function Lab() {
             )}
             {oliveVarietyLabel && (
               <div data-testid="lab-olive-variety" className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
-                Variété d’olives : <span className="font-bold">{oliveVarietyLabel}</span>
+                Type d’olive : <span className="font-bold">{oliveVarietyLabel}</span>
               </div>
             )}
             {found && existing && (
