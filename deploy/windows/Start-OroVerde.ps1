@@ -1,5 +1,6 @@
 param([int]$Port = 8000)
 $ErrorActionPreference = "Stop"
+if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $repoRoot
 $envPath = Join-Path $repoRoot "backend\.env"
@@ -23,7 +24,11 @@ if (Test-Path $pidFile) {
   if ($existingPid -gt 0 -and (Get-Process -Id $existingPid -ErrorAction SilentlyContinue)) {
     try {
       $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$existingPid"
-      if ($proc.CommandLine -match "uvicorn server:app" -and $proc.CommandLine -match "--port $Port") {
+      $commandLine = [string]$proc.CommandLine
+      $expectedPort = "--port\\s+$Port(?:\\s|$)"
+      if ($commandLine -match "uvicorn\\s+server:app(?:\\s|$)" -and
+          $commandLine -match "--host\\s+127\\.0\\.0\\.1(?:\\s|$)" -and
+          $commandLine -match $expectedPort) {
         $health = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/" -TimeoutSec 2 -UseBasicParsing
         if ($health.StatusCode -eq 200) { Start-Process "http://127.0.0.1:$Port"; Write-Host "Oro Verde is already running."; exit 0 }
       }
