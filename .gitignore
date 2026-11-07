@@ -95,3 +95,6 @@ credentials.json
 
 # Windows local launcher runtime files (PIDs and logs)
 deploy/windows/runtime/
+
+# Local Oro Verde database backups contain operational data and must stay out of Git
+backups/
