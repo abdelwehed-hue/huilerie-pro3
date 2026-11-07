@@ -176,7 +176,7 @@ export default function Lab() {
           <div className="space-y-2">
             <Label htmlFor="lc">{t("code")}</Label>
             <div className="flex gap-2">
-              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onChange={(e) => set("code")(e.target.value)} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
+              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onChange={(e) => { setSelectedGsAssessment(null); set("code")(e.target.value); }} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
               <Button type="button" onClick={() => setScanOpen(true)} data-testid="lab-qr-scan-button" title={t("scan_qr")} aria-label={t("scan_qr")} className="h-11 shrink-0 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 px-3 text-white shadow-md hover:from-cyan-700 hover:to-teal-700">
                 <ScanLine className="size-5" />
                 <span className="hidden sm:inline">Scan QR Code</span>
@@ -308,11 +308,6 @@ export default function Lab() {
                   <TableCell>
                     {r.status === "AWAITING_INDEPENDENT_REVIEW" ? (
                       <button type="button" title="Modifier l’analyse avant Décision" className="rounded-lg hover:opacity-80" onClick={() => {
-                        const lot = (gsLots.data ?? []).find((item) => item.id === r.oil_lot_id);
-                        if (!lot || lot.status !== "OPEN" || lot.last_quality_assessment_id !== r.id) {
-                          toast.error("Cette analyse n’est plus la dernière analyse modifiable.");
-                          return;
-                        }
                         setSelectedGsAssessment(r);
                         setF({ ...EMPTY, code: String(r.batch_code || r.sample_reference || ""), acidity: r.acidity == null ? "" : String(r.acidity), peroxide: r.peroxide == null ? "" : String(r.peroxide), k232: r.k232 == null ? "" : String(r.k232), k270: r.k270 == null ? "" : String(r.k270), oil: r.oil_content_pct == null ? "" : String(r.oil_content_pct), notes: r.notes || "", oilType: r.oil_type || "", grade: r.classification || "auto" });
                         setSpecificationReference(r.specification_reference || "");
