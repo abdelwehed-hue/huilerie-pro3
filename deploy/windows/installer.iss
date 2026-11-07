@@ -19,10 +19,6 @@ UninstallDisplayIcon={app}\{#AppExeName}
 SetupLogging=yes
 WizardStyle=modern
 
-[Dirs]
-Name: "{commonappdata}\OroVerde"; Permissions: users-modify
-Name: "{commonappdata}\OroVerde\logs"; Permissions: users-modify
-
 [Files]
 Source: "..\..\backend\dist\OroVerdeBackend\*"; DestDir: "{app}\backend"; Flags: recursesubdirs ignoreversion
 Source: "..\..\backend\dist\OroVerde.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -38,5 +34,5 @@ Name: "{autoprograms}\Oro Verde"; Filename: "{app}\{#AppExeName}"
 Filename: "{app}\{#AppExeName}"; Description: "Launch Oro Verde"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
-; Intentionally do not remove {commonappdata}\OroVerde: local database,
-; credentials, logs, uploads and backups must survive uninstall.
+; Intentionally do not remove the current user's %LOCALAPPDATA%\OroVerde folder.
+; Local configuration, logs and backups must survive uninstall.
