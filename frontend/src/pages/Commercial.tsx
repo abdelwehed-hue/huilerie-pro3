@@ -1204,6 +1204,7 @@ export default function Commercial() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const bootstrap = useMutation({
     mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
     onSuccess: async () => {
       toast.success(l.bootstrapSuccess);
