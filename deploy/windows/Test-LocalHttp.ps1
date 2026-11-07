@@ -1,24 +1,10 @@
-param(
-  [int]$Port = 8000,
-  [string]$EnvPath = ".\\backend\\.env"
-)
+param([int]$Port = 8000)
 
 $ErrorActionPreference = "Stop"
-if (-not (Test-Path -LiteralPath $EnvPath)) { throw "Missing backend .env." }
-
-$values = @{}
-Get-Content -LiteralPath $EnvPath | ForEach-Object {
-  $line = $_.Trim()
-  if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
-    $parts = $line -split "=", 2
-    $values[$parts[0].Trim()] = $parts[1].Trim()
-  }
-}
-$username = $values["INITIAL_ADMIN_USERNAME"]
-$password = $values["INITIAL_ADMIN_PASSWORD"]
-if (-not $username -or -not $password -or $username -match "^REPLACE" -or $password -match "^REPLACE") {
-  throw "Configure the first-admin credentials in backend\\.env before running the authenticated HTTP smoke test."
-}
+$credential = Get-Credential -Message "Enter an Oro Verde administrator account for the local login smoke test."
+if (-not $credential) { throw "Administrator credentials are required for this test." }
+$username = $credential.UserName
+$password = (New-Object System.Net.NetworkCredential("", $credential.Password)).Password
 
 $base = "http://127.0.0.1:$Port"
 $health = Invoke-RestMethod -Uri "$base/api/" -Method Get -TimeoutSec 10
