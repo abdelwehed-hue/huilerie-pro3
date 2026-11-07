@@ -13,6 +13,12 @@ $uri=$values["MONGO_URL"]; $db=$values["DB_NAME"]
 if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "127\.0\.0\.1|localhost"){ throw "Refusing restore unless MongoDB URL is local." }
 if($db -ne "oroverde_local"){ throw "Refusing restore: DB_NAME must be oroverde_local." }
 $archivePath=(Resolve-Path $Archive).Path
+$checksumFile="$archivePath.sha256"
+if(-not(Test-Path $checksumFile)){ throw "Backup checksum sidecar is missing: $checksumFile" }
+$expected=((Get-Content $checksumFile -Raw).Trim() -split "\\s+")[0].ToUpperInvariant()
+$actual=(Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToUpperInvariant()
+if($expected -ne $actual){ throw "Backup SHA-256 verification failed; refusing restore." }
+Write-Host "Backup SHA-256 verified." -ForegroundColor Green
 if($DropTarget){
  $confirmation=Read-Host "This will replace data in LOCAL database oroverde_local. Type RESTORE-OROVERDE-LOCAL to continue"
  if($confirmation -cne "RESTORE-OROVERDE-LOCAL"){ throw "Restore cancelled." }
