@@ -61,3 +61,14 @@ For first-time local provisioning, the backend's current non-production seeding 
 - Windows start/stop launcher and desktop shortcut: not yet added.
 - LAN phone login, cookie behavior, and WebSocket reconnect test: not yet performed.
 - Local backup/restore and offline sync to Render: not implemented; do not assume synchronization.
+
+
+## Read-only Windows runtime preflight
+
+After installing Python, Node.js LTS, MongoDB Community (configured as replica set `rs0`), and MongoDB Shell, run this from the repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Test-LocalRuntime.ps1
+```
+
+The preflight re-runs the local isolation/secret checks, verifies the required command-line tools are on `PATH`, and asks `mongosh` whether the local `rs0` replica set has an elected PRIMARY. It is read-only: it does not install packages, initialize or modify MongoDB, start the backend, or launch the frontend. A failure gives the missing prerequisite; it is not a substitute for the remaining application and LAN acceptance tests.
