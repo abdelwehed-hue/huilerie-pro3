@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
 import type { Grade, LabAnalysis, LabCreate, Load, Varieties } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
 import { CodeBadge, GradeBadge, PageHeader } from "@/components/shared";
@@ -36,6 +36,7 @@ export default function Lab() {
   const [f, setF] = useState(EMPTY);
   const [scanOpen, setScanOpen] = useState(false);
   const [specificationReference, setSpecificationReference] = useState("");
+  const [selectedGsAssessment, setSelectedGsAssessment] = useState<Record<string, any> | null>(null);
   const code = f.code.trim();
   const isGsCode = /^\d{4}A\d{4}$/i.test(code);
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
@@ -101,20 +102,31 @@ export default function Lab() {
   const gsMutation = useMutation({
     mutationFn: async () => {
       if (!gsOilLot || !gsOliveLot || !gsSample) throw new Error("Aucun Lot d’huile expérimental actif n’est lié à ce code d’achat.");
-      if (!gsLotCanBeAnalysed || gsExistingAssessment) throw new Error("Une analyse est déjà en attente ou ce Lot d’huile ne peut plus être analysé.");
+      const editing = !!selectedGsAssessment;
+      if (editing) {
+        if (selectedGsAssessment?.status !== "AWAITING_INDEPENDENT_REVIEW" || selectedGsAssessment.oil_lot_id !== gsOilLot.id) {
+          throw new Error("Cette analyse a déjà fait l’objet d’une Décision et ne peut plus être modifiée.");
+        }
+      } else if (!gsLotCanBeAnalysed || gsExistingAssessment) {
+        throw new Error("Une analyse est déjà en attente ou ce Lot d’huile ne peut plus être analysé.");
+      }
       if (!specificationReference.trim()) throw new Error("La référence de la norme est obligatoire.");
       if (acid == null) throw new Error("L’acidité est obligatoire.");
-      return apiPost("/commercial/v1/quality-assessments", {
+      const payload = {
         oil_lot_id: gsOilLot.id, expected_lot_version: gsOilLot.version ?? 1,
-        sample_reference: code, sample_date: gsSample.trial_date, tested_date: new Date().toISOString().slice(0, 10),
+        sample_reference: code, sample_date: selectedGsAssessment?.sample_date || gsSample.trial_date,
+        tested_date: selectedGsAssessment?.tested_date || new Date().toISOString().slice(0, 10),
         laboratory_name: gsConfiguredLaboratoryName, specification_reference: specificationReference.trim(), measurements: [],
         acidity: acid, peroxide: num(f.peroxide), k232: num(f.k232), k270: num(f.k270), oil_content_pct: num(f.oil),
         classification: finalGrade, oil_type: oilType || null, notes: f.notes, idempotency_key: crypto.randomUUID(),
-      });
+      };
+      return editing
+        ? apiPut("/commercial/v1/quality-assessments/" + selectedGsAssessment!.id, payload)
+        : apiPost("/commercial/v1/quality-assessments", payload);
     },
     onSuccess: () => {
-      toast.success("Résultats transmis à la Décision indépendante");
-      setF(EMPTY); setSpecificationReference("");
+      toast.success(selectedGsAssessment ? "Analyse mise à jour" : "Résultats transmis à la Décision indépendante");
+      setF(EMPTY); setSpecificationReference(""); setSelectedGsAssessment(null);
       qc.invalidateQueries({ queryKey: ["commercial"] });
       qc.invalidateQueries({ queryKey: ["lab-gs-quality-assessments"] });
       qc.invalidateQueries({ queryKey: ["lab-gs-lots"] });
@@ -176,8 +188,11 @@ export default function Lab() {
             {isGsCode && gsOilLot && gsSample && (
               <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Échantillon de préproduction créé automatiquement · Lot d’huile prêt · {code}</div>
             )}
-            {isGsCode && gsExistingAssessment && (
-              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante pour {code}.</div>
+            {isGsCode && gsExistingAssessment && !selectedGsAssessment && (
+              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante. Cliquez sur son code dans le tableau pour la modifier.</div>
+            )}
+            {isGsCode && selectedGsAssessment && (
+              <div className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-medium text-cyan-900">Modification de l’analyse en attente · {code}</div>
             )}
             {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsAutoSample.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && !gsAutoSample.isError && (
               <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun lot de réception ouvert n’est associé à ce code d’achat, ou un échantillon existant doit être vérifié.</div>
@@ -260,8 +275,8 @@ export default function Lab() {
             <span className="text-sm font-medium text-stone-600">{t("classification")}</span>
             {finalGrade ? <GradeBadge grade={finalGrade} testId="lab-classification-badge" /> : <span className="text-stone-400">—</span>}
           </div>
-          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || !gsLotCanBeAnalysed || !!gsExistingAssessment || gsLots.isLoading || gsSamples.isLoading || gsAutoSample.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
-            {isGsCode ? "Envoyer à la Décision indépendante" : t("save")}
+          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || (!selectedGsAssessment && (!gsLotCanBeAnalysed || !!gsExistingAssessment)) || (selectedGsAssessment && selectedGsAssessment.status !== "AWAITING_INDEPENDENT_REVIEW") || gsLots.isLoading || gsSamples.isLoading || gsAutoSample.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
+            {isGsCode ? (selectedGsAssessment ? "Enregistrer les modifications" : "Envoyer à la Décision indépendante") : t("save")}
           </Button>
         </form>
 
@@ -290,7 +305,23 @@ export default function Lab() {
               )}
               {gsAnalysisRows.map((r) => (
                 <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
-                  <TableCell><CodeBadge code={String(r.batch_code || r.sample_reference)} /></TableCell>
+                  <TableCell>
+                    {r.status === "AWAITING_INDEPENDENT_REVIEW" ? (
+                      <button type="button" title="Modifier l’analyse avant Décision" className="rounded-lg hover:opacity-80" onClick={() => {
+                        const lot = (gsLots.data ?? []).find((item) => item.id === r.oil_lot_id);
+                        if (!lot || lot.status !== "OPEN" || lot.last_quality_assessment_id !== r.id) {
+                          toast.error("Cette analyse n’est plus la dernière analyse modifiable.");
+                          return;
+                        }
+                        setSelectedGsAssessment(r);
+                        setF({ ...EMPTY, code: String(r.batch_code || r.sample_reference || ""), acidity: r.acidity == null ? "" : String(r.acidity), peroxide: r.peroxide == null ? "" : String(r.peroxide), k232: r.k232 == null ? "" : String(r.k232), k270: r.k270 == null ? "" : String(r.k270), oil: r.oil_content_pct == null ? "" : String(r.oil_content_pct), notes: r.notes || "", oilType: r.oil_type || "", grade: r.classification || "auto" });
+                        setSpecificationReference(r.specification_reference || "");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}>
+                        <CodeBadge code={String(r.batch_code || r.sample_reference)} />
+                      </button>
+                    ) : <span title="Décision enregistrée : analyse verrouillée"><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
+                  </TableCell>
                   <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
                   <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
                   <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
