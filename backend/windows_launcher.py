@@ -61,7 +61,7 @@ def write_first_run_config(root: tk.Tk) -> bool:
     env_file.write_text(content, encoding="utf-8")
     try:
         subprocess.run(
-            ["icacls", str(DATA_DIR), "/inheritance:r", "/grant:r", f"{os.environ.get('USERNAME', '')}:(OI)(CI)F", "/T"],
+            ["icacls", str(DATA_DIR), "/inheritance:r", "/grant:r", f"{os.environ.get('USERNAME', '')}:(OI)(CI)F", "SYSTEM:(OI)(CI)F", "Administrators:(OI)(CI)F", "/T"],
             check=True, capture_output=True, text=True,
         )
     except Exception:
