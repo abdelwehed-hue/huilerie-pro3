@@ -20,6 +20,8 @@ if ($values["JWT_SECRET"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["JWT_SECR
 if ($values["AUTH_DISABLED"] -match "^(1|true|yes|on)$") { throw "AUTH_DISABLED must remain false." }
 if ($values["SERVE_FRONTEND"] -notmatch "^(1|true|yes|on)$") { throw "SERVE_FRONTEND=true is required." }
 if ($values["CORS_ORIGINS"] -match "\*") { throw "CORS_ORIGINS cannot contain wildcard origins." }
+if ($values["COOKIE_SAMESITE"] -notin @("lax","strict","none")) { throw "COOKIE_SAMESITE must be lax, strict, or none." }
+if ($values["COOKIE_SAMESITE"] -eq "none" -and $values["COOKIE_SECURE"] -notmatch "^(1|true|yes|on)$") { throw "SameSite=None requires COOKIE_SECURE=true." }
 if ($values["INITIAL_ADMIN_USERNAME"] -match "REPLACE|admin|administrator" -or $values["INITIAL_ADMIN_USERNAME"].Length -lt 4) { throw "Set a unique non-default INITIAL_ADMIN_USERNAME (at least 4 characters)." }
 if ($values["INITIAL_ADMIN_PASSWORD"] -match "REPLACE|CHANGE_ME|YOUR_" -or $values["INITIAL_ADMIN_PASSWORD"].Length -lt 16) { throw "Set a unique INITIAL_ADMIN_PASSWORD of at least 16 characters." }
 Write-Host "Local configuration passed: isolated DB, production auth, explicit first-admin credentials." -ForegroundColor Green
