@@ -3,6 +3,10 @@ param(
  [string]$BackupDirectory = ".\backups"
 )
 $ErrorActionPreference = "Stop"
+# A stopped app avoids writes during a database dump, producing a reliable operational backup.
+if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+ throw "A process is listening on local port $Port. Stop Oro Verde before backing up, then retry."
+}
 if(-not(Test-Path $EnvPath)){ throw "Missing backend .env." }
 if(-not(Get-Command mongodump -ErrorAction SilentlyContinue)){ throw "mongodump is required; install MongoDB Database Tools." }
 $values=@{}
