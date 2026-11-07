@@ -1850,30 +1850,67 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         {isAdmin && <Card><CardHeader><CardTitle>{l.receivingLocation}</CardTitle></CardHeader><CardContent><select value={receivingLocationId} onChange={(e) => setReceivingLocationId(e.target.value)} className="h-10 w-full max-w-xl rounded-lg border bg-background px-3"><option value="">—</option>{(locations.data ?? []).map((loc) => <option key={loc.id} value={loc.id}>{loc.code} · {loc.name}</option>)}</select></CardContent></Card>}
-        {selectedPurchaseReceipt && <Card className="print-area border-2 border-dashed border-amber-300 bg-white text-stone-900 shadow-sm">
-          <CardHeader className="no-print flex-row items-center justify-between">
-            <CardTitle>{lang === "ar" ? "وصل شراء الزيتون" : "Bon d’achat d’olives"} · {selectedPurchaseReceipt.document_number}</CardTitle>
-            <div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le reçu"}</Button></div>
-          </CardHeader>
-          <CardContent className="space-y-5 p-6 md:p-8">
-            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="text-xl font-bold">Oro Verde</div><div className="text-sm text-stone-500">{lang === "ar" ? "وصل شراء واستلام الزيتون" : "Reçu d’achat et de réception des olives"}</div></div><div className="text-right"><div className="text-sm font-semibold">{value(selectedPurchaseReceipt.document_number)}</div><div className="text-xs text-stone-500">{date(selectedPurchaseReceipt.purchase_date)}</div></div></div>
-            <div className="grid gap-3 sm:grid-cols-2 text-sm">
-              <div><div className="text-stone-500">{l.supplier}</div><strong>{value(supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.name, selectedPurchaseReceipt.supplier_id)}</strong></div>
-              <div><div className="text-stone-500">{l.purchaseCode}</div><strong className="font-mono">{value(selectedPurchaseReceipt.batch_code || selectedPurchaseReceipt.batch_codes?.[0])}</strong></div>
-              <div><div className="text-stone-500">{l.purchaseDate}</div><strong>{date(selectedPurchaseReceipt.purchase_date)}</strong></div>
-              <div><div className="text-stone-500">{l.receivingLocation}</div><strong>{value(locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.name || locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.code, selectedPurchaseReceipt.receiving_location_id)}</strong></div>
+        {selectedPurchaseReceipt && <Card className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 text-stone-900 shadow-sm">
+          <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4">
+            <CardTitle>{lang === "ar" ? "وصل استلام المزوّد" : "Bon de réception fournisseur"}</CardTitle>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setSelectedPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button>
+              <Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le reçu"}</Button>
             </div>
-            <div className="overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-y border-stone-300 bg-stone-50"><th className="p-2 text-left">{l.variety}</th><th className="p-2 text-right">{l.quantity} (kg)</th><th className="p-2 text-right">{l.unitPrice}</th><th className="p-2 text-right">{l.totalAmount}</th></tr></thead>
-              <tbody>{(selectedPurchaseReceipt.lines ?? []).map((line: AnyRecord, index: number) => {
-                const variety = varieties.data?.find((v) => v.id === line.variety_id);
-                const quantity = Number(line.quantity_kg?.$numberDecimal ?? line.quantity_kg ?? 0);
-                const unitPrice = Number(line.unit_price_dt?.$numberDecimal ?? line.unit_price_dt ?? 0);
-                const lineTotal = Number(line.line_total_dt?.$numberDecimal ?? line.line_total_dt ?? quantity * unitPrice);
-                return <tr key={index} className="border-b border-stone-200"><td className="p-2">{lang === "ar" ? (variety?.name_ar || variety?.name_fr || line.variety_id) : (variety?.name_fr || line.variety_id)}</td><td className="p-2 text-right">{number(quantity)}</td><td className="p-2 text-right">{money(unitPrice)}</td><td className="p-2 text-right">{money(lineTotal)}</td></tr>;
-              })}</tbody></table></div>
-            <div className="ml-auto grid max-w-sm gap-2 border-t border-stone-300 pt-3 text-sm"><div className="flex justify-between"><span>{l.totalQuantity}</span><strong>{number(Number(selectedPurchaseReceipt.total_quantity_kg?.$numberDecimal ?? selectedPurchaseReceipt.total_quantity_kg ?? 0))} kg</strong></div><div className="flex justify-between text-base"><span>{l.totalAmount}</span><strong>{money(Number(selectedPurchaseReceipt.total_amount_dt?.$numberDecimal ?? selectedPurchaseReceipt.total_amount_dt ?? 0))} TND</strong></div></div>
-            {selectedPurchaseReceipt.notes && <div className="border-t border-stone-200 pt-3 text-sm"><span className="text-stone-500">{l.notes}: </span>{selectedPurchaseReceipt.notes}</div>}
-            <div className="border-t border-stone-200 pt-3 text-center text-xs text-stone-500">{lang === "ar" ? "تم إصدار هذا الوصل بعد اعتماد عملية الشراء واستلام الكمية." : "Reçu émis après approbation et réception de l’achat."}</div>
+          </CardHeader>
+          <CardContent className="space-y-0 p-0">
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+              <div>
+                <div className="font-heading text-lg font-bold text-stone-900">{purchaseMill.data?.mill_name || "Oro Verde"}</div>
+                {purchaseMill.data?.mill_address && <div className="text-xs text-stone-500">{purchaseMill.data.mill_address}</div>}
+                {purchaseMill.data?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{purchaseMill.data.mill_phone}</div>}
+              </div>
+              <div className="text-end">
+                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">{lang === "ar" ? "وصل استلام المزوّد" : "Bon de réception fournisseur"}</div>
+                <div className="mt-1 text-xs text-stone-500" dir="ltr">{date(selectedPurchaseReceipt.purchase_date)}</div>
+                <div className="mt-1 text-xs text-stone-500" dir="ltr">{value(selectedPurchaseReceipt.document_number)}</div>
+              </div>
+            </div>
+            <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
+              <div>
+                <div className="mb-2 text-xs text-stone-500">{lang === "ar" ? "كود التتبع الفريد" : "Code unique de traçabilité"}</div>
+                <div className="inline-flex rounded-lg bg-amber-50 px-4 py-2 font-mono text-2xl font-bold text-amber-900" dir="ltr">{value(selectedPurchaseReceipt.batch_code || selectedPurchaseReceipt.batch_codes?.[0] || selectedPurchaseReceipt.lines?.[0]?.batch_code)}</div>
+                <div className="mt-3 text-sm text-stone-500">{lang === "ar" ? "كود GS الواجب الاحتفاظ به لتتبع الدفعة" : "Code GS à conserver pour le suivi du lot"}</div>
+              </div>
+              <div data-testid="approved-purchase-ticket-qr" className="flex flex-col items-center gap-1">
+                <QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(selectedPurchaseReceipt.id ?? "") + "&batch=" + encodeURIComponent(selectedPurchaseReceipt.batch_code || selectedPurchaseReceipt.batch_codes?.[0] || selectedPurchaseReceipt.lines?.[0]?.batch_code || "")} size={112} level="M" marginSize={1} />
+                <span className="text-[10px] text-stone-500">{lang === "ar" ? "امسح الرمز لفتح الدفعة في GS" : "Scanner pour ouvrir le lot dans GS"}</span>
+              </div>
+            </div>
+            <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
+              <div><dt className="text-stone-500">{l.supplier}</dt><dd className="font-semibold text-stone-900">{value(supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.name, selectedPurchaseReceipt.supplier_id)}</dd></div>
+              <div><dt className="text-stone-500">{lang === "ar" ? "الهاتف" : "Téléphone"}</dt><dd className="font-semibold text-stone-900" dir="ltr">{value(supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.phone)}</dd></div>
+              {supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.tax_id && <div><dt className="text-stone-500">{lang === "ar" ? "المعرّف الجبائي" : "Identifiant fiscal"}</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierRows.find((s) => s.id === selectedPurchaseReceipt.supplier_id)?.tax_id}</dd></div>}
+              <div><dt className="text-stone-500">{lang === "ar" ? "كود الشراء" : "Code d’achat"}</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{value(selectedPurchaseReceipt.batch_code || selectedPurchaseReceipt.batch_codes?.join(", ") || selectedPurchaseReceipt.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "))}</dd></div>
+              <div><dt className="text-stone-500">{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</dt><dd className="font-semibold text-stone-900">{date(selectedPurchaseReceipt.purchase_date)}</dd></div>
+              <div><dt className="text-stone-500">{lang === "ar" ? "مكان الاستلام" : "Lieu de réception"}</dt><dd className="font-semibold text-stone-900">{value(locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.name || locations.data?.find((loc) => loc.id === selectedPurchaseReceipt.receiving_location_id)?.code, selectedPurchaseReceipt.receiving_location_id)}</dd></div>
+            </dl>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead><tr className="border-y border-stone-200 bg-stone-50"><th className="p-2 text-left">{l.variety}</th><th className="p-2 text-right">{l.quantity} (kg)</th><th className="p-2 text-right">{l.unitPrice}</th><th className="p-2 text-right">{l.totalAmount}</th></tr></thead>
+                <tbody>{(selectedPurchaseReceipt.lines ?? []).map((line: AnyRecord, index: number) => {
+                  const variety = varieties.data?.find((v) => v.id === line.variety_id);
+                  const quantity = Number(line.quantity_kg?.$numberDecimal ?? line.quantity_kg ?? 0);
+                  const unitPrice = Number(line.unit_price_dt?.$numberDecimal ?? line.unit_price_dt ?? 0);
+                  const lineTotal = Number(line.line_total_dt?.$numberDecimal ?? line.line_total_dt ?? quantity * unitPrice);
+                  return <tr key={index} className="border-b border-stone-200"><td className="p-2 text-stone-900">{lang === "ar" ? (variety?.name_ar || variety?.name_fr || line.variety_id) : (variety?.name_fr || line.variety_id)}</td><td className="p-2 text-right text-stone-900">{number(quantity)}</td><td className="p-2 text-right text-stone-900">{money(unitPrice)}</td><td className="p-2 text-right font-semibold text-stone-900">{money(lineTotal)}</td></tr>;
+                })}</tbody>
+              </table>
+            </div>
+            <dl className="ml-auto mt-4 grid max-w-sm grid-cols-1 gap-2 border-t border-stone-200 pt-4 text-sm">
+              <div className="flex justify-between"><dt className="text-stone-500">{l.totalQuantity}</dt><dd className="font-semibold text-stone-900">{number(Number(selectedPurchaseReceipt.total_quantity_kg?.$numberDecimal ?? selectedPurchaseReceipt.total_quantity_kg ?? 0))} kg</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">{l.totalAmount}</dt><dd className="font-heading text-xl font-bold text-stone-900">{money(Number(selectedPurchaseReceipt.total_amount_dt?.$numberDecimal ?? selectedPurchaseReceipt.total_amount_dt ?? 0))} TND</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">{lang === "ar" ? "الحالة" : "Statut"}</dt><dd className="font-semibold text-stone-900">{lang === "ar" ? "تم تسجيل الاستلام" : "Réception enregistrée"}</dd></div>
+            </dl>
+            {selectedPurchaseReceipt.notes && <div className="mt-4 border-t border-stone-200 pt-3 text-sm"><span className="text-stone-500">{l.notes}: </span><span className="text-stone-900">{selectedPurchaseReceipt.notes}</span></div>}
+            <div className="no-print mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-4">
+              <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le reçu"}</Button>
+            </div>
           </CardContent>
         </Card>}
         <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
