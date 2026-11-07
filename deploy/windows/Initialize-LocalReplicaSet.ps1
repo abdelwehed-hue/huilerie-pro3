@@ -1,6 +1,6 @@
 # One-time initialization for a local single-node MongoDB replica set.
 param(
-  [string]$EnvPath = ".\\backend\\.env",
+  [string]$EnvPath = ".\backend\.env",
   [string]$ServiceName = "MongoDB",
   [int]$WaitSeconds = 60
 )
@@ -16,8 +16,8 @@ Get-Content -LiteralPath $EnvPath | ForEach-Object {
   }
 }
 $uri = $values["MONGO_URL"]
-if (-not $uri -or $uri -match "mongodb\\+srv://|mongodb\\.net" -or
-    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\\.0\\.0\\.1|localhost)(?::27017)?(?:/|\\?|$)") {
+if (-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or
+    $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)") {
   throw "Refusing to initialize anything except a local MongoDB instance."
 }
 try { $mongoUri = [System.Uri]::new($uri) } catch { throw "MONGO_URL is not a valid MongoDB URI." }
@@ -38,7 +38,7 @@ $deadline = (Get-Date).AddSeconds($WaitSeconds)
 $reachable = $false
 do {
   $ping = & mongosh "mongodb://127.0.0.1:27017/" --quiet --eval 'db.adminCommand({ping:1}).ok' 2>&1
-  if ($LASTEXITCODE -eq 0 -and (($ping | Out-String) -match "(?m)^\\s*1\\s*$")) { $reachable = $true; break }
+  if ($LASTEXITCODE -eq 0 -and (($ping | Out-String) -match "(?m)^\s*1\s*$")) { $reachable = $true; break }
   Start-Sleep -Seconds 2
 } while ((Get-Date) -lt $deadline)
 if (-not $reachable) { throw "MongoDB service did not accept local connections within $WaitSeconds seconds. Details: $ping" }
@@ -63,7 +63,7 @@ do {
   $statusOutput = & mongosh "mongodb://127.0.0.1:27017/?replicaSet=rs0" --quiet --eval $statusEval 2>&1
   if ($LASTEXITCODE -eq 0) {
     $raw = $statusOutput | Out-String
-    $jsonLine = [regex]::Matches($raw, "(?m)^\\s*\\{.*\\}\\s*$") | Select-Object -Last 1
+    $jsonLine = [regex]::Matches($raw, "(?m)^\s*\{.*\}\s*$") | Select-Object -Last 1
     if ($jsonLine) {
       $status = $jsonLine.Value | ConvertFrom-Json
       if ($status.set -eq "rs0" -and $status.state -eq 1 -and $status.primary) { $primary = $true; break }
