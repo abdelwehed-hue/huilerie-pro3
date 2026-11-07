@@ -15,7 +15,7 @@ if($db -ne "oroverde_local"){ throw "Refusing restore: DB_NAME must be oroverde_
 $archivePath=(Resolve-Path $Archive).Path
 $checksumFile="$archivePath.sha256"
 if(-not(Test-Path $checksumFile)){ throw "Backup checksum sidecar is missing: $checksumFile" }
-$expected=((Get-Content $checksumFile -Raw).Trim() -split "\\s+")[0].ToUpperInvariant()
+$expected=((Get-Content $checksumFile -Raw).Trim() -split "\s+")[0].ToUpperInvariant()
 $actual=(Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToUpperInvariant()
 if($expected -ne $actual){ throw "Backup SHA-256 verification failed; refusing restore." }
 Write-Host "Backup SHA-256 verified." -ForegroundColor Green
