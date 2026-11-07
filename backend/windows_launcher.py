@@ -106,6 +106,10 @@ def main() -> None:
         if not write_first_run_config(root):
             root.destroy()
             return
+        if backend_healthy():
+            status.set("Oro Verde is already running on this computer.")
+            open_button.configure(state="normal")
+            return
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
         env["OROVERDE_APP_DIR"] = str(APP_DIR)
