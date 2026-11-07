@@ -1,6 +1,6 @@
 # Oro Verde — Windows local deployment (work in progress)
 
-This setup targets one Windows 11 PC at the mill. It serves the app on that PC and can later serve worker phones on the same trusted private LAN after network and browser validation.
+This setup targets one Windows 11 PC at the mill. It serves the app on that PC. Worker-phone access is a separate later phase requiring HTTPS and LAN security.
 
 ## Isolation guarantee
 
@@ -11,45 +11,67 @@ This setup targets one Windows 11 PC at the mill. It serves the app on that PC a
 
 ## One-time setup
 
-Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and MongoDB Database Tools (`mongodump`/`mongorestore`). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient. Initialize the local replica set once:
+Install Python 3.11+, Node.js LTS, MongoDB Community Server, MongoDB Shell, and MongoDB Database Tools (`mongodump`/`mongorestore`). Start the MongoDB Windows service. The application uses MongoDB transactions; standalone MongoDB is insufficient.
 
-Run this one-time initialization from the repository root after MongoDB is running:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Initialize-LocalReplicaSet.ps1
-```
-
-Wait for MongoDB to elect a PRIMARY. Then continue:
+From the repository root:
 
 1. Copy `deploy/windows/backend.env.example` to `backend/.env`.
 2. Edit `backend/.env`: set a random JWT secret (32+ characters), a unique first-admin username, and a unique password (16+ characters). Keep `APP_ENV=production`, `AUTH_DISABLED=false`, `SERVE_FRONTEND=true`, local Mongo URL, and `DB_NAME=oroverde_local`. Never use Atlas credentials.
-3. Install backend dependencies:
+3. Initialize the single-node local replica set once:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Initialize-LocalReplicaSet.ps1
+   ```
+
+   Wait for MongoDB to elect a PRIMARY. Then verify it:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalRuntime.ps1
+   ```
+
+4. Install backend dependencies:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Setup-Backend.ps1
    ```
 
-4. Build the frontend:
+5. Build the frontend:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Build-LocalFrontend.ps1
    ```
 
-5. Start the application:
+6. Start the application:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Start-OroVerde.ps1
    ```
 
-The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env` for now: the current production bootstrap checks them whenever the database is empty. Restrict access to this file and never share or commit it.
+The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env`: the current bootstrap needs them whenever the database is empty. Restrict access to this file and never share or commit it.
 
-6. Install the desktop shortcut:
+7. Install the desktop shortcut:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Install-DesktopShortcut.ps1
    ```
 
 The shortcut manually launches the local app. To stop it, run `deploy\windows\Stop-OroVerde.ps1`. MongoDB is a separate Windows service and is not stopped by the app shortcut.
+
+## Local database backup and restore
+
+Create a compressed backup regularly, and store a second copy on a separate encrypted drive:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Backup-LocalDatabase.ps1
+```
+
+The script writes a timestamped MongoDB archive and SHA-256 checksum under `backups/`. Keep both files. To restore, first stop Oro Verde and select a known-good archive:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Restore-LocalDatabase.ps1 -Archive .\backups\oroverde_local-YYYYMMDD-HHMMSS.archive.gz
+```
+
+By default restore does not drop existing collections. For an exact replacement, use `-DropTarget`; this prompts for the literal confirmation `RESTORE-OROVERDE-LOCAL` and replaces matching target collections. Never use that option without a separate verified backup. A restore is not proven until you restart the app and inspect important records.
 
 ## LAN and security
 
@@ -62,4 +84,4 @@ The shortcut manually launches the local app. To stop it, run `deploy\windows\St
 
 This work has not been executed on Windows. Test localhost login/session behavior, WebSocket reconnects, core workflows, restart persistence, and backup/restore. Before worker-phone access, configure local HTTPS and secure cookies, then test from actual devices. Make a backup and prove restore before entering real transactions.
 
-The scripts do not install or initialize MongoDB, configure firewall rules, provide local HTTPS, or implement backup/restore. Offline synchronization with Render/Atlas does not exist. The local database is independent and starts empty.
+The scripts do not install MongoDB, configure firewall rules, provide local HTTPS, or implement backup/restore scheduling. Offline synchronization with Render/Atlas does not exist. The local database is independent and starts empty.
