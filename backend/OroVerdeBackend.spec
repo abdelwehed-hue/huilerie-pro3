@@ -13,7 +13,7 @@ for package in ("commercial", "lib", "models", "routers"):
 hiddenimports += collect_submodules("uvicorn")
 
 a = Analysis(
-    ["server.py"],
+    ["windows_entry.py"],
     pathex=[str(backend_dir)],
     binaries=[],
     datas=[(str(font_dir), "fonts")],
