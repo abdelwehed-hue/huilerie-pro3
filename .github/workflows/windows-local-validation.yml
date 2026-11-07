@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/offline-local-first-foundation
+      - feature/windows-exe-packaging
   pull_request:
     branches:
       - main
@@ -65,3 +66,37 @@ jobs:
           $env:VITE_API_SAME_ORIGIN = "true"
           Remove-Item Env:VITE_API_ORIGIN -ErrorAction SilentlyContinue
           npm run build
+
+      - name: Install backend and Windows packaging dependencies
+        shell: powershell
+        run: python -m pip install -r backend/requirements-windows-build.txt
+
+      - name: Test external app and data directory configuration
+        working-directory: backend
+        shell: powershell
+        run: python -m pytest tests/test_windows_packaging_paths.py -q
+
+      - name: Build frozen backend (PyInstaller onedir)
+        working-directory: backend
+        shell: powershell
+        run: python -m PyInstaller --clean --noconfirm OroVerdeBackend.spec
+
+      - name: Verify frozen backend and bundled Arabic fonts
+        shell: powershell
+        run: |
+          $exe = "backend/dist/OroVerdeBackend/OroVerdeBackend.exe"
+          if (-not (Test-Path $exe)) { throw "PyInstaller executable was not created: $exe" }
+          if (-not (Test-Path "backend/dist/OroVerdeBackend/_internal/fonts/Amiri-Regular.ttf")) {
+            throw "Arabic PDF font was not bundled."
+          }
+
+      - name: Upload Windows packaging build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oroverde-windows-backend-preview
+          path: |
+            backend/dist/OroVerdeBackend/
+            frontend/dist/
+            deploy/windows/EXE-PACKAGING.md
+          if-no-files-found: error
+          retention-days: 7
