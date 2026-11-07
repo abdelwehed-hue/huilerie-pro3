@@ -54,6 +54,6 @@ The shortcut manually launches the local app. To stop it, run `deploy\windows\St
 
 ## Not yet approved for live mill operations
 
-This work has not been executed on Windows. Test login, cookie/session behavior from worker phones over HTTP, WebSocket reconnects, core workflows, restart persistence, and backup/restore. If browser cookie policy requires secure cookies, configure local HTTPS before LAN use. Make a backup and prove restore before entering real transactions.
+This work has not been executed on Windows. Test localhost login/session behavior, WebSocket reconnects, core workflows, restart persistence, and backup/restore. Before worker-phone access, configure local HTTPS and secure cookies, then test from actual devices. Make a backup and prove restore before entering real transactions.
 
 The scripts do not install or initialize MongoDB, configure firewall rules, provide local HTTPS, or implement backup/restore. Offline synchronization with Render/Atlas does not exist. The local database is independent and starts empty.
