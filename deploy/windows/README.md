@@ -77,7 +77,7 @@ This test briefly interrupts the app and opens the browser again. It verifies ba
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Install-DesktopShortcut.ps1
    ```
 
-The shortcut manually launches the local app. To stop it, run `deploy\windows\Stop-OroVerde.ps1`. MongoDB is a separate Windows service and is not stopped by the app shortcut.
+The shortcut manually launches the local app. To stop the default instance, run `deploy\windows\Stop-OroVerde.ps1`; if you started it with a custom port, pass the same value, for example `-Port 8001`. The stop script verifies the PID, Uvicorn command, localhost bind address, and exact port before terminating the process. MongoDB is a separate Windows service and is not stopped by the app shortcut.
 
 ## Local database backup and restore
 
