@@ -193,7 +193,13 @@ export default function Lab() {
                     <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
                   </TableRow>;
                 })}
-                {(!gsLots.isLoading && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
+                {pendingLoads.map((load) => <TableRow key={load.id}>
+                  <TableCell className="font-mono text-xs font-semibold">{load.code}</TableCell>
+                  <TableCell>{load.client_name || "—"}</TableCell>
+                  <TableCell>{load.variety || "—"}</TableCell>
+                  <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                </TableRow>)}
+                {(!gsLots.isLoading && pendingLoads.length === 0 && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
               </TableBody>
             </Table>
           </div>
