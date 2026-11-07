@@ -163,20 +163,41 @@ function Brand() {
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<MillInfo>("/mill") });
   const m = mill.isError ? undefined : mill.data;
 
-  // Use the mill logo configured in Settings > Campagne as the browser/app icon.
+  // Build a square, safe-area app icon so iOS never crops a non-square campaign logo.
   useEffect(() => {
     const logo = m?.mill_logo;
     const iconLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'));
     const appleLink = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+    if (!logo) {
+      for (const link of iconLinks) if (link.dataset.defaultHref) link.href = link.dataset.defaultHref;
+      if (appleLink?.dataset.defaultHref) appleLink.href = appleLink.dataset.defaultHref;
+      return;
+    }
 
-    for (const link of iconLinks) {
-      if (!link.dataset.defaultHref) link.dataset.defaultHref = link.href;
-      link.href = logo || link.dataset.defaultHref;
-    }
-    if (appleLink) {
-      if (!appleLink.dataset.defaultHref) appleLink.dataset.defaultHref = appleLink.href;
-      appleLink.href = logo || appleLink.dataset.defaultHref;
-    }
+    const image = new Image();
+    image.onload = () => {
+      const size = 512;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      // A solid dark olive background plus 14% safe padding keeps the whole logo
+      // visible inside iOS's rounded icon mask, even when the uploaded image is rectangular.
+      context.fillStyle = "#10180f";
+      context.fillRect(0, 0, size, size);
+      const safeSize = size * 0.72;
+      const scale = Math.min(safeSize / image.naturalWidth, safeSize / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+
+      const appIcon = canvas.toDataURL("image/png");
+      for (const link of iconLinks) link.href = appIcon;
+      if (appleLink) appleLink.href = appIcon;
+    };
+    image.src = logo;
   }, [m?.mill_logo]);
 
   return (
