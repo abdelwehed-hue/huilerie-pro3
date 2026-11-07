@@ -18,7 +18,7 @@ if ($home.StatusCode -ne 200 -or $home.Content -notmatch "<html") {
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $loginBody = @{ username = $username; password = $password } | ConvertTo-Json -Compress
 $login = Invoke-RestMethod -Uri "$base/api/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -WebSession $session -TimeoutSec 10
-if (-not $login.id -or -not $session.Cookies.GetCookies([uri]$base)["olive_session"]) {
+if (-not $login.id -or -not ($session.Cookies.GetCookies([uri]$base) | Where-Object { $_.Name -eq "olive_session" })) {
   throw "Login did not establish the expected authenticated session cookie."
 }
 
