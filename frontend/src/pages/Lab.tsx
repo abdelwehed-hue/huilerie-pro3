@@ -42,6 +42,10 @@ export default function Lab() {
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: isGsCode, retry: false });
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
+  const gsCodeAssessments = (gsAssessments.data ?? [])
+    .filter((assessment) => code && String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === code.toUpperCase())
+    .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+  const gsCodeAssessment = gsCodeAssessments[0];
   const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), retry: false });
   const gsVarieties = useQuery({ queryKey: ["lab-gs-varieties"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/varieties?limit=500"), retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
@@ -57,12 +61,14 @@ export default function Lab() {
       ]);
       return created;
     },
-    enabled: isGsCode && gsLots.isSuccess && gsSamples.isSuccess && !!gsOliveLot && !gsSample,
+    enabled: isGsCode && gsLots.isSuccess && gsSamples.isSuccess && gsAssessments.isSuccess && !!gsOliveLot && !gsSample && !gsCodeAssessment,
     retry: false,
   });
   const gsOilLot = gsSample ? (gsLots.data ?? []).find((lot) => lot.id === gsSample.oil_sample_lot_id && lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.status === "OPEN") : undefined;
   const gsExistingAssessment = gsOilLot ? (gsAssessments.data ?? []).find((assessment) => assessment.oil_lot_id === gsOilLot.id && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && assessment.id === gsOilLot.last_quality_assessment_id) : undefined;
-  const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status));
+  const gsCodeAssessmentPending = gsCodeAssessment?.status === "AWAITING_INDEPENDENT_REVIEW";
+  const gsCodeAssessmentReviewed = !!gsCodeAssessment && !gsCodeAssessmentPending;
+  const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status)) && !gsCodeAssessment;
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -188,13 +194,18 @@ export default function Lab() {
             {isGsCode && gsOilLot && gsSample && (
               <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Échantillon de préproduction créé automatiquement · Lot d’huile prêt · {code}</div>
             )}
-            {isGsCode && gsExistingAssessment && !selectedGsAssessment && (
+            {isGsCode && (gsExistingAssessment || gsCodeAssessmentPending) && !selectedGsAssessment && (
               <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante. Cliquez sur son code dans le tableau pour la modifier.</div>
+            )}
+            {isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment && (
+              <div data-testid="lab-gs-analysis-already-reviewed" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                Ce code a déjà été analysé. Décision enregistrée : {String(gsCodeAssessment.decision || gsCodeAssessment.status)}. L’analyse est verrouillée et ne peut pas être recréée ni modifiée.
+              </div>
             )}
             {isGsCode && selectedGsAssessment && (
               <div className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-medium text-cyan-900">Modification de l’analyse en attente · {code}</div>
             )}
-            {isGsCode && !gsLots.isLoading && !gsSamples.isLoading && !gsAutoSample.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && !gsAutoSample.isError && (
+            {isGsCode && !gsCodeAssessment && !gsLots.isLoading && !gsSamples.isLoading && !gsAutoSample.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && !gsAutoSample.isError && (
               <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun lot de réception ouvert n’est associé à ce code d’achat, ou un échantillon existant doit être vérifié.</div>
             )}
             {isGsCode && gsAutoSample.isError && (
@@ -275,7 +286,7 @@ export default function Lab() {
             <span className="text-sm font-medium text-stone-600">{t("classification")}</span>
             {finalGrade ? <GradeBadge grade={finalGrade} testId="lab-classification-badge" /> : <span className="text-stone-400">—</span>}
           </div>
-          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || (!selectedGsAssessment && (!gsLotCanBeAnalysed || !!gsExistingAssessment)) || (selectedGsAssessment && selectedGsAssessment.status !== "AWAITING_INDEPENDENT_REVIEW") || gsLots.isLoading || gsSamples.isLoading || gsAutoSample.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
+          <Button type="submit" disabled={acid == null || (isGsCode ? (!gsOilLot || !gsSample || (!selectedGsAssessment && (!gsLotCanBeAnalysed || !!gsExistingAssessment || !!gsCodeAssessment)) || (selectedGsAssessment && selectedGsAssessment.status !== "AWAITING_INDEPENDENT_REVIEW") || gsLots.isLoading || gsSamples.isLoading || gsAutoSample.isLoading || gsAssessments.isLoading || mill.isLoading || !specificationReference.trim() || gsMutation.isPending) : (!found || m.isPending))} data-testid="lab-save-button" className="h-11 w-full rounded-xl bg-cyan-700 hover:bg-cyan-800">
             {isGsCode ? (selectedGsAssessment ? "Enregistrer les modifications" : "Envoyer à la Décision indépendante") : t("save")}
           </Button>
         </form>
