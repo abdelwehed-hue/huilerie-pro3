@@ -12,9 +12,11 @@ import jwt
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from lib.paths import BACKEND_DIR, DATA_DIR, FRONTEND_DIST_DIR, ENV_FILE
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+
+ROOT_DIR = BACKEND_DIR
+load_dotenv(ENV_FILE)
 
 # MongoDB connection
 from lib.db import client, db, ensure_indexes
@@ -170,7 +172,7 @@ app.include_router(api_router)
 # Optional single-origin local Windows deployment. Disabled by default, so the
 # existing Render deployment continues to serve its frontend independently.
 if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}:
-    frontend_dist = ROOT_DIR.parent / "frontend" / "dist"
+    frontend_dist = FRONTEND_DIST_DIR
     frontend_index = frontend_dist / "index.html"
     if not frontend_index.is_file():
         raise RuntimeError(
