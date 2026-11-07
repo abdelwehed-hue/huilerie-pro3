@@ -59,13 +59,13 @@ The shortcut manually launches the local app. To stop it, run `deploy\windows\St
 
 ## Local database backup and restore
 
-Create a compressed backup regularly, and store a second copy on a separate encrypted drive:
+Stop Oro Verde first, then create a compressed backup regularly; this prevents application writes during the dump. Store a second copy on a separate encrypted drive:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Backup-LocalDatabase.ps1
 ```
 
-The script writes a timestamped MongoDB archive and SHA-256 checksum under `backups/`. Keep both files. To restore, first stop Oro Verde and select a known-good archive:
+The script writes a timestamped MongoDB archive and SHA-256 checksum under `backups/`. Keep both files. To restore, keep Oro Verde stopped and select a known-good archive. The restore script refuses to run while anything is listening on port 8000:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Restore-LocalDatabase.ps1 -Archive .\backups\oroverde_local-YYYYMMDD-HHMMSS.archive.gz
