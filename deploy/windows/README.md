@@ -44,3 +44,20 @@ powershell -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalConfig.ps1 -
 The check rejects remote/Atlas MongoDB URLs, a database name other than `oroverde_local`, weak placeholder JWT secrets, disabled authentication, and wildcard CORS. It is a configuration guard only; it does not start services or prove replica-set, LAN, cookie, or WebSocket readiness.
 
 **Important:** the backend's non-production seed path currently creates demo accounts (`admin/admin123` and `ouvrier/ouvrier123`) when the users collection is empty. Rotate/remove these before real mill operations; the eventual Windows installer/launcher must not silently rely on demo credentials. The local deployment still needs a reviewed provisioning flow for its first administrator.
+
+## Frontend API and realtime behavior (reviewed)
+
+The frontend builds its HTTP API base from `VITE_API_ORIGIN` and derives its realtime WebSocket endpoint from that same origin (`http(s)` → `ws(s)`, then `/api/realtime`). Thus the local frontend build must set `VITE_API_ORIGIN` to the local backend origin; otherwise the existing Render fallback remains in effect. This build-time setting is not a live runtime switch.
+
+The existing Vite dev server uses port 3000 and its development proxy points to backend port 8001. That proxy is a developer setup, not yet a packaged Windows deployment. A production-style local install still needs a reviewed way to serve the compiled frontend and route API/WebSocket traffic on one stable LAN origin (or explicitly configure the LAN frontend origin in CORS).
+
+For first-time local provisioning, the backend's current non-production seeding behavior creates known demo credentials. This is not acceptable as the final mill-PC onboarding flow. The eventual launcher/setup must provide an explicit admin-password setup step and must keep `AUTH_DISABLED=false`.
+
+### Current implementation status
+
+- Configuration sample and fail-fast configuration validation: added.
+- Local MongoDB replica-set setup/health verification: not yet automated.
+- Production frontend build served locally: not yet configured.
+- Windows start/stop launcher and desktop shortcut: not yet added.
+- LAN phone login, cookie behavior, and WebSocket reconnect test: not yet performed.
+- Local backup/restore and offline sync to Render: not implemented; do not assume synchronization.
