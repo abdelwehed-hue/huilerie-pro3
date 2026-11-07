@@ -2,7 +2,12 @@
 // VITE_API_ORIGIN is set at build time for each deployment. Keep Render as the
 // fallback so the existing web deployment does not change when the variable is absent.
 const configuredApiOrigin = (import.meta.env.VITE_API_ORIGIN ?? "").trim();
-export const API_ORIGIN = (configuredApiOrigin || "https://huilerie-pro3.onrender.com").replace(/\/+$/, "");
+const sameOriginLocal = import.meta.env.VITE_API_SAME_ORIGIN === "true";
+// A same-origin local build uses relative /api requests. Keep the Render fallback
+// unchanged for the existing web build when no local build flag is supplied.
+export const API_ORIGIN = sameOriginLocal
+  ? ""
+  : (configuredApiOrigin || "https://huilerie-pro3.onrender.com").replace(/\/+$/, "");
 const BASE = `${API_ORIGIN}/api`;
 
 // Fields are declared, not constructor parameter properties: tsconfig sets
