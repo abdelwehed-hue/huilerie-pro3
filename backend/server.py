@@ -2,6 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -169,8 +171,21 @@ app.include_router(api_router)
 # existing Render deployment continues to serve its frontend independently.
 if os.environ.get("SERVE_FRONTEND", "false").strip().lower() in {"1", "true", "yes", "on"}:
     frontend_dist = ROOT_DIR.parent / "frontend" / "dist"
-    if not (frontend_dist / "index.html").is_file():
+    frontend_index = frontend_dist / "index.html"
+    if not frontend_index.is_file():
         raise RuntimeError(
             f"SERVE_FRONTEND is enabled but the frontend build is missing: {frontend_dist}"
         )
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except StarletteHTTPException as exc:
+                # Client-side routes such as /commercial and /factures must
+                # load index.html on a direct visit or browser refresh.
+                if exc.status_code == 404:
+                    return FileResponse(frontend_index)
+                raise
+
+    app.mount("/", SPAStaticFiles(directory=str(frontend_dist), html=True), name="frontend")
