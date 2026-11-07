@@ -63,6 +63,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalR
 
 This is a basic connection test only; it does not prove browser reconnect behavior or multi-device change notifications.
 
+To verify that MongoDB data survives an application restart, leave Oro Verde running and execute the persistence test. It writes one temporary marker into a dedicated local-only collection, stops and restarts the backend, verifies the marker is still present, and removes it:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalPersistence.ps1
+```
+
+This test briefly interrupts the app and opens the browser again. It verifies backend restart persistence only; it does not simulate a full Windows reboot or prove backup restoration.
+
 7. Install the desktop shortcut:
 
    ```powershell
