@@ -16,6 +16,17 @@ class OlivePurchaseLine(BaseModel):
     unit_price_dt: Decimal = Field(ge=Decimal("0"), max_digits=18, decimal_places=3)
 
 
+class OliveReceptionPurchaseLine(BaseModel):
+    """Reception API line; the operator enters the unit price in millimes."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    variety_id: str = Field(min_length=1, max_length=100)
+    quantity_kg: Decimal = Field(gt=Decimal("0"), max_digits=18, decimal_places=3)
+    unit_price_millimes: Decimal = Field(
+        ge=Decimal("0"), max_digits=18, decimal_places=0
+    )
+
+
 class OlivePurchaseDraft(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
