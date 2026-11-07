@@ -1,6 +1,7 @@
 param(
   [string]$EnvPath = ".\backend\.env",
-  [string]$BackupDirectory = ".\backups"
+  [string]$BackupDirectory = ".\backups",
+  [int]$Port = 8000
 )
 
 $ErrorActionPreference = "Stop"
