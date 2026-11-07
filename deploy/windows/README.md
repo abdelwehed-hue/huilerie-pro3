@@ -47,9 +47,9 @@ From the repository root:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Start-OroVerde.ps1
    ```
 
-The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env`: the current bootstrap needs them whenever the database is empty. Restrict access to this file and never share or commit it.
+The launcher validates local-only configuration and MongoDB rs0 PRIMARY status, starts FastAPI, waits for `/api/` health, and opens the browser. On an empty database, the first admin is seeded from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD`. Production mode prevents creation of known demo accounts. Keep the initial-admin credentials in the private, uncommitted `backend/.env` for the first successful bootstrap only. After confirming the admin can log in, remove both `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` from that file; the app does not need them while users already exist. If the local database is ever recreated empty, temporarily add a new unique pair before startup. Never share or commit these credentials.
 
-After the first startup, run the authenticated HTTP smoke test from the repository root. It verifies the local frontend shell, API health, first-admin login, session cookie, `/me`, and logout invalidation without printing the password:
+After startup, run the authenticated HTTP smoke test from the repository root. It prompts for an administrator credential without storing or printing the password, then verifies the local frontend shell, API health, login, session cookie, `/me`, and logout invalidation:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\\deploy\\windows\\Test-LocalHttp.ps1
