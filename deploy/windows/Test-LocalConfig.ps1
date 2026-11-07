@@ -1,5 +1,6 @@
 param([Parameter(Mandatory=$true)][string]$EnvPath, [int]$Port = 8000)
 $ErrorActionPreference = "Stop"
+if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
 if (-not (Test-Path -LiteralPath $EnvPath)) { throw "Missing environment file: $EnvPath" }
 $values = @{}
 Get-Content -LiteralPath $EnvPath | ForEach-Object {
