@@ -15,7 +15,7 @@ from tkinter import messagebox, simpledialog
 
 
 APP_DIR = Path(sys.executable).resolve().parent
-DATA_DIR = Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "OroVerde"
+DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "OroVerde"
 BACKEND_EXE = APP_DIR / "backend" / "OroVerdeBackend.exe"
 PORT = 8000
 URL = f"http://127.0.0.1:{PORT}/"
@@ -59,18 +59,6 @@ def write_first_run_config(root: tk.Tk) -> bool:
         "",
     ])
     env_file.write_text(content, encoding="utf-8")
-    try:
-        subprocess.run(
-            ["icacls", str(DATA_DIR), "/inheritance:r", "/grant:r", f"{os.environ.get('USERNAME', '')}:(OI)(CI)F", "SYSTEM:(OI)(CI)F", "Administrators:(OI)(CI)F", "/T"],
-            check=True, capture_output=True, text=True,
-        )
-    except Exception:
-        messagebox.showwarning(
-            "Check data folder permissions",
-            f"Could not automatically restrict permissions on {DATA_DIR}. "
-            "Ask a Windows administrator to protect this folder.",
-            parent=root,
-        )
     return True
 
 
