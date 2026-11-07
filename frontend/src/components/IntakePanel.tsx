@@ -108,8 +108,11 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
   const oliveLocations = locationsQuery.data ?? [];
   const chosenLocationId = supplierLocationId || oliveLocations.find((location) => /réception|reception|receiving/i.test((location.name || "") + " " + (location.code || "")))?.id || "";
   const supplierKgValue = Number(supplierKg.replace(",", "."));
+  // The operator enters the unit price in whole millimes; the API stores TND.
   const supplierPriceValue = Number(supplierPrice.replace(",", "."));
-  const supplierTotal = supplierKgValue * supplierPriceValue;
+  const supplierPriceValid = supplierPrice.trim() !== "" && Number.isSafeInteger(supplierPriceValue) && supplierPriceValue >= 0;
+  const supplierUnitPriceDinars = supplierPriceValue / 1000;
+  const supplierTotal = supplierKgValue * supplierUnitPriceDinars;
   const supplierMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) => apiPost<any>("/commercial/v1/olive-receptions", body),
     onSuccess: (result) => {
@@ -299,7 +302,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
 
       </form> : <form onSubmit={(e) => {
         e.preventDefault();
-        if (!chosenLocationId || !(supplierKgValue > 0) || supplierPrice.trim() === "" || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
+        if (!chosenLocationId || !(supplierKgValue > 0) || !supplierPriceValid || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)) return;
         const requestKey = supplierRequestKey || crypto.randomUUID();
         setSupplierRequestKey(requestKey);
         supplierMutation.mutate({
@@ -308,7 +311,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           new_supplier_phone: newSupplier ? (newSupplierPhone.trim() || null) : null,
           new_supplier_tax_identifier: newSupplier ? (newSupplierTaxId.trim() || null) : null,
           purchase_date: supplierDate,
-          lines: [{ variety_id: supplierVariety || varietyList[0] || "Olives", quantity_kg: supplierKgValue, unit_price_dt: supplierPriceValue }],
+          lines: [{ variety_id: supplierVariety || varietyList[0] || "Olives", quantity_kg: supplierKgValue, unit_price_millimes: supplierPriceValue }],
           receiving_location_id: chosenLocationId,
           notes: supplierNotes.trim() || null,
           idempotency_key: requestKey,
@@ -358,12 +361,12 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           <div className="space-y-1"><Label>Emplacement de réception *</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
           <div className="space-y-1"><Label>Variété *</Label><Select value={supplierVariety || varietyList[0] || null} onValueChange={(v) => setSupplierVariety(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? String(v) : <span className="text-stone-400">Choisir la variété</span>}</SelectValue></SelectTrigger><SelectContent>{varietyList.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>
           <div className="space-y-1"><Label>Quantité d’olives (kg) *</Label><Input inputMode="decimal" value={supplierKg} onChange={(e) => setSupplierKg(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="space-y-1"><Label>Prix d’achat / kg  *</Label><Input inputMode="decimal" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
+          <div className="space-y-1"><Label>Prix d’achat / kg (millimes) *</Label><Input type="number" min="0" step="1" inputMode="numeric" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé (TND)</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
         </div>
         <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
         <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
-        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || supplierPrice.trim() === "" || !(supplierPriceValue >= 0) || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
+        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !supplierPriceValid || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
       </form>}
       </div>
       <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
