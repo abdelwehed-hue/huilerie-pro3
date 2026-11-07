@@ -17,10 +17,20 @@ if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "
 if($db -ne "oroverde_local"){ throw "Refusing backup: DB_NAME must be oroverde_local." }
 $dir=[System.IO.Path]::GetFullPath($BackupDirectory)
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
-$stamp=Get-Date -Format "yyyyMMdd-HHmmss"
+$stamp=Get-Date -Format "yyyyMMdd-HHmmss-fff"
 $file=Join-Path $dir "oroverde_local-$stamp.archive.gz"
 & mongodump --uri="$uri" --db="$db" --archive="$file" --gzip
 if($LASTEXITCODE -ne 0){ Remove-Item $file -Force -ErrorAction SilentlyContinue; throw "mongodump failed." }
+if(-not(Test-Path -LiteralPath $file) -or (Get-Item -LiteralPath $file).Length -le 0){
+ Remove-Item $file -Force -ErrorAction SilentlyContinue
+ throw "mongodump returned success but produced an empty or missing archive."
+}
+# Verify the archive can be parsed before publishing its checksum as a usable backup.
+$verifyOutput = & mongorestore --dryRun --uri="$uri" --archive="$file" --gzip --nsInclude="$db.*" 2>&1
+if($LASTEXITCODE -ne 0){
+ Remove-Item $file -Force -ErrorAction SilentlyContinue
+ throw "Backup archive validation failed with mongorestore --dryRun: $verifyOutput"
+}
 $hash=Get-FileHash -LiteralPath $file -Algorithm SHA256
 Set-Content -LiteralPath "$file.sha256" -Value "$($hash.Hash)  $(Split-Path $file -Leaf)"
 Write-Host "Backup created: $file" -ForegroundColor Green
