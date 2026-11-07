@@ -5,10 +5,11 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from lib.paths import ENV_FILE
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING, IndexModel
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(ENV_FILE)
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
