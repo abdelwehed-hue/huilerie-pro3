@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Droplets, Printer } from "lucide-react";
@@ -11,6 +11,8 @@ type AnyRecord = Record<string, any>;
 
 export default function CommercialCertificate() {
   const { id = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("from") === "quality" ? "/commercial?tab=quality" : searchParams.get("from") === "lab" ? "/lab" : "/commercial?tab=quality";
   const { t } = useI18n();
   const assessmentQuery = useQuery({
     queryKey: ["commercial-certificate", id],
@@ -46,7 +48,7 @@ export default function CommercialCertificate() {
   return (
     <div>
       <div className="no-print mb-6 flex gap-3">
-        <Link to="/commercial" className={buttonVariants({ variant: "outline" })}>
+        <Link to={returnTo} className={buttonVariants({ variant: "outline" })}>
           <ArrowLeft className="size-4 rtl:rotate-180" /> {t("back")}
         </Link>
         <Button onClick={() => window.print()} disabled={!assessment || !lot} className="bg-cyan-700 hover:bg-cyan-800">
