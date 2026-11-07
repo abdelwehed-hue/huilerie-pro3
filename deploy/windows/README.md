@@ -23,7 +23,9 @@ From the repository root:
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Initialize-LocalReplicaSet.ps1
    ```
 
-   Wait for MongoDB to elect a PRIMARY. Then verify it:
+   The script starts the existing MongoDB Windows service if needed, waits until MongoDB accepts local connections, initializes `rs0` if it is not already initialized, and waits for a PRIMARY. If the service uses a non-default name, pass `-ServiceName YourServiceName`. It does not install or reconfigure the service.
+
+   Then verify the environment and required command-line tools:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalRuntime.ps1
