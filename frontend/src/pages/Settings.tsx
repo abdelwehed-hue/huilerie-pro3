@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, ClipboardList, Warehouse } from "lucide-react";
@@ -22,7 +22,69 @@ import { fmtDate, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
+import { ShieldCheck } from "lucide-react";
 import Audit from "@/pages/Audit";
+
+
+function EmployeePermissionsPanel() {
+  const { lang, errMsg } = useI18n();
+  const queryClient = useQueryClient();
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
+  const [assignedPermissions, setAssignedPermissions] = useState<string[]>([]);
+  const workers = useQuery({ queryKey: ["commercial", "workers"], queryFn: () => apiGet<Record<string, any>[]>("/users") });
+  const targetPermissions = useQuery({
+    queryKey: ["commercial", "worker-permissions", selectedWorkerId],
+    queryFn: () => apiGet<{ permissions: string[] }>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`),
+    enabled: !!selectedWorkerId,
+  });
+  useEffect(() => {
+    setAssignedPermissions(targetPermissions.data?.permissions.filter((permission) => permission !== "commercial.read") ?? []);
+  }, [targetPermissions.data, selectedWorkerId]);
+  const save = useMutation({
+    mutationFn: () => apiPost<Record<string, any>>(`/commercial/v1/users/${encodeURIComponent(selectedWorkerId)}/commercial-permissions`, {
+      permissions: ["commercial.read", ...assignedPermissions],
+    }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تحديث الصلاحيات" : "Autorisations mises à jour");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "worker-permissions", selectedWorkerId] });
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+  const permissions = [
+    ["commercial.edit_records", lang === "ar" ? "تعديل السجلات التجارية" : "Modification des dossiers commerciaux"],
+    ["commercial.delete_records", lang === "ar" ? "حذف / إلغاء السجلات التجارية" : "Suppression / annulation des dossiers commerciaux"],
+    ["commercial.lab_record", lang === "ar" ? "تسجيل التحاليل المخبرية" : "Saisie des analyses laboratoire"],
+    ["commercial.manage_preproduction_samples", lang === "ar" ? "إجراء تجارب العصر قبل الإنتاج" : "Gérer les essais de trituration préproduction"],
+    ["commercial.quality_release", lang === "ar" ? "المراجعة المستقلة للجودة" : "Validation indépendante de la qualité"],
+    ["commercial.view_audit", lang === "ar" ? "الاطلاع على سجل التدقيق" : "Consultation du journal d’audit"],
+  ];
+  const activeWorkers = (workers.data ?? []).filter((worker) => worker.role === "worker" && worker.active);
+  return (
+    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5">
+      <div className="mb-4 flex items-center gap-3 text-indigo-950">
+        <div className="grid size-10 place-items-center rounded-xl bg-indigo-600 text-white"><ShieldAlert className="size-5" /></div>
+        <div><h2 className="text-lg font-bold">{lang === "ar" ? "صلاحيات العمال" : "Droits des employés"}</h2>
+        <p className="text-sm text-indigo-800">{lang === "ar" ? "حدد الصلاحيات الممنوحة لكل عامل" : "Définissez les autorisations accordées à chaque employé"}</p></div>
+      </div>
+      <label className="grid max-w-xl gap-1 text-sm font-medium">{lang === "ar" ? "اختيار العامل" : "Choisir un employé"}
+        <select value={selectedWorkerId} onChange={(event) => setSelectedWorkerId(event.target.value)} className="h-10 rounded-lg border border-indigo-200 bg-white px-3 font-normal">
+          <option value="">—</option>
+          {activeWorkers.map((worker) => <option key={worker.id} value={worker.id}>{worker.full_name} · {worker.username}</option>)}
+        </select>
+      </label>
+      {activeWorkers.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{lang === "ar" ? "لا توجد حسابات عمال نشطة." : "Aucun compte employé actif."}</p>}
+      {selectedWorkerId && <div className="mt-4 space-y-3 rounded-xl border border-indigo-200 bg-white p-4">
+        {permissions.map(([key, label]) => <label key={key} className="flex items-center gap-3 text-sm">
+          <input type="checkbox" checked={assignedPermissions.includes(key)} onChange={(event) => setAssignedPermissions((current) => event.target.checked ? [...current, key] : current.filter((item) => item !== key))} />
+          {label}
+        </label>)}
+        <Button disabled={save.isPending || targetPermissions.isLoading || targetPermissions.isError} onClick={() => save.mutate()} className="bg-indigo-700 hover:bg-indigo-800">
+          {lang === "ar" ? "حفظ الصلاحيات" : "Enregistrer les autorisations"}
+        </Button>
+      </div>}
+    </div>
+  );
+}
 
 function formatTariffPrice(value: string): string {
   const normalized = value.trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
@@ -336,7 +398,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title={t("settings")} accent="bg-violet-500" />
       <Tabs defaultValue="users">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-7">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-8">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-sky-100 text-sky-700"><Users className="size-4 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
@@ -352,6 +414,9 @@ export default function SettingsPage() {
           <TabsTrigger value="campaign" data-testid="settings-tab-campaign" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-amber-300 hover:bg-amber-50 data-[state=active]:border-amber-600 data-[state=active]:bg-amber-200 data-[state=active]:text-amber-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-amber-100 text-amber-700"><CalendarRange className="size-4 stroke-[2.2]" /></span><span>{t("campaign")}</span>
           </TabsTrigger>
+          <TabsTrigger value="employee-permissions" data-testid="settings-tab-employee-permissions" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 data-[state=active]:border-indigo-600 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-950 data-[state=active]:shadow-md">
+            <span className="grid size-7 place-items-center rounded-lg bg-indigo-100 text-indigo-700"><ShieldCheck className="size-4 stroke-[2.2]" /></span><span>{lang === "ar" ? "صلاحيات العمال" : "Droits des employés"}</span>
+          </TabsTrigger>
           <TabsTrigger value="audit" data-testid="settings-tab-audit" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-50 data-[state=active]:border-rose-600 data-[state=active]:bg-rose-200 data-[state=active]:text-rose-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-rose-100 text-rose-700"><ClipboardList className="size-4 stroke-[2.2]" /></span><span>{t("audit")}</span>
           </TabsTrigger>
@@ -364,6 +429,7 @@ export default function SettingsPage() {
         <TabsContent value="tanks"><CommercialTanksSettings /></TabsContent>
                 <TabsContent value="sms"><div className="space-y-6"><div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2"><div className="min-w-0 sm:col-start-2 sm:row-start-1"><TwilioSettings /></div><div className="min-w-0 sm:col-start-1 sm:row-start-1"><TunisieSmsSettings /></div></div><SmsSettings /></div></TabsContent>
         <TabsContent value="campaign"><CampaignSettings /></TabsContent>
+        <TabsContent value="employee-permissions"><EmployeePermissionsPanel /></TabsContent>
         <TabsContent value="audit"><Audit /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
       </Tabs>
