@@ -1535,11 +1535,11 @@ export default function Commercial() {
 
       {tab === "overview" && ready && <Card className="commercial-card">
         <CardHeader><CardTitle>{lang === "ar" ? "متابعة عمليات شراء الزيتون" : "Suivi des achats d’olives"}</CardTitle>
-          <CardDescription>{lang === "ar" ? "تتبع كود الشراء وموقعه في مراحل الإنتاج" : "Suivi du code d’achat et de son avancement dans le processus de production"}</CardDescription>
+          <CardDescription>{lang === "ar" ? "تتبع كود الدفعة وموقعها في مراحل الإنتاج" : "Suivi du code de lot et de son avancement dans le processus de production"}</CardDescription>
         </CardHeader>
         <CardContent><div className="overflow-x-auto"><Table>
           <TableHeader><TableRow>
-            <TableHead>{lang === "ar" ? "كود الشراء" : "Code d’achat"}</TableHead>
+            <TableHead>{lang === "ar" ? "كود الدفعة" : "Code de lot"}</TableHead>
             <TableHead>{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
             <TableHead>{l.supplier}</TableHead>
             <TableHead>{lang === "ar" ? "صنف الزيتون" : "Variété d’olives"}</TableHead>
@@ -1566,7 +1566,7 @@ export default function Commercial() {
                       ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
                       : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
             return <TableRow key={purchase.id}>
-              <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+              <TableCell className="font-mono text-xs font-semibold">{linkedLots.length ? linkedLots.map((lot) => lotCode(lot)).filter((code) => code !== "—").join(", ") || "—" : "—"}</TableCell>
               <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
               <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
               <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
