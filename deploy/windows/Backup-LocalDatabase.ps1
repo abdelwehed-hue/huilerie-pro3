@@ -13,7 +13,7 @@ if(-not(Get-Command mongodump -ErrorAction SilentlyContinue)){ throw "mongodump 
 $values=@{}
 Get-Content $EnvPath | ForEach-Object { $line=$_.Trim(); if($line -and -not $line.StartsWith("#") -and $line.Contains("=")){ $p=$line -split "=",2; $values[$p[0].Trim()]=$p[1].Trim() } }
 $uri=$values["MONGO_URL"]; $db=$values["DB_NAME"]
-if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost)(?::27017)?(?:/|\?|$)"){ throw "Refusing backup unless MongoDB URL is local." }
+if(-not $uri -or $uri -match "mongodb\+srv://|mongodb\.net" -or $uri -notmatch "^mongodb://(?:[^/@]+@)?(?:127\.0\.0\.1|localhost):27017(?:/|\?|$)"){ throw "Refusing backup unless MongoDB URL is local." }
 if($db -ne "oroverde_local"){ throw "Refusing backup: DB_NAME must be oroverde_local." }
 $dir=[System.IO.Path]::GetFullPath($BackupDirectory)
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
