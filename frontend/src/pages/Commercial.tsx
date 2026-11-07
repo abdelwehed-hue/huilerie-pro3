@@ -1554,7 +1554,7 @@ export default function Commercial() {
                 ? lines.map((line: AnyRecord) => ({ lot: undefined, line }))
                 : [{ lot: undefined, line: undefined }];
             const supplierName = (supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name;
-            return entries.map(({ lot, line }, index) => {
+            return entries.map(({ lot, line }: { lot?: AnyRecord; line?: AnyRecord }, index: number) => {
               const varietyId = lot?.variety_id ?? line?.variety_id;
               const variety = (varieties.data ?? []).find((item) => item.id === varietyId);
               const varietyLabel = variety
