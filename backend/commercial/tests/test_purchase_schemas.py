@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from commercial.schemas.purchases import OlivePurchaseDraft
+from commercial.schemas.purchases import OlivePurchaseDraft, OliveReceptionPurchaseLine
 
 
 def test_olive_purchase_accepts_multiple_varieties_and_decimal_values():
@@ -68,4 +68,24 @@ def test_purchase_approval_rejects_missing_receiving_location():
         ApproveOlivePurchaseCommand(
             expected_version=1,
             idempotency_key="approve-purchase-0002",
+        )
+
+
+
+def test_reception_price_is_entered_in_millimes_and_converted_to_dinars():
+    line = OliveReceptionPurchaseLine(
+        variety_id="chemlali",
+        quantity_kg="1000",
+        unit_price_millimes="1500",
+    )
+    assert line.unit_price_millimes == Decimal("1500")
+    assert line.quantity_kg * (line.unit_price_millimes / Decimal("1000")) == Decimal("1500")
+
+
+def test_reception_price_rejects_fractional_millime():
+    with pytest.raises(ValidationError):
+        OliveReceptionPurchaseLine(
+            variety_id="chemlali",
+            quantity_kg="1000",
+            unit_price_millimes="1500.5",
         )
