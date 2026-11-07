@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from lib.auth import COOKIE, TTL_DAYS, current_user, make_token, verify_password
@@ -6,6 +8,16 @@ from models.schemas import LoginIn, User
 from routers.admin import _user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _session_cookie_options() -> dict:
+    secure = os.environ.get("COOKIE_SECURE", "true").strip().lower() in {"1", "true", "yes", "on"}
+    same_site = os.environ.get("COOKIE_SAMESITE", "none").strip().lower()
+    if same_site not in {"lax", "strict", "none"}:
+        raise RuntimeError("COOKIE_SAMESITE must be lax, strict, or none")
+    if same_site == "none" and not secure:
+        raise RuntimeError("SameSite=None cookies require COOKIE_SECURE=true")
+    return {"httponly": True, "samesite": same_site, "secure": secure, "path": "/"}
 
 
 @router.get("/login-image")
@@ -24,24 +36,15 @@ async def login(body: LoginIn, response: Response):
     response.set_cookie(
         COOKIE,
         make_token(user["id"]),
-        httponly=True,
-        samesite="none",
-        secure=True,
         max_age=TTL_DAYS * 86400,
-        path="/",
+        **_session_cookie_options(),
     )
     return _user(user)
 
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(
-        COOKIE,
-        path="/",
-        httponly=True,
-        samesite="none",
-        secure=True,
-    )
+    response.delete_cookie(COOKIE, **_session_cookie_options())
     return {"ok": True}
 
 
