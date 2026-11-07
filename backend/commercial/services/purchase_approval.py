@@ -161,6 +161,7 @@ async def approve_olive_purchase(
                 "batch_code": purchase_batch_code,
                 "batch_codes": batch_codes,
                 "receipt_movement_ids": movement_ids,
+                "receiving_location_id": command.receiving_location_id,
                 "updated_at": created_at.astimezone(timezone.utc),
             }
         },
