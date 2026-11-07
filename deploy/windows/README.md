@@ -55,6 +55,14 @@ After startup, run the authenticated HTTP smoke test from the repository root. I
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalHttp.ps1
 ```
 
+Run the authenticated realtime smoke test as well. It checks the local WebSocket origin policy, session-cookie authentication, handshake, and the same text heartbeat the browser sends:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\windows\Test-LocalRealtime.ps1
+```
+
+This is a basic connection test only; it does not prove browser reconnect behavior or multi-device change notifications.
+
 7. Install the desktop shortcut:
 
    ```powershell
