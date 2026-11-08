@@ -314,7 +314,7 @@ export default function AppShell() {
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
         <div className="group fixed inset-x-0 top-0 z-50">
-        <header className="border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none opacity-0 pointer-events-none transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto motion-reduce:transition-none">
+        <header className="app-topbar-header border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none opacity-0 pointer-events-none transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto motion-reduce:transition-none">
           <div className="relative mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
