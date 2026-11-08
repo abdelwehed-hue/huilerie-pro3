@@ -22,6 +22,9 @@ export default function PumpSettings() {
     setPumps(settings.data.pumps ?? []);
   }, [settings.data]);
 
+  const effectiveEnabled = enabled && pumps.some((pump) => pump.active);
+  const duplicateNames = new Set(pumps.map((pump) => pump.name.trim().toLocaleLowerCase())).size !== pumps.length;
+
   const dirty = useMemo(() => {
     if (!settings.data) return false;
     return enabled !== (settings.data.pump_system_enabled ?? false)
@@ -87,14 +90,14 @@ export default function PumpSettings() {
             type="button"
             role="switch"
             aria-checked={enabled}
-            disabled={pumps.length === 0}
+            disabled={!enabled && pumps.length === 0}
             onClick={() => setEnabled((value) => !value)}
-            className={`relative h-7 w-12 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${enabled ? "bg-emerald-600" : "bg-stone-300"}`}
+            className={`relative h-7 w-12 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${effectiveEnabled ? "bg-emerald-600" : "bg-stone-300"}`}
           >
-            <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${enabled ? "left-6" : "left-1"}`} />
+            <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${effectiveEnabled ? "left-6" : "left-1"}`} />
           </button>
-          <span className={`text-sm font-bold ${enabled ? "text-emerald-700" : "text-stone-500"}`}>
-            {enabled ? "ACTIVE" : "DÉSACTIVÉ"}
+          <span className={`text-sm font-bold ${effectiveEnabled ? "text-emerald-700" : "text-stone-500"}`}>
+            {effectiveEnabled ? "ACTIVE" : "DÉSACTIVÉ"}
           </span>
         </div>
 
@@ -143,7 +146,7 @@ export default function PumpSettings() {
 
         <Button
           type="button"
-          disabled={!settings.data || !dirty || save.isPending || (enabled && !pumps.some((pump) => pump.active)) || pumps.some((pump) => !pump.name.trim())}
+          disabled={!settings.data || !dirty || save.isPending || pumps.some((pump) => !pump.name.trim()) || duplicateNames}
           onClick={() => save.mutate()}
           className="h-11 rounded-xl bg-emerald-700 px-8 hover:bg-emerald-800"
         >
