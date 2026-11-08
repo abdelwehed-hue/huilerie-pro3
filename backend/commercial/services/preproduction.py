@@ -246,11 +246,10 @@ async def auto_complete_preproduction_sample_for_purchase(
     actor_user: dict[str, Any], actor_user_id: str,
     created_at: datetime, session: Any,
 ) -> dict[str, Any]:
-    """Create one analysis-only preproduction sample for every olive lot in a purchase.
+    """Create a zero-stock laboratory sample for a mill purchase or customer-custody lot.
 
-    This is a traceability/quality record only: it deliberately posts no stock
-    movement and records zero trial quantities. It must never consume olives
-    or create physical oil inventory.
+    This records the quality gate only. It never consumes physical olive stock.
+    The source batch code and current owner are preserved throughout.
     """
     require_commercial_permission(actor_user, "commercial.lab_record")
     if not actor_user_id or created_at.tzinfo is None:
@@ -258,30 +257,52 @@ async def auto_complete_preproduction_sample_for_purchase(
     if len(batch_code) != 9 or batch_code[4:5] != "A" or not batch_code[:4].isdigit() or not batch_code[5:].isdigit():
         raise ValueError("Enter a valid unified olive purchase code")
 
-    purchases = db["commercial_olive_purchases"]
-    purchase = await purchases.find_one(
+    purchase = await db["commercial_olive_purchases"].find_one(
         {"batch_code": batch_code, "season_code": season_code, "status": "APPROVED"},
         {"_id": 0}, session=session,
     )
-    if not purchase:
-        raise ValueError("This purchase code does not belong to an approved and received olive purchase")
+    custody_receipt = None
+    if purchase:
+        source_document_id = purchase["id"]
+        source_document_type = "PURCHASE"
+        source_lots = await db["commercial_lots"].find(
+            {"source_purchase_id": purchase["id"], "batch_code": batch_code,
+             "product_kind": "OLIVE", "status": "OPEN"},
+            {"_id": 0}, session=session,
+        ).sort("id", 1).to_list(500)
+    else:
+        custody_receipt = await db["commercial_customer_custody_receipts"].find_one(
+            {"batch_code": batch_code, "season_code": season_code, "status": "RECEIVED"},
+            {"_id": 0}, session=session,
+        )
+        if not custody_receipt:
+            raise ValueError("No approved purchase or active customer-custody receipt exists for this code")
+        source_document_id = custody_receipt["id"]
+        source_document_type = "CUSTOMER_CUSTODY"
+        source_lots = await db["commercial_lots"].find(
+            {"id": custody_receipt["olive_lot_id"], "batch_code": batch_code,
+             "source_customer_custody_receipt_id": custody_receipt["id"],
+             "product_kind": "OLIVE", "status": "OPEN"},
+            {"_id": 0}, session=session,
+        ).to_list(1)
 
-    source_lots = await db["commercial_lots"].find(
-        {"source_purchase_id": purchase["id"], "batch_code": batch_code,
-         "product_kind": "OLIVE", "status": "OPEN"},
-        {"_id": 0}, session=session,
-    ).sort("id", 1).to_list(500)
     if not source_lots:
-        raise ValueError("No open olive stock lots are linked to this purchase code")
+        raise ValueError("No open olive stock lot is linked to this code")
     source_ids = [item["id"] for item in source_lots]
     owners = {_fingerprint_owner(item.get("owner") or {}) for item in source_lots}
     if len(owners) != 1:
-        raise ValueError("Olive lots under this purchase code have different owners; automatic sample cannot combine them")
+        raise ValueError("Olive lots under this code have different owners; automatic sample cannot combine them")
     owner = _owner_document(source_lots[0].get("owner") or {})
-    if owner.get("kind") != "MILL":
-        raise ValueError("Automatic purchase analysis currently requires mill-owned received olive stock")
+    if source_document_type == "PURCHASE" and owner.get("kind") != "MILL":
+        raise ValueError("An approved mill purchase must be mill-owned")
+    if source_document_type == "CUSTOMER_CUSTODY":
+        if owner.get("kind") != "CUSTOMER" or owner.get("customer_id") != custody_receipt.get("customer_id"):
+            raise ValueError("Customer-custody lot owner does not match its receipt")
 
-    sample_id = _stable_id("auto-preproduction-sample", f"{season_code}:{purchase['id']}:{batch_code}")
+    sample_id = _stable_id(
+        "auto-preproduction-sample",
+        f"{season_code}:{source_document_type}:{source_document_id}:{batch_code}",
+    )
     oil_lot_id = _stable_id("auto-preproduction-oil-lot", sample_id)
     samples = db["commercial_preproduction_samples"]
     existing = await samples.find_one(
@@ -289,11 +310,11 @@ async def auto_complete_preproduction_sample_for_purchase(
     )
     if existing:
         if sorted(existing.get("source_olive_lot_ids") or []) != sorted(source_ids):
-            raise ValueError("The purchase lots changed after its automatic sample was created")
+            raise ValueError("The source olive lots changed after their automatic sample was created")
         oil_lot = await db["commercial_lots"].find_one(
             {"id": existing.get("oil_sample_lot_id"), "product_kind": "OIL",
              "lot_purpose": "PREPRODUCTION_SAMPLE", "status": "OPEN"},
-            {"_id": 0}, session=session,
+            {"_id": 0, "id": 1}, session=session,
         )
         if not oil_lot:
             raise ValueError("The automatic preproduction oil sample is missing or closed")
@@ -301,29 +322,31 @@ async def auto_complete_preproduction_sample_for_purchase(
 
     latest_ids = {item.get("latest_preproduction_sample_id") for item in source_lots if item.get("latest_preproduction_sample_id")}
     if latest_ids:
-        raise ValueError("At least one olive lot already has a preproduction sample; resolve its existing quality workflow before creating an automatic sample")
+        raise ValueError("At least one olive lot already has a preproduction sample; resolve its existing quality workflow before creating another")
 
     created_utc = created_at.astimezone(timezone.utc)
     document_number = await reserve_document_number(db["commercial_counters"], season_code, "ESS", session=session)
-    receiving_location_id = purchase.get("receiving_location_id")
+    receiving_location_id = purchase.get("receiving_location_id") if purchase else custody_receipt.get("receiving_location_id")
     record = {
         "id": sample_id, "season_code": season_code, "document_type": "ESS",
         "document_number": document_number, "batch_code": batch_code, "status": "COMPLETED",
         "source_olive_lot_id": source_ids[0], "source_olive_lot_ids": source_ids,
-        "source_purchase_id": purchase["id"], "source_location_id": receiving_location_id,
-        "owner": owner, "input_olive_quantity_kg": Decimal128("0"),
+        "source_location_id": receiving_location_id, "owner": owner,
+        "input_olive_quantity_kg": Decimal128("0"),
         "sample_oil_quantity_kg": Decimal128("0"), "oil_sample_lot_id": oil_lot_id,
         "stock_movement_id": None, "trial_date": created_at.date().isoformat(),
-        "notes": "Échantillon automatique pour analyse du code d’achat. Aucun stock consommé; aucune production d’huile réelle.",
-        "auto_generated_for_purchase_analysis": True,
-        # The collection has a unique (idempotency_scope, idempotency_key)
-        # index. Automatic samples must participate in that contract too;
-        # omitting both fields makes MongoDB treat every such document as the
-        # same (null, null) key and reject the next purchase.
+        "notes": (
+            "Échantillon automatique pour analyse du code d’achat. Aucun stock consommé."
+            if purchase else
+            "Échantillon automatique pour analyse d’olives en garde client. Aucun stock consommé; propriété client conservée."
+        ),
+        "auto_generated_for_purchase_analysis": bool(purchase),
+        "auto_generated_for_customer_custody_analysis": bool(custody_receipt),
+        "source_document_type": source_document_type, "source_document_id": source_document_id,
         "idempotency_scope": f"{season_code}:{actor_user_id}",
-        "idempotency_key": f"purchase-analysis:{purchase['id']}",
+        "idempotency_key": f"batch-analysis:{source_document_type}:{source_document_id}",
         "request_fingerprint": hashlib.sha256(
-            f"{season_code}:{purchase['id']}:{batch_code}".encode("utf-8")
+            f"{season_code}:{source_document_type}:{source_document_id}:{batch_code}".encode("utf-8")
         ).hexdigest(),
         "created_by": actor_user_id, "created_at": created_utc,
     }
@@ -334,17 +357,16 @@ async def auto_complete_preproduction_sample_for_purchase(
         "product_kind": "OIL", "lot_purpose": "PREPRODUCTION_SAMPLE",
         "source_preproduction_sample_id": sample_id,
         "source_olive_lot_id": source_ids[0], "source_olive_lot_ids": source_ids,
-        "source_purchase_id": purchase["id"], "quantity_received_kg": Decimal128("0"),
-        "owner": owner, "quality_status": "PENDING", "status": "OPEN",
-        "version": 1, "created_by": actor_user_id, "created_at": created_utc,
-        "analysis_only": True,
+        "source_document_type": source_document_type, "source_document_id": source_document_id,
+        "quantity_received_kg": Decimal128("0"), "owner": owner,
+        "quality_status": "PENDING", "status": "OPEN", "version": 1,
+        "created_by": actor_user_id, "created_at": created_utc, "analysis_only": True,
     }, session=session)
 
     for source in source_lots:
         result = await db["commercial_lots"].update_one(
             {"id": source["id"], "product_kind": "OLIVE", "status": "OPEN",
-             "batch_code": batch_code, "source_purchase_id": purchase["id"],
-             "latest_preproduction_sample_id": None},
+             "batch_code": batch_code, "latest_preproduction_sample_id": None},
             {"$set": {
                 "preproduction_quality_status": "PENDING",
                 "latest_preproduction_sample_id": sample_id,
@@ -362,18 +384,18 @@ async def auto_complete_preproduction_sample_for_purchase(
 
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("auto-preproduction-audit", sample_id),
-        "entity_type": "commercial_preproduction_sample", "entity_id": sample_id,
-        "action": "AUTOMATIC_ANALYSIS_SAMPLE_CREATED", "actor_user_id": actor_user_id,
-        "created_at": created_utc,
+        "entity_type": "commercial_preproduction_sample",
+        "entity_id": sample_id, "action": "AUTOMATIC_ANALYSIS_SAMPLE_CREATED",
+        "actor_user_id": actor_user_id, "created_at": created_utc,
         "details": {
-            "batch_code": batch_code, "purchase_id": purchase["id"],
-            "source_olive_lot_ids": source_ids, "oil_sample_lot_id": oil_lot_id,
-            "stock_movement_posted": False, "input_olive_quantity_kg": Decimal128("0"),
-            "sample_oil_quantity_kg": Decimal128("0"),
+            "batch_code": batch_code, "source_document_type": source_document_type,
+            "source_document_id": source_document_id, "source_olive_lot_ids": source_ids,
+            "oil_sample_lot_id": oil_lot_id, "stock_movement_posted": False,
+            "input_olive_quantity_kg": Decimal128("0"), "sample_oil_quantity_kg": Decimal128("0"),
+            "owner": owner,
         },
     }, session=session)
     return record
-
 
 def _fingerprint_owner(owner: dict[str, Any]) -> str:
     return json.dumps(_owner_document(owner), sort_keys=True, separators=(",", ":"))
