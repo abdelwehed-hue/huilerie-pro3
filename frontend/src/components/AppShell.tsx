@@ -80,7 +80,7 @@ export function LangToggle({ className }: { className?: string }) {
   );
 }
 
-function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
+function BottomNav({ isAdmin, revealEnabled, isCommercialWorkspace }: { isAdmin: boolean; revealEnabled: boolean; isCommercialWorkspace: boolean }) {
   const { t, lang } = useI18n();
   return (
     <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
@@ -89,7 +89,7 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
         className={cn("absolute inset-x-0 bottom-0 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", revealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}
       >
         <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
-          {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
+          {NAV.filter((n) => (!("admin" in n) || isAdmin) && !(isCommercialWorkspace && n.key === "help")).map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -415,7 +415,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} isCommercialWorkspace={isCommercialWorkspace} />}
     </div>
     </ThemeProvider>
   );
