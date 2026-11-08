@@ -1073,9 +1073,22 @@ async def list_filling_pumps(user: dict = Depends(current_user)):
     settings = await db.settings.find_one(
         {"key": "app"}, {"_id": 0, "pump_system_enabled": 1, "pumps": 1}
     ) or {}
+    runtime = await db.commercial_pump_runtime.find(
+        {}, {"_id": 1, "active_sale_id": 1, "status": 1}
+    ).to_list(200)
+    runtime_by_id = {item["_id"]: item for item in runtime}
+    pumps = []
+    for pump in settings.get("pumps", []):
+        state = runtime_by_id.get(pump.get("id"), {})
+        pumps.append({
+            **pump,
+            "busy": bool(state.get("active_sale_id")),
+            "active_sale_id": state.get("active_sale_id"),
+            "runtime_status": state.get("status"),
+        })
     return {
         "pump_system_enabled": bool(settings.get("pump_system_enabled", False)),
-        "pumps": settings.get("pumps", []),
+        "pumps": pumps,
     }
 
 
