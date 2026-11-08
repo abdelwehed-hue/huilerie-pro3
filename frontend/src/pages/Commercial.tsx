@@ -1508,42 +1508,45 @@ export default function Commercial() {
       {tab === "overview" && ready && selectedOverviewTankId && (() => {
         const tank = (tanks.data ?? []).find((item) => item.id === selectedOverviewTankId);
         if (!tank) return null;
+        const purchaseForLot = (lot: AnyRecord | undefined) => lot ? purchaseRows.find((purchase) => purchase.id === lot.source_purchase_id || (purchase.batch_code && purchase.batch_code === lot.batch_code) || (purchase.batch_codes ?? []).includes(lot.batch_code)) : undefined;
+        const supplierForPurchase = (purchase: AnyRecord | undefined) => supplierRows.find((supplier) => supplier.id === purchase?.supplier_id)?.name ?? purchase?.supplier_name ?? "—";
         const productionRows = (tankHistoryProduction.data ?? []).filter((run) => run.output_tank_id === tank.id).map((run) => {
-          const sourceLots = (lots.data ?? []).filter((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id);
-          const purchaseCodes = sourceLots.map((lot) => {
-            const purchase = purchaseRows.find((item) => item.id === lot.source_purchase_id);
-            return purchase?.batch_codes?.join(", ") || purchase?.batch_code || purchase?.document_number || lot.batch_code;
-          }).filter(Boolean).join(", ");
-          return { id: "production-" + run.id, date: run.production_date ?? run.created_at, type: lang === "ar" ? "إنتاج" : "Production", reference: run.document_number, purchase: purchaseCodes, olives: Number(run.input_quantity_kg ?? run.total_input_kg ?? 0), oil: Number(run.output_quantity_liters ?? run.output_quantity_kg ?? 0), detail: run.status };
+          const inputLotIds = [run.input_lot_id, run.source_lot_id, ...(Array.isArray(run.input_lot_ids) ? run.input_lot_ids : []), ...(Array.isArray(run.consumed_lot_ids) ? run.consumed_lot_ids : []), ...(Array.isArray(run.inputs) ? run.inputs.map((input: AnyRecord) => input.lot_id ?? input.olive_lot_id) : [])].filter(Boolean);
+          const sourceLots = (lots.data ?? []).filter((lot) => inputLotIds.includes(lot.id));
+          const sourcePurchases = sourceLots.map(purchaseForLot).filter(Boolean) as AnyRecord[];
+          const fallbackPurchase = purchaseRows.find((purchase) => purchase.batch_code === run.batch_code || (purchase.batch_codes ?? []).includes(run.batch_code));
+          const linkedPurchases = sourcePurchases.length ? sourcePurchases : (fallbackPurchase ? [fallbackPurchase] : []);
+          const purchaseCodes = linkedPurchases.map((purchase) => purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.document_number).filter(Boolean).join(", ") || sourceLots.map((lot) => lot.batch_code).filter(Boolean).join(", ");
+          const supplierNames = [...new Set(linkedPurchases.map(supplierForPurchase).filter((name) => name && name !== "—"))].join(", ");
+          return { id: "production-" + run.id, date: run.production_date ?? run.created_at, type: lang === "ar" ? "إنتاج" : "Production", reference: run.document_number ?? run.batch_code, purchase: purchaseCodes, supplier: supplierNames || "—", olives: Number(run.total_olive_input_kg ?? run.input_quantity_kg ?? run.total_input_kg ?? 0), oil: Number(run.output_quantity_liters ?? run.actual_oil_output_kg ?? run.output_quantity_kg ?? 0), detail: run.status };
         });
-        const salesRows = (tankHistorySales.data ?? []).filter((sale) => sale.source_tank_id === tank.id).map((sale) => ({
-          id: "sale-" + sale.id, date: sale.sale_date ?? sale.created_at, type: lang === "ar" ? "بيع" : "Vente",
-          reference: (tankHistoryInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number ?? sale.document_number ?? sale.batch_code,
-          purchase: sale.batch_code, olives: 0, oil: -Number(sale.quantity_kg ?? 0), detail: sale.status
-        }));
-        const transferRows = (tankHistoryTransfers.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => ({
-          id: "transfer-" + move.id, date: move.created_at, type: lang === "ar" ? "تحويل" : "Transfert", reference: move.document_number,
-          purchase: (lots.data ?? []).find((lot) => lot.id === move.lot_id)?.batch_code, olives: 0,
-          oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0),
-          detail: move.source_location_id === tank.id ? (lang === "ar" ? "خروج" : "Sortie") : (lang === "ar" ? "دخول" : "Entrée")
-        }));
-        const stockRows = (tankHistoryMovements.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => ({
-          id: "stock-" + move.id, date: move.created_at, type: lang === "ar" ? "حركة مخزون" : "Mouvement de stock", reference: move.document_number,
-          purchase: (lots.data ?? []).find((lot) => lot.id === move.lot_id)?.batch_code, olives: 0,
-          oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0), detail: move.movement_kind
-        }));
+        const salesRows = (tankHistorySales.data ?? []).filter((sale) => sale.source_tank_id === tank.id).map((sale) => {
+          const lot = (lots.data ?? []).find((item) => item.batch_code === sale.batch_code || item.id === sale.oil_lot_id || item.id === sale.lot_id);
+          const purchase = purchaseForLot(lot);
+          return { id: "sale-" + sale.id, date: sale.sale_date ?? sale.created_at, type: lang === "ar" ? "بيع" : "Vente", reference: (tankHistoryInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number ?? sale.document_number ?? sale.batch_code, purchase: sale.batch_code, supplier: supplierForPurchase(purchase), olives: 0, oil: -Number(sale.quantity_kg ?? sale.quantity_liters ?? 0), detail: sale.status };
+        });
+        const transferRows = (tankHistoryTransfers.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => {
+          const lot = (lots.data ?? []).find((item) => item.id === move.lot_id);
+          const purchase = purchaseForLot(lot);
+          return { id: "transfer-" + move.id, date: move.created_at, type: lang === "ar" ? "تحويل" : "Transfert", reference: move.document_number, purchase: lot?.batch_code, supplier: supplierForPurchase(purchase), olives: 0, oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0), detail: move.source_location_id === tank.id ? (lang === "ar" ? "خروج" : "Sortie") : (lang === "ar" ? "دخول" : "Entrée") };
+        });
+        const stockRows = (tankHistoryMovements.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => {
+          const lot = (lots.data ?? []).find((item) => item.id === move.lot_id);
+          const purchase = purchaseForLot(lot);
+          return { id: "stock-" + move.id, date: move.created_at, type: lang === "ar" ? "حركة مخزون" : "Mouvement de stock", reference: move.document_number, purchase: lot?.batch_code, supplier: supplierForPurchase(purchase), olives: 0, oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0), detail: move.movement_kind };
+        });
         const rows = [...productionRows, ...salesRows, ...transferRows, ...stockRows].sort((x, y) => String(y.date ?? "").localeCompare(String(x.date ?? "")));
-        const loading = tankHistoryMovements.isLoading || tankHistoryTransfers.isLoading || tankHistoryProduction.isLoading || tankHistorySales.isLoading || tankHistoryInvoices.isLoading;
+        const loading = tankHistoryMovements.isLoading || tankHistoryTransfers.isLoading || tankHistoryProduction.isLoading || tankHistorySales.isLoading || tankHistoryInvoices.isLoading || purchases.isLoading || suppliers.isLoading;
         return <Card className="border-sky-200 shadow-sm">
-          <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle>{lang === "ar" ? "سجل عمليات الخزان " : "Historique de la cuve "}{tank.code ?? tank.name}</CardTitle><CardDescription>{lang === "ar" ? "الإنتاج والشراء المرتبط والبيع والتحويلات وحركات المخزون" : "Production, achats d’origine, ventes, transferts et mouvements de stock"}</CardDescription></div><Button type="button" size="sm" variant="outline" onClick={() => setSelectedOverviewTankId("")}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button></CardHeader>
+          <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle>{lang === "ar" ? "سجل عمليات الخزان " : "Historique de la cuve "}{tank.code ?? tank.name}</CardTitle><CardDescription>{lang === "ar" ? "الإنتاج والشراء المرتبط والمزوّد والبيع والتحويلات وحركات المخزون" : "Production, achats d’origine, fournisseur, ventes, transferts et mouvements de stock"}</CardDescription></div><Button type="button" size="sm" variant="outline" onClick={() => setSelectedOverviewTankId("")}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button></CardHeader>
           <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow>
-            <TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead>{lang === "ar" ? "رقم العملية / الفاتورة" : "N° opération / facture"}</TableHead><TableHead>{lang === "ar" ? "رقم الشراء / الدفعة" : "N° achat / lot"}</TableHead><TableHead>{lang === "ar" ? "زيتون مستهلك" : "Olives consommées"}</TableHead><TableHead>{lang === "ar" ? "الزيت (+ دخول / − خروج)" : "Huile (+ entrée / − sortie)"}</TableHead><TableHead>{lang === "ar" ? "الحالة / التفاصيل" : "Statut / détails"}</TableHead>
+            <TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead>{lang === "ar" ? "رقم العملية / الفاتورة" : "N° opération / facture"}</TableHead><TableHead>{lang === "ar" ? "رقم الشراء / الدفعة" : "N° achat / lot"}</TableHead><TableHead>{lang === "ar" ? "المزوّد" : "Fournisseur"}</TableHead><TableHead>{lang === "ar" ? "زيتون مستهلك" : "Olives consommées"}</TableHead><TableHead>{lang === "ar" ? "الزيت (+ دخول / − خروج)" : "Huile (+ entrée / − sortie)"}</TableHead><TableHead>{lang === "ar" ? "الحالة / التفاصيل" : "Statut / détails"}</TableHead>
           </TableRow></TableHeader><TableBody>
-            {loading ? <EmptyRow colSpan={7} text={lang === "ar" ? "جار تحميل العمليات…" : "Chargement des opérations…"} /> : rows.map((row) => <TableRow key={row.id}>
-              <TableCell className="whitespace-nowrap">{date(row.date)}</TableCell><TableCell className="font-semibold">{row.type}</TableCell><TableCell className="font-mono text-xs">{value(row.reference)}</TableCell><TableCell className="font-mono text-xs">{value(row.purchase)}</TableCell><TableCell>{row.olives ? number(row.olives) + " kg" : "—"}</TableCell><TableCell className={row.oil < 0 ? "font-semibold text-rose-700" : "font-semibold text-emerald-700"}>{row.oil ? (row.oil > 0 ? "+" : "") + number(row.oil) + " L" : "—"}</TableCell><TableCell>{value(row.detail)}</TableCell>
+            {loading ? <EmptyRow colSpan={8} text={lang === "ar" ? "جار تحميل العمليات…" : "Chargement des opérations…"} /> : rows.map((row) => <TableRow key={row.id}>
+              <TableCell className="whitespace-nowrap">{date(row.date)}</TableCell><TableCell className="font-semibold">{row.type}</TableCell><TableCell className="font-mono text-xs">{value(row.reference)}</TableCell><TableCell className="font-mono text-xs">{value(row.purchase)}</TableCell><TableCell>{value(row.supplier)}</TableCell><TableCell>{row.olives > 0 ? number(row.olives) + " kg" : "—"}</TableCell><TableCell className={row.oil < 0 ? "font-semibold text-rose-700" : "font-semibold text-emerald-700"}>{row.oil ? (row.oil > 0 ? "+" : "") + number(row.oil) + " L" : "—"}</TableCell><TableCell>{value(row.detail)}</TableCell>
             </TableRow>)}
-            {!loading && !rows.length && <EmptyRow colSpan={7} text={l.noRows} />}
-          </TableBody></Table></div><p className="mt-3 text-xs text-muted-foreground">{lang === "ar" ? "الكميات السالبة خروج من الخزان والموجبة دخول إليه. يظهر رقم الشراء عند تسجيل ارتباط دفعة الزيتون بالإنتاج." : "Les valeurs négatives indiquent une sortie et les positives une entrée. Le numéro d’achat dépend du lien enregistré entre la production et le lot d’olives."}</p></CardContent>
+            {!loading && !rows.length && <EmptyRow colSpan={8} text={l.noRows} />}
+          </TableBody></Table></div><p className="mt-3 text-xs text-muted-foreground">{lang === "ar" ? "الكميات السالبة خروج من الخزان والموجبة دخول إليه. يظهر المزوّد ورقم الشراء عندما يكون مصدر دفعة الزيت مرتبطًا بعملية شراء." : "Les valeurs négatives indiquent une sortie et les positives une entrée. Le fournisseur et le numéro d’achat sont affichés lorsque le lot d’huile est relié à son achat d’origine."}</p></CardContent>
         </Card>;
       })()}
 
