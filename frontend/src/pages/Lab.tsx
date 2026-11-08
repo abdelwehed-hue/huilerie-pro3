@@ -48,6 +48,7 @@ export default function Lab() {
     .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   const gsCodeAssessment = gsCodeAssessments[0];
   const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), retry: false });
+  const gsCustodyReceipts = useQuery({ queryKey: ["lab-gs-custody-receipts"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/customer-custody/receipts?limit=500"), retry: false });
   const gsVarieties = useQuery({ queryKey: ["lab-gs-varieties"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/varieties?limit=500"), retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
   const gsOliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && lot.batch_code === code && lot.status === "OPEN");
@@ -72,10 +73,18 @@ export default function Lab() {
   const gsAnalysisLocked = isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment;
   const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status)) && !gsCodeAssessment;
   const gsPurchaseForCode = (gsPurchases.data ?? []).find((purchase) => String(purchase.batch_code || "").trim().toUpperCase() === code.toUpperCase());
-  const gsOliveVariety = [...new Set((gsPurchaseForCode?.lines ?? []).map((line: any) => {
-    const variety = (gsVarieties.data ?? []).find((item) => item.id === line.variety_id);
-    return String(variety?.name_fr || variety?.name || line.variety_id || "").trim();
-  }).filter(Boolean))].join(", ");
+  const gsCustodyReceiptForCode = (gsCustodyReceipts.data ?? []).find((receipt) => String(receipt.batch_code || "").trim().toUpperCase() === code.toUpperCase() && receipt.status === "RECEIVED");
+  const gsCustodyVariety = (gsVarieties.data ?? []).find((item) => item.id === gsCustodyReceiptForCode?.variety_id);
+  const gsOliveVariety = [...new Set([
+    ...(gsPurchaseForCode?.lines ?? []).map((line: any) => {
+      const variety = (gsVarieties.data ?? []).find((item) => item.id === line.variety_id);
+      return String(variety?.name_fr || variety?.name || line.variety_id || "").trim();
+    }),
+    ...(gsCustodyReceiptForCode ? [String(gsCustodyVariety?.name_fr || gsCustodyVariety?.name || gsCustodyReceiptForCode.variety_id || "").trim()] : []),
+  ].filter(Boolean))].join(", ");
+  const gsOwnerLabel = gsOliveLot?.owner?.kind === "CUSTOMER"
+    ? (gsCustodyReceiptForCode?.customer_name || "Garde du client")
+    : "Achat de la maâsra";
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -220,7 +229,7 @@ export default function Lab() {
               <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Création automatique de l’Échantillon de préproduction pour {code}… Aucun stock ne sera consommé.</div>
             )}
             {isGsCode && gsOilLot && gsSample && (
-              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · Échantillon de préproduction créé automatiquement · Lot d’huile prêt · {code}</div>
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · {gsOwnerLabel} · Échantillon de laboratoire créé sans consommation du stock · {code}</div>
             )}
             {isGsCode && (gsExistingAssessment || gsCodeAssessmentPending) && !selectedGsAssessment && (
               <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante. Cliquez sur son code dans le tableau pour la modifier.</div>
