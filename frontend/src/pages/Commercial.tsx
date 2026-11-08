@@ -191,6 +191,7 @@ export default function Commercial() {
     }, { replace: true });
   };
   const [showTankLevels, setShowTankLevels] = useState(false);
+  const [selectedOverviewTankId, setSelectedOverviewTankId] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierTaxId, setSupplierTaxId] = useState("");
@@ -318,6 +319,11 @@ export default function Commercial() {
   const tanks = useQuery({ queryKey: ["commercial", "tanks"], queryFn: () => apiGet<AnyRecord[]>("/commercial/v1/tanks"), enabled: ready });
   const lots = useQuery({ queryKey: ["commercial", "lots"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/lots", 500), enabled: ready });
   const balances = useQuery({ queryKey: ["commercial", "balances"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-balances", 1000), enabled: ready });
+  const tankHistoryMovements = useQuery({ queryKey: ["commercial", "tank-history-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
+  const tankHistoryTransfers = useQuery({ queryKey: ["commercial", "tank-history-transfers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
+  const tankHistoryProduction = useQuery({ queryKey: ["commercial", "tank-history-production"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
+  const tankHistorySales = useQuery({ queryKey: ["commercial", "tank-history-sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
+  const tankHistoryInvoices = useQuery({ queryKey: ["commercial", "tank-history-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
@@ -1482,20 +1488,64 @@ export default function Commercial() {
                 const fillPercent = Math.max(0, Math.min(100, capacity > 0 ? quantity / capacity * 100 : quantity / maxFlexibleTankStock * 100));
                 const tankLabel = String(tank.code ?? tank.name ?? (index + 1));
                 return (
-                  <div key={tank.id} className="flex min-w-0 flex-col items-center gap-2 rounded-xl border border-sky-100 bg-sky-50/70 px-2 pt-3 pb-2 dark:border-sky-900/60 dark:bg-slate-900/50" title={`${tankLabel}: ${number(quantity)} L${capacity > 0 ? ` / ${number(capacity)} L` : ""}`}>
+                  <button type="button" key={tank.id} onClick={() => setSelectedOverviewTankId((current) => current === tank.id ? "" : tank.id)} aria-pressed={selectedOverviewTankId === tank.id} className={`flex min-w-0 flex-col items-center gap-2 rounded-xl border px-2 pt-3 pb-2 text-left transition-all ${selectedOverviewTankId === tank.id ? "border-sky-500 bg-sky-100 shadow-md ring-2 ring-sky-300" : "border-sky-100 bg-sky-50/70 hover:border-sky-300 dark:border-sky-900/60 dark:bg-slate-900/50"}` } title={`${tankLabel}: ${number(quantity)} L${capacity > 0 ? ` / ${number(capacity)} L` : ""}`}>
                     <div className="flex h-36 w-full max-w-16 items-end overflow-hidden rounded-t-lg rounded-b-md border border-sky-200 bg-white shadow-inner dark:border-slate-700 dark:bg-slate-950">
                       <div className="w-full rounded-t-sm bg-gradient-to-t from-sky-700 via-cyan-500 to-cyan-300 transition-[height] duration-700 ease-out" style={{ height: `${fillPercent}%`, minHeight: quantity > 0 ? "4px" : "0" }} />
                     </div>
                     <span className="w-full truncate text-center text-sm font-bold text-slate-800 dark:text-slate-100">{lang === "ar" ? "خزان" : "Cuve"} {tankLabel}</span>
                     <span className="text-xs font-semibold tabular-nums text-sky-800 dark:text-sky-300">{number(quantity)} L</span>
                     {capacity > 0 && <span className="text-[10px] tabular-nums text-muted-foreground">{Math.round(fillPercent)}%</span>}
-                  </div>
+                    <span className="text-[10px] font-semibold text-sky-700">{lang === "ar" ? "عرض العمليات" : "Voir opérations"}</span>
+                  </button>
                 );
               })}
             </div>
           )}
         </CardContent>
       </Card></div>}
+
+
+      {tab === "overview" && ready && selectedOverviewTankId && (() => {
+        const tank = (tanks.data ?? []).find((item) => item.id === selectedOverviewTankId);
+        if (!tank) return null;
+        const productionRows = (tankHistoryProduction.data ?? []).filter((run) => run.output_tank_id === tank.id).map((run) => {
+          const sourceLots = (lots.data ?? []).filter((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id);
+          const purchaseCodes = sourceLots.map((lot) => {
+            const purchase = purchaseRows.find((item) => item.id === lot.source_purchase_id);
+            return purchase?.batch_codes?.join(", ") || purchase?.batch_code || purchase?.document_number || lot.batch_code;
+          }).filter(Boolean).join(", ");
+          return { id: "production-" + run.id, date: run.production_date ?? run.created_at, type: lang === "ar" ? "إنتاج" : "Production", reference: run.document_number, purchase: purchaseCodes, olives: Number(run.input_quantity_kg ?? run.total_input_kg ?? 0), oil: Number(run.output_quantity_liters ?? run.output_quantity_kg ?? 0), detail: run.status };
+        });
+        const salesRows = (tankHistorySales.data ?? []).filter((sale) => sale.source_tank_id === tank.id).map((sale) => ({
+          id: "sale-" + sale.id, date: sale.sale_date ?? sale.created_at, type: lang === "ar" ? "بيع" : "Vente",
+          reference: (tankHistoryInvoices.data ?? []).find((invoice) => invoice.id === sale.invoice_id)?.document_number ?? sale.document_number ?? sale.batch_code,
+          purchase: sale.batch_code, olives: 0, oil: -Number(sale.quantity_kg ?? 0), detail: sale.status
+        }));
+        const transferRows = (tankHistoryTransfers.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => ({
+          id: "transfer-" + move.id, date: move.created_at, type: lang === "ar" ? "تحويل" : "Transfert", reference: move.document_number,
+          purchase: (lots.data ?? []).find((lot) => lot.id === move.lot_id)?.batch_code, olives: 0,
+          oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0),
+          detail: move.source_location_id === tank.id ? (lang === "ar" ? "خروج" : "Sortie") : (lang === "ar" ? "دخول" : "Entrée")
+        }));
+        const stockRows = (tankHistoryMovements.data ?? []).filter((move) => move.product_kind === "OIL" && (move.source_location_id === tank.id || move.destination_location_id === tank.id)).map((move) => ({
+          id: "stock-" + move.id, date: move.created_at, type: lang === "ar" ? "حركة مخزون" : "Mouvement de stock", reference: move.document_number,
+          purchase: (lots.data ?? []).find((lot) => lot.id === move.lot_id)?.batch_code, olives: 0,
+          oil: move.destination_location_id === tank.id ? Number(move.quantity_kg ?? 0) : -Number(move.quantity_kg ?? 0), detail: move.movement_kind
+        }));
+        const rows = [...productionRows, ...salesRows, ...transferRows, ...stockRows].sort((x, y) => String(y.date ?? "").localeCompare(String(x.date ?? "")));
+        const loading = tankHistoryMovements.isLoading || tankHistoryTransfers.isLoading || tankHistoryProduction.isLoading || tankHistorySales.isLoading || tankHistoryInvoices.isLoading;
+        return <Card className="border-sky-200 shadow-sm">
+          <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle>{lang === "ar" ? "سجل عمليات الخزان " : "Historique de la cuve "}{tank.code ?? tank.name}</CardTitle><CardDescription>{lang === "ar" ? "الإنتاج والشراء المرتبط والبيع والتحويلات وحركات المخزون" : "Production, achats d’origine, ventes, transferts et mouvements de stock"}</CardDescription></div><Button type="button" size="sm" variant="outline" onClick={() => setSelectedOverviewTankId("")}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button></CardHeader>
+          <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow>
+            <TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead>{lang === "ar" ? "رقم العملية / الفاتورة" : "N° opération / facture"}</TableHead><TableHead>{lang === "ar" ? "رقم الشراء / الدفعة" : "N° achat / lot"}</TableHead><TableHead>{lang === "ar" ? "زيتون مستهلك" : "Olives consommées"}</TableHead><TableHead>{lang === "ar" ? "الزيت (+ دخول / − خروج)" : "Huile (+ entrée / − sortie)"}</TableHead><TableHead>{lang === "ar" ? "الحالة / التفاصيل" : "Statut / détails"}</TableHead>
+          </TableRow></TableHeader><TableBody>
+            {loading ? <EmptyRow colSpan={7} text={lang === "ar" ? "جار تحميل العمليات…" : "Chargement des opérations…"} /> : rows.map((row) => <TableRow key={row.id}>
+              <TableCell className="whitespace-nowrap">{date(row.date)}</TableCell><TableCell className="font-semibold">{row.type}</TableCell><TableCell className="font-mono text-xs">{value(row.reference)}</TableCell><TableCell className="font-mono text-xs">{value(row.purchase)}</TableCell><TableCell>{row.olives ? number(row.olives) + " kg" : "—"}</TableCell><TableCell className={row.oil < 0 ? "font-semibold text-rose-700" : "font-semibold text-emerald-700"}>{row.oil ? (row.oil > 0 ? "+" : "") + number(row.oil) + " L" : "—"}</TableCell><TableCell>{value(row.detail)}</TableCell>
+            </TableRow>)}
+            {!loading && !rows.length && <EmptyRow colSpan={7} text={l.noRows} />}
+          </TableBody></Table></div><p className="mt-3 text-xs text-muted-foreground">{lang === "ar" ? "الكميات السالبة خروج من الخزان والموجبة دخول إليه. يظهر رقم الشراء عند تسجيل ارتباط دفعة الزيتون بالإنتاج." : "Les valeurs négatives indiquent une sortie et les positives une entrée. Le numéro d’achat dépend du lien enregistré entre la production et le lot d’olives."}</p></CardContent>
+        </Card>;
+      })()}
 
       {!ready && (
         <Card className="border-amber-300 bg-amber-50/70">
