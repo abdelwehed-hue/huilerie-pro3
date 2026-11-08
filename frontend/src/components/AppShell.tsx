@@ -241,6 +241,19 @@ export default function AppShell() {
     queryFn: () => apiGet<Stats>("/stats"),
     refetchInterval: 30_000,
   });
+  const pendingLabLots = useQuery({
+    queryKey: ["header-lab-pending-lots"],
+    queryFn: async () => {
+      const [lots, assessments] = await Promise.all([
+        apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"),
+        apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"),
+      ]);
+      const assessedCodes = new Set(assessments.map((assessment) => String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase()).filter(Boolean));
+      return lots.filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !assessedCodes.has(String(lot.batch_code).trim().toUpperCase())).length;
+    },
+    refetchInterval: 30_000,
+    retry: false,
+  });
 
   // Keep every authenticated device in sync, regardless of the page it is viewing.
   useEffect(() => {
@@ -323,6 +336,18 @@ export default function AppShell() {
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
               <Brand />
+            </div>
+            <div
+              data-testid="header-lab-pending-count"
+              title="Lots d’huile en attente d’analyse"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-2 py-1.5 text-cyan-950 shadow-sm"
+              aria-live="polite"
+            >
+              <FlaskConical className="size-4 text-cyan-700" />
+              <span className="hidden text-sm font-semibold sm:inline">En attente d’analyse</span>
+              <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-600 px-2 py-0.5 text-sm font-bold text-white">
+                {pendingLabLots.data ?? "—"}
+              </span>
             </div>
             <div
               data-testid="header-non-terminated"
