@@ -213,7 +213,15 @@ class ReminderRunResult(BaseModel):
     sent: int
 
 
+class PumpConfig(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=60)
+    active: bool = True
+
+
 class AppSettings(MillInfo):
+    pump_system_enabled: bool = False
+    pumps: list[PumpConfig] = Field(default_factory=list, max_length=100)
     price_per_kg: float = Field(ge=0)
     login_image: str = Field(default="", max_length=700_000)
     tv_image: str = Field(default="", max_length=700_000)
