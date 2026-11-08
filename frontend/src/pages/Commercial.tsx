@@ -1456,9 +1456,14 @@ export default function Commercial() {
           <Button type="button" variant="outline" onClick={() => navigate("/help")}>
             <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
           </Button>
+          <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => navigate("/help")}>
+            <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
+          </Button>
           <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["commercial"] })}>
             <RefreshCw className="size-4" /> {l.refresh}
           </Button>
+        </div>
         </div>
       </div>
 
