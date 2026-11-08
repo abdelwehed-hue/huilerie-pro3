@@ -96,12 +96,12 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
               data-testid={n.id}
               className={({ isActive }) =>
                 cn(
-                  "group flex min-w-[4.75rem] flex-1 flex-col items-center gap-0.5 rounded-lg border-2 px-1.5 py-1 text-[11px] font-medium transition-[background-color,border-color,color] duration-200",
+                  "group flex min-h-[3.8rem] min-w-[4.75rem] flex-1 flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-1.5 text-[12px] font-semibold transition-[background-color,border-color,color] duration-200",
                   isActive ? "border-[#CFE3C4] bg-[#2C4A30]/95 text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/10 hover:text-white",
                 )
               }
             >
-              <n.icon className="size-4 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
+              <n.icon className="size-6 stroke-[2] transition-transform duration-200 group-hover:-translate-y-0.5" />
               <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
