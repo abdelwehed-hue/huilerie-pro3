@@ -136,9 +136,9 @@ export default function Dashboard() {
       </div>
 
       <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-5 sm:max-w-xl" data-testid="new-reception-sheet">
-          <SheetTitle className="mb-3 font-heading text-xl">{t("new_reception")}</SheetTitle>
-          <div className="origin-top-left" style={{ zoom: 0.9 }}><IntakePanel stacked /></div>
+        <SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet">
+          <SheetTitle className="mb-2 font-heading text-lg">{t("new_reception")}</SheetTitle>
+          <div className="origin-top-left" style={{ zoom: 0.82 }}><IntakePanel stacked /></div>
         </SheetContent>
       </Sheet>
       <QrScanDialog open={scanOpen} onClose={closeScan} />
