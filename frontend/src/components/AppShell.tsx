@@ -78,12 +78,12 @@ export function LangToggle({ className }: { className?: string }) {
   );
 }
 
-function BottomNav({ isAdmin }: { isAdmin: boolean }) {
+function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
   const { t } = useI18n();
   return (
     <nav
       data-testid="bottom-nav"
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none"
+      className={cn("no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", revealEnabled ? "app-bottom-nav opacity-0 pointer-events-none hover:opacity-100 hover:pointer-events-auto" : "opacity-100")}
     >
       <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
         {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
@@ -222,6 +222,7 @@ export default function AppShell() {
   const isCommercialWorkspace = location.pathname.startsWith("/commercial");
   const me = useMe();
   const { t } = useI18n();
+  const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");\n  useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);
   const queryClient = useQueryClient();
   const tvControl = useQuery({
     queryKey: ["tv-control"],
@@ -379,7 +380,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} />}
     </div>
     </ThemeProvider>
   );
