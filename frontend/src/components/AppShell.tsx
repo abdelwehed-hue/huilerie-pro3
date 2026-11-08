@@ -101,7 +101,7 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
                 )
               }
             >
-              <n.icon className="size-6 stroke-[2] transition-transform duration-200 group-hover:-translate-y-0.5" />
+              <n.icon className={cn("size-6 stroke-[2] transition-all duration-200 group-hover:-translate-y-0.5", n.color)} />
               <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
