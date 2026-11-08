@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatCard } from "@/components/shared";
 
 type Row = Record<string, any>;
 type Mode = "invoices" | "statement" | "global";
@@ -275,10 +276,10 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
       </CardContent>
     </Card>
     {mode !== "statement" && <div className="grid gap-3 sm:grid-cols-4">
-      <Card className="border-2 border-sky-400 shadow-md" style={{ backgroundColor: "#ede9fe" }}><CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription className="font-semibold text-sky-800">{labels.count}</CardDescription><FileText className="size-5 text-sky-600"/></div><CardTitle className="text-2xl font-bold text-sky-950">{filtered.length}</CardTitle></CardHeader></Card>
-      <Card className="border-2 border-indigo-400 shadow-md" style={{ backgroundColor: "#fef3c7" }}><CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription className="font-semibold text-indigo-800">{labels.gross}</CardDescription><FileSpreadsheet className="size-5 text-indigo-600"/></div><CardTitle className="text-xl font-bold text-indigo-950">{money(totalGross)}</CardTitle></CardHeader></Card>
-      <Card className="border-2 border-emerald-400 shadow-md" style={{ backgroundColor: "#cffafe" }}><CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription className="font-semibold text-emerald-800">{labels.paid}</CardDescription><BookOpenCheck className="size-5 text-emerald-600"/></div><CardTitle className="text-xl font-bold text-emerald-950">{money(totalPaid)}</CardTitle></CardHeader></Card>
-      <Card className="border-2 border-rose-400 shadow-md" style={{ backgroundColor: "#ffedd5" }}><CardHeader className="pb-2"><div className="flex items-center justify-between"><CardDescription className="font-semibold text-rose-800">{labels.outstanding}</CardDescription><FileText className="size-5 text-rose-600"/></div><CardTitle className="text-xl font-bold text-rose-950">{money(totalOutstanding)}</CardTitle></CardHeader></Card>
+      <StatCard tone="sky" label={labels.count} value={filtered.length} icon={<FileText />} />
+      <StatCard tone="gold" label={labels.gross} value={money(totalGross)} icon={<FileSpreadsheet />} />
+      <StatCard tone="emerald" label={labels.paid} value={money(totalPaid)} icon={<BookOpenCheck />} />
+      <StatCard tone="rose" label={labels.outstanding} value={money(totalOutstanding)} icon={<FileText />} />
     </div>}
     {mode === "statement" && !buyerId && <p className="rounded-xl border p-6 text-center text-muted-foreground">{labels.noBuyer}</p>}
     {mode === "statement" && buyerId && <Card className="border-emerald-300 bg-emerald-50 shadow-sm">
