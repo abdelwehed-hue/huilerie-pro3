@@ -244,8 +244,8 @@ export default function CommercialFactures() {
   const statementDebit = ledgerData.rows.reduce((sum, row) => sum + Number(row.debit ?? 0), 0);
   const statementCredit = ledgerData.rows.reduce((sum, row) => sum + Number(row.credit ?? 0), 0);
 
-  return <div className="commercial-factures-print space-y-4 pb-24" dir={ar ? "rtl" : "ltr"}>
-    <Card className="commercial-card border-indigo-200 bg-indigo-50 shadow-sm">
+  return <div className="commercial-factures-print space-y-4 rounded-2xl bg-blue-50 p-2 pb-24 sm:p-4" dir={ar ? "rtl" : "ltr"}>
+    <Card className="commercial-card border-blue-200 bg-blue-100 shadow-sm">
       <CardHeader className="border-b border-slate-100">
         <CardTitle className="text-slate-900">{labels.title}</CardTitle>
         <CardDescription className="text-slate-600">{labels.subtitle}</CardDescription>
@@ -291,13 +291,13 @@ export default function CommercialFactures() {
         </TableBody></Table></div>}
       </CardContent>
     </Card>}
-    {mode !== "statement" && <Card className="border-slate-300 bg-slate-50 shadow-sm">
-      <CardHeader className="border-b border-slate-100 bg-slate-200"><CardTitle className="text-slate-900">{mode === "global" ? labels.global : labels.invoices}{buyerId ? " — " + selectedBuyer?.name : ""}</CardTitle><CardDescription>{mode === "global" ? (ar ? "مجموع الفواتير خلال الفترة المحددة للعميل المختار" : "Regroupement des factures du client sur la période sélectionnée") : labels.subtitle}</CardDescription></CardHeader>
-      <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead><TableHead>{labels.actions}</TableHead></TableRow></TableHeader><TableBody>
-        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-muted":""} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{quantityNumber(x.quantity_kg, ar)}</TableCell><TableCell>{money(x.unit_price_dt)}</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)}</TableCell><TableCell>{money(x.paid_amount_dt)}</TableCell><TableCell>{money(x.credited_amount_dt)}</TableCell><TableCell>{money(x.outstanding_amount_dt)}</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button>{isAdmin && <Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button>}</div></TableCell></TableRow>})}
+    {mode !== "statement" && <Card className="border-blue-300 bg-blue-100 shadow-sm">
+      <CardHeader className="border-b border-blue-200 bg-blue-200"><CardTitle className="text-slate-900">{mode === "global" ? labels.global : labels.invoices}{buyerId ? " — " + selectedBuyer?.name : ""}</CardTitle><CardDescription>{mode === "global" ? (ar ? "مجموع الفواتير خلال الفترة المحددة للعميل المختار" : "Regroupement des factures du client sur la période sélectionnée") : labels.subtitle}</CardDescription></CardHeader>
+      <CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-blue-200 text-blue-950"><TableHead>{labels.number}</TableHead><TableHead>{labels.date}</TableHead><TableHead>{labels.buyer}</TableHead><TableHead>{labels.code}</TableHead><TableHead>{labels.quantity}</TableHead><TableHead>{labels.unit}</TableHead><TableHead>{labels.total}</TableHead><TableHead>{labels.paid}</TableHead><TableHead>{labels.credited}</TableHead><TableHead>{labels.balance}</TableHead><TableHead>{labels.status}</TableHead><TableHead>{labels.actions}</TableHead></TableRow></TableHeader><TableBody>
+        {filtered.map(x=>{const b=buyers.find(y=>y.id===x.buyer_id);return <TableRow key={x.id} className={selectedInvoiceId===x.id?"bg-blue-200":"bg-blue-50 hover:bg-blue-100"} onClick={()=>setSelectedInvoiceId(x.id)}><TableCell className="font-mono font-semibold">{x.document_number}</TableCell><TableCell>{dateText(x.sale_date ?? x.created_at)}</TableCell><TableCell>{b?.name ?? "—"}</TableCell><TableCell className="font-mono">{x.batch_code ?? "—"}</TableCell><TableCell>{quantityNumber(x.quantity_kg, ar)}</TableCell><TableCell>{money(x.unit_price_dt)}</TableCell><TableCell className="font-semibold">{money(x.total_amount_dt)}</TableCell><TableCell>{money(x.paid_amount_dt)}</TableCell><TableCell>{money(x.credited_amount_dt)}</TableCell><TableCell>{money(x.outstanding_amount_dt)}</TableCell><TableCell>{statusText(x)}</TableCell><TableCell><div className="flex items-center gap-1"><Button size="icon" variant="outline" title={labels.print} aria-label={labels.print} onClick={()=>{setSelectedInvoiceId(x.id);window.setTimeout(()=>window.print(),150);}}><Printer className="size-4"/></Button>{isAdmin && <Button size="icon" variant="outline" title={labels.editInvoice} aria-label={labels.editInvoice} disabled={Number(x.outstanding_amount_dt ?? 0) <= 0} onClick={()=>{setEditingInvoiceId(x.id);setPaymentAmount("");setPaymentDate(new Date().toLocaleDateString("en-CA",{timeZone:"Africa/Tunis"}));setPaymentMethod("CASH");setPaymentReference("");}}><Pencil className="size-4"/></Button>}</div></TableCell></TableRow>})}
         {!filtered.length && <TableRow><TableCell colSpan={12} className="text-center">{labels.noRows}</TableCell></TableRow>}
       </TableBody></Table></div>
-      {selectedInvoiceId && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border bg-muted/30 p-4">
+      {selectedInvoiceId && selectedInvoice && <div className="gs-invoice-detail-print mt-4 rounded-xl border border-rose-200 bg-rose-100 p-4 text-rose-950">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{ar ? "تفاصيل الفاتورة" : "Détail de la facture"} · {selectedInvoice.document_number}</h3><Button size="sm" variant="outline" onClick={print}><Printer className="mr-2 size-4"/>{labels.print}</Button></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===selectedInvoice.buyer_id)?.name ?? "—"}</p></div>
@@ -336,8 +336,8 @@ export default function CommercialFactures() {
               <p>{buyers.find(b => b.id === selectedInvoice.buyer_id)?.address ?? ""}</p>
             </div>
           </section>
-          <table dir={ar ? "rtl" : "ltr"} className="w-full border-collapse text-sm">
-            <thead><tr className="border-y">
+          <table dir={ar ? "rtl" : "ltr"} className="w-full border-collapse bg-blue-50 text-sm print-color-adjust-exact">
+            <thead><tr className="border-y border-blue-300 bg-blue-100 text-blue-950">
               <th className="p-3 text-left">{ar ? "المنتج" : "Désignation"}</th>
               <th className="p-3 text-right">{ar ? "الكمية" : "Quantité"}</th>
               <th className="p-3 text-right">{ar ? "السعر للوحدة / لتر" : "Prix unitaire / L"}</th>
@@ -350,7 +350,7 @@ export default function CommercialFactures() {
               <td className="p-3 text-right">{printNumber(selectedInvoice.total_amount_dt, ar, 3)}</td>
             </tr></tbody>
           </table>
-          <div dir="ltr" className="mt-8 w-full space-y-3 text-left">
+          <div dir="ltr" className="mt-8 w-full space-y-3 rounded-xl border border-rose-200 bg-rose-100 p-4 text-left text-rose-950 print-color-adjust-exact">
             <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "المجموع" : "Total"}</strong><strong>{printNumber(selectedInvoice.total_amount_dt, ar)}</strong></div>
             <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "المدفوع" : "Payé"}</strong><strong>{printNumber(selectedInvoice.paid_amount_dt, ar)}</strong></div>
             {Number(selectedInvoice.credited_amount_dt ?? 0) > 0 && <div className="flex w-full items-center justify-between gap-4"><strong>{ar ? "الإشعارات الدائنة" : "Avoirs"}</strong><strong>{printNumber(selectedInvoice.credited_amount_dt, ar)}</strong></div>}
