@@ -178,16 +178,18 @@ export default function Commercial() {
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
   const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "custody", "transfers", "buyers", "sales", "reports"];
-  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" ? "procurement" : requestedTab) : "overview";
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [stockView, setStockView] = useState<"lots" | "movements" | "chargement">(requestedTab === "movements" || requestedTab === "chargement" ? requestedTab : "lots");
   const [procurementView, setProcurementView] = useState<"suppliers" | "purchases">(requestedTab === "purchases" ? "purchases" : "suppliers");
+  const [salesView, setSalesView] = useState<"buyers" | "sales">(requestedTab === "buyers" ? "buyers" : "sales");
   const selectTab = (nextTab: TabKey) => {
-    const targetTab = nextTab === "lots" || nextTab === "movements" || nextTab === "chargement" ? "stock" : nextTab === "suppliers" || nextTab === "purchases" ? "procurement" : nextTab;
+    const targetTab = nextTab === "lots" || nextTab === "movements" || nextTab === "chargement" ? "stock" : nextTab === "suppliers" || nextTab === "purchases" ? "procurement" : nextTab === "buyers" ? "sales" : nextTab;
     if (nextTab === "lots" || nextTab === "movements" || nextTab === "chargement") setStockView(nextTab);
     if (nextTab === "suppliers" || nextTab === "purchases") setProcurementView(nextTab);
+    if (nextTab === "buyers" || nextTab === "sales") setSalesView(nextTab);
     setTab(targetTab);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -345,15 +347,15 @@ export default function Commercial() {
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "quality" || (tab === "stock" && stockView === "chargement")) });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "quality" || tab === "stock") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "stock") });
-  const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
-  const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
-  const pumpSettings = useQuery({ queryKey: ["commercial", "sales", "pumps"], queryFn: () => apiGet<AnyRecord>("/commercial/v1/sales/pumps"), enabled: ready && tab === "sales" });
-  const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "sales" });
-  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && (tab === "sales" || tab === "buyers") });
-  const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-returns", 500), enabled: ready && tab === "sales" });
-  const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-return-rejections", 500), enabled: ready && tab === "sales" });
-  const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" });
-  const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && tab === "sales" });
+  const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "sales" && salesView === "buyers" && !!selectedBuyerAccountId });
+  const pumpSettings = useQuery({ queryKey: ["commercial", "sales", "pumps"], queryFn: () => apiGet<AnyRecord>("/commercial/v1/sales/pumps"), enabled: ready && tab === "sales" && salesView === "sales" });
+  const sales = useQuery({ queryKey: ["commercial", "sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "sales" && salesView === "sales" });
+  const salesInvoices = useQuery({ queryKey: ["commercial", "sales-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "sales" });
+  const saleReturns = useQuery({ queryKey: ["commercial", "sale-returns"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-returns", 500), enabled: ready && tab === "sales" && salesView === "sales" });
+  const returnRejections = useQuery({ queryKey: ["commercial", "sale-return-rejections"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sale-return-rejections", 500), enabled: ready && tab === "sales" && salesView === "sales" });
+  const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" && salesView === "sales" });
+  const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, 500), enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId });
   const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals", 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
   const supplierRows = suppliers.data ?? [];
   const purchaseRows = purchases.data ?? [];
@@ -400,12 +402,12 @@ export default function Commercial() {
   const invoiceBuyerSummary = useQuery({
     queryKey: ["commercial", "invoice-buyer-summary", selectedInvoiceId],
     queryFn: () => apiGet<AnyRecord>("/commercial/v1/buyers/" + encodeURIComponent(selectedSalesInvoice!.buyer_id) + "/account-summary"),
-    enabled: ready && tab === "sales" && !!selectedSalesInvoice,
+    enabled: ready && tab === "sales" && salesView === "sales" && !!selectedSalesInvoice,
   });
   const creditApplications = useQuery({
     queryKey: ["commercial", "credit-applications", selectedInvoiceId],
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
-    enabled: ready && tab === "sales" && !!selectedInvoiceId,
+    enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers") });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production") });
@@ -1442,7 +1444,6 @@ export default function Commercial() {
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
-    { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
@@ -2322,7 +2323,12 @@ export default function Commercial() {
         </CardContent></Card>
       </div>}
 
-      {tab === "buyers" && <div className="space-y-5">
+      {tab === "sales" && <div className="flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white p-2 shadow-sm" role="tablist" aria-label={lang === "ar" ? "أقسام البيع" : "Sections des ventes"}>
+        <Button type="button" size="sm" variant={salesView === "buyers" ? "default" : "outline"} role="tab" aria-selected={salesView === "buyers"} onClick={() => selectTab("buyers")}><UserRound className="mr-2 size-4" />{salesText.buyers}</Button>
+        <Button type="button" size="sm" variant={salesView === "sales" ? "default" : "outline"} role="tab" aria-selected={salesView === "sales"} onClick={() => selectTab("sales")}><ShoppingCart className="mr-2 size-4" />{salesText.sales}</Button>
+      </div>}
+
+      {tab === "sales" && salesView === "buyers" && <div className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
           <div className="rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
             {isAdmin && <Button type="button" className="mb-3 w-full rounded-xl bg-indigo-600 hover:bg-indigo-700" onClick={() => { resetBuyerEditor(); setShowBuyerForm((v) => !v); }}>
@@ -2397,7 +2403,7 @@ export default function Commercial() {
       {tab === "factures" && ready && <CommercialFactures initialInvoiceId={buyerInvoiceToOpen} />}
       {tab === "reports" && ready && <CommercialReports lang={lang} /> }
 
-      {tab === "sales" && <div className="space-y-4">
+      {tab === "sales" && salesView === "sales" && <div className="space-y-4">
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{saleTankOptions.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); createSale.mutate(); }}>
             <label className="grid gap-1 text-sm font-medium">{salesText.saleDate}<input required type="date" value={saleDate} onChange={(e) => { setSaleIdempotencyKey(crypto.randomUUID()); setSaleDate(e.target.value); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
