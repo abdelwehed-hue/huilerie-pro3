@@ -30,7 +30,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
+type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
 
 const labels = {
   fr: {
@@ -177,7 +177,7 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "production", "custody", "transfers", "buyers", "sales", "reports"];
+  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "chargement", "production", "custody", "transfers", "buyers", "sales", "reports"];
   const initialTab: TabKey = qrBatchCode ? "lots" : requestedTab && validTabs.includes(requestedTab) ? requestedTab : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
@@ -207,6 +207,8 @@ export default function Commercial() {
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [editingPurchase, setEditingPurchase] = useState<AnyRecord | null>(null);
   const [selectedPurchaseReceipt, setSelectedPurchaseReceipt] = useState<AnyRecord | null>(null);
+  const [chargementSearch, setChargementSearch] = useState("");
+  const [chargementFilter, setChargementFilter] = useState("ALL");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [purchaseLines, setPurchaseLines] = useState([{ variety_id: "", quantity_kg: "", unit_price_dt: "" }]);
@@ -326,18 +328,18 @@ export default function Commercial() {
   const tankHistoryInvoices = useQuery({ queryKey: ["commercial", "tank-history-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
   const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
-  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && tab === "quality" });
+  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "quality" || tab === "chargement") });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
   const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "purchases" });
   const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
-  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases") });
+  const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases" || tab === "chargement") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots") });
-  const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "lots") });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots" || tab === "chargement") });
+  const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "lots" || tab === "chargement") });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
   const pumpSettings = useQuery({ queryKey: ["commercial", "sales", "pumps"], queryFn: () => apiGet<AnyRecord>("/commercial/v1/sales/pumps"), enabled: ready && tab === "sales" });
@@ -1432,6 +1434,7 @@ export default function Commercial() {
     { id: "overview", label: l.overview, icon: Activity },
     { id: "suppliers", label: l.suppliers, icon: Truck },
     { id: "purchases", label: l.purchasesTab, icon: ShoppingBasket },
+    { id: "chargement", label: "Chargement", icon: Layers },
     { id: "lots", label: l.lots, icon: Boxes },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
@@ -1915,6 +1918,104 @@ export default function Commercial() {
           <StatCard tone="violet" label={lang === "ar" ? "عدد عمليات الشراء" : "Opérations d’achat"} value={allSupplierPurchaseCount} icon={<ShoppingCart />} />
           <StatCard tone="emerald" label={lang === "ar" ? "إجمالي الزيتون (kg)" : "Olives achetées (kg)"} value={number(allSupplierPurchaseKg)} unit="kg" icon={<Sprout />} />
           <StatCard tone="gold" label={lang === "ar" ? "القيمة الإجمالية" : "Valeur totale"} value={money(allSupplierPurchaseAmount)} icon={<Wallet />} />
+        </div>
+      </div>}
+
+      {tab === "chargement" && <div className="space-y-4">
+        <div className="flex flex-wrap gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+          <input
+            data-testid="gs-chargement-search"
+            value={chargementSearch}
+            onChange={(event) => setChargementSearch(event.target.value)}
+            placeholder="Recherche par code d’achat ou téléphone ou nom"
+            aria-label="Recherche par code d’achat ou téléphone ou nom"
+            className="h-10 min-w-[240px] flex-1 rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+          />
+          <select
+            data-testid="gs-chargement-filter"
+            aria-label="Menu de filtre"
+            value={chargementFilter}
+            onChange={(event) => setChargementFilter(event.target.value)}
+            className="h-10 min-w-44 rounded-xl border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700"
+          >
+            <option value="ALL">Tous les statuts</option>
+            <option value="DRAFT">{l.draft}</option>
+            <option value="APPROVED">{l.approved}</option>
+            <option value="CANCELLED">{lang === "ar" ? "ملغى" : "Annulé"}</option>
+          </select>
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm">
+          <Table data-testid="gs-chargement-table">
+            <TableHeader className="bg-stone-50">
+              <TableRow>
+                <TableHead className="whitespace-nowrap text-start">Code d’achat</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Fournisseur</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Téléphone</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Variété</TableHead>
+                <TableHead className="whitespace-nowrap text-end">Olive kg</TableHead>
+                <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Facture</TableHead>
+                <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
+                <TableHead className="whitespace-nowrap text-end">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(() => {
+                const normalizedSearch = chargementSearch.trim().toLocaleLowerCase();
+                const rows = [...purchaseRows]
+                  .filter((purchase) => chargementFilter === "ALL" || String(purchase.status ?? "").toUpperCase() === chargementFilter)
+                  .filter((purchase) => {
+                    if (!normalizedSearch) return true;
+                    const supplier = supplierRows.find((item) => item.id === purchase.supplier_id);
+                    const code = [purchase.batch_code, purchase.document_number, ...(purchase.batch_codes ?? [])].filter(Boolean).join(" ");
+                    return code.toLocaleLowerCase().includes(normalizedSearch)
+                      || String(supplier?.name ?? purchase.supplier_name ?? "").toLocaleLowerCase().includes(normalizedSearch)
+                      || String(supplier?.phone ?? purchase.supplier_phone ?? "").toLocaleLowerCase().includes(normalizedSearch);
+                  })
+                  .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
+                if (!rows.length) return <EmptyRow colSpan={11} text={l.noRows} />;
+                return rows.map((purchase) => {
+                  const supplier = supplierRows.find((item) => item.id === purchase.supplier_id);
+                  const purchaseCodes = [...new Set([purchase.batch_code, ...(purchase.batch_codes ?? [])].filter(Boolean).map(String))];
+                  const sourceLots = (lots.data ?? []).filter((lot) => lot.source_purchase_id === purchase.id || (lot.batch_code && purchaseCodes.includes(String(lot.batch_code))));
+                  const sourceLotIds = new Set(sourceLots.map((lot) => lot.id));
+                  const oilProduced = (productionRuns.data ?? []).filter((run) => {
+                    const inputIds = [run.input_lot_id, run.source_lot_id, ...(run.input_lot_ids ?? []), ...(run.consumed_lot_ids ?? []), ...(run.inputs ?? []).map((input: AnyRecord) => input.lot_id ?? input.olive_lot_id)].filter(Boolean);
+                    return inputIds.some((id) => sourceLotIds.has(id));
+                  }).reduce((sum, run) => sum + Number(run.output_quantity_liters ?? run.output_liters ?? 0), 0);
+                  const assessments = (quality.data ?? []).filter((assessment) =>
+                    purchaseCodes.includes(String(assessment.batch_code ?? assessment.sample_reference ?? ""))
+                    || sourceLots.some((lot) => lot.id === assessment.source_olive_lot_id || lot.id === assessment.olive_lot_id)
+                  );
+                  const latestAssessment = assessments.sort((a, b) => String(b.tested_date ?? b.created_at ?? "").localeCompare(String(a.tested_date ?? a.created_at ?? "")))[0];
+                  const laboratoryStatus = latestAssessment?.status
+                    ? (latestAssessment.status === "RELEASED" ? (lang === "ar" ? "مقبول" : "Accepté") : latestAssessment.status === "REJECTED" ? l.rejected : l.awaiting)
+                    : (lang === "ar" ? "غير محلل" : "Non analysé");
+                  const statusLabel = purchase.status === "APPROVED" ? l.approved : purchase.status === "DRAFT" ? l.draft : value(purchase.status);
+                  const invoiceNumber = purchase.invoice_number ?? purchase.supplier_invoice_number ?? purchase.document_number;
+                  const varietiesLabel = [...new Set((purchase.lines ?? []).map((line: AnyRecord) => {
+                    const variety = (varieties.data ?? []).find((item) => item.id === line.variety_id);
+                    return line.variety_name ?? variety?.name_fr ?? variety?.name_ar ?? line.variety_id;
+                  }).filter(Boolean))].join(", ") || value(purchase.variety_name);
+                  return <TableRow key={purchase.id} data-testid={`gs-chargement-row-${purchase.id}`} className="transition-colors hover:bg-emerald-50/40">
+                    <TableCell className="whitespace-nowrap font-mono text-xs font-bold text-emerald-800">{purchaseCodes.join(", ") || value(purchase.document_number)}</TableCell>
+                    <TableCell className="min-w-36 font-semibold">{supplier?.name ?? purchase.supplier_name ?? "—"}</TableCell>
+                    <TableCell dir="ltr" className="whitespace-nowrap text-start">{supplier?.phone ?? purchase.supplier_phone ?? "—"}</TableCell>
+                    <TableCell className="min-w-32">{varietiesLabel}</TableCell>
+                    <TableCell className="whitespace-nowrap text-end font-semibold text-lime-800">{number(purchase.total_quantity_kg ?? (purchase.lines ?? []).reduce((sum: number, line: AnyRecord) => sum + Number(line.quantity_kg ?? 0), 0))}</TableCell>
+                    <TableCell className="whitespace-nowrap text-end font-semibold text-amber-700">{oilProduced > 0 ? number(oilProduced) : "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{laboratoryStatus}</TableCell>
+                    <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "DRAFT" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-700"}`}>{statusLabel}</span></TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs">{value(invoiceNumber)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-end font-semibold text-violet-700">{money(purchase.total_amount_dt)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-end"><Button size="sm" variant="outline" onClick={() => { if (purchase.status === "DRAFT") startPurchaseEdit(purchase); selectTab("purchases"); }} className="rounded-lg">{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
+                  </TableRow>;
+                });
+              })()}
+            </TableBody>
+          </Table>
         </div>
       </div>}
 
