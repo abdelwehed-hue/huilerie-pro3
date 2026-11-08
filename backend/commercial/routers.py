@@ -1076,32 +1076,43 @@ async def select_sale_filling_pump(
     pump = next((item for item in settings.get("pumps", []) if item.get("id") == command.pump_id and item.get("active")), None)
     if not pump:
         raise HTTPException(422, "pump_not_available")
-    sale = await db.commercial_sales.find_one({"id": sale_id}, {"_id": 0, "id": 1, "status": 1, "pump_selection": 1})
-    if not sale:
-        raise HTTPException(404, "sale_not_found")
-    if sale.get("status") != "APPROVED":
-        raise HTTPException(409, "sale_must_be_approved_before_pump_selection")
-    if sale.get("pump_selection"):
-        raise HTTPException(409, "pump_already_selected_for_sale")
     now = datetime.now(timezone.utc)
     selection = {
         "pump_id": pump["id"], "pump_name": pump["name"],
         "selected_by": user["id"], "selected_at": now,
         "status": "SELECTED",
     }
-    result = await db.commercial_sales.update_one(
-        {"id": sale_id, "status": "APPROVED", "pump_selection": {"$exists": False}},
-        {"$set": {"pump_selection": selection}},
-    )
-    if result.modified_count != 1:
-        raise HTTPException(409, "pump_selection_conflict_reload_sale")
-    await db.commercial_audit_events.insert_one({
-        "id": str(uuid.uuid4()), "entity_type": "commercial_sale",
-        "entity_id": sale_id, "action": "FILLING_PUMP_SELECTED",
-        "actor_user_id": user["id"], "created_at": now,
-        "details": {"pump_id": pump["id"], "pump_name": pump["name"]},
-    })
-    return _safe({"sale_id": sale_id, "pump_selection": selection})
+    audit_id = str(uuid.uuid4())
+
+    async def operation(session):
+        sale = await db.commercial_sales.find_one(
+            {"id": sale_id}, {"_id": 0, "id": 1, "status": 1, "pump_selection": 1},
+            session=session,
+        )
+        if not sale:
+            raise ValueError("sale_not_found")
+        if sale.get("status") != "APPROVED":
+            raise ValueError("sale_must_be_approved_before_pump_selection")
+        if sale.get("pump_selection"):
+            raise ValueError("pump_already_selected_for_sale")
+        result = await db.commercial_sales.update_one(
+            {"id": sale_id, "status": "APPROVED", "pump_selection": {"$exists": False}},
+            {"$set": {"pump_selection": selection}}, session=session,
+        )
+        if result.modified_count != 1:
+            raise ValueError("pump_selection_conflict_reload_sale")
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id, "entity_type": "commercial_sale",
+            "entity_id": sale_id, "action": "FILLING_PUMP_SELECTED",
+            "actor_user_id": user["id"], "created_at": now,
+            "details": {"pump_id": pump["id"], "pump_name": pump["name"]},
+        }, session=session)
+        return {"sale_id": sale_id, "pump_selection": selection}
+
+    try:
+        return _safe(await run_transaction(operation))
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.get("/sales")
