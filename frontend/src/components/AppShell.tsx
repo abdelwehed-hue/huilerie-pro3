@@ -103,7 +103,7 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
               }
             >
               <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
-              <span className="whitespace-nowrap">{n.key === "help" ? "مساعدة" : t(MENU_LABEL[n.key] ?? n.key)}</span>
+              <span className="whitespace-nowrap">{n.key === "help" ? (lang === "ar" ? "مساعدة" : "Aide") : t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
         </div>
