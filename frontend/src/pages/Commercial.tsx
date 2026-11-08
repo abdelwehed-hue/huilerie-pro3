@@ -1581,12 +1581,20 @@ export default function Commercial() {
 
       <nav aria-label="GESTION COMMERCIALE" data-testid="commercial-bottom-nav" className="no-print fixed inset-x-0 bottom-0 z-40 translate-y-[26px] border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none">
         <div className="mx-auto flex max-w-7xl items-stretch gap-0.5 overflow-x-auto px-2 py-1 [scrollbar-width:none]">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`flex min-h-[3.9rem] min-w-[5.1rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border-2 px-1.5 py-1 text-[12px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
-              <Icon className="size-7 stroke-[2.2]" />
-              <span className="whitespace-nowrap">{label}</span>
-            </button>
-          ))}
+          {tabs.map(({ id, label, icon: Icon }) => {
+            const iconColor: Record<string, string> = {
+              overview: "text-lime-300", procurement: "text-amber-300", quality: "text-cyan-300",
+              production: "text-orange-300", stock: "text-emerald-300", transfers: "text-sky-300",
+              reports: "text-fuchsia-300", custody: "text-violet-300", sales: "text-pink-300",
+              factures: "text-teal-300",
+            };
+            return (
+              <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`group flex min-h-[3.9rem] min-w-[5.1rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border-2 px-1.5 py-1 text-[12px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
+                <Icon className={`size-7 stroke-[2.2] transition-transform duration-200 group-hover:-translate-y-0.5 ${tab === id ? "text-white" : (iconColor[id] ?? "text-lime-300")}`} />
+                <span className="whitespace-nowrap">{label}</span>
+              </button>
+            );
+          })}
           <button type="button" onClick={() => navigate("/")} aria-label={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} title={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} data-testid="commercial-return-home" className="ml-1 flex min-w-[4rem] flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-[#CFE3C4]/40 bg-[#DCE8D3] px-1.5 py-1 text-[11px] font-bold text-[#1E3A25] hover:bg-white">
             <Home className="size-6" />
             <span className="whitespace-nowrap">{lang === "ar" ? "الرئيسية" : "Accueil"}</span>
