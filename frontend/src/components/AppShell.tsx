@@ -244,12 +244,17 @@ export default function AppShell() {
   const pendingLabLots = useQuery({
     queryKey: ["header-lab-pending-lots"],
     queryFn: async () => {
-      const [lots, assessments] = await Promise.all([
+      const [lots, assessments, customerLoads, labAnalyses] = await Promise.all([
         apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"),
         apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"),
+        apiGet<Array<Record<string, any>>>("/loads?limit=500"),
+        apiGet<Array<Record<string, any>>>("/lab"),
       ]);
       const assessedCodes = new Set(assessments.map((assessment) => String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase()).filter(Boolean));
-      return lots.filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !assessedCodes.has(String(lot.batch_code).trim().toUpperCase())).length;
+      const pendingGsCount = lots.filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !assessedCodes.has(String(lot.batch_code).trim().toUpperCase())).length;
+      const analysedLoadIds = new Set(labAnalyses.map((analysis) => String(analysis.load_id)));
+      const pendingCustomerCount = customerLoads.filter((load) => !load.lab && load.status !== "cancelled" && !analysedLoadIds.has(String(load.id))).length;
+      return pendingGsCount + pendingCustomerCount;
     },
     refetchInterval: 30_000,
     retry: false,
