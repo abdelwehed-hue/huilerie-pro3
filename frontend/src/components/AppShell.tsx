@@ -222,7 +222,8 @@ export default function AppShell() {
   const isCommercialWorkspace = location.pathname.startsWith("/commercial");
   const me = useMe();
   const { t } = useI18n();
-  const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");\n  useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);
+  const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");
+  useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);
   const queryClient = useQueryClient();
   const tvControl = useQuery({
     queryKey: ["tv-control"],
