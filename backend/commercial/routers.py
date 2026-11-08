@@ -1098,7 +1098,7 @@ async def select_sale_filling_pump(
     command: PumpSelectionCommand,
     user: dict = Depends(current_user),
 ):
-    """Record the worker's pump choice for an approved sale; no hardware is activated."""
+    """Record or change the worker's pump choice before filling starts; no hardware is activated."""
     _authorize(user, "commercial.read")
     settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "pump_system_enabled": 1, "pumps": 1}) or {}
     if not settings.get("pump_system_enabled"):
@@ -1123,8 +1123,20 @@ async def select_sale_filling_pump(
             raise ValueError("sale_not_found")
         if sale.get("status") != "APPROVED":
             raise ValueError("sale_must_be_approved_before_pump_selection")
-        if sale.get("pump_selection"):
-            raise ValueError("pump_already_selected_for_sale")
+        previous = sale.get("pump_selection") or {}
+        previous_status = previous.get("status")
+        previous_pump_id = previous.get("pump_id")
+
+        if previous:
+            if previous_status == "IN_PROGRESS":
+                raise ValueError("pump_change_not_allowed_after_start_interrupt_first")
+            if previous_status != "SELECTED":
+                raise ValueError("sale_pump_selection_is_terminal")
+            if previous_pump_id == pump["id"]:
+                return {"sale_id": sale_id, "pump_selection": previous, "unchanged": True}
+
+        # Claim the new pump first. A duplicate _id means another filling owns it;
+        # transaction rollback preserves the old reservation and sale assignment.
         runtime_doc = {
             "_id": pump["id"],
             "pump_name": pump["name"],
@@ -1144,19 +1156,52 @@ async def select_sale_filling_pump(
                 await db.commercial_pump_runtime.insert_one(runtime_doc, session=session)
             except DuplicateKeyError as exc:
                 raise ValueError("pump_already_busy_in_another_filling") from exc
+
+        sale_filter = {"id": sale_id, "status": "APPROVED"}
+        if previous:
+            sale_filter.update({
+                "pump_selection.status": "SELECTED",
+                "pump_selection.pump_id": previous_pump_id,
+            })
+        else:
+            sale_filter["pump_selection"] = {"$exists": False}
         result = await db.commercial_sales.update_one(
-            {"id": sale_id, "status": "APPROVED", "pump_selection": {"$exists": False}},
-            {"$set": {"pump_selection": selection}}, session=session,
+            sale_filter, {"$set": {"pump_selection": selection}}, session=session,
         )
         if result.modified_count != 1:
             raise ValueError("pump_selection_conflict_reload_sale")
+
+        if previous and previous_pump_id:
+            old_release = await db.commercial_pump_runtime.update_one(
+                {"_id": previous_pump_id, "active_sale_id": sale_id, "status": "SELECTED"},
+                {"$set": {
+                    "status": "INTERRUPTED",
+                    "active_sale_id": None,
+                    "released_at": now,
+                    "updated_at": now,
+                    "release_reason": "PUMP_CHANGED_BEFORE_START",
+                }},
+                session=session,
+            )
+            if old_release.modified_count != 1:
+                raise ValueError("previous_pump_lock_missing_cannot_change")
+
+        changed = bool(previous)
         await db.commercial_audit_events.insert_one({
             "id": audit_id, "entity_type": "commercial_sale",
-            "entity_id": sale_id, "action": "FILLING_PUMP_SELECTED",
+            "entity_id": sale_id,
+            "action": "FILLING_PUMP_CHANGED" if changed else "FILLING_PUMP_SELECTED",
             "actor_user_id": user["id"], "created_at": now,
-            "details": {"pump_id": pump["id"], "pump_name": pump["name"]},
+            "details": {
+                "pump_id": pump["id"], "pump_name": pump["name"],
+                **({
+                    "previous_pump_id": previous_pump_id,
+                    "previous_pump_name": previous.get("pump_name"),
+                    "reason": "PUMP_CHANGED_BEFORE_START",
+                } if changed else {}),
+            },
         }, session=session)
-        return {"sale_id": sale_id, "pump_selection": selection}
+        return {"sale_id": sale_id, "pump_selection": selection, "changed": changed}
 
     try:
         return _safe(await run_transaction(operation))
