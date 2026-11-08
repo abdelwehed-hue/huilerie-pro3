@@ -337,7 +337,7 @@ export default function Commercial() {
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases" || tab === "chargement") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality") });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality" || tab === "chargement") });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots" || tab === "chargement") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "lots" || tab === "chargement") });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
@@ -1984,9 +1984,12 @@ export default function Commercial() {
                   const oilProduced = (productionRuns.data ?? []).filter((run) => {
                     const inputIds = [run.input_lot_id, run.source_lot_id, ...(run.input_lot_ids ?? []), ...(run.consumed_lot_ids ?? []), ...(run.inputs ?? []).map((input: AnyRecord) => input.lot_id ?? input.olive_lot_id)].filter(Boolean);
                     return inputIds.some((id) => sourceLotIds.has(id));
-                  }).reduce((sum, run) => sum + Number(run.output_quantity_liters ?? run.output_liters ?? 0), 0);
+                  }).reduce((sum, run) => sum + Number(run.output_quantity_liters ?? run.output_liters ?? run.actual_oil_output_kg ?? run.output_quantity_kg ?? 0), 0);
+                  const sourceOilLots = (lots.data ?? []).filter((lot) => sourceLotIds.has(lot.source_olive_lot_id));
+                  const sourceOilLotIds = new Set(sourceOilLots.map((lot) => lot.id));
                   const assessments = (quality.data ?? []).filter((assessment) =>
                     purchaseCodes.includes(String(assessment.batch_code ?? assessment.sample_reference ?? ""))
+                    || sourceOilLotIds.has(assessment.oil_lot_id)
                     || sourceLots.some((lot) => lot.id === assessment.source_olive_lot_id || lot.id === assessment.olive_lot_id)
                   );
                   const latestAssessment = assessments.sort((a, b) => String(b.tested_date ?? b.created_at ?? "").localeCompare(String(a.tested_date ?? a.created_at ?? "")))[0];
