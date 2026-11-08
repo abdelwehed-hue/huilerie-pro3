@@ -1580,7 +1580,7 @@ export default function Commercial() {
         <div className="mx-auto flex max-w-7xl items-stretch gap-0.5 overflow-x-auto px-2 py-1 [scrollbar-width:none]">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`flex min-w-[4.8rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg border-2 px-1.5 py-1 text-[11px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
-              <Icon className="size-4 stroke-[1.7]" />
+              <Icon className="size-3.5 stroke-[1.7]" />
               <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
@@ -1954,11 +1954,6 @@ export default function Commercial() {
                 <TableHead className="whitespace-nowrap text-start">Variété</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Olive kg</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Facture</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1975,7 +1970,7 @@ export default function Commercial() {
                       || String(supplier?.phone ?? purchase.supplier_phone ?? "").toLocaleLowerCase().includes(normalizedSearch);
                   })
                   .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
-                if (!rows.length) return <EmptyRow colSpan={11} text={l.noRows} />;
+                if (!rows.length) return <EmptyRow colSpan={6} text={l.noRows} />;
                 return rows.map((purchase) => {
                   const supplier = supplierRows.find((item) => item.id === purchase.supplier_id);
                   const purchaseCodes = [...new Set([purchase.batch_code, ...(purchase.batch_codes ?? [])].filter(Boolean).map(String))];
@@ -1985,19 +1980,6 @@ export default function Commercial() {
                     const inputIds = [run.input_lot_id, run.source_lot_id, ...(run.input_lot_ids ?? []), ...(run.consumed_lot_ids ?? []), ...(run.inputs ?? []).map((input: AnyRecord) => input.lot_id ?? input.olive_lot_id)].filter(Boolean);
                     return inputIds.some((id) => sourceLotIds.has(id));
                   }).reduce((sum, run) => sum + Number(run.output_quantity_liters ?? run.output_liters ?? run.actual_oil_output_kg ?? run.output_quantity_kg ?? 0), 0);
-                  const sourceOilLots = (lots.data ?? []).filter((lot) => sourceLotIds.has(lot.source_olive_lot_id));
-                  const sourceOilLotIds = new Set(sourceOilLots.map((lot) => lot.id));
-                  const assessments = (quality.data ?? []).filter((assessment) =>
-                    purchaseCodes.includes(String(assessment.batch_code ?? assessment.sample_reference ?? ""))
-                    || sourceOilLotIds.has(assessment.oil_lot_id)
-                    || sourceLots.some((lot) => lot.id === assessment.source_olive_lot_id || lot.id === assessment.olive_lot_id)
-                  );
-                  const latestAssessment = assessments.sort((a, b) => String(b.tested_date ?? b.created_at ?? "").localeCompare(String(a.tested_date ?? a.created_at ?? "")))[0];
-                  const laboratoryStatus = latestAssessment?.status
-                    ? (latestAssessment.status === "RELEASED" ? (lang === "ar" ? "مقبول" : "Accepté") : latestAssessment.status === "REJECTED" ? l.rejected : l.awaiting)
-                    : (lang === "ar" ? "غير محلل" : "Non analysé");
-                  const statusLabel = purchase.status === "APPROVED" ? l.approved : purchase.status === "DRAFT" ? l.draft : value(purchase.status);
-                  const invoiceNumber = purchase.invoice_number ?? purchase.supplier_invoice_number ?? purchase.document_number;
                   const varietiesLabel = [...new Set((purchase.lines ?? []).map((line: AnyRecord) => {
                     const variety = (varieties.data ?? []).find((item) => item.id === line.variety_id);
                     return line.variety_name ?? variety?.name_fr ?? variety?.name_ar ?? line.variety_id;
@@ -2009,11 +1991,6 @@ export default function Commercial() {
                     <TableCell className="min-w-32">{varietiesLabel}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold text-lime-800">{number(purchase.total_quantity_kg ?? (purchase.lines ?? []).reduce((sum: number, line: AnyRecord) => sum + Number(line.quantity_kg ?? 0), 0))}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold text-amber-700">{oilProduced > 0 ? number(oilProduced) : "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{laboratoryStatus}</TableCell>
-                    <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "DRAFT" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-700"}`}>{statusLabel}</span></TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs">{value(invoiceNumber)}</TableCell>
-                    <TableCell className="whitespace-nowrap text-end font-semibold text-violet-700">{money(purchase.total_amount_dt)}</TableCell>
-                    <TableCell className="whitespace-nowrap text-end"><Button size="sm" variant="outline" onClick={() => { if (purchase.status === "DRAFT") startPurchaseEdit(purchase); selectTab("purchases"); }} className="rounded-lg">{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
                   </TableRow>;
                 });
               })()}
