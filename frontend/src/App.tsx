@@ -20,6 +20,7 @@ import Commercial from "@/pages/Commercial";
 import CommercialCertificate from "@/pages/CommercialCertificate";
 import Audit from "@/pages/Audit";
 import Login from "@/pages/Login";
+import Help from "@/pages/Help";
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/factures" element={<Factures />} />
           <Route path="/commercial" element={<Commercial />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/commercial/certificate/:id" element={<CommercialCertificate />} />
           <Route path="/certificate/:id" element={<Certificate />} />
