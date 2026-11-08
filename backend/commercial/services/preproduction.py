@@ -299,10 +299,13 @@ async def auto_complete_preproduction_sample_for_purchase(
         if owner.get("kind") != "CUSTOMER" or owner.get("customer_id") != custody_receipt.get("customer_id"):
             raise ValueError("Customer-custody lot owner does not match its receipt")
 
-    sample_id = _stable_id(
-        "auto-preproduction-sample",
-        f"{season_code}:{source_document_type}:{source_document_id}:{batch_code}",
+    # Preserve the original deterministic IDs for existing mill-purchase samples.
+    sample_identity = (
+        f"{season_code}:{source_document_id}:{batch_code}"
+        if purchase else
+        f"{season_code}:CUSTOMER_CUSTODY:{source_document_id}:{batch_code}"
     )
+    sample_id = _stable_id("auto-preproduction-sample", sample_identity)
     oil_lot_id = _stable_id("auto-preproduction-oil-lot", sample_id)
     samples = db["commercial_preproduction_samples"]
     existing = await samples.find_one(
