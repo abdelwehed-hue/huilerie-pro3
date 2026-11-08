@@ -1133,9 +1133,10 @@ async def select_sale_filling_pump(
             "claimed_at": now,
             "updated_at": now,
         }
+        runtime_update = {key: value for key, value in runtime_doc.items() if key != "_id"}
         released = await db.commercial_pump_runtime.update_one(
             {"_id": pump["id"], "status": {"$in": ["COMPLETED", "INTERRUPTED"]}},
-            {"$set": runtime_doc},
+            {"$set": runtime_update},
             session=session,
         )
         if released.matched_count == 0:
