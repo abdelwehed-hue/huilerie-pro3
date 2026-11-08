@@ -59,7 +59,6 @@ const NAV = [
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
   { to: "/commercial", key: "commercial", icon: Warehouse, id: "nav-commercial", color: "text-lime-300" },
-  { to: "/help", key: "help", icon: CircleHelp, id: "nav-help", color: "text-sky-300" },
 
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
@@ -80,7 +79,7 @@ export function LangToggle({ className }: { className?: string }) {
   );
 }
 
-function BottomNav({ isAdmin, revealEnabled, isCommercialWorkspace }: { isAdmin: boolean; revealEnabled: boolean; isCommercialWorkspace: boolean }) {
+function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
   const { t, lang } = useI18n();
   return (
     <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
@@ -89,7 +88,7 @@ function BottomNav({ isAdmin, revealEnabled, isCommercialWorkspace }: { isAdmin:
         className={cn("absolute inset-x-0 bottom-0 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", revealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}
       >
         <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
-          {NAV.filter((n) => (!("admin" in n) || isAdmin) && !(isCommercialWorkspace && n.key === "help")).map((n) => (
+          {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -103,7 +102,7 @@ function BottomNav({ isAdmin, revealEnabled, isCommercialWorkspace }: { isAdmin:
               }
             >
               <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
-              <span className="whitespace-nowrap">{n.key === "help" ? (lang === "ar" ? "مساعدة" : "Aide") : t(MENU_LABEL[n.key] ?? n.key)}</span>
+              <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
         </div>
@@ -399,6 +398,7 @@ export default function AppShell() {
                 </Button>
               )}
               <LangToggle />
+              <NavLink to="/help" data-testid="header-help" title={lang === "ar" ? "مساعدة" : "Aide"} aria-label={lang === "ar" ? "مساعدة" : "Aide"} className="grid size-9 shrink-0 place-items-center rounded-xl border border-sky-200 bg-sky-50 text-sky-800 shadow-sm transition-colors hover:bg-sky-100"><CircleHelp className="size-5" /></NavLink>
               {user && (
                 <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">
                   <div className="font-semibold text-stone-900">{user.full_name}</div>
@@ -415,7 +415,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} isCommercialWorkspace={isCommercialWorkspace} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} />}
     </div>
     </ThemeProvider>
   );
