@@ -1452,9 +1452,14 @@ export default function Commercial() {
           <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
           {tab === "overview" && <p className="mt-2 max-w-3xl text-sm text-stone-500 md:text-base">{l.subtitle}</p>}
         </div>
-        <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["commercial"] })}>
-          <RefreshCw className="size-4" /> {l.refresh}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => navigate("/help")}>
+            <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
+          </Button>
+          <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["commercial"] })}>
+            <RefreshCw className="size-4" /> {l.refresh}
+          </Button>
+        </div>
       </div>
 
       {status.isError && (
