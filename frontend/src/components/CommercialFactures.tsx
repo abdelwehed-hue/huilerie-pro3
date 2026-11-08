@@ -96,7 +96,7 @@ const page = async <T,>(url: string): Promise<T[]> => {
   return Array.isArray(result) ? result : [];
 };
 
-export default function CommercialFactures() {
+export default function CommercialFactures({ initialInvoiceId = "" }: { initialInvoiceId?: string }) {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const isAdmin = useMe().data?.role === "admin";
@@ -105,7 +105,7 @@ export default function CommercialFactures() {
   const [search, setSearch] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(initialInvoiceId);
   const [editingInvoiceId, setEditingInvoiceId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Tunis" }));
