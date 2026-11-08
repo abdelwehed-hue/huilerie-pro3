@@ -1573,7 +1573,7 @@ export default function Commercial() {
 
       
 
-      <nav aria-label="GESTION COMMERCIALE" data-testid="commercial-bottom-nav" className="no-print fixed inset-x-0 bottom-0 z-40 translate-y-1 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none">
+      <nav aria-label="GESTION COMMERCIALE" data-testid="commercial-bottom-nav" className="no-print fixed inset-x-0 bottom-0 z-40 translate-y-3 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none">
         <div className="mx-auto flex max-w-7xl items-stretch gap-0.5 overflow-x-auto px-2 py-1 [scrollbar-width:none]">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`flex min-w-[4.8rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg border-2 px-1.5 py-1 text-[11px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
