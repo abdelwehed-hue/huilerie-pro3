@@ -184,7 +184,7 @@ export default function Commercial() {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [stockView, setStockView] = useState<"lots" | "movements" | "chargement">(requestedTab === "movements" || requestedTab === "chargement" ? requestedTab : "lots");
   const [procurementView, setProcurementView] = useState<"suppliers" | "purchases">(requestedTab === "purchases" ? "purchases" : "suppliers");
-  const [salesView, setSalesView] = useState<"buyers" | "sales">(requestedTab === "buyers" ? "buyers" : "sales");
+  const [salesView, setSalesView] = useState<"buyers" | "sales">("buyers");
   const selectTab = (nextTab: TabKey) => {
     const targetTab = nextTab === "lots" || nextTab === "movements" || nextTab === "chargement" ? "stock" : nextTab === "suppliers" || nextTab === "purchases" ? "procurement" : nextTab === "buyers" ? "sales" : nextTab;
     if (nextTab === "lots" || nextTab === "movements" || nextTab === "chargement") setStockView(nextTab);
