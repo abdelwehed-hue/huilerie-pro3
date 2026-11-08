@@ -88,7 +88,7 @@ export default function Lab() {
   });
   const list = useQuery({ queryKey: ["lab"], queryFn: () => apiGet<LabAnalysis[]>("/lab") });
   const loadsList = useQuery({ queryKey: ["lab-pending-load-codes"], queryFn: () => apiGet<Load[]>("/loads?limit=500"), retry: false });
-  const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
+  const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !(gsAssessments.data ?? []).some((assessment) => String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === String(lot.batch_code).trim().toUpperCase())).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
   const rows = list.isError ? [] : (list.data ?? []);
   const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
   const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
@@ -332,17 +332,18 @@ export default function Lab() {
               <Table>
                 <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {(gsLots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id).map((lot) => {
-                    const purchase = (gsPurchases.data ?? []).find((item) => item.id === lot.source_purchase_id || item.batch_code === lot.batch_code);
+                  {pendingGsCodes.map((pendingCode) => {
+                    const purchase = (gsPurchases.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
+                    const oliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && String(lot.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
                     const types = [...new Set((purchase?.lines ?? []).map((line: any) => {
                       const item = (gsVarieties.data ?? []).find((v) => v.id === line.variety_id);
                       return String(item?.name_fr || item?.name || line.variety_id || "").trim();
                     }).filter(Boolean))].join(", ");
-                    return <TableRow key={lot.id}>
-                      <TableCell><button type="button" onClick={() => { const selectedCode = String(lot.batch_code || lot.document_number || lot.id); setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: selectedCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{String(lot.batch_code || lot.document_number || lot.id)}</button></TableCell>
-                      <TableCell>{String(purchase?.document_number || "—")}</TableCell>
+                    return <TableRow key={pendingCode}>
+                      <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: pendingCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{pendingCode}</button></TableCell>
+                      <TableCell>{String(purchase?.document_number || oliveLot?.source_purchase_id || "—")}</TableCell>
                       <TableCell>{types || "—"}</TableCell>
-                      <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                      <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Achat reçu · En attente d’analyse</span></TableCell>
                     </TableRow>;
                   })}
                   {pendingLoads.map((load) => <TableRow key={load.id}>
