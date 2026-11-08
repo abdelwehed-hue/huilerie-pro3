@@ -1430,7 +1430,6 @@ export default function Commercial() {
   // Operational sequence: supplier → olive intake/purchase → lot tracking → pressing → oil storage → quality → movements → delivery/sale.
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
-    { id: "reports", label: "Rapport", icon: FileText },
     { id: "suppliers", label: l.suppliers, icon: Truck },
     { id: "purchases", label: l.purchasesTab, icon: ShoppingBasket },
     { id: "lots", label: l.lots, icon: Boxes },
@@ -1438,8 +1437,9 @@ export default function Commercial() {
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "movements", label: l.movements, icon: ArrowLeftRight },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
-    { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
+    { id: "reports", label: "Rapport", icon: FileText },
+    { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     { id: "factures", label: l.facturesTab, icon: FileText },
     // Supporting/setup sections are grouped after the operational flow.
