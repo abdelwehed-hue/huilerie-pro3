@@ -26,6 +26,7 @@ import {
   Monitor,
   Check,
   ArrowLeft,
+  CircleHelp,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const NAV = [
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
   { to: "/commercial", key: "commercial", icon: Warehouse, id: "nav-commercial", color: "text-lime-300" },
+  { to: "/help", key: "help", icon: CircleHelp, id: "nav-help", color: "text-sky-300" },
 
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
@@ -101,7 +103,7 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
               }
             >
               <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
-              <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
+              <span className="whitespace-nowrap">{n.key === "help" ? "مساعدة" : t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
         </div>
