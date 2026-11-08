@@ -101,6 +101,11 @@ class PumpSelectionCommand(BaseModel):
     pump_id: str = Field(min_length=1, max_length=80)
 
 
+class PumpStatusCommand(BaseModel):
+    status: Literal["IN_PROGRESS", "COMPLETED", "INTERRUPTED"]
+    reason: str | None = Field(default=None, min_length=3, max_length=500)
+
+
 class OliveReceptionPurchaseCommand(BaseModel):
     """Create an olive purchase and post its physical reception atomically."""
     supplier_id: str | None = Field(default=None, min_length=1, max_length=100)
@@ -1107,6 +1112,24 @@ async def select_sale_filling_pump(
             raise ValueError("sale_must_be_approved_before_pump_selection")
         if sale.get("pump_selection"):
             raise ValueError("pump_already_selected_for_sale")
+        runtime_doc = {
+            "_id": pump["id"],
+            "pump_name": pump["name"],
+            "active_sale_id": sale_id,
+            "status": "SELECTED",
+            "claimed_at": now,
+            "updated_at": now,
+        }
+        released = await db.commercial_pump_runtime.update_one(
+            {"_id": pump["id"], "status": {"$in": ["COMPLETED", "INTERRUPTED"]}},
+            {"$set": runtime_doc},
+            session=session,
+        )
+        if released.matched_count == 0:
+            try:
+                await db.commercial_pump_runtime.insert_one(runtime_doc, session=session)
+            except DuplicateKeyError as exc:
+                raise ValueError("pump_already_busy_in_another_filling") from exc
         result = await db.commercial_sales.update_one(
             {"id": sale_id, "status": "APPROVED", "pump_selection": {"$exists": False}},
             {"$set": {"pump_selection": selection}}, session=session,
@@ -1120,6 +1143,93 @@ async def select_sale_filling_pump(
             "details": {"pump_id": pump["id"], "pump_name": pump["name"]},
         }, session=session)
         return {"sale_id": sale_id, "pump_selection": selection}
+
+    try:
+        return _safe(await run_transaction(operation))
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/sales/{sale_id}/pump-status")
+async def update_sale_pump_status(
+    sale_id: str,
+    command: PumpStatusCommand,
+    user: dict = Depends(current_user),
+):
+    """Advance a worker-recorded pump job; this endpoint never controls hardware."""
+    _authorize(user, "commercial.read")
+    now = datetime.now(timezone.utc)
+    audit_id = str(uuid.uuid4())
+
+    async def operation(session):
+        sale = await db.commercial_sales.find_one(
+            {"id": sale_id},
+            {"_id": 0, "id": 1, "status": 1, "pump_selection": 1},
+            session=session,
+        )
+        if not sale:
+            raise ValueError("sale_not_found")
+        selection = sale.get("pump_selection") or {}
+        current = selection.get("status")
+        pump_id = selection.get("pump_id")
+        if sale.get("status") != "APPROVED" or not pump_id:
+            raise ValueError("sale_has_no_active_pump_selection")
+        allowed = {
+            "IN_PROGRESS": {"SELECTED"},
+            "COMPLETED": {"IN_PROGRESS"},
+            "INTERRUPTED": {"SELECTED", "IN_PROGRESS"},
+        }
+        if current not in allowed[command.status]:
+            raise ValueError("invalid_pump_status_transition")
+        runtime = await db.commercial_pump_runtime.find_one(
+            {"_id": pump_id, "active_sale_id": sale_id},
+            {"_id": 1, "status": 1},
+            session=session,
+        )
+        if not runtime:
+            raise ValueError("pump_runtime_lock_missing")
+        result = await db.commercial_sales.update_one(
+            {"id": sale_id, "pump_selection.status": current},
+            {"$set": {
+                "pump_selection.status": command.status,
+                "pump_selection.updated_at": now,
+                "pump_selection.updated_by": user["id"],
+                **({"pump_selection.reason": command.reason.strip()} if command.reason else {}),
+            }},
+            session=session,
+        )
+        if result.modified_count != 1:
+            raise ValueError("pump_status_conflict_reload_sale")
+        terminal = command.status in {"COMPLETED", "INTERRUPTED"}
+        await db.commercial_pump_runtime.update_one(
+            {"_id": pump_id, "active_sale_id": sale_id},
+            {"$set": {
+                "status": command.status,
+                "updated_at": now,
+                **({"active_sale_id": None, "released_at": now} if terminal else {}),
+            }},
+            session=session,
+        )
+        await db.commercial_audit_events.insert_one({
+            "id": audit_id,
+            "entity_type": "commercial_sale",
+            "entity_id": sale_id,
+            "action": f"FILLING_PUMP_{command.status}",
+            "actor_user_id": user["id"],
+            "created_at": now,
+            "details": {
+                "pump_id": pump_id,
+                "from_status": current,
+                "to_status": command.status,
+                "reason": command.reason.strip() if command.reason else None,
+            },
+        }, session=session)
+        return {
+            "sale_id": sale_id,
+            "pump_id": pump_id,
+            "status": command.status,
+            "released": terminal,
+        }
 
     try:
         return _safe(await run_transaction(operation))
