@@ -30,7 +30,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales";
+type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
 
 const labels = {
   fr: {
