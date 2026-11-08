@@ -343,16 +343,28 @@ export default function Lab() {
                 <TableBody>
                   {pendingGsCodes.map((pendingCode) => {
                     const purchase = (gsPurchases.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
+                    const custodyReceipt = (gsCustodyReceipts.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase() && item.status === "RECEIVED");
                     const oliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && String(lot.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
-                    const types = [...new Set((purchase?.lines ?? []).map((line: any) => {
+                    const purchaseTypes = (purchase?.lines ?? []).map((line: any) => {
                       const item = (gsVarieties.data ?? []).find((v) => v.id === line.variety_id);
                       return String(item?.name_fr || item?.name || line.variety_id || "").trim();
-                    }).filter(Boolean))].join(", ");
+                    });
+                    const custodyVariety = (gsVarieties.data ?? []).find((v) => v.id === custodyReceipt?.variety_id);
+                    const types = [...new Set([
+                      ...purchaseTypes,
+                      ...(custodyReceipt ? [String(custodyVariety?.name_fr || custodyVariety?.name || custodyReceipt.variety_id || "").trim()] : []),
+                    ].filter(Boolean))].join(", ");
+                    const sourceLabel = purchase
+                      ? String(purchase.document_number || oliveLot?.source_purchase_id || "Achat de la huilerie")
+                      : custodyReceipt
+                        ? "Garde du client" + (custodyReceipt.customer_name ? " · " + custodyReceipt.customer_name : "")
+                        : "—";
+                    const statusLabel = custodyReceipt ? "Garde client · En attente d’analyse" : "Achat reçu · En attente d’analyse";
                     return <TableRow key={pendingCode}>
                       <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: pendingCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{pendingCode}</button></TableCell>
-                      <TableCell>{String(purchase?.document_number || oliveLot?.source_purchase_id || "—")}</TableCell>
+                      <TableCell>{sourceLabel}</TableCell>
                       <TableCell>{types || "—"}</TableCell>
-                      <TableCell><span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"><span className="size-2 rounded-full bg-amber-600 animate-pulse" /> <span className="animate-pulse">Achat reçu · En attente d’analyse</span></span></TableCell>
+                      <TableCell><span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"><span className="size-2 rounded-full bg-amber-600 animate-pulse" /> <span className="animate-pulse">{statusLabel}</span></span></TableCell>
                     </TableRow>;
                   })}
                   {pendingLoads.map((load) => <TableRow key={load.id}>
