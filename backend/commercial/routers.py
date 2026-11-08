@@ -1062,6 +1062,18 @@ async def list_commercial_credit_notes(
     return _safe(docs)
 
 
+@router.get("/sales/pumps")
+async def list_filling_pumps(user: dict = Depends(current_user)):
+    _authorize(user, "commercial.read")
+    settings = await db.settings.find_one(
+        {"key": "app"}, {"_id": 0, "pump_system_enabled": 1, "pumps": 1}
+    ) or {}
+    return {
+        "pump_system_enabled": bool(settings.get("pump_system_enabled", False)),
+        "pumps": settings.get("pumps", []),
+    }
+
+
 @router.post("/sales/{sale_id}/pump-selection")
 async def select_sale_filling_pump(
     sale_id: str,
