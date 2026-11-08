@@ -71,9 +71,9 @@ export function LangToggle({ className }: { className?: string }) {
       type="button"
       data-testid={`lang-option-${other}`}
       onClick={() => setLang(other)}
-      className={cn("inline-flex h-9 items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 font-semibold text-stone-800 shadow-sm transition-colors duration-200 hover:bg-stone-50", className)}
+      className={cn("inline-flex h-8 items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 font-semibold text-stone-800 shadow-sm transition-colors duration-200 hover:bg-stone-50", className)}
     >
-      <Languages className="size-4 text-stone-600" />
+      <Languages className="size-3.5 text-stone-600" />
       <span lang={other}>{other === "ar" ? "العربية" : "Français"}</span>
     </button>
   );
@@ -128,9 +128,9 @@ function HeaderAppearanceMenu() {
         aria-expanded={open}
         data-testid="header-appearance-trigger"
         onClick={() => setOpen((value) => !value)}
-        className="grid size-10 place-items-center rounded-xl border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800"
+        className="grid size-8 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800"
       >
-        <Menu className="size-5" />
+        <Menu className="size-4" />
       </button>
       {open && (
         <>
@@ -206,14 +206,14 @@ function Brand() {
   return (
     <div className="flex items-center gap-2" data-testid="header-brand">
       {m?.mill_logo ? (
-        <img src={m.mill_logo} alt="" data-testid="header-brand-logo" className="size-10 rounded-xl bg-white object-contain shadow-md shadow-green-950/10" />
+        <img src={m.mill_logo} alt="" data-testid="header-brand-logo" className="size-8 rounded-lg bg-white object-contain shadow-md shadow-green-950/10" />
       ) : (
         <div className="grid size-10 place-items-center rounded-xl bg-[#1F3A24] shadow-md shadow-green-950/20">
           <Droplets className="size-5 text-amber-400" />
         </div>
       )}
       <div>
-        <div className="font-heading text-lg font-bold leading-tight text-stone-900" data-testid="header-brand-name">{m?.mill_name || t("app_name")}</div>
+        <div className="font-heading text-base font-bold leading-tight text-stone-900" data-testid="header-brand-name">{m?.mill_name || t("app_name")}</div>
         <div className="hidden text-sm text-stone-500 sm:block">{t("app_tagline")}</div>
       </div>
     </div>
@@ -338,7 +338,7 @@ export default function AppShell() {
       <div>
         <div className={cn("group fixed inset-x-0 top-0 z-50", navRevealEnabled ? "h-3" : "")}>
         <header className={cn("app-topbar-header border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", navRevealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}>
-          <div className="relative mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
+          <div className="relative mx-auto flex max-w-7xl items-center gap-2 px-3 py-1 md:px-6">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
               <Brand />
@@ -346,24 +346,24 @@ export default function AppShell() {
             <div
               data-testid="header-lab-pending-count"
               title="Lots d’huile en attente d’analyse"
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-2 py-1.5 text-cyan-950 shadow-sm"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-1.5 py-1 text-cyan-950 shadow-sm"
               aria-live="polite"
             >
               <FlaskConical className="size-4 text-cyan-700" />
               <span className="hidden text-sm font-semibold sm:inline">En attente d’analyse</span>
-              <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-600 px-2 py-0.5 text-sm font-bold text-white">
+              <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-cyan-600 px-1.5 py-0.5 text-xs font-bold text-white">
                 {pendingLabLots.data ?? "—"}
               </span>
             </div>
             <div
               data-testid="header-non-terminated"
               title="كل الحمولات التي لم تنتهِ من العصر"
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-950 shadow-sm"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-1.5 py-1 text-amber-950 shadow-sm"
               aria-live="polite"
             >
               <Clock3 className="size-4 text-amber-700" />
               <span className="hidden text-sm font-semibold sm:inline">Non terminé</span>
-              <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-amber-600 px-2 py-0.5 text-sm font-bold text-white">
+              <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-600 px-1.5 py-0.5 text-xs font-bold text-white">
                 {todayLoads.data?.non_terminated ?? "—"}
               </span>
             </div>
@@ -375,11 +375,11 @@ export default function AppShell() {
                 title="Fermer la session"
                 aria-label="Fermer la session"
                 data-testid="header-logout"
-                className="absolute right-4 top-2 z-10 size-9 shrink-0 rounded-xl border-stone-200 bg-white text-stone-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:right-8"
+                className="absolute right-3 top-1 z-10 size-8 shrink-0 rounded-xl border-stone-200 bg-white text-stone-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:right-6"
               >
                 <LogOut className="size-4" />
               </Button>
-            <div className="ms-auto flex items-center gap-3 pr-12">
+            <div className="ms-auto flex items-center gap-2 pr-10">
               {user && <SeasonSwitcher isAdmin={isAdmin} />}
               {user && (
                 <Button
@@ -391,14 +391,14 @@ export default function AppShell() {
                   title={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
                   aria-label={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
                   data-testid="tv-remote-sound-toggle"
-                  className={cn("h-9 gap-1.5 rounded-xl px-2.5", tvControl.data?.sound_enabled ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-white text-stone-600")}
+                  className={cn("h-8 gap-1 rounded-lg px-2", tvControl.data?.sound_enabled ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-white text-stone-600")}
                 >
                   {tvControl.data?.sound_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
                   <span className="hidden text-xs font-semibold sm:inline">{tvControl.data?.sound_enabled ? "Son TV activé" : "Activer le son TV"}</span>
                 </Button>
               )}
               <LangToggle />
-              <NavLink to="/help" data-testid="header-help" title={lang === "ar" ? "مساعدة" : "Aide"} aria-label={lang === "ar" ? "مساعدة" : "Aide"} className="grid size-9 shrink-0 place-items-center rounded-xl border border-sky-200 bg-sky-50 text-sky-800 shadow-sm transition-colors hover:bg-sky-100"><CircleHelp className="size-5" /></NavLink>
+              <NavLink to="/help" data-testid="header-help" title={lang === "ar" ? "مساعدة" : "Aide"} aria-label={lang === "ar" ? "مساعدة" : "Aide"} className="grid size-8 shrink-0 place-items-center rounded-lg border border-sky-200 bg-sky-50 text-sky-800 shadow-sm transition-colors hover:bg-sky-100"><CircleHelp className="size-4" /></NavLink>
               {user && (
                 <div className="hidden text-end leading-tight sm:block" data-testid="user-role-badge">
                   <div className="font-semibold text-stone-900">{user.full_name}</div>
@@ -410,7 +410,7 @@ export default function AppShell() {
           </div>
         </header>
         </div>
-        <div aria-hidden="true" className="h-14" />
+        <div aria-hidden="true" className="h-12" />
         <main className="px-4 pb-32 pt-6 md:px-8 md:pt-8">
           <Outlet />
         </main>
