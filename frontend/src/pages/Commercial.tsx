@@ -1453,9 +1453,7 @@ export default function Commercial() {
           {tab === "overview" && <p className="mt-2 max-w-3xl text-sm text-stone-500 md:text-base">{l.subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate("/help")}>
-            <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
-          </Button>
+          
           <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={() => navigate("/help")}>
             <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
