@@ -17,6 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import CommercialFactures from "@/components/CommercialFactures";
 import { StatCard } from "@/components/shared";
 import QrScanDialog from "@/components/QrScanDialog";
+import CommercialReports from "@/components/CommercialReports";
+
 import { QRCodeSVG } from "qrcode.react";
 
 type AnyRecord = Record<string, any>;
@@ -175,7 +177,7 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "production", "custody", "transfers", "buyers", "sales"];
+  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "production", "custody", "transfers", "buyers", "sales", "reports"];
   const initialTab: TabKey = qrBatchCode ? "lots" : requestedTab && validTabs.includes(requestedTab) ? requestedTab : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
@@ -1422,6 +1424,7 @@ export default function Commercial() {
   // Operational sequence: supplier → olive intake/purchase → lot tracking → pressing → oil storage → quality → movements → delivery/sale.
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
+    { id: "reports", label: "Rapport", icon: FileText },
     { id: "suppliers", label: l.suppliers, icon: Truck },
     { id: "purchases", label: l.purchasesTab, icon: ShoppingBasket },
     { id: "lots", label: l.lots, icon: Boxes },
@@ -2222,6 +2225,7 @@ export default function Commercial() {
       </div>}
 
       {tab === "factures" && ready && <CommercialFactures initialInvoiceId={buyerInvoiceToOpen} />}
+      {tab === "reports" && ready && <CommercialReports lang={lang} /> }
 
       {tab === "sales" && <div className="space-y-4">
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{saleTankOptions.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
