@@ -164,8 +164,8 @@ export default function Lab() {
   });
 
   const vq = useQuery({ queryKey: ["varieties"], queryFn: () => apiGet<Varieties>("/varieties") });
-  const oilType = f.oilType || found?.variety || "";
-  const oilTypes = [...new Set([...(vq.isError ? [] : (vq.data?.varieties ?? [])), ...(oilType ? [oilType] : [])])];
+  const oilType = isGsCode ? (gsOliveVariety || f.oilType) : (f.oilType || found?.variety || "");
+  const oilTypes = [...new Set([...(isGsCode ? (gsVarieties.data ?? []).map((item: any) => String(item.name_fr || item.name || "").trim()).filter(Boolean) : (vq.isError ? [] : (vq.data?.varieties ?? []))), ...(oilType ? [oilType] : [])])];
   const GRADE_LABEL: Record<string, string> = { auto: t("auto"), extra_vierge: t("extra_vierge"), vierge: t("vierge"), lampante: t("lampante") };
 
   return (
@@ -301,7 +301,7 @@ export default function Lab() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>{t("oil_type")}</Label>
+            <Label>{isGsCode ? "Type d’olive" : t("oil_type")}</Label>
             <Select value={oilType || null} disabled={gsAnalysisLocked} onValueChange={(v) => set("oilType")((v as string) ?? "")}>
               <SelectTrigger className="h-10 w-full rounded-xl bg-white" data-testid="lab-oil-type-select">
                 <SelectValue>{(v) => (v ? String(v) : <span className="text-stone-400">{t("choose_oil_type")}</span>)}</SelectValue>
