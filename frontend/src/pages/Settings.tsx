@@ -27,7 +27,18 @@ import { ShieldCheck } from "lucide-react";
 import Audit from "@/pages/Audit";
 
 
-function NavigationRevealSettings() {\n  const { lang } = useI18n();\n  const [enabled, setEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");\n  const change = (value: boolean) => { localStorage.setItem("oroverde-nav-reveal", String(value)); setEnabled(value); window.dispatchEvent(new Event("oroverde-nav-reveal-change")); };\n  return <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">\n    <div className="mb-4 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Eye className="size-5" /></span><div><h2 className="font-semibold text-stone-900">{lang === "ar" ? "إظهار وإخفاء أشرطة التنقل" : "Affichage des barres de navigation"}</h2><p className="text-sm text-stone-500">{lang === "ar" ? "إخفاء تدريجي للشريط العلوي والسفلي، وإظهارهما عند مرور الفأرة فوقهما." : "Masquer progressivement les barres supérieure et inférieure, puis les révéler au survol."}</p></div></div>\n    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl bg-stone-50 p-4"><span className="font-medium text-stone-800">{lang === "ar" ? "تفعيل الإخفاء التدريجي" : "Activer le masquage progressif"}</span><input data-testid="navigation-reveal-toggle" type="checkbox" checked={enabled} onChange={(e) => change(e.target.checked)} className="size-5 accent-violet-700" /></label>\n    <p className="mt-3 text-xs text-stone-500">{lang === "ar" ? "على الأجهزة اللمسية تبقى الأشرطة ظاهرة لتسهيل الاستخدام." : "Sur les appareils tactiles, les barres restent visibles."}</p>\n  </section>;\n}\n\nfunction EmployeePermissionsPanel() {
+function NavigationRevealSettings() {
+  const { lang } = useI18n();
+  const [enabled, setEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");
+  const change = (value: boolean) => { localStorage.setItem("oroverde-nav-reveal", String(value)); setEnabled(value); window.dispatchEvent(new Event("oroverde-nav-reveal-change")); };
+  return <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+    <div className="mb-4 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Eye className="size-5" /></span><div><h2 className="font-semibold text-stone-900">{lang === "ar" ? "إظهار وإخفاء أشرطة التنقل" : "Affichage des barres de navigation"}</h2><p className="text-sm text-stone-500">{lang === "ar" ? "إخفاء تدريجي للشريط العلوي والسفلي، وإظهارهما عند مرور الفأرة فوقهما." : "Masquer progressivement les barres supérieure et inférieure, puis les révéler au survol."}</p></div></div>
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl bg-stone-50 p-4"><span className="font-medium text-stone-800">{lang === "ar" ? "تفعيل الإخفاء التدريجي" : "Activer le masquage progressif"}</span><input data-testid="navigation-reveal-toggle" type="checkbox" checked={enabled} onChange={(e) => change(e.target.checked)} className="size-5 accent-violet-700" /></label>
+    <p className="mt-3 text-xs text-stone-500">{lang === "ar" ? "على الأجهزة اللمسية تبقى الأشرطة ظاهرة لتسهيل الاستخدام." : "Sur les appareils tactiles, les barres restent visibles."}</p>
+  </section>;
+}
+
+function EmployeePermissionsPanel() {
   const { lang, errMsg } = useI18n();
   const queryClient = useQueryClient();
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
