@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, CircleHelp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,6 +46,7 @@ const sections = [
 ];
 
 export default function Help() {
+  const navigate = useNavigate();
   return (
     <div dir="rtl" className="mx-auto max-w-5xl space-y-6 pb-8 text-right">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -56,7 +57,7 @@ export default function Help() {
             <p className="mt-1 text-sm text-stone-600">شرح مبسّط لوظائف صفحات Oro Verde وGS</p>
           </div>
         </div>
-        <Button asChild variant="outline"><Link to="/"><ArrowLeft className="size-4" /> العودة إلى التطبيق</Link></Button>
+        <Button type="button" variant="outline" onClick={() => navigate("/")}><ArrowLeft className="size-4" /> العودة إلى التطبيق</Button>
       </div>
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-950">
         <div className="mb-1 flex items-center gap-2 font-bold"><BookOpen className="size-5" /> كيف تستعمل هذه الصفحة؟</div>
