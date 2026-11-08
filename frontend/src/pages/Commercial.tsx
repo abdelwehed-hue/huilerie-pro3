@@ -950,6 +950,18 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const updateFillingStatus = useMutation({
+    mutationFn: ({ sale, status, reason }: { sale: AnyRecord; status: "IN_PROGRESS" | "COMPLETED" | "INTERRUPTED"; reason?: string }) =>
+      apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/pump-status`, { status, reason }),
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تحديث حالة التعبئة" : "État du remplissage mis à jour");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "sales", "pumps"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const approveSale = useMutation({
     mutationFn: (sale: AnyRecord) => apiPost<AnyRecord>(`/commercial/v1/sales/${encodeURIComponent(sale.id)}/approve`, {
       expected_version: sale.version, idempotency_key: crypto.randomUUID(),
