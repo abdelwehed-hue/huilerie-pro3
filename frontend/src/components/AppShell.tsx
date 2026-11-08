@@ -81,30 +81,32 @@ export function LangToggle({ className }: { className?: string }) {
 function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
   const { t } = useI18n();
   return (
-    <nav
-      data-testid="bottom-nav"
-      className={cn("no-print fixed inset-x-0 bottom-0 z-40 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", revealEnabled ? "app-bottom-nav opacity-0 pointer-events-none hover:opacity-100 hover:pointer-events-auto" : "opacity-100")}
-    >
-      <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
-        {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            end={n.to === "/"}
-            data-testid={n.id}
-            className={({ isActive }) =>
-              cn(
-                "group flex min-w-[5.25rem] flex-1 flex-col items-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
-                isActive ? "border-[#CFE3C4] bg-[#2C4A30]/95 text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/10 hover:text-white",
-              )
-            }
-          >
-            <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
-            <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+    <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
+      <nav
+        data-testid="bottom-nav"
+        className={cn("absolute inset-x-0 bottom-0 border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", revealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}
+      >
+        <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
+          {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.to === "/"}
+              data-testid={n.id}
+              className={({ isActive }) =>
+                cn(
+                  "group flex min-w-[5.25rem] flex-1 flex-col items-center gap-1 rounded-xl border-2 px-2 py-1.5 text-xs font-medium transition-[background-color,border-color,color] duration-200",
+                  isActive ? "border-[#CFE3C4] bg-[#2C4A30]/95 text-white" : "border-transparent text-[#C9D4C6] hover:bg-white/10 hover:text-white",
+                )
+              }
+            >
+              <n.icon className="size-5 stroke-[1.6] transition-transform duration-200 group-hover:-translate-y-0.5" />
+              <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </div>
   );
 }
 
@@ -315,8 +317,8 @@ export default function AppShell() {
     <ThemeProvider userId={user.id}>
     <div className="min-h-screen bg-[#F9F8F3]">
       <div>
-        <div className="group fixed inset-x-0 top-0 z-50">
-        <header className="app-topbar-header border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none opacity-0 pointer-events-none transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto motion-reduce:transition-none">
+        <div className={cn("group fixed inset-x-0 top-0 z-50", navRevealEnabled ? "h-3" : "")}>
+        <header className={cn("app-topbar-header border-b border-stone-200/70 bg-[#F9F8F3]/95 shadow-sm backdrop-blur-none transition-opacity duration-700 ease-in-out motion-reduce:transition-none", navRevealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}>
           <div className="relative mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
             <div dir="ltr" className="flex shrink-0 items-center gap-2">
               <HeaderAppearanceMenu />
