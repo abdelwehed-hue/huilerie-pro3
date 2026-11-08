@@ -198,6 +198,7 @@ export default function Commercial() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [selectedBuyerId, setSelectedBuyerId] = useState("");
+  const [buyerInvoiceToOpen, setBuyerInvoiceToOpen] = useState("");
   const [buyerSearch, setBuyerSearch] = useState("");
   const [showBuyerForm, setShowBuyerForm] = useState(false);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
@@ -2201,12 +2202,12 @@ export default function Commercial() {
               <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل فواتير الحريف" : "Historique des factures"}</div>
                 <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
-                  <TableHead className="text-start">{salesText.invoiceNo}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{salesText.saleQty}</TableHead><TableHead className="text-end">{salesText.salePrice}</TableHead><TableHead className="text-end">{salesText.total}</TableHead><TableHead className="text-end">{salesText.paidAmount}</TableHead><TableHead className="text-end">{salesText.outstanding}</TableHead><TableHead className="text-start">{salesText.paymentStatus}</TableHead>
+                  <TableHead className="text-start">{salesText.invoiceNo}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-center">{lang === "ar" ? "الفاتورة" : "Facture"}</TableHead><TableHead className="text-end">{salesText.saleQty}</TableHead><TableHead className="text-end">{salesText.salePrice}</TableHead><TableHead className="text-end">{salesText.total}</TableHead><TableHead className="text-end">{salesText.paidAmount}</TableHead><TableHead className="text-end">{salesText.outstanding}</TableHead><TableHead className="text-start">{salesText.paymentStatus}</TableHead>
                 </TableRow></TableHeader><TableBody>
                   {selectedBuyerInvoices.map((invoice) => <TableRow key={invoice.id}>
-                    <TableCell className="font-mono text-xs font-semibold">{value(invoice.document_number)}</TableCell><TableCell className="text-xs text-stone-500" dir="ltr">{date(invoice.sale_date ?? invoice.created_at)}</TableCell><TableCell className="text-end font-semibold text-lime-800">{number(invoice.quantity_kg)} L</TableCell><TableCell className="text-end">{money(invoice.unit_price_dt)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(invoice.total_amount_dt)}</TableCell><TableCell className="text-end text-emerald-700">{money(invoice.paid_amount_dt)}</TableCell><TableCell className="text-end font-semibold text-rose-700">{money(invoice.outstanding_amount_dt)}</TableCell><TableCell>{invoice.payment_status === "PAID" ? (lang === "ar" ? "مسددة" : "Payée") : invoice.payment_status === "PARTIALLY_PAID" ? (lang === "ar" ? "جزئية" : "Partielle") : invoice.payment_status === "CREDITED" ? (lang === "ar" ? "مغطاة بإشعار دائن" : "Créditée") : (lang === "ar" ? "غير مسددة" : "Impayée")}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold">{value(invoice.document_number)}</TableCell><TableCell className="text-xs text-stone-500" dir="ltr">{date(invoice.sale_date ?? invoice.created_at)}</TableCell><TableCell className="text-center"><Button type="button" size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-50" onClick={() => { setBuyerInvoiceToOpen(invoice.id); selectTab("factures"); }}><FileText className="mr-1 size-3.5" />Facture</Button></TableCell><TableCell className="text-end font-semibold text-lime-800">{number(invoice.quantity_kg)} L</TableCell><TableCell className="text-end">{money(invoice.unit_price_dt)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(invoice.total_amount_dt)}</TableCell><TableCell className="text-end text-emerald-700">{money(invoice.paid_amount_dt)}</TableCell><TableCell className="text-end font-semibold text-rose-700">{money(invoice.outstanding_amount_dt)}</TableCell><TableCell>{invoice.payment_status === "PAID" ? (lang === "ar" ? "مسددة" : "Payée") : invoice.payment_status === "PARTIALLY_PAID" ? (lang === "ar" ? "جزئية" : "Partielle") : invoice.payment_status === "CREDITED" ? (lang === "ar" ? "مغطاة بإشعار دائن" : "Créditée") : (lang === "ar" ? "غير مسددة" : "Impayée")}</TableCell>
                   </TableRow>)}
-                  {!selectedBuyerInvoices.length && <EmptyRow colSpan={8} text={l.noRows}/>}
+                  {!selectedBuyerInvoices.length && <EmptyRow colSpan={9} text={l.noRows}/>}
                 </TableBody></Table></div>
               </div>
             </div>}
@@ -2220,7 +2221,7 @@ export default function Commercial() {
         </div>
       </div>}
 
-      {tab === "factures" && ready && <CommercialFactures />}
+      {tab === "factures" && ready && <CommercialFactures initialInvoiceId={buyerInvoiceToOpen} />}
 
       {tab === "sales" && <div className="space-y-4">
         {isAdmin && <Card><CardHeader><CardTitle>{salesText.createSale}</CardTitle><CardDescription>{saleTankOptions.length ? salesText.saleDraftHint : salesText.noEligibleOil}</CardDescription></CardHeader><CardContent>
