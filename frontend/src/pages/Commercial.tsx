@@ -1956,7 +1956,6 @@ export default function Commercial() {
                 <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Facture</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
                 <TableHead className="whitespace-nowrap text-center">Action</TableHead>
               </TableRow>
@@ -1975,7 +1974,7 @@ export default function Commercial() {
                       || String(supplier?.phone ?? purchase.supplier_phone ?? "").toLocaleLowerCase().includes(normalizedSearch);
                   })
                   .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
-                if (!rows.length) return <EmptyRow colSpan={11} text={l.noRows} />;
+                if (!rows.length) return <EmptyRow colSpan={10} text={l.noRows} />;
                 return rows.map((purchase) => {
                   const supplier = supplierRows.find((item) => item.id === purchase.supplier_id);
                   const purchaseCodes = [...new Set([purchase.batch_code, ...(purchase.batch_codes ?? [])].filter(Boolean).map(String))];
@@ -2007,7 +2006,6 @@ export default function Commercial() {
                     <TableCell className="whitespace-nowrap text-end font-semibold text-amber-700">{oilProduced > 0 ? number(oilProduced) : "—"}</TableCell>
                     <TableCell className="min-w-32 text-xs">{labLabel}</TableCell>
                     <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>{purchaseStatus}</span></TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs">{value(purchase.document_number)}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold">{money(purchase.total_amount_dt)}</TableCell>
                     <TableCell className="text-center"><Button size="sm" variant="outline" onClick={() => { selectTab("purchases"); if (purchase.status === "DRAFT" && canEditRecords) startPurchaseEdit(purchase); else if (purchase.status === "APPROVED") setSelectedPurchaseReceipt(purchase); }}>{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
                   </TableRow>;
