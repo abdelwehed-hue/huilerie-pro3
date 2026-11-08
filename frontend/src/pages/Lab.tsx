@@ -343,14 +343,14 @@ export default function Lab() {
                       <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: pendingCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{pendingCode}</button></TableCell>
                       <TableCell>{String(purchase?.document_number || oliveLot?.source_purchase_id || "—")}</TableCell>
                       <TableCell>{types || "—"}</TableCell>
-                      <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Achat reçu · En attente d’analyse</span></TableCell>
+                      <TableCell><span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"><span className="size-2 rounded-full bg-amber-600 animate-pulse" /> <span className="animate-pulse">Achat reçu · En attente d’analyse</span></span></TableCell>
                     </TableRow>;
                   })}
                   {pendingLoads.map((load) => <TableRow key={load.id}>
                     <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: load.code }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{load.code}</button></TableCell>
                     <TableCell>{load.client_name || "—"}</TableCell>
                     <TableCell>{load.variety || "—"}</TableCell>
-                    <TableCell><span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">En attente d’analyse</span></TableCell>
+                    <TableCell><span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"><span className="size-2 rounded-full bg-amber-600 animate-pulse" /> <span className="animate-pulse">En attente d’analyse</span></span></TableCell>
                   </TableRow>)}
                   {(!gsLots.isLoading && pendingLoads.length === 0 && !(gsLots.data ?? []).some((lot) => lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE" && lot.analysis_only === true && lot.status === "OPEN" && !lot.last_quality_assessment_id)) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
                 </TableBody>
