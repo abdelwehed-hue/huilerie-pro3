@@ -102,6 +102,7 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
   const isAdmin = useMe().data?.role === "admin";
   const [mode, setMode] = useState<Mode>("invoices");
   const [buyerId, setBuyerId] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
   const [search, setSearch] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -117,13 +118,13 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
     invoices: "الفواتير", statement: "كشف حساب العملاء", global: "الفواتير الإجمالية للعملاء",
     buyer: "العميل", choose: "اختر العميل", search: "ابحث برقم الفاتورة أو العميل أو كود التتبع",
     number: "رقم الفاتورة", date: "التاريخ", code: "كود التتبع", quantity: "الكمية (لتر)", unit: "السعر للوحدة/لتر", total: "الإجمالي", paid: "المدفوع", credited: "التخفيضات/الإشعارات الدائنة", balance: "المتبقي", status: "حالة الدفع",
-    from: "من", to: "إلى", print: "طباعة / PDF", actions: "الإجراءات", editInvoice: "تعديل الفاتورة", newPayment: "مبلغ الدفعة الجديدة (مليم)", paymentDate: "تاريخ الدفع", paymentMethod: "طريقة الدفع", reference: "المرجع", save: "حفظ الدفعة", cancel: "إلغاء", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء"
+    from: "من", to: "إلى", print: "طباعة / PDF", actions: "الإجراءات", editInvoice: "تعديل الفاتورة", newPayment: "مبلغ الدفعة الجديدة (مليم)", paymentDate: "تاريخ الدفع", paymentMethod: "طريقة الدفع", reference: "المرجع", save: "حفظ الدفعة", cancel: "إلغاء", opening: "الرصيد الافتتاحي", debit: "مدين", credit: "دائن", operation: "العملية", final: "الرصيد النهائي", payment: "دفعة", reversal: "عكس دفعة", creditNote: "إشعار دائن", creditApply: "تخصيص رصيد دائن (للعلم فقط)", noRows: "لا توجد بيانات", noBuyer: "اختر عميلاً لعرض حسابه", loading: "جار تحميل البيانات…", gross: "إجمالي الفواتير", outstanding: "إجمالي الديون", count: "عدد الفواتير", note: "كشف الحساب يحسب الإشعارات الدائنة مرة واحدة فقط؛ تخصيص الرصيد الدائن لا يُحتسب كدفعة ثانية.", all: "كل العملاء", statusFilter: "تصفية حسب حالة الدفع", allStatuses: "كل الحالات", unpaid: "غير مدفوعة", partial: "مدفوعة جزئياً", paidStatus: "مدفوعة", creditedStatus: "مغطاة بإشعار دائن"
   } : {
     title: "Factures — Gestion Commerciale", subtitle: "Factures et comptes clients GS, séparés de l’application Oro Verde",
     invoices: "Factures", statement: "Relevé de compte clients", global: "Factures globales clients",
     buyer: "Client", choose: "Choisir un client", search: "Rechercher facture, client ou code de traçabilité",
     number: "N° facture", date: "Date", code: "Code de traçabilité", quantity: "Quantité (L)", unit: "Prix unitaire/L", total: "Total", paid: "Payé", credited: "Avoirs", balance: "Reste dû", status: "Paiement",
-    from: "Du", to: "Au", print: "Imprimer / PDF", actions: "Actions", editInvoice: "Modifier la facture", newPayment: "Nouvelle somme payée (millimes)", paymentDate: "Date du paiement", paymentMethod: "Mode de paiement", reference: "Référence", save: "Enregistrer le paiement", cancel: "Annuler", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients"
+    from: "Du", to: "Au", print: "Imprimer / PDF", actions: "Actions", editInvoice: "Modifier la facture", newPayment: "Nouvelle somme payée (millimes)", paymentDate: "Date du paiement", paymentMethod: "Mode de paiement", reference: "Référence", save: "Enregistrer le paiement", cancel: "Annuler", opening: "Solde initial", debit: "Débit", credit: "Crédit", operation: "Opération", final: "Solde final", payment: "Paiement", reversal: "Annulation paiement", creditNote: "Avoir", creditApply: "Affectation d’avoir (informatif)", noRows: "Aucune donnée", noBuyer: "Choisissez un client pour afficher son compte", loading: "Chargement…", gross: "Total facturé", outstanding: "Total restant dû", count: "Nombre de factures", note: "Les avoirs sont comptés une seule fois ; leur affectation n’est pas comptée comme un second paiement.", all: "Tous les clients", statusFilter: "Statut de paiement", allStatuses: "Tous les statuts", unpaid: "Impayée", partial: "Partielle", paidStatus: "Payée", creditedStatus: "Créditée"
   };
   const buyersQuery = useQuery({ queryKey: ["commercial", "factures", "buyers"], queryFn: () => page<Row>("/commercial/v1/buyers?limit=500") });
   const invoicesQuery = useQuery({ queryKey: ["commercial", "factures", "invoices"], queryFn: () => page<Row>("/commercial/v1/sales-invoices?limit=500") });
@@ -137,9 +138,9 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
       const buyer = buyers.find(b => b.id === x.buyer_id);
       const text = [x.document_number, x.batch_code, buyer?.name, x.sale_id].join(" ").toLocaleLowerCase();
       const d = String(x.sale_date ?? x.created_at ?? "").slice(0, 10);
-      return (!q || text.includes(q)) && (!start || d >= start) && (!end || d <= end);
+      return (!q || text.includes(q)) && (!start || d >= start) && (!end || d <= end) && (!paymentStatusFilter || x.payment_status === paymentStatusFilter);
     });
-  }, [buyerInvoices, buyers, search, start, end]);
+  }, [buyerInvoices, buyers, search, start, end, paymentStatusFilter]);
   const selectedBuyer = buyers.find(x => x.id === buyerId);
   const selectedInvoice = invoices.find(x => x.id === selectedInvoiceId);
   const editingInvoice = invoices.find(x => x.id === editingInvoiceId);
@@ -266,7 +267,7 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
     </Card>
     <Card className="border-slate-300 bg-slate-100 shadow-sm">
       <CardContent className="grid gap-3 pt-5 md:grid-cols-4">
-        <label className="grid gap-1 text-sm">{labels.buyer}<select className="h-10 rounded-lg border bg-background px-3" value={buyerId} onChange={e=>setBuyerId(e.target.value)}><option value="">{labels.all}</option>{buyers.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+        <div className="grid gap-2"><label className="grid gap-1 text-sm">{labels.buyer}<select className="h-10 rounded-lg border bg-background px-3" value={buyerId} onChange={e=>setBuyerId(e.target.value)}><option value="">{labels.all}</option>{buyers.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label className="grid gap-1 text-sm">{labels.statusFilter}<select className="h-10 rounded-lg border bg-background px-3" value={paymentStatusFilter} onChange={e=>setPaymentStatusFilter(e.target.value)}><option value="">{labels.allStatuses}</option><option value="UNPAID">{labels.unpaid}</option><option value="PARTIALLY_PAID">{labels.partial}</option><option value="PAID">{labels.paidStatus}</option><option value="CREDITED">{labels.creditedStatus}</option></select></label></div>
         <label className="grid gap-1 text-sm">{labels.from}<Input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
         <label className="grid gap-1 text-sm">{labels.to}<Input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>
         <label className="grid gap-1 text-sm">{labels.search}<Input value={search} onChange={e=>setSearch(e.target.value)} placeholder={labels.search}/></label>
