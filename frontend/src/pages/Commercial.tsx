@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2, Printer,
-  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers, ScanLine, CircleHelp,
+  Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers, ScanLine,
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { dinarsToMillimesInput, millimesInputNumber, millimesInputToDinars } from "@/lib/commercial-money";
@@ -1455,9 +1455,6 @@ export default function Commercial() {
         <div className="flex items-center gap-2">
           
           <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate("/help")}>
-            <CircleHelp className="size-4" /> {lang === "ar" ? "مساعدة" : "Aide"}
-          </Button>
           <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["commercial"] })}>
             <RefreshCw className="size-4" /> {l.refresh}
           </Button>
@@ -1584,10 +1581,6 @@ export default function Commercial() {
               <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
-          <button type="button" onClick={() => navigate("/help")} aria-label="المساعدة" title="شرح صفحات التطبيق بالعربية" data-testid="commercial-help" className="ml-1 flex min-w-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 border-sky-200/50 bg-sky-100 px-2 py-1.5 text-xs font-bold text-sky-900 hover:bg-white">
-            <CircleHelp className="size-5" />
-            <span className="whitespace-nowrap">مساعدة</span>
-          </button>
           <button type="button" onClick={() => navigate("/")} aria-label={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} title={lang === "ar" ? "العودة إلى التطبيق الأصلي" : "Retour à l’application originale"} data-testid="commercial-return-home" className="ml-1 flex min-w-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 border-[#CFE3C4]/40 bg-[#DCE8D3] px-2 py-1.5 text-xs font-bold text-[#1E3A25] hover:bg-white">
             <Home className="size-5" />
             <span className="whitespace-nowrap">{lang === "ar" ? "الرئيسية" : "Accueil"}</span>
