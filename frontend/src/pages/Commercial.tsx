@@ -1590,7 +1590,7 @@ export default function Commercial() {
             };
             return (
               <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`group flex min-h-[3.9rem] min-w-[5.1rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border-2 px-1.5 py-1 text-[12px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
-                <Icon className={`size-7 stroke-[2.2] transition-transform duration-200 group-hover:-translate-y-0.5 ${tab === id ? "text-white" : (iconColor[id] ?? "text-lime-300")}`} />
+                <Icon className={`size-6 stroke-[2.1] transition-transform duration-200 group-hover:-translate-y-0.5 ${tab === id ? "text-white" : (iconColor[id] ?? "text-lime-300")}`} />
                 <span className="whitespace-nowrap">{label}</span>
               </button>
             );
