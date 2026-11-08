@@ -151,7 +151,15 @@ export interface MillInfo {
   mill_logo: string;
 }
 
+export interface PumpConfig {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
 export interface AppSettings extends MillInfo {
+  pump_system_enabled: boolean;
+  pumps: PumpConfig[];
   price_per_kg: number;
   login_image: string;
   tv_image: string;
