@@ -30,7 +30,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
+type TabKey = "overview" | "factures" | "stock" | "lots" | "movements" | "quality" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
 
 const labels = {
   fr: {
@@ -177,16 +177,19 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "lots", "movements", "quality", "suppliers", "purchases", "chargement", "production", "custody", "transfers", "buyers", "sales", "reports"];
-  const initialTab: TabKey = qrBatchCode ? "lots" : requestedTab && validTabs.includes(requestedTab) ? requestedTab : "overview";
+  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "suppliers", "purchases", "chargement", "production", "custody", "transfers", "buyers", "sales", "reports"];
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" ? "stock" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
+  const [stockView, setStockView] = useState<"lots" | "movements">(requestedTab === "movements" ? "movements" : "lots");
   const selectTab = (nextTab: TabKey) => {
-    setTab(nextTab);
+    const targetTab = nextTab === "lots" || nextTab === "movements" ? "stock" : nextTab;
+    if (nextTab === "lots" || nextTab === "movements") setStockView(nextTab);
+    setTab(targetTab);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set("tab", nextTab);
+      next.set("tab", targetTab);
       return next;
     }, { replace: true });
   };
@@ -326,7 +329,7 @@ export default function Commercial() {
   const tankHistoryProduction = useQuery({ queryKey: ["commercial", "tank-history-production"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
   const tankHistorySales = useQuery({ queryKey: ["commercial", "tank-history-sales"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
   const tankHistoryInvoices = useQuery({ queryKey: ["commercial", "tank-history-invoices"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices", 500), enabled: ready && tab === "overview" && !!selectedOverviewTankId });
-  const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "movements" });
+  const movements = useQuery({ queryKey: ["commercial", "movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/stock-movements", 500), enabled: ready && tab === "stock" && stockView === "movements" });
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "quality" || tab === "chargement") });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
@@ -338,8 +341,8 @@ export default function Commercial() {
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "suppliers" || tab === "purchases" || tab === "chargement") });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "purchases" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "custody" || tab === "quality" || tab === "chargement") });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "lots" || tab === "chargement") });
-  const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "lots" || tab === "chargement") });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "purchases" || tab === "suppliers" || tab === "quality" || tab === "stock" || tab === "chargement") });
+  const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "stock" || tab === "chargement") });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && (tab === "buyers" || tab === "sales") });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "buyers" && !!selectedBuyerAccountId });
   const pumpSettings = useQuery({ queryKey: ["commercial", "sales", "pumps"], queryFn: () => apiGet<AnyRecord>("/commercial/v1/sales/pumps"), enabled: ready && tab === "sales" });
@@ -403,7 +406,7 @@ export default function Commercial() {
     enabled: ready && tab === "sales" && !!selectedInvoiceId,
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers") });
-  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "lots" || tab === "production") });
+  const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
@@ -1435,10 +1438,9 @@ export default function Commercial() {
     { id: "suppliers", label: l.suppliers, icon: Truck },
     { id: "purchases", label: l.purchasesTab, icon: ShoppingBasket },
     { id: "chargement", label: "Chargement", icon: Layers },
-    { id: "lots", label: l.lots, icon: Boxes },
+    { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
-    { id: "movements", label: l.movements, icon: ArrowLeftRight },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "buyers", label: salesText.buyers, icon: UserRound },
     { id: "reports", label: "Rapport", icon: FileText },
@@ -1648,7 +1650,13 @@ export default function Commercial() {
 
       
 
-      {tab === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      {tab === "stock" && <div className="space-y-4">
+        <div role="tablist" aria-label={lang === "ar" ? "أقسام المخزون" : "Sections du stock"} className="inline-flex flex-wrap gap-2 rounded-xl border bg-muted/40 p-1">
+          <Button type="button" size="sm" variant={stockView === "lots" ? "default" : "ghost"} role="tab" aria-selected={stockView === "lots"} onClick={() => setStockView("lots")}>{l.lots}</Button>
+          <Button type="button" size="sm" variant={stockView === "movements" ? "default" : "ghost"} role="tab" aria-selected={stockView === "movements"} onClick={() => setStockView("movements")}>{l.movements}</Button>
+        </div>
+        {stockView === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      </div>}
 
       {tab === "transfers" && <div className="space-y-4">
         <Card>
@@ -1729,7 +1737,7 @@ export default function Commercial() {
         </Card>
       </div>}
 
-      {tab === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === m.lot_id), m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)} {m.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      {tab === "stock" && stockView === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === m.lot_id), m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)} {m.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
 
       {tab === "quality" && <div className="space-y-4">
