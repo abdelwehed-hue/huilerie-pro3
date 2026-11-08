@@ -80,7 +80,7 @@ export function LangToggle({ className }: { className?: string }) {
 }
 
 function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   return (
     <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
       <nav
@@ -224,7 +224,7 @@ export default function AppShell() {
   const location = useLocation();
   const isCommercialWorkspace = location.pathname.startsWith("/commercial");
   const me = useMe();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");
   useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);
   const queryClient = useQueryClient();
