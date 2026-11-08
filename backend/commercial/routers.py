@@ -97,6 +97,10 @@ from lib.season import DEFAULT_VARIETIES, active_season, season_of, season_prefi
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
 
 
+class PumpSelectionCommand(BaseModel):
+    pump_id: str = Field(min_length=1, max_length=80)
+
+
 class OliveReceptionPurchaseCommand(BaseModel):
     """Create an olive purchase and post its physical reception atomically."""
     supplier_id: str | None = Field(default=None, min_length=1, max_length=100)
@@ -1056,6 +1060,48 @@ async def list_commercial_credit_notes(
         query, {"_id": 0}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
+
+
+@router.post("/sales/{sale_id}/pump-selection")
+async def select_sale_filling_pump(
+    sale_id: str,
+    command: PumpSelectionCommand,
+    user: dict = Depends(current_user),
+):
+    """Record the worker's pump choice for an approved sale; no hardware is activated."""
+    _authorize(user, "commercial.read")
+    settings = await db.settings.find_one({"key": "app"}, {"_id": 0, "pump_system_enabled": 1, "pumps": 1}) or {}
+    if not settings.get("pump_system_enabled"):
+        raise HTTPException(409, "pump_system_disabled")
+    pump = next((item for item in settings.get("pumps", []) if item.get("id") == command.pump_id and item.get("active")), None)
+    if not pump:
+        raise HTTPException(422, "pump_not_available")
+    sale = await db.commercial_sales.find_one({"id": sale_id}, {"_id": 0, "id": 1, "status": 1, "pump_selection": 1})
+    if not sale:
+        raise HTTPException(404, "sale_not_found")
+    if sale.get("status") != "APPROVED":
+        raise HTTPException(409, "sale_must_be_approved_before_pump_selection")
+    if sale.get("pump_selection"):
+        raise HTTPException(409, "pump_already_selected_for_sale")
+    now = datetime.now(timezone.utc)
+    selection = {
+        "pump_id": pump["id"], "pump_name": pump["name"],
+        "selected_by": user["id"], "selected_at": now,
+        "status": "SELECTED",
+    }
+    result = await db.commercial_sales.update_one(
+        {"id": sale_id, "status": "APPROVED", "pump_selection": {"$exists": False}},
+        {"$set": {"pump_selection": selection}},
+    )
+    if result.modified_count != 1:
+        raise HTTPException(409, "pump_selection_conflict_reload_sale")
+    await db.commercial_audit_events.insert_one({
+        "id": str(uuid.uuid4()), "entity_type": "commercial_sale",
+        "entity_id": sale_id, "action": "FILLING_PUMP_SELECTED",
+        "actor_user_id": user["id"], "created_at": now,
+        "details": {"pump_id": pump["id"], "pump_name": pump["name"]},
+    })
+    return _safe({"sale_id": sale_id, "pump_selection": selection})
 
 
 @router.get("/sales")
