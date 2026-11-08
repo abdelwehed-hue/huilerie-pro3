@@ -329,3 +329,12 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 .dark .commercial-workspace table tbody td:nth-child(9) { color: #d8d99a; }
 .dark .commercial-workspace table tbody td .font-semibold,
 .dark .commercial-workspace table tbody td .font-bold { color: #b9dfc2; }
+
+
+/* Keep the auto-revealing top bar visible on touch-only devices. */
+@media (hover: none) {
+  .app-topbar-header {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
