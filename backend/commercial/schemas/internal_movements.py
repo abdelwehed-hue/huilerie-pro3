@@ -51,8 +51,8 @@ class InternalMovementDraft(BaseModel):
             if self.consideration_type == "SALE":
                 if self.consideration_amount is None or self.consideration_amount <= 0:
                     raise ValueError("A positive agreed amount is required for a sale")
-                if self.product_kind != "OIL" or self.source_owner.kind != "CUSTOMER" or self.destination_owner.kind != "MILL":
-                    raise ValueError("A customer-to-mill oil ownership transfer is required for an oil purchase")
+                if self.source_owner.kind != "CUSTOMER" or self.destination_owner.kind != "MILL":
+                    raise ValueError("A customer-to-mill ownership transfer is required for a purchase")
                 if self.initial_payment_amount is not None:
                     if self.initial_payment_amount > self.consideration_amount:
                         raise ValueError("Initial payment cannot exceed the agreed purchase amount")
