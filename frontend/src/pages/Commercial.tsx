@@ -1201,6 +1201,7 @@ export default function Commercial() {
         receipt_date: custodyReceiptDate,
         variety_id: custodyVarietyId,
         quantity_kg: custodyReceiptQuantity,
+        source_load_id: editingCustodyReceipt?.source_load_id ?? null,
         receiving_location_id: custodyReceivingLocationId,
         customer_acknowledgement_reference: custodyReceiptAck.trim(),
         source_reference: custodySourceReference.trim() || null,
@@ -2578,7 +2579,7 @@ export default function Commercial() {
               const historyPhone = String(item.customer_phone ?? ownerForReceipt?.client_phone ?? item.client_phone ?? "");
               const historySelected = !!historyPhone && selectedCustodyHistoryPhone === historyPhone;
               return <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
+                  <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div>{item.source_load_code && <div className="text-[11px] text-primary">{lang === "ar" ? "حمولة" : "Charge"}: {item.source_load_code}</div>}</TableCell>
                   <TableCell>{date(item.receipt_date)}</TableCell>
                   <TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض Historique من carnet client" : "Afficher l’historique du carnet client"} aria-expanded={historySelected} onClick={() => {
                     if (!historyPhone) { toast.error(lang === "ar" ? "رقم هاتف الحريف غير موجود في سجل الاستلام." : "Le téléphone du client est absent de cette réception."); return; }
