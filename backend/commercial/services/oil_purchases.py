@@ -280,6 +280,15 @@ async def record_oil_purchase_payment(
     )
     if update.matched_count != 1:
         raise ValueError("Oil purchase changed concurrently; payment was rolled back")
+    await db["commercial_internal_movements"].update_one(
+        {"id": purchase["transfer_id"]},
+        {"$set": {
+            "consideration.payment_status": status,
+            "consideration.paid_amount": Decimal128(paid),
+            "consideration.outstanding_amount": Decimal128(remaining),
+        }},
+        session=session,
+    )
     await db["commercial_audit_events"].insert_one({
         "id": audit_event_id,
         "entity_type": "commercial_oil_purchase",
