@@ -22,6 +22,46 @@ def _fingerprint(draft: InternalMovementDraft) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *, session: Any, actor_user_id: str, created_at: datetime) -> None:
+    """Make a fully transferred customer olive load unavailable to the legacy press workflow."""
+    if draft.product_kind != "OLIVE" or draft.movement_kind != "OWNERSHIP_TRANSFER":
+        return
+    lot = await db["commercial_lots"].find_one(
+        {"id": draft.lot_id, "product_kind": "OLIVE"},
+        {"_id": 0, "source_load_id": 1, "source_load_code": 1},
+        session=session,
+    )
+    source_load_id = (lot or {}).get("source_load_id")
+    if not source_load_id:
+        return
+    # The ownership transfer is already constrained to the entire customer balance
+    # for this lot. Retain olive_kg for historical reports/invoices; zero only the
+    # actionable customer quantity and permanently block legacy pressing.
+    load = await db["loads"].find_one_and_update(
+        {"id": source_load_id, "ownership_transferred": {"$ne": True}},
+        {"$set": {
+            "customer_available_olive_kg": 0,
+            "ownership_transferred": True,
+            "ownership_transferred_at": created_at.astimezone(timezone.utc),
+            "ownership_transfer_lot_id": draft.lot_id,
+        }},
+        projection={"_id": 0, "id": 1, "code": 1},
+        return_document=True,
+        session=session,
+    )
+    if load:
+        await db["commercial_audit_events"].insert_one({
+            "id": f"load-ownership-transfer:{source_load_id}:{draft.lot_id}",
+            "entity_type": "traditional_load",
+            "entity_id": source_load_id,
+            "action": "LOAD_OWNERSHIP_TRANSFERRED_TO_MILL",
+            "actor_user_id": actor_user_id,
+            "created_at": created_at.astimezone(timezone.utc),
+            "details": {"load_code": load.get("code"), "lot_id": draft.lot_id,
+                        "available_olive_kg_after": 0},
+        }, session=session)
+
+
 async def create_internal_movement(
     db: Any, draft: InternalMovementDraft, *, season_code: str,
     actor_user: dict[str, Any], actor_user_id: str, movement_document_id: str,
@@ -43,6 +83,7 @@ async def create_internal_movement(
     if prior:
         if prior.get("request_fingerprint") != fingerprint:
             raise ValueError("Idempotency key was already used for a different internal movement")
+        await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
         return prior
 
     # Ownership transfers consume the entire selected customer balance.
@@ -122,6 +163,7 @@ async def create_internal_movement(
         actor_user=actor_user, movement_id=stock_movement_id,
         audit_event_id=audit_event_id, created_at=created_at, session=session,
     )
+    await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
     document["stock_movement_id"] = ledger["id"]
     await collection.update_one(
         {"id": movement_document_id, "status": "APPROVED"},
