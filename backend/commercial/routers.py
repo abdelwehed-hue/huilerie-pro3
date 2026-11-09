@@ -44,6 +44,7 @@ from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
 )
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
+from commercial.schemas.oil_purchases import OilPurchasePaymentDraft
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.return_rejection import RejectSaleReturnCommand
@@ -73,6 +74,7 @@ from commercial.services.quality import (
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.lot_adjustments import adjust_olive_lot_balance
 from commercial.services.internal_movements import create_internal_movement
+from commercial.services.oil_purchases import record_oil_purchase_payment
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
@@ -2041,6 +2043,59 @@ async def create_stock_movement(
         422,
         "stock_movements_must_be_posted_by_the_owning_purchase_production_internal_or_sales_workflow",
     )
+
+
+@router.get("/oil-purchases")
+async def list_customer_oil_purchases(
+    customer_id: str | None = None,
+    limit: int = Query(default=200, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    query = {"customer_id": customer_id} if customer_id else {}
+    docs = await db.commercial_oil_purchase_documents.find(
+        query, {"_id": 0}
+    ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+    return _safe(docs)
+
+
+@router.get("/oil-purchases/{purchase_id}/payments")
+async def list_customer_oil_purchase_payments(
+    purchase_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_oil_purchase_payments.find(
+        {"purchase_document_id": purchase_id}, {"_id": 0}
+    ).sort([("created_at", -1), ("id", -1)]).skip(skip).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/oil-purchases/{purchase_id}/payments", status_code=201)
+async def create_customer_oil_purchase_payment(
+    purchase_id: str,
+    draft: OilPurchasePaymentDraft,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.manage_sales")
+    _, season_code = await _require_commercial_ready()
+    payment_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    try:
+        result = await run_transaction(
+            lambda session: record_oil_purchase_payment(
+                db, purchase_id, draft, season_code=season_code,
+                actor_user=user, actor_user_id=user["id"],
+                payment_id=payment_id, audit_event_id=audit_id,
+                created_at=now, session=session,
+            )
+        )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.get("/internal-movements")
