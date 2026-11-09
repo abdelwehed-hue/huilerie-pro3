@@ -44,7 +44,8 @@ export default function Lab() {
   const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
   const gsCodeAssessments = (gsAssessments.data ?? [])
-    .filter((assessment) => code && String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === code.toUpperCase())
+    .filter((assessment) => assessment.lot_purpose === "PREPRODUCTION_SAMPLE"
+      && code && String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === code.toUpperCase())
     .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   const gsCodeAssessment = gsCodeAssessments[0];
   const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), retry: false });
@@ -100,7 +101,7 @@ export default function Lab() {
   const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !(gsAssessments.data ?? []).some((assessment) => String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === String(lot.batch_code).trim().toUpperCase())).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
   const rows = list.isError ? [] : (list.data ?? []);
   const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
-  const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.batch_code || assessment.sample_reference);
+  const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.lot_purpose === "PREPRODUCTION_SAMPLE" && (assessment.batch_code || assessment.sample_reference));
   const found = lookup.data && !lookup.isError ? lookup.data : null;
   const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
   // Existing analysis of this receipt (rows are newest first) -> prefill the form so it can be edited.
