@@ -1752,12 +1752,43 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
             "role": "NORMAL",
         })
         await db.commercial_lots.insert_one({
+            "id": "source-customer-olive-lot",
+            "season_code": "2627",
+            "product_kind": "OLIVE",
+            "batch_code": "2627A0008",
+            "status": "OPEN",
+            "preproduction_quality_status": "RELEASED",
+            "preproduction_sample_id": "approved-preproduction-sample",
+            "preproduction_quality_assessment_id": "approved-preproduction-assessment",
+            "latest_preproduction_sample_id": "approved-preproduction-sample",
+        })
+        await db.commercial_preproduction_samples.insert_one({
+            "id": "approved-preproduction-sample",
+            "status": "COMPLETED",
+            "source_olive_lot_id": "source-customer-olive-lot",
+            "oil_sample_lot_id": "preproduction-oil-sample-lot",
+        })
+        await db.commercial_quality_assessments.insert_one({
+            "id": "approved-preproduction-assessment",
+            "oil_lot_id": "preproduction-oil-sample-lot",
+            "status": "REVIEWED",
+            "decision": "RELEASED",
+            "oil_type": "EXTRA_VIRGIN",
+            "classification": "EXTRA_VIRGIN",
+        })
+        await db.commercial_lots.insert_one({
             "id": "customer-owned-oil-lot",
             "season_code": "2627",
             "product_kind": "OIL",
             "batch_code": "2627A0008",
+            "source_olive_lot_id": "source-customer-olive-lot",
+            "source_production_id": "production-from-approved-preproduction",
+            "source_preproduction_sample_id": "approved-preproduction-sample",
+            "latest_preproduction_sample_id": "approved-preproduction-sample",
             "status": "OPEN",
-            "quality_status": "RELEASED",
+            # The pressed oil itself is not analysed after production. Eligibility
+            # comes from the released preproduction sample on its source olives.
+            "quality_status": "PENDING",
         })
         await db.commercial_stock_balances.insert_one({
             "product_kind": "OIL",
@@ -1804,6 +1835,8 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
         )
         assert purchase["document_number"] == "2627BAH0001"
         assert purchase["traceability_code"] == "2627A0008"
+        assert purchase["quality_assessment_id"] == "approved-preproduction-assessment"
+        assert purchase["quality_classification"] == "EXTRA_VIRGIN"
         assert purchase["customer_name"] == "Customer Oil Seller"
         assert purchase["quantity_l"].to_decimal() == Decimal("150.000")
         assert purchase["unit_price_tnd_per_l"].to_decimal() == Decimal("1.000")
