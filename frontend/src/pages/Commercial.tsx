@@ -1624,7 +1624,7 @@ export default function Commercial() {
             {loading ? <EmptyRow colSpan={8} text={lang === "ar" ? "جار تحميل العمليات…" : "Chargement des opérations…"} /> : rows.map((row) => <TableRow key={row.id}>
               <TableCell className="whitespace-nowrap">{date(row.date)}</TableCell><TableCell className="font-semibold">{row.type}</TableCell><TableCell className="font-mono text-xs">{value(row.reference)}</TableCell><TableCell className="font-mono text-xs">{value(row.purchase)}</TableCell><TableCell>{value(row.supplier)}</TableCell><TableCell>{row.olives > 0 ? number(row.olives) + " kg" : "—"}</TableCell><TableCell className={row.oil < 0 ? "font-semibold text-rose-700" : "font-semibold text-emerald-700"}>{row.oil ? (row.oil > 0 ? "+" : "") + number(row.oil) + " L" : "—"}</TableCell><TableCell>{value(row.detail)}</TableCell>
             </TableRow>)}
-            {!loading && !rows.length && <EmptyRow colSpan={10} text={l.noRows} />}
+            {!loading && !rows.length && <EmptyRow colSpan={8} text={l.noRows} />}
           </TableBody></Table></div><p className="mt-3 text-xs text-muted-foreground">{lang === "ar" ? "الكميات السالبة خروج من الخزان والموجبة دخول إليه. يظهر المزوّد ورقم الشراء عندما يكون مصدر دفعة الزيت مرتبطًا بعملية شراء." : "Les valeurs négatives indiquent une sortie et les positives une entrée. Le fournisseur et le numéro d’achat sont affichés lorsque le lot d’huile est relié à son achat d’origine."}</p></CardContent>
         </Card>;
       })()}
@@ -1876,7 +1876,7 @@ export default function Commercial() {
                   <TableCell className="font-semibold">{money(purchase.outstanding_amount_tnd)}</TableCell>
                   <TableCell>{value(purchase.payment_status)}</TableCell>
                   <TableCell><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedOilPurchaseReceipt(purchase); setSelectedOilPaymentReceipt(null); }}><Printer className="mr-1 size-4" />{l.printPurchase}</Button></TableCell>
-                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}</TableBody>
+                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={10} text={l.noRows} />}</TableBody>
               </Table>
             </div>
             {selectedOilPurchase && <div className="mt-5 space-y-4 rounded-xl border p-4">
