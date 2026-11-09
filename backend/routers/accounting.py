@@ -47,7 +47,8 @@ async def _sum(collection: str, field: str, match: dict | None = None) -> str:
         {"$project": {"_id": 0, "total": {"$toString": "$total"}}},
     ])
     rows = await db[collection].aggregate(pipeline).to_list(1)
-    # Keep Decimal128 precision across the API boundary; the UI formats this string.\n    return rows[0]["total"] if rows else "0.000"
+    # Keep Decimal128 precision across the API boundary; the UI formats this string.
+    return rows[0]["total"] if rows else "0.000"
 
 
 @router.get("/overview")
