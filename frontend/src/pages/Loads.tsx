@@ -117,7 +117,7 @@ export default function Loads() {
                 <TableCell className="font-medium">{l.client_name}</TableCell>
                 <TableCell dir="ltr" className="text-start">{l.phone}</TableCell>
                 <TableCell className="text-start">{l.variety || "—"}</TableCell>
-                <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
+                <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.available_olive_kg ?? l.olive_kg)}</TableCell>
                 <TableCell className="text-end font-semibold text-amber-700">{fmtNum(l.oil_kg)}</TableCell>
                 <TableCell className="text-end text-sky-700">{l.yield_pct != null ? `${fmtNum(l.yield_pct, 2)}%` : "—"}</TableCell>
                 <TableCell>{l.lab ? <GradeBadge grade={l.lab.classification} /> : <span className="text-xs text-stone-400">—</span>}</TableCell>
@@ -128,6 +128,8 @@ export default function Loads() {
                   <div className="flex items-center justify-end gap-1">
                   {l.status === "cancelled" ? (
                     <div className="max-w-56 text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
+                  ) : l.ownership_transferred ? (
+                    <div className="text-end text-xs font-semibold text-violet-700" data-testid={`load-transferred-info-${l.code}`}>Transférée à l’huilerie · 0 kg disponible</div>
                   ) : l.status === "delivered" ? (
                     <div className="text-end text-xs text-emerald-700" data-testid={`load-delivered-info-${l.code}`}>@{l.delivered_by}{l.delivered_at && <div dir="ltr">{fmtDate(l.delivered_at)}</div>}</div>
                   ) : (
