@@ -1825,6 +1825,28 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
             expected_purchase_version=1,
             idempotency_key="customer-oil-purchase-payment-0001",
         )
+        await db.commercial_oil_purchase_documents.update_one(
+            {"id": purchase["id"]},
+            {"$set": {"outstanding_amount_tnd": Decimal128("89.000")}},
+        )
+        with pytest.raises(ValueError, match="does not reconcile"):
+            async with await client.start_session() as session:
+                await session.with_transaction(
+                    lambda active: record_oil_purchase_payment(
+                        db, purchase["id"], later_payment,
+                        season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        payment_id="tampered-oil-purchase-payment",
+                        audit_event_id="tampered-oil-purchase-audit",
+                        created_at=datetime(2026, 11, 9, tzinfo=timezone.utc),
+                        session=active,
+                    )
+                )
+        await db.commercial_oil_purchase_documents.update_one(
+            {"id": purchase["id"]},
+            {"$set": {"outstanding_amount_tnd": Decimal128("90.000")}},
+        )
         async with await client.start_session() as session:
             receipt = await session.with_transaction(
                 lambda active: record_oil_purchase_payment(
