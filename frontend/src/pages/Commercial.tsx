@@ -762,6 +762,7 @@ export default function Commercial() {
     onSuccess: async () => {
       toast.success(l.internalMovementSaved);
       setInternalSourceBalanceKey("");
+      setInternalCustomerId("");
       setInternalDestinationLocationId("");
       setInternalDestinationOwnerKey("");
       setInternalMovementQuantity("");
@@ -772,6 +773,8 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchase-statement"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
       ]);
