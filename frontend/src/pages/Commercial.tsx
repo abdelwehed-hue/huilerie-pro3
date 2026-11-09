@@ -1557,6 +1557,7 @@ export default function Commercial() {
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
+    { id: "custody", label: lang === "ar" ? "حفظ أمانات الحرفاء" : "Garde des clients", icon: UserCheck },
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     { id: "factures", label: l.facturesTab, icon: FileText },
