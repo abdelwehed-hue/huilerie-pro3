@@ -1866,7 +1866,7 @@ export default function Commercial() {
             <div className="overflow-x-auto">
               <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
                 <TableBody>{(oilPurchases.data ?? []).map((purchase) => <TableRow key={purchase.id} className={selectedOilPurchaseId === purchase.id ? "bg-muted/50" : ""}>
-                  <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => setSelectedOilPurchaseId(purchase.id)}>{value(purchase.document_number)}</button></TableCell>
+                  <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => { setSelectedOilPurchaseId(purchase.id); setOilPurchasePaymentAmount(""); setOilPurchasePaymentReference(""); setOilPurchasePaymentDate(new Date().toISOString().slice(0, 10)); setOilPurchasePaymentKey(crypto.randomUUID()); }}>{value(purchase.document_number)}</button></TableCell>
                   <TableCell>{value(purchase.customer_name)}</TableCell>
                   <TableCell className="font-mono text-xs">{value(purchase.traceability_code)}</TableCell>
                   <TableCell>{value(purchase.oil_type, value(purchase.quality_classification))}</TableCell>
