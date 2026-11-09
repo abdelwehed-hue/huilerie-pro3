@@ -1944,19 +1944,20 @@ export default function Commercial() {
           <CardHeader><CardTitle>{l.oilPurchasesTitle}</CardTitle><CardDescription>{lang === "ar" ? "كل وصل شراء للزيت أو الزيتون مرتبط بتحويل الملكية إلى المعصرة، مع الحفاظ على كود التتبع الأصلي." : "Chaque bon d’achat d’huile ou d’olives est lié au transfert de propriété vers la huilerie et conserve le code de traçabilité d’origine."}</CardDescription></CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseUnitPrice}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
                 <TableBody>{(oilPurchases.data ?? []).map((purchase) => <TableRow key={purchase.id} className={selectedOilPurchaseId === purchase.id ? "bg-muted/50" : ""}>
                   <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => { setSelectedOilPurchaseId(purchase.id); setOilPurchasePaymentAmount(""); setOilPurchasePaymentReference(""); setOilPurchasePaymentDate(new Date().toISOString().slice(0, 10)); setOilPurchasePaymentKey(crypto.randomUUID()); }}>{value(purchase.document_number)}</button></TableCell>
                   <TableCell>{value(purchase.customer_name)}</TableCell>
                   <TableCell className="font-mono text-xs">{value(purchase.traceability_code)}</TableCell>
                   <TableCell>{purchase.product_kind === "OLIVE" ? l.olive : l.oil}{purchase.product_kind === "OIL" ? ` · ${value(purchase.oil_type, value(purchase.quality_classification))}` : ""}</TableCell>
                   <TableCell>{purchase.product_kind === "OLIVE" ? `${number(purchase.quantity_kg)} kg` : `${number(purchase.quantity_l)} L`}</TableCell>
+                  <TableCell>{money(purchase.product_kind === "OLIVE" ? purchase.unit_price_tnd_per_kg : purchase.unit_price_tnd_per_l)} TND / {purchase.product_kind === "OLIVE" ? "kg" : "L"}</TableCell>
                   <TableCell>{money(purchase.agreed_amount_tnd)}</TableCell>
                   <TableCell>{money(purchase.paid_amount_tnd)}</TableCell>
                   <TableCell className="font-semibold">{money(purchase.outstanding_amount_tnd)}</TableCell>
                   <TableCell>{oilPurchaseStatusLabel(purchase.payment_status)}</TableCell>
                   <TableCell><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedOilPurchaseReceipt(purchase); setSelectedOilPaymentReceipt(null); }}><Printer className="mr-1 size-4" />{l.printPurchase}</Button></TableCell>
-                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={10} text={l.noRows} />}</TableBody>
+                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={11} text={l.noRows} />}</TableBody>
               </Table>
             </div>
           <div className="mt-5 rounded-xl border p-4 space-y-3">
