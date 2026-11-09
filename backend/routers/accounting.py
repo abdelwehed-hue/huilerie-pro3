@@ -63,7 +63,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         invoices, olive_purchases, internal_movements, oil_purchases,
         sales_invoices, sale_payments, oil_payments, credit_notes, suppliers, owners,
         pressing_revenue, pressing_collected, gs_sales_revenue, gs_collected,
-        supplier_olive_total, customer_olive_total, customer_oil_total, customer_oil_paid,
+        supplier_olive_total, customer_olive_total, customer_olive_paid, customer_oil_total, customer_oil_paid,
     ) = await asyncio.gather(
         _recent("invoices", "day"),
         _recent("commercial_olive_purchases"),
@@ -80,12 +80,16 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         _sum("commercial_sales_invoices", "net_amount_dt"),
         _sum("commercial_sales_invoices", "paid_amount_dt"),
         _sum("commercial_olive_purchases", "total_amount_dt", {"status": "APPROVED"}),
-        _sum("commercial_internal_movements", "consideration.agreed_amount", {
-            "status": "APPROVED", "movement_kind": "OWNERSHIP_TRANSFER",
-            "product_kind": "OLIVE", "consideration.type": "SALE",
+        # Customer olive purchases are counted from their BAH documents, not
+        # from the ownership-transfer record, to avoid counting one purchase twice.
+        _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {"product_kind": "OLIVE"}),
+        _sum("commercial_oil_purchase_payments", "amount_tnd", {"product_kind": "OLIVE"}),
+        _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {
+            "$or": [{"product_kind": "OIL"}, {"product_kind": {"$exists": False}}],
         }),
-        _sum("commercial_oil_purchase_documents", "agreed_amount_tnd"),
-        _sum("commercial_oil_purchase_payments", "amount_tnd"),
+        _sum("commercial_oil_purchase_payments", "amount_tnd", {
+            "$or": [{"product_kind": "OIL"}, {"product_kind": {"$exists": False}}],
+        }),
     )
     supplier_names = {str(item.get("id")): item.get("name") for item in suppliers}
     owner_names = {str(item.get("id")): item.get("client_name") for item in owners}
@@ -99,10 +103,12 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         "traditional_invoices": invoices,
         "supplier_olive_purchases": olive_purchases,
         "customer_ownership_transfers": internal_movements,
-        "customer_oil_purchases": oil_purchases,
+        "customer_olive_purchases": [item for item in oil_purchases if item.get("product_kind") == "OLIVE"],
+        "customer_oil_purchases": [item for item in oil_purchases if item.get("product_kind", "OIL") == "OIL"],
         "commercial_sales_invoices": sales_invoices,
         "commercial_sale_payments": sale_payments,
-        "customer_oil_purchase_payments": oil_payments,
+        "customer_olive_purchase_payments": [item for item in oil_payments if item.get("product_kind") == "OLIVE"],
+        "customer_oil_purchase_payments": [item for item in oil_payments if item.get("product_kind", "OIL") == "OIL"],
         "commercial_credit_notes": credit_notes,
         "suppliers": suppliers,
         "summary": {
@@ -112,6 +118,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
             "gs_sales_collected_total": gs_collected,
             "supplier_olive_purchase_total": supplier_olive_total,
             "customer_olive_purchase_total": customer_olive_total,
+            "customer_olive_paid_total": customer_olive_paid,
             "customer_oil_purchase_total": customer_oil_total,
             "customer_oil_paid_total": customer_oil_paid,
         },

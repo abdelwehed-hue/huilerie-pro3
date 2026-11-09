@@ -152,7 +152,7 @@ def test_customer_oil_sale_requires_method_and_non_cash_reference():
         ))
 
 
-def test_gift_transfer_rejects_payment_and_sale_must_be_customer_oil_to_mill():
+def test_gift_transfer_rejects_payment_and_customer_sale_supports_olives_and_oil():
     with pytest.raises(ValidationError, match="gift transfer cannot include payment"):
         InternalMovementDraft(**base(
             movement_kind="OWNERSHIP_TRANSFER",
@@ -167,5 +167,11 @@ def test_gift_transfer_rejects_payment_and_sale_must_be_customer_oil_to_mill():
             initial_payment_amount="1.000",
             initial_payment_method="CASH",
         ))
-    with pytest.raises(ValidationError, match="customer-to-mill oil"):
-        InternalMovementDraft(**ownership_sale(product_kind="OLIVE"))
+    olive_sale = InternalMovementDraft(**ownership_sale(product_kind="OLIVE", consideration_amount="250.000"))
+    assert olive_sale.product_kind == "OLIVE"
+    assert olive_sale.consideration_amount == 250
+
+
+def test_customer_sale_rejects_non_customer_to_mill_ownership():
+    with pytest.raises(ValidationError, match="customer-to-mill ownership"):
+        InternalMovementDraft(**ownership_sale(source_owner={"kind": "MILL"}, destination_owner={"kind": "CUSTOMER", "customer_id": "customer-2"}))

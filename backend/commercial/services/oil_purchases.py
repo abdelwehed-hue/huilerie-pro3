@@ -1,4 +1,4 @@
-"""Customer-owned oil purchases and the mill's payable-to-customer ledger."""
+"""Customer-owned oil and olive purchases with the mill payable ledger."""
 from __future__ import annotations
 
 import hashlib
@@ -36,9 +36,9 @@ async def create_oil_purchase_document_for_transfer(
     db: Any, movement: dict[str, Any], draft: Any, *,
     season_code: str, actor_user_id: str, created_at: datetime, session: Any,
 ) -> dict[str, Any]:
-    """Issue a BAH and optional first RPA in the same transaction as ownership transfer."""
+    """Issue a BAH and optional first RPA atomically with a customer-to-mill purchase."""
     if draft.movement_kind != "OWNERSHIP_TRANSFER" or draft.consideration_type != "SALE":
-        raise ValueError("An oil purchase document requires a sale ownership transfer")
+        raise ValueError("A customer purchase document requires a sale ownership transfer")
     customer_id = draft.source_owner.customer_id
     owner = await db["commercial_custody_owners"].find_one(
         {"id": customer_id, "active": True}, {"_id": 0}, session=session
@@ -48,75 +48,91 @@ async def create_oil_purchase_document_for_transfer(
     lot = await db["commercial_lots"].find_one(
         {"id": draft.lot_id}, {"_id": 0}, session=session
     )
-    if not lot or lot.get("product_kind") != "OIL":
-        raise ValueError("The source oil lot no longer exists")
+    if not lot or lot.get("product_kind") != draft.product_kind or lot.get("status") != "OPEN":
+        raise ValueError("The source customer lot no longer exists or has the wrong product kind")
     traceability_code = lot.get("batch_code")
     if not traceability_code:
-        raise ValueError("The source oil lot has no traceability code")
+        raise ValueError("The source customer lot has no traceability code")
 
-    # Quality is tested once, in Laboratoire, on the preproduction sample.
-    # Produced oil inherits that approval through its source olive lot; it is
-    # never subjected to a second, post-pressing oil analysis.
     quality_assessment = None
-    if lot.get("source_production_id"):
-        source_olive_lot = await db["commercial_lots"].find_one(
-            {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
-             "status": "OPEN", "batch_code": traceability_code,
-             "preproduction_quality_status": "RELEASED",
-             "preproduction_sample_id": {"$exists": True},
-             "preproduction_quality_assessment_id": {"$exists": True},
-             "latest_preproduction_sample_id": lot.get("source_preproduction_sample_id",
-                 lot.get("latest_preproduction_sample_id", None))},
-            {"_id": 0}, session=session,
-        )
-        # Older production records may not copy the sample ID to the output lot;
-        # the source olive lot's current approved assessment remains authoritative.
-        if not source_olive_lot:
+    tank = None
+    location = None
+    if draft.product_kind == "OIL":
+        # Quality is tested once, in Laboratoire, on the preproduction sample.
+        # Produced oil inherits that approval through its source olive lot; it is
+        # never subjected to a second, post-pressing oil analysis.
+        quality_assessment = None
+        if lot.get("source_production_id"):
             source_olive_lot = await db["commercial_lots"].find_one(
                 {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
                  "status": "OPEN", "batch_code": traceability_code,
                  "preproduction_quality_status": "RELEASED",
                  "preproduction_sample_id": {"$exists": True},
-                 "preproduction_quality_assessment_id": {"$exists": True}},
+                 "preproduction_quality_assessment_id": {"$exists": True},
+                 "latest_preproduction_sample_id": lot.get("source_preproduction_sample_id",
+                     lot.get("latest_preproduction_sample_id", None))},
                 {"_id": 0}, session=session,
             )
-        if source_olive_lot:
-            sample = await db["commercial_preproduction_samples"].find_one(
-                {"id": source_olive_lot.get("preproduction_sample_id"),
-                 "status": "COMPLETED", "oil_sample_lot_id": {"$exists": True}},
-                {"_id": 0}, session=session,
-            )
-            quality_assessment = await db["commercial_quality_assessments"].find_one(
-                {"id": source_olive_lot.get("preproduction_quality_assessment_id"),
-                 "oil_lot_id": sample.get("oil_sample_lot_id") if sample else None,
-                 "status": "REVIEWED", "decision": "RELEASED"},
-                {"_id": 0}, session=session,
-            )
-        if not source_olive_lot or not sample or not quality_assessment:
-            raise ValueError("Only oil produced from a preproduction-sample-approved olive lot can be purchased by the mill")
+            # Older production records may not copy the sample ID to the output lot;
+            # the source olive lot's current approved assessment remains authoritative.
+            if not source_olive_lot:
+                source_olive_lot = await db["commercial_lots"].find_one(
+                    {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+                     "status": "OPEN", "batch_code": traceability_code,
+                     "preproduction_quality_status": "RELEASED",
+                     "preproduction_sample_id": {"$exists": True},
+                     "preproduction_quality_assessment_id": {"$exists": True}},
+                    {"_id": 0}, session=session,
+                )
+            if source_olive_lot:
+                sample = await db["commercial_preproduction_samples"].find_one(
+                    {"id": source_olive_lot.get("preproduction_sample_id"),
+                     "status": "COMPLETED", "oil_sample_lot_id": {"$exists": True}},
+                    {"_id": 0}, session=session,
+                )
+                quality_assessment = await db["commercial_quality_assessments"].find_one(
+                    {"id": source_olive_lot.get("preproduction_quality_assessment_id"),
+                     "oil_lot_id": sample.get("oil_sample_lot_id") if sample else None,
+                     "status": "REVIEWED", "decision": "RELEASED"},
+                    {"_id": 0}, session=session,
+                )
+            if not source_olive_lot or not sample or not quality_assessment:
+                raise ValueError("Only oil produced from a preproduction-sample-approved olive lot can be purchased by the mill")
+        else:
+            # Compatibility for non-production oil lots: require their own recorded release.
+            if lot.get("quality_status") != "RELEASED":
+                raise ValueError("Only quality-released oil can be purchased by the mill")
+            if lot.get("last_quality_assessment_id"):
+                quality_assessment = await db["commercial_quality_assessments"].find_one(
+                    {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
+                     "status": "REVIEWED", "decision": "RELEASED"},
+                    {"_id": 0}, session=session,
+                )
+        tank = await db["commercial_tanks"].find_one(
+            {"id": draft.source_location_id, "active": True, "role": {"$in": ["NORMAL", None]}},
+            {"_id": 0}, session=session
+        )
+        if not tank:
+            raise ValueError("The source oil tank is not an active normal tank")
+    
     else:
-        # Compatibility for non-production oil lots: require their own recorded release.
-        if lot.get("quality_status") != "RELEASED":
-            raise ValueError("Only quality-released oil can be purchased by the mill")
-        if lot.get("last_quality_assessment_id"):
-            quality_assessment = await db["commercial_quality_assessments"].find_one(
-                {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
-                 "status": "REVIEWED", "decision": "RELEASED"},
-                {"_id": 0}, session=session,
-            )
-    tank = await db["commercial_tanks"].find_one(
-        {"id": draft.source_location_id, "active": True, "role": {"$in": ["NORMAL", None]}},
-        {"_id": 0}, session=session
-    )
-    if not tank:
-        raise ValueError("The source oil tank is not an active normal tank")
-
+        location = await db["commercial_locations"].find_one(
+            {"id": draft.source_location_id, "active": True,
+             "kind": {"$in": ["OLIVE_STORAGE", "STAGING"]}},
+            {"_id": 0}, session=session,
+        )
+        if not location:
+            raise ValueError("The source olive location is not an active storage or staging location")
     agreed = _money(draft.consideration_amount)
     unit_price = _money(agreed / draft.quantity_kg)
     paid = _money(draft.initial_payment_amount or Decimal("0"))
     outstanding = _money(agreed - paid)
     now = created_at.astimezone(timezone.utc)
-    purchase_id = _stable_id("oil-purchase", movement["id"])
+    product_kind = draft.product_kind
+    quantity_field = "quantity_l" if product_kind == "OIL" else "quantity_kg"
+    unit_price_field = "unit_price_tnd_per_l" if product_kind == "OIL" else "unit_price_tnd_per_kg"
+    purchase_namespace = "oil-purchase" if product_kind == "OIL" else "olive-purchase"
+    purchase_id = _stable_id(purchase_namespace, movement["id"])
     number = await reserve_document_number(
         db["commercial_counters"], season_code, "BAH", session=session
     )
@@ -130,19 +146,21 @@ async def create_oil_purchase_document_for_transfer(
         "customer_id": customer_id,
         "customer_name": owner.get("client_name"),
         "customer_phone": owner.get("client_phone"),
-        "product_kind": "OIL",
+        "product_kind": product_kind,
         "lot_id": draft.lot_id,
         "traceability_code": traceability_code,
         "oil_type": quality_assessment.get("oil_type") if quality_assessment else None,
         "quality_classification": quality_assessment.get("classification") if quality_assessment else None,
         "quality_assessment_id": quality_assessment.get("id") if quality_assessment else None,
-        "quantity_l": Decimal128(draft.quantity_kg),
-        "tank_id": draft.source_location_id,
-        "tank_code": tank.get("code"),
+        quantity_field: Decimal128(draft.quantity_kg),
+        "tank_id": draft.source_location_id if tank else None,
+        "tank_code": tank.get("code") if tank else None,
+        "location_id": draft.source_location_id if location else None,
+        "location_code": location.get("code") if location else None,
         "source_owner": draft.source_owner.model_dump(),
         "destination_owner": draft.destination_owner.model_dump(),
         "purchase_date": now.date().isoformat(),
-        "unit_price_tnd_per_l": Decimal128(unit_price),
+        unit_price_field: Decimal128(unit_price),
         "agreed_amount_tnd": Decimal128(agreed),
         "initial_paid_amount_tnd": Decimal128(paid),
         "initial_outstanding_amount_tnd": Decimal128(outstanding),
@@ -162,7 +180,7 @@ async def create_oil_purchase_document_for_transfer(
     await db["commercial_oil_purchase_documents"].insert_one(document, session=session)
 
     if paid > 0:
-        payment_id = _stable_id("oil-purchase-initial-payment", movement["id"])
+        payment_id = _stable_id(f"{purchase_namespace}-initial-payment", movement["id"])
         payment_number = await reserve_document_number(
             db["commercial_counters"], season_code, "RPA", session=session
         )
@@ -175,6 +193,7 @@ async def create_oil_purchase_document_for_transfer(
             "transfer_id": movement["id"],
             "customer_id": customer_id,
             "customer_name": owner.get("client_name"),
+            "product_kind": product_kind,
             "amount_tnd": Decimal128(paid),
             "payment_date": (draft.initial_payment_date or now.date()).isoformat(),
             "method": draft.initial_payment_method,
@@ -189,8 +208,11 @@ async def create_oil_purchase_document_for_transfer(
             "created_at": now,
         }
         await db["commercial_oil_purchase_payments"].insert_one(payment, session=session)
-    movement["oil_purchase_document_id"] = purchase_id
-    movement["oil_purchase_document_number"] = number
+    movement["customer_purchase_document_id"] = purchase_id
+    movement["customer_purchase_document_number"] = number
+    if product_kind == "OIL":
+        movement["oil_purchase_document_id"] = purchase_id
+        movement["oil_purchase_document_number"] = number
     movement["consideration"] = {
         **(movement.get("consideration") or {}),
         "accounting_status": "PAYABLE_LEDGER_RECORDED",
@@ -203,8 +225,9 @@ async def create_oil_purchase_document_for_transfer(
     movement_update = await db["commercial_internal_movements"].update_one(
         {"id": movement["id"], "status": "APPROVED"},
         {"$set": {
-            "oil_purchase_document_id": purchase_id,
-            "oil_purchase_document_number": number,
+            "customer_purchase_document_id": purchase_id,
+            "customer_purchase_document_number": number,
+            **({"oil_purchase_document_id": purchase_id, "oil_purchase_document_number": number} if product_kind == "OIL" else {}),
             "consideration": movement["consideration"],
         }},
         session=session,
@@ -213,9 +236,9 @@ async def create_oil_purchase_document_for_transfer(
         raise ValueError("Approved ownership transfer could not be linked to its oil purchase document")
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("oil-purchase-audit", movement["id"]),
-        "entity_type": "commercial_oil_purchase",
+        "entity_type": "commercial_oil_purchase" if product_kind == "OIL" else "commercial_customer_purchase",
         "entity_id": purchase_id,
-        "action": "OIL_PURCHASE_DOCUMENT_ISSUED",
+        "action": "OIL_PURCHASE_DOCUMENT_ISSUED" if product_kind == "OIL" else "CUSTOMER_PURCHASE_DOCUMENT_ISSUED",
         "actor_user_id": actor_user_id,
         "created_at": now,
         "details": {
@@ -223,10 +246,11 @@ async def create_oil_purchase_document_for_transfer(
             "transfer_id": movement["id"],
             "customer_id": customer_id,
             "traceability_code": traceability_code,
+            "product_kind": product_kind,
             "oil_type": document["oil_type"],
             "quality_classification": document["quality_classification"],
-            "quantity_l": Decimal128(draft.quantity_kg),
-            "unit_price_tnd_per_l": Decimal128(unit_price),
+            quantity_field: Decimal128(draft.quantity_kg),
+            unit_price_field: Decimal128(unit_price),
             "agreed_amount_tnd": Decimal128(agreed),
             "paid_amount_tnd": Decimal128(paid),
             "initial_payment_method": draft.initial_payment_method,
@@ -268,7 +292,7 @@ async def record_oil_purchase_payment(
     purchases = db["commercial_oil_purchase_documents"]
     purchase = await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
     if not purchase:
-        raise ValueError("Oil purchase document does not exist")
+        raise ValueError("Customer purchase document does not exist")
     scope = f"{season_code}:{actor_user_id}"
     fingerprint = _fingerprint(draft)
     payments = db["commercial_oil_purchase_payments"]
@@ -301,6 +325,7 @@ async def record_oil_purchase_payment(
         "transfer_id": purchase["transfer_id"],
         "customer_id": purchase["customer_id"],
         "customer_name": purchase.get("customer_name"),
+        "product_kind": purchase.get("product_kind", "OIL"),
         "amount_tnd": Decimal128(amount),
         "payment_date": draft.payment_date.isoformat(),
         "method": draft.method,
@@ -343,9 +368,9 @@ async def record_oil_purchase_payment(
         raise ValueError("The source ownership transfer record is missing; payment was rolled back")
     await db["commercial_audit_events"].insert_one({
         "id": audit_event_id,
-        "entity_type": "commercial_oil_purchase",
+        "entity_type": "commercial_oil_purchase" if purchase.get("product_kind", "OIL") == "OIL" else "commercial_customer_purchase",
         "entity_id": purchase_id,
-        "action": "OIL_PURCHASE_PAYMENT_RECORDED",
+        "action": "OIL_PURCHASE_PAYMENT_RECORDED" if purchase.get("product_kind", "OIL") == "OIL" else "CUSTOMER_PURCHASE_PAYMENT_RECORDED",
         "actor_user_id": actor_user_id,
         "created_at": now,
         "details": {

@@ -53,6 +53,7 @@ from commercial.schemas.customer_custody import (
     CorrectCustomerOliveCustodyReceiptCommand,
     CorrectCustomerOilCustodyReleaseCommand,
     CustomerOliveCustodyReceiptDraft,
+    CustomerOliveCustodyReceiptBatchDraft,
     CustomerOilCustodyReleaseDraft,
 )
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
@@ -2065,7 +2066,7 @@ async def get_customer_oil_purchase_statement(
     customer_id: str,
     user: dict = Depends(current_user),
 ):
-    """Consolidated payable statement for oil bought from a customer by the mill."""
+    """Consolidated payable statement for oil and olives bought from a customer by the mill."""
     _authorize(user, "commercial.read")
     purchases = await db.commercial_oil_purchase_documents.find(
         {"customer_id": customer_id}, {"_id": 0}
@@ -2088,7 +2089,9 @@ async def get_customer_oil_purchase_statement(
             "entry_type": "PURCHASE",
             "document_number": purchase.get("document_number"),
             "traceability_code": purchase.get("traceability_code"),
+            "product_kind": purchase.get("product_kind", "OIL"),
             "quantity_l": purchase.get("quantity_l"),
+            "quantity_kg": purchase.get("quantity_kg"),
             "amount_tnd": purchase.get("agreed_amount_tnd", Decimal128("0")),
             "purchase_document_id": purchase.get("id"),
             "payment_method": None,
@@ -2104,7 +2107,9 @@ async def get_customer_oil_purchase_statement(
                 (item.get("traceability_code") for item in purchases
                  if item.get("id") == payment.get("purchase_document_id")), None
             ),
+            "product_kind": payment.get("product_kind", "OIL"),
             "quantity_l": None,
+            "quantity_kg": None,
             "amount_tnd": -amount(payment.get("amount_tnd")),
             "purchase_document_id": payment.get("purchase_document_id"),
             "payment_method": payment.get("method"),
@@ -2205,6 +2210,61 @@ async def create_internal_stock_movement(
                 created_at=now, session=session,
             )
         )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/customer-custody/receipts/batch", status_code=201)
+async def receive_customer_custody_olives_batch(
+    draft: CustomerOliveCustodyReceiptBatchDraft,
+    user: dict = Depends(require_admin),
+):
+    """Receive selected portions of one or more existing customer olive loads atomically."""
+    _authorize(user, "commercial.manage_custody")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.receipt_date.isoformat()) != season:
+        raise HTTPException(422, "custody_receipt_date_outside_active_season")
+    now = datetime.now(timezone.utc)
+
+    async def operation(session):
+        created = []
+        for item in draft.items:
+            source_load = await db.loads.find_one(
+                {"id": item.source_load_id, **(await season_filter()), "phone": draft.customer_phone,
+                 "cancelled": {"$ne": True}, "pressing": {"$ne": True}, "oil_kg": None},
+                {"_id": 0, "id": 1, "variety": 1},
+                session=session,
+            )
+            if not source_load or not str(source_load.get("variety") or "").strip():
+                raise ValueError("Every selected source load must belong to the customer and have a registered variety")
+            item_key = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"oro-verde-custody-batch:{draft.idempotency_key}:{item.source_load_id}",
+            ).hex
+            item_draft = CustomerOliveCustodyReceiptDraft(
+                customer_phone=draft.customer_phone,
+                receipt_date=draft.receipt_date,
+                variety_id=str(source_load["variety"]).strip(),
+                quantity_kg=item.quantity_kg,
+                source_load_id=item.source_load_id,
+                receiving_location_id=draft.receiving_location_id,
+                customer_acknowledgement_reference=draft.customer_acknowledgement_reference,
+                source_reference=draft.source_reference,
+                notes=draft.notes,
+                idempotency_key=item_key,
+            )
+            created.append(await receive_customer_olive_custody(
+                db, item_draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], receipt_id=str(uuid.uuid4()),
+                custody_owner_id=str(uuid.uuid4()), olive_lot_id=str(uuid.uuid4()),
+                stock_movement_id=str(uuid.uuid4()), audit_event_id=str(uuid.uuid4()),
+                created_at=now, session=session,
+            ))
+        return created
+
+    try:
+        result = await run_transaction(operation)
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
@@ -2312,7 +2372,7 @@ async def list_customer_custody_receipts(
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_receipts.find(
-        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
+        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "source_load_id": 1, "source_load_code": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 

@@ -50,7 +50,7 @@ const labels = {
     tank: "Cuve", capacity: "Capacité max. (L)", flexible: "Flexible — capacité non définie", active: "Active", saveCapacity: "Enregistrer", clearCapacity: "Vide = flexible", capacitySaved: "Capacité de la cuve mise à jour", capacityError: "Impossible de modifier la capacité",
     product: "Produit", document: "Document", purchaseCode: "Code d’achat", purchaseReference: "Réf. achat", owner: "Propriétaire actuel", quantity: "Quantité", currentStock: "Stock actuel",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
-    source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", ownershipConsentMethod: "Preuve du consentement", ownershipConsideration: "Nature du transfert", ownershipSale: "Vente à la huilerie", ownershipGift: "Cession sans contrepartie", ownershipAgreedAmount: "Montant convenu (TND)", ownershipInitialPayment: "Paiement versé immédiatement (TND, facultatif)", ownershipPaymentMethod: "Mode de paiement initial", ownershipPaymentDate: "Date du paiement", ownershipPaymentReference: "Référence du paiement", ownershipPaymentCreditNote: "Laisser le montant à 0 pour enregistrer l’achat à crédit. Un paiement partiel ou total peut être saisi.", ownershipSaleAccountingNote: "Un bon d’achat sera créé. Le solde non payé sera enregistré comme dette de la huilerie envers le client.", oilPurchasesTitle: "Achats d’huile aux clients — dettes à régler", oilPurchaseNumber: "Bon d’achat", oilPurchaseCustomer: "Client", oilPurchaseTraceability: "Code de traçabilité", oilPurchaseOilType: "Type d’huile / qualité", oilPurchaseUnitPrice: "Prix unitaire / L", oilPurchaseAgreed: "Montant convenu", oilPurchasePaid: "Payé", oilPurchaseOutstanding: "Reste dû", oilPurchaseStatus: "État du paiement", oilPurchaseStatusPaid: "Payé", oilPurchaseStatusPartial: "Partiellement payé", oilPurchaseStatusUnpaid: "Non payé", oilPurchasePayments: "Historique des paiements", oilPurchaseRecordPayment: "Enregistrer un paiement", oilPurchaseNoSelection: "Sélectionnez un bon d’achat pour consulter ses paiements.", oilPurchasePaymentSaved: "Paiement enregistré et reçu créé.", printPurchase: "Imprimer le bon d’achat", printPayment: "Imprimer le reçu", ownershipEvidenceHistory: "Preuve / contrepartie", ownershipEvidenceDocument: "Document", ownershipEvidenceApp: "Déclaration dans l’application", ownershipEvidenceSale: "Vente", ownershipEvidenceGift: "Sans contrepartie",  consentDocument: "Document signé", consentInApp: "Déclaration dans l’application", consentDocumentReference: "Référence du document", consentCustomerName: "Nom du client déclarant", consentConfirm: "Le client a confirmé son accord devant l’employé", consentEvidenceRequired: "Une preuve de consentement est obligatoire pour changer le propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
+    source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Achat / transfert de propriété : client → huilerie", ownershipConsentMethod: "Preuve du consentement", ownershipConsideration: "Nature du transfert", ownershipSale: "Vente à la huilerie", ownershipGift: "Cession sans contrepartie", ownershipAgreedAmount: "Prix unitaire (TND / L ou kg)", ownershipInitialPayment: "Paiement versé immédiatement (TND, facultatif)", ownershipPaymentMethod: "Mode de paiement initial", ownershipPaymentDate: "Date du paiement", ownershipPaymentReference: "Référence du paiement", ownershipPaymentCreditNote: "Laisser le montant à 0 pour enregistrer l’achat à crédit. Un paiement partiel ou total peut être saisi.", ownershipSaleAccountingNote: "Un bon d’achat sera créé. Le solde non payé sera enregistré comme dette de la huilerie envers le client.", oilPurchasesTitle: "Achats d’huile et d’olives aux clients — dettes à régler", oilPurchaseNumber: "Bon d’achat", oilPurchaseCustomer: "Client", oilPurchaseTraceability: "Code de traçabilité", oilPurchaseOilType: "Produit / qualité", oilPurchaseUnitPrice: "Prix unitaire", oilPurchaseAgreed: "Montant convenu", oilPurchasePaid: "Payé", oilPurchaseOutstanding: "Reste dû", oilPurchaseStatus: "État du paiement", oilPurchaseStatusPaid: "Payé", oilPurchaseStatusPartial: "Partiellement payé", oilPurchaseStatusUnpaid: "Non payé", oilPurchasePayments: "Historique des paiements", oilPurchaseRecordPayment: "Enregistrer un paiement", oilPurchaseNoSelection: "Sélectionnez un bon d’achat pour consulter ses paiements.", oilPurchasePaymentSaved: "Paiement enregistré et reçu créé.", printPurchase: "Imprimer le bon d’achat", printPayment: "Imprimer le reçu", ownershipEvidenceHistory: "Preuve / contrepartie", ownershipEvidenceDocument: "Document", ownershipEvidenceApp: "Déclaration dans l’application", ownershipEvidenceSale: "Vente", ownershipEvidenceGift: "Sans contrepartie",  consentDocument: "Document signé", consentInApp: "Déclaration dans l’application", consentDocumentReference: "Référence du document", consentCustomerName: "Nom du client déclarant", consentConfirm: "Le client a confirmé son accord devant l’employé", consentEvidenceRequired: "Une preuve de consentement est obligatoire pour changer le propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
     refresh: "Actualiser", adminOnly: "Initialisation réservée à l'administrateur",
     olive: "Olives", oil: "Huile", mill: "Maâsra", customer: "Client",
     pending: "En attente", released: "Libéré", rejected: "Rejeté", open: "Ouvert", closed: "Fermé",
@@ -75,7 +75,7 @@ const labels = {
     tank: "الخزان", capacity: "السعة القصوى (لتر)", flexible: "مرنة — دون سعة محددة", active: "نشط", saveCapacity: "حفظ", clearCapacity: "اتركه فارغاً للسعة المرنة", capacitySaved: "تم تحديث سعة الخزان", capacityError: "تعذر تعديل سعة الخزان",
     product: "المنتج", document: "الوثيقة", purchaseCode: "كود الشراء", purchaseReference: "مرجع الشراء", owner: "المالك الحالي", quantity: "الكمية", currentStock: "الرصيد الحالي",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
-    source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", ownershipConsentMethod: "إثبات موافقة الحريف", ownershipConsideration: "طبيعة تحويل الملكية", ownershipSale: "بيع للمعصرة بمقابل", ownershipGift: "تنازل دون مقابل", ownershipAgreedAmount: "المبلغ المتفق عليه (د.ت)", ownershipInitialPayment: "المبلغ المدفوع فوراً (د.ت، اختياري)", ownershipPaymentMethod: "طريقة الدفع الأولي", ownershipPaymentDate: "تاريخ الدفع", ownershipPaymentReference: "مرجع الدفع", ownershipPaymentCreditNote: "اترك المبلغ صفراً لتسجيل الشراء بالدين. يمكنك تسجيل دفع جزئي أو كامل.", ownershipSaleAccountingNote: "سيصدر وصل شراء، ويسجل المبلغ غير المدفوع ديناً على المعصرة للحريف.", oilPurchasesTitle: "مشتريات الزيت من الحرفاء — الديون المستحقة", oilPurchaseNumber: "وصل الشراء", oilPurchaseCustomer: "الحريف", oilPurchaseTraceability: "كود التتبع", oilPurchaseOilType: "نوع الزيت / الجودة", oilPurchaseUnitPrice: "السعر للوحدة / لتر", oilPurchaseAgreed: "المبلغ المتفق عليه", oilPurchasePaid: "المدفوع", oilPurchaseOutstanding: "المتبقي", oilPurchaseStatus: "حالة الدفع", oilPurchaseStatusPaid: "مدفوع", oilPurchaseStatusPartial: "مدفوع جزئياً", oilPurchaseStatusUnpaid: "غير مدفوع", oilPurchasePayments: "سجل الدفعات", oilPurchaseRecordPayment: "تسجيل دفعة", oilPurchaseNoSelection: "اختر وصل شراء لعرض الدفعات.", oilPurchasePaymentSaved: "تم تسجيل الدفعة وإصدار وصلها.", printPurchase: "طباعة وصل الشراء", printPayment: "طباعة وصل الدفع", ownershipEvidenceHistory: "إثبات الموافقة / المقابل", ownershipEvidenceDocument: "وثيقة", ownershipEvidenceApp: "إقرار داخل التطبيق", ownershipEvidenceSale: "بيع", ownershipEvidenceGift: "دون مقابل",  consentDocument: "وثيقة موقّعة", consentInApp: "إقرار داخل التطبيق", consentDocumentReference: "مرجع الوثيقة", consentCustomerName: "اسم الحريف المقرّ", consentConfirm: "أكد الحريف موافقته أمام العامل", consentEvidenceRequired: "إثبات موافقة الحريف إلزامي لتغيير الملكية", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
+    source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "شراء / تحويل الملكية: من الحريف إلى المعصرة", ownershipConsentMethod: "إثبات موافقة الحريف", ownershipConsideration: "طبيعة تحويل الملكية", ownershipSale: "بيع للمعصرة بمقابل", ownershipGift: "تنازل دون مقابل", ownershipAgreedAmount: "سعر الوحدة (د.ت / لتر أو كغ)", ownershipInitialPayment: "المبلغ المدفوع فوراً (د.ت، اختياري)", ownershipPaymentMethod: "طريقة الدفع الأولي", ownershipPaymentDate: "تاريخ الدفع", ownershipPaymentReference: "مرجع الدفع", ownershipPaymentCreditNote: "اترك المبلغ صفراً لتسجيل الشراء بالدين. يمكنك تسجيل دفع جزئي أو كامل.", ownershipSaleAccountingNote: "سيصدر وصل شراء، ويسجل المبلغ غير المدفوع ديناً على المعصرة للحريف.", oilPurchasesTitle: "مشتريات الزيت والزيتون من الحرفاء — الديون المستحقة", oilPurchaseNumber: "وصل الشراء", oilPurchaseCustomer: "الحريف", oilPurchaseTraceability: "كود التتبع", oilPurchaseOilType: "المنتج / الجودة", oilPurchaseUnitPrice: "سعر الوحدة", oilPurchaseAgreed: "المبلغ المتفق عليه", oilPurchasePaid: "المدفوع", oilPurchaseOutstanding: "المتبقي", oilPurchaseStatus: "حالة الدفع", oilPurchaseStatusPaid: "مدفوع", oilPurchaseStatusPartial: "مدفوع جزئياً", oilPurchaseStatusUnpaid: "غير مدفوع", oilPurchasePayments: "سجل الدفعات", oilPurchaseRecordPayment: "تسجيل دفعة", oilPurchaseNoSelection: "اختر وصل شراء لعرض الدفعات.", oilPurchasePaymentSaved: "تم تسجيل الدفعة وإصدار وصلها.", printPurchase: "طباعة وصل الشراء", printPayment: "طباعة وصل الدفع", ownershipEvidenceHistory: "إثبات الموافقة / المقابل", ownershipEvidenceDocument: "وثيقة", ownershipEvidenceApp: "إقرار داخل التطبيق", ownershipEvidenceSale: "بيع", ownershipEvidenceGift: "دون مقابل",  consentDocument: "وثيقة موقّعة", consentInApp: "إقرار داخل التطبيق", consentDocumentReference: "مرجع الوثيقة", consentCustomerName: "اسم الحريف المقرّ", consentConfirm: "أكد الحريف موافقته أمام العامل", consentEvidenceRequired: "إثبات موافقة الحريف إلزامي لتغيير الملكية", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
     refresh: "تحديث", adminOnly: "التهيئة متاحة للمدير فقط",
     olive: "زيتون", oil: "زيت", mill: "المعصرة", customer: "الحريف",
     pending: "في الانتظار", released: "مقبول", rejected: "مرفوض", open: "مفتوح", closed: "مغلق",
@@ -300,6 +300,7 @@ export default function Commercial() {
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
   const [custodyVarietyId, setCustodyVarietyId] = useState("");
   const [custodyReceiptQuantity, setCustodyReceiptQuantity] = useState("");
+  const [custodySelectedLoads, setCustodySelectedLoads] = useState<Record<string, string>>({});
   const [custodyReceivingLocationId, setCustodyReceivingLocationId] = useState("");
   const [custodyReceiptAck, setCustodyReceiptAck] = useState("");
   const [custodySourceReference, setCustodySourceReference] = useState("");
@@ -318,6 +319,7 @@ export default function Commercial() {
   const [internalMovementKind, setInternalMovementKind] = useState<"TRANSFER" | "OWNERSHIP_TRANSFER">("TRANSFER");
   const [internalProductKind, setInternalProductKind] = useState<"OLIVE" | "OIL">("OIL");
   const [internalSourceBalanceKey, setInternalSourceBalanceKey] = useState("");
+  const [internalCustomerId, setInternalCustomerId] = useState("");
   const [internalDestinationLocationId, setInternalDestinationLocationId] = useState("");
   const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("");
   const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
@@ -449,6 +451,21 @@ export default function Commercial() {
     enabled: ready && tab === "custody" && !!selectedCustodyHistoryPhone,
     retry: false,
   });
+  const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
+    .filter((load: AnyRecord) => load.status === "pending" && load.oil_kg == null)
+    .map((load: AnyRecord) => {
+      const previouslyReceived = (custodyReceipts.data ?? [])
+        .filter((receipt: AnyRecord) => receipt.source_load_id === load.id && receipt.status !== "CANCELLED")
+        .reduce((sum: number, receipt: AnyRecord) => sum + Number(receipt.quantity_kg || 0), 0);
+      const remaining = Math.max(0, Number(load.olive_kg || 0) - previouslyReceived);
+      return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining };
+    })
+    .filter((load: AnyRecord) => load.remaining_kg > 0);
+  const custodySelectedTotal = Object.entries(custodySelectedLoads)
+    .reduce((sum, [loadId, quantity]) => {
+      const load = custodySourceLoads.find((item: AnyRecord) => item.id === loadId);
+      return sum + (load && Number(quantity) > 0 && Number(quantity) <= load.remaining_kg ? Number(quantity) : 0);
+    }, 0);
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
@@ -728,6 +745,7 @@ export default function Commercial() {
       if (!Number.isFinite(quantity) || quantity <= 0 || quantity > Number(balance.quantity_kg)) {
         throw new Error("Movement quantity exceeds the available source balance");
       }
+      const agreedAmount = Number(ownershipAgreedAmount) * quantity;
       const destinationOwner = internalMovementKind === "TRANSFER"
         ? balance.owner
         : internalDestinationOwnerKey === "MILL"
@@ -750,7 +768,7 @@ export default function Commercial() {
           consent_customer_name: ownershipConsentMethod === "IN_APP" ? ownershipConsentCustomerName.trim() : null,
           consent_confirmed: ownershipConsentMethod === "IN_APP" ? ownershipConsentConfirmed : false,
           consideration_type: ownershipConsiderationType,
-          consideration_amount: ownershipConsiderationType === "SALE" ? ownershipAgreedAmount : null,
+          consideration_amount: ownershipConsiderationType === "SALE" ? agreedAmount.toFixed(3) : null,
           initial_payment_amount: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 ? ownershipInitialPaymentAmount : null,
           initial_payment_method: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 ? ownershipInitialPaymentMethod : null,
           initial_payment_reference: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" ? ownershipInitialPaymentReference.trim() : null,
@@ -761,6 +779,7 @@ export default function Commercial() {
     onSuccess: async () => {
       toast.success(l.internalMovementSaved);
       setInternalSourceBalanceKey("");
+      setInternalCustomerId("");
       setInternalDestinationLocationId("");
       setInternalDestinationOwnerKey("");
       setInternalMovementQuantity("");
@@ -771,6 +790,8 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchase-statement"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
       ]);
@@ -1181,6 +1202,7 @@ export default function Commercial() {
         receipt_date: custodyReceiptDate,
         variety_id: custodyVarietyId,
         quantity_kg: custodyReceiptQuantity,
+        source_load_id: editingCustodyReceipt?.source_load_id ?? null,
         receiving_location_id: custodyReceivingLocationId,
         customer_acknowledgement_reference: custodyReceiptAck.trim(),
         source_reference: custodySourceReference.trim() || null,
@@ -1194,14 +1216,26 @@ export default function Commercial() {
           replacement: payload,
         });
       }
-      return apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", payload);
+      const items = Object.entries(custodySelectedLoads)
+        .filter(([loadId, quantity]) => custodySourceLoads.some((load: AnyRecord) => load.id === loadId && Number(quantity) > 0 && Number(quantity) <= load.remaining_kg))
+        .map(([source_load_id, quantity_kg]) => ({ source_load_id, quantity_kg }));
+      if (!items.length) throw new Error(lang === "ar" ? "اختر حمولة واحدة على الأقل وأدخل كمية صحيحة" : "Sélectionnez au moins une charge et saisissez une quantité valide");
+      return apiPost<AnyRecord[]>("/commercial/v1/customer-custody/receipts/batch", {
+        customer_phone: custodyCustomerPhone,
+        receipt_date: custodyReceiptDate,
+        receiving_location_id: custodyReceivingLocationId,
+        customer_acknowledgement_reference: custodyReceiptAck.trim(),
+        source_reference: custodySourceReference.trim() || null,
+        idempotency_key: custodyReceiptKey,
+        items,
+      });
     },
     onSuccess: async () => {
       toast.success(editingCustodyReceipt
         ? (lang === "ar" ? "تم حفظ التصحيح مع الاحتفاظ بالمستند السابق" : "Correction enregistrée; le document précédent est conservé")
         : (lang === "ar" ? "تم استلام زيتون الحريف وتسجيله كأمانة" : "Olives du client reçues en garde"));
       setEditingCustodyReceipt(null);
-      setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference("");
+      setCustodyReceiptQuantity(""); setCustodySelectedLoads({}); setCustodyReceiptAck(""); setCustodySourceReference("");
       setCustodyReceiptKey(crypto.randomUUID());
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-receipts"] }),
@@ -1502,16 +1536,45 @@ export default function Commercial() {
       && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id && lot.latest_preproduction_sample_id === lot.preproduction_sample_id)
   );
 
+  const isCustomerOilPurchaseEligible = (oilLot: AnyRecord) => {
+    if (!oilLot.source_production_id) return oilLot.quality_status === "RELEASED";
+    const sourceOliveLot = (lots.data ?? []).find((item) => item.id === oilLot.source_olive_lot_id);
+    return !!sourceOliveLot
+      && sourceOliveLot.preproduction_quality_status === "RELEASED"
+      && !!sourceOliveLot.preproduction_sample_id
+      && !!sourceOliveLot.preproduction_quality_assessment_id;
+  };
+  const internalPurchaseCustomers = (custodyOwners.data ?? []).filter((owner) =>
+    owner.active !== false && (balances.data ?? []).some((balance) => {
+      if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0
+        || balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== owner.id) return false;
+      const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
+      if (!lot) return false;
+      if (internalProductKind === "OIL") {
+        const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
+        return lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && !!tank
+          && (tank.role ?? "NORMAL") === "NORMAL" && isCustomerOilPurchaseEligible(lot);
+      }
+      return (locations.data ?? []).some((item) => item.id === balance.location_id
+        && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind));
+    })
+  );
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
     if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0) return false;
+    if (internalMovementKind === "OWNERSHIP_TRANSFER") {
+      if (!internalCustomerId || balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId) return false;
+    } else if (internalCustomerId && (balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId)) return false;
     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
     if (!lot) return false;
     if (internalProductKind === "OIL") {
       if (lot.lot_purpose === "PREPRODUCTION_SAMPLE") return false;
       const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
       if (!tank) return false;
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && (tank.role ?? "NORMAL") !== "NORMAL") return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
-    } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id && item.active)) {
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && !isCustomerOilPurchaseEligible(lot)) return false;
+    } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id
+      && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind))) {
       return false;
     }
     return true;
@@ -1791,19 +1854,25 @@ export default function Commercial() {
             {canPostStock && <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-medium">{l.movementType}
-                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setOwnershipConsiderationType("GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalCustomerId(""); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setOwnershipConsiderationType("GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="TRANSFER">{l.transferType}</option>
                     <option value="OWNERSHIP_TRANSFER">{l.ownershipTransferType}</option>
                   </select>
                 </label>
                 <label className="grid gap-1 text-sm font-medium">{l.productKind}
-                  <select value={internalProductKind} onChange={(e) => { setInternalProductKind(e.target.value as "OLIVE" | "OIL"); setInternalSourceBalanceKey(""); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={internalProductKind} onChange={(e) => { setInternalProductKind(e.target.value as "OLIVE" | "OIL"); setInternalCustomerId(""); setInternalSourceBalanceKey(""); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="OIL">{l.oil}</option><option value="OLIVE">{l.olive}</option>
                   </select>
                 </label>
               </div>
+              {internalMovementKind === "OWNERSHIP_TRANSFER" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{lang === "ar" ? "الحريف البائع" : "Client vendeur"}
+                <select value={internalCustomerId} onChange={(e) => { setInternalCustomerId(e.target.value); setInternalSourceBalanceKey(""); setInternalDestinationOwnerKey(e.target.value ? "MILL" : ""); setOwnershipConsiderationType(e.target.value ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">{lang === "ar" ? "اختر الحريف البائع" : "Sélectionner le client vendeur"}</option>
+                  {internalPurchaseCustomers.map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}
+                </select>
+              </label>}
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
-                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" && internalProductKind === "OIL" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                   <option value="">—</option>
                   {availableInternalBalances.map((balance) => {
                     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
@@ -1822,7 +1891,7 @@ export default function Commercial() {
                     {internalDestinationLocations.filter((item) => item.id !== selectedInternalBalance?.location_id).map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name ?? item.code}</option>)}
                   </select>
                 </label> : <label className="grid gap-1 text-sm font-medium">{l.targetOwner}
-                  <select required value={internalDestinationOwnerKey} onChange={(e) => { const selectedKey = e.target.value; setInternalDestinationOwnerKey(selectedKey); setOwnershipConsiderationType(selectedInternalBalance?.owner?.kind === "CUSTOMER" && selectedKey === "MILL" && internalProductKind === "OIL" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); if (selectedKey.startsWith("CLIENT:")) resolveInternalDestinationOwner.mutate(selectedKey.slice("CLIENT:".length)); }} disabled={!selectedInternalBalance || resolveInternalDestinationOwner.isPending} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select required value={internalDestinationOwnerKey} onChange={(e) => { const selectedKey = e.target.value; setInternalDestinationOwnerKey(selectedKey); setOwnershipConsiderationType(selectedInternalBalance?.owner?.kind === "CUSTOMER" && selectedKey === "MILL" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); if (selectedKey.startsWith("CLIENT:")) resolveInternalDestinationOwner.mutate(selectedKey.slice("CLIENT:".length)); }} disabled={!selectedInternalBalance || resolveInternalDestinationOwner.isPending} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="">—</option>
                     {internalDestinationOwnerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
                   </select>
@@ -1851,16 +1920,17 @@ export default function Commercial() {
               {internalMovementKind === "OWNERSHIP_TRANSFER" && <div className="space-y-3 rounded-xl border p-4">
                 <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipConsideration}
                   <select value={ownershipConsiderationType} onChange={(e) => { setOwnershipConsiderationType(e.target.value as "SALE" | "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                    <option value="SALE" disabled={internalProductKind !== "OIL" || selectedInternalBalance?.owner?.kind !== "CUSTOMER" || internalDestinationOwnerKey !== "MILL"}>{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
+                    <option value="SALE" disabled={selectedInternalBalance?.owner?.kind !== "CUSTOMER" || internalDestinationOwnerKey !== "MILL"}>{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
                   </select>
                 </label>
-                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount}
+                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount} · {internalProductKind === "OIL" ? "TND/L" : "TND/kg"}
                   <input required type="number" min="0.001" step="0.001" value={ownershipAgreedAmount} onChange={(e) => { setOwnershipAgreedAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  <span className="text-sm font-semibold text-emerald-700">{lang === "ar" ? "المبلغ الجملي:" : "Total calculé:"} {money(Number(ownershipAgreedAmount || 0) * Number(internalMovementQuantity || 0))} TND</span>
                   <span className="text-xs text-muted-foreground">{l.ownershipSaleAccountingNote}</span>
                 </label>}
                 {ownershipConsiderationType === "SALE" && <div className="grid gap-3 rounded-lg bg-muted/30 p-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm font-medium">{l.ownershipInitialPayment}
-                    <input type="number" min="0" step="0.001" max={ownershipAgreedAmount || undefined} value={ownershipInitialPaymentAmount} onChange={(e) => { setOwnershipInitialPaymentAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                    <input type="number" min="0" step="0.001" max={Number(ownershipAgreedAmount) > 0 && Number(internalMovementQuantity) > 0 ? (Number(ownershipAgreedAmount) * Number(internalMovementQuantity)).toFixed(3) : undefined} value={ownershipInitialPaymentAmount} onChange={(e) => { setOwnershipInitialPaymentAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
                   </label>
                   <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentDate}
                     <input type="date" value={ownershipInitialPaymentDate} onChange={(e) => { setOwnershipInitialPaymentDate(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!(Number(ownershipInitialPaymentAmount) > 0)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
@@ -1879,7 +1949,7 @@ export default function Commercial() {
 
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) * Number(internalMovementQuantity) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
                   {l.postInternalMovement}
                 </Button>
               </div>
@@ -1900,29 +1970,30 @@ export default function Commercial() {
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.source_location_id)?.code ?? movement.source_location_id)}</TableCell>
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.destination_location_id)?.code ?? movement.destination_location_id)}</TableCell>
                 <TableCell>{(() => { const movementLot = (lots.data ?? []).find((lot) => lot.id === movement.lot_id); const linkedOilPurchase = (oilPurchases.data ?? []).find((purchase) => purchase.traceability_code === movementLot?.batch_code); const labelOwner = (owner: AnyRecord | undefined) => owner?.kind === "CUSTOMER" ? (linkedOilPurchase?.document_number ? `${l.oilPurchaseNumber}: ${linkedOilPurchase.document_number}` : l.customer) : displayOwnerLabel(owner); return <>{labelOwner(movement.source_owner)} → {labelOwner(movement.destination_owner)}</>; })()}</TableCell>
-                <TableCell className="text-xs">{movement.movement_kind === "OWNERSHIP_TRANSFER" ? <div className="space-y-1"><div>{evidence?.method === "DOCUMENT" ? l.ownershipEvidenceDocument : l.ownershipEvidenceApp}: {value(evidence?.document_reference ?? evidence?.customer_name)}</div><div>{consideration?.type === "SALE" ? `${l.ownershipEvidenceSale} · ${money(consideration?.agreed_amount)} TND` : l.ownershipEvidenceGift}</div>{movement.oil_purchase_document_number && <div>{l.oilPurchaseNumber}: <span className="font-mono">{value(movement.oil_purchase_document_number)}</span></div>}{movement.oil_purchase_document_number && <div>{l.oilPurchasePaid}: {money(consideration?.paid_amount)} · {l.oilPurchaseOutstanding}: {money(consideration?.outstanding_amount)} TND</div>}</div> : "—"}</TableCell>
+                <TableCell className="text-xs">{movement.movement_kind === "OWNERSHIP_TRANSFER" ? <div className="space-y-1"><div>{evidence?.method === "DOCUMENT" ? l.ownershipEvidenceDocument : l.ownershipEvidenceApp}: {value(evidence?.document_reference ?? evidence?.customer_name)}</div><div>{consideration?.type === "SALE" ? `${l.ownershipEvidenceSale} · ${money(consideration?.agreed_amount)} TND` : l.ownershipEvidenceGift}</div>{(movement.customer_purchase_document_number ?? movement.oil_purchase_document_number) && <div>{l.oilPurchaseNumber}: <span className="font-mono">{value(movement.customer_purchase_document_number ?? movement.oil_purchase_document_number)}</span></div>}{(movement.customer_purchase_document_number ?? movement.oil_purchase_document_number) && <div>{l.oilPurchasePaid}: {money(consideration?.paid_amount)} · {l.oilPurchaseOutstanding}: {money(consideration?.outstanding_amount)} TND</div>}</div> : "—"}</TableCell>
                 <TableCell>{date(movement.created_at)}</TableCell>
               </TableRow>;
             })}{(!internalMovementDocuments.isLoading && !(internalMovementDocuments.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
           </Table></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>{l.oilPurchasesTitle}</CardTitle><CardDescription>{lang === "ar" ? "كل وصل شراء مرتبط بتحويل ملكية الزيت من الحريف إلى المعصرة، ويحتفظ بكود التتبع الأصلي." : "Chaque bon d’achat est lié au transfert de propriété du client vers la huilerie et conserve le code de traçabilité d’origine."}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{l.oilPurchasesTitle}</CardTitle><CardDescription>{lang === "ar" ? "كل وصل شراء للزيت أو الزيتون مرتبط بتحويل الملكية إلى المعصرة، مع الحفاظ على كود التتبع الأصلي." : "Chaque bon d’achat d’huile ou d’olives est lié au transfert de propriété vers la huilerie et conserve le code de traçabilité d’origine."}</CardDescription></CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseUnitPrice}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
                 <TableBody>{(oilPurchases.data ?? []).map((purchase) => <TableRow key={purchase.id} className={selectedOilPurchaseId === purchase.id ? "bg-muted/50" : ""}>
                   <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => { setSelectedOilPurchaseId(purchase.id); setOilPurchasePaymentAmount(""); setOilPurchasePaymentReference(""); setOilPurchasePaymentDate(new Date().toISOString().slice(0, 10)); setOilPurchasePaymentKey(crypto.randomUUID()); }}>{value(purchase.document_number)}</button></TableCell>
                   <TableCell>{value(purchase.customer_name)}</TableCell>
                   <TableCell className="font-mono text-xs">{value(purchase.traceability_code)}</TableCell>
-                  <TableCell>{value(purchase.oil_type, value(purchase.quality_classification))}</TableCell>
-                  <TableCell>{number(purchase.quantity_l)} L</TableCell>
+                  <TableCell>{purchase.product_kind === "OLIVE" ? l.olive : l.oil}{purchase.product_kind === "OIL" ? ` · ${value(purchase.oil_type, value(purchase.quality_classification))}` : ""}</TableCell>
+                  <TableCell>{purchase.product_kind === "OLIVE" ? `${number(purchase.quantity_kg)} kg` : `${number(purchase.quantity_l)} L`}</TableCell>
+                  <TableCell>{money(purchase.product_kind === "OLIVE" ? purchase.unit_price_tnd_per_kg : purchase.unit_price_tnd_per_l)} TND / {purchase.product_kind === "OLIVE" ? "kg" : "L"}</TableCell>
                   <TableCell>{money(purchase.agreed_amount_tnd)}</TableCell>
                   <TableCell>{money(purchase.paid_amount_tnd)}</TableCell>
                   <TableCell className="font-semibold">{money(purchase.outstanding_amount_tnd)}</TableCell>
                   <TableCell>{oilPurchaseStatusLabel(purchase.payment_status)}</TableCell>
                   <TableCell><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedOilPurchaseReceipt(purchase); setSelectedOilPaymentReceipt(null); }}><Printer className="mr-1 size-4" />{l.printPurchase}</Button></TableCell>
-                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={10} text={l.noRows} />}</TableBody>
+                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={11} text={l.noRows} />}</TableBody>
               </Table>
             </div>
           <div className="mt-5 rounded-xl border p-4 space-y-3">
@@ -1940,7 +2011,7 @@ export default function Commercial() {
                 <div className="rounded-lg bg-amber-50 p-3"><div className="text-xs text-amber-800">{lang === "ar" ? "المتبقي على المعصرة" : "Reste dû par la huilerie"}</div><div className="text-lg font-semibold text-amber-900">{money(oilPurchaseStatement.data.outstanding_tnd)} TND</div></div>
               </div>
               <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{l.ownershipPaymentDate}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead>{lang === "ar" ? "المبلغ (د.ت)" : "Montant (TND)"}</TableHead><TableHead>{lang === "ar" ? "الرصيد" : "Solde"}</TableHead></TableRow></TableHeader>
-                <TableBody>{(oilPurchaseStatement.data.entries ?? []).map((entry: AnyRecord) => <TableRow key={String(entry.document_number)}><TableCell>{date(entry.date)}</TableCell><TableCell className="font-mono text-xs">{value(entry.document_number)}</TableCell><TableCell className="font-mono text-xs">{value(entry.traceability_code)}</TableCell><TableCell>{entry.quantity_l == null ? "—" : number(entry.quantity_l) + " L"}</TableCell><TableCell>{entry.entry_type === "PURCHASE" ? (lang === "ar" ? "شراء زيت" : "Achat d’huile") : (lang === "ar" ? "دفع للحريف" : "Paiement au client")}</TableCell><TableCell className={Number(entry.amount_tnd) < 0 ? "text-emerald-700" : "font-semibold"}>{money(entry.amount_tnd)}</TableCell><TableCell className="font-semibold">{money(entry.balance_tnd)} TND</TableCell></TableRow>)}{!oilPurchaseStatement.data.entries?.length && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
+                <TableBody>{(oilPurchaseStatement.data.entries ?? []).map((entry: AnyRecord) => <TableRow key={String(entry.document_number)}><TableCell>{date(entry.date)}</TableCell><TableCell className="font-mono text-xs">{value(entry.document_number)}</TableCell><TableCell className="font-mono text-xs">{value(entry.traceability_code)}</TableCell><TableCell>{entry.product_kind === "OLIVE" ? (entry.quantity_kg == null ? "—" : number(entry.quantity_kg) + " kg") : (entry.quantity_l == null ? "—" : number(entry.quantity_l) + " L")}</TableCell><TableCell>{entry.entry_type === "PURCHASE" ? (entry.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : (lang === "ar" ? "شراء زيت" : "Achat d’huile")) : (lang === "ar" ? "دفع للحريف" : "Paiement au client")}</TableCell><TableCell className={Number(entry.amount_tnd) < 0 ? "text-emerald-700" : "font-semibold"}>{money(entry.amount_tnd)}</TableCell><TableCell className="font-semibold">{money(entry.balance_tnd)} TND</TableCell></TableRow>)}{!oilPurchaseStatement.data.entries?.length && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
               </Table></div>
             </div>}
           </div>
@@ -1961,11 +2032,11 @@ export default function Commercial() {
           </CardContent>
         </Card>
         {selectedOilPurchaseReceipt && <Card className="print-area code-reveal rounded-2xl border-2 border-dashed border-emerald-300 bg-white p-8 text-stone-900 shadow-sm">
-          <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4"><CardTitle>{lang === "ar" ? "وصل شراء الزيت من الحريف" : "Bon d’achat d’huile au client"}</CardTitle><div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedOilPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le bon"}</Button></div></CardHeader>
+          <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4"><CardTitle>{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? (lang === "ar" ? "وصل شراء الزيتون من الحريف" : "Bon d’achat d’olives au client") : (lang === "ar" ? "وصل شراء الزيت من الحريف" : "Bon d’achat d’huile au client")}</CardTitle><div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedOilPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le bon"}</Button></div></CardHeader>
           <CardContent className="space-y-4 p-0">
-            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold">Oro Verde</div><div className="text-xs text-stone-500">{lang === "ar" ? "وثيقة شراء زيت من حريف" : "Achat d’huile auprès d’un client"}</div></div><div className="text-end"><div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">{lang === "ar" ? "رقم وصل الشراء" : "N° du bon d’achat"}</div><div className="font-mono text-lg font-bold text-emerald-900" dir="ltr">{value(selectedOilPurchaseReceipt.document_number)}</div><div className="mt-1 text-xs text-stone-500">{date(selectedOilPurchaseReceipt.purchase_date)}</div></div></div>
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold">Oro Verde</div><div className="text-xs text-stone-500">{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? (lang === "ar" ? "وثيقة شراء زيتون من حريف" : "Achat d’olives auprès d’un client") : (lang === "ar" ? "وثيقة شراء زيت من حريف" : "Achat d’huile auprès d’un client")}</div></div><div className="text-end"><div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">{lang === "ar" ? "رقم وصل الشراء" : "N° du bon d’achat"}</div><div className="font-mono text-lg font-bold text-emerald-900" dir="ltr">{value(selectedOilPurchaseReceipt.document_number)}</div><div className="mt-1 text-xs text-stone-500">{date(selectedOilPurchaseReceipt.purchase_date)}</div></div></div>
             <div className="rounded-lg bg-emerald-50 p-4 text-center"><div className="text-xs text-stone-500">{l.oilPurchaseTraceability}</div><div className="mt-1 font-mono text-2xl font-bold text-emerald-900" dir="ltr">{value(selectedOilPurchaseReceipt.traceability_code)}</div></div>
-            <div className="grid gap-3 sm:grid-cols-2 text-sm"><div><span className="text-stone-500">{l.oilPurchaseCustomer}: </span><strong>{value(selectedOilPurchaseReceipt.customer_name)}</strong></div><div><span className="text-stone-500">{lang === "ar" ? "الهاتف" : "Téléphone"}: </span><strong>{value(selectedOilPurchaseReceipt.customer_phone)}</strong></div><div><span className="text-stone-500">{l.quantity}: </span><strong>{number(selectedOilPurchaseReceipt.quantity_l)} L</strong></div><div><span className="text-stone-500">{l.oilPurchaseOilType}: </span><strong>{value(selectedOilPurchaseReceipt.oil_type, value(selectedOilPurchaseReceipt.quality_classification))}</strong></div><div><span className="text-stone-500">{l.oilPurchaseUnitPrice}: </span><strong>{money(selectedOilPurchaseReceipt.unit_price_tnd_per_l)} TND</strong></div><div><span className="text-stone-500">{lang === "ar" ? "الخزان" : "Cuve"}: </span><strong>{value(selectedOilPurchaseReceipt.tank_code)}</strong></div></div>
+            <div className="grid gap-3 sm:grid-cols-2 text-sm"><div><span className="text-stone-500">{l.oilPurchaseCustomer}: </span><strong>{value(selectedOilPurchaseReceipt.customer_name)}</strong></div><div><span className="text-stone-500">{lang === "ar" ? "الهاتف" : "Téléphone"}: </span><strong>{value(selectedOilPurchaseReceipt.customer_phone)}</strong></div><div><span className="text-stone-500">{l.quantity}: </span><strong>{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? `${number(selectedOilPurchaseReceipt.quantity_kg)} kg` : `${number(selectedOilPurchaseReceipt.quantity_l)} L`}</strong></div><div><span className="text-stone-500">{l.oilPurchaseOilType}: </span><strong>{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? l.olive : value(selectedOilPurchaseReceipt.oil_type, value(selectedOilPurchaseReceipt.quality_classification))}</strong></div><div><span className="text-stone-500">{l.oilPurchaseUnitPrice}: </span><strong>{money(selectedOilPurchaseReceipt.product_kind === "OLIVE" ? selectedOilPurchaseReceipt.unit_price_tnd_per_kg : selectedOilPurchaseReceipt.unit_price_tnd_per_l)} TND / {selectedOilPurchaseReceipt.product_kind === "OLIVE" ? "kg" : "L"}</strong></div><div><span className="text-stone-500">{lang === "ar" ? (selectedOilPurchaseReceipt.product_kind === "OLIVE" ? "الموقع" : "الخزان") : (selectedOilPurchaseReceipt.product_kind === "OLIVE" ? "Emplacement" : "Cuve")}: </span><strong>{value(selectedOilPurchaseReceipt.product_kind === "OLIVE" ? selectedOilPurchaseReceipt.location_code : selectedOilPurchaseReceipt.tank_code)}</strong></div></div>
             <div className="grid gap-3 border-t border-stone-200 pt-4 sm:grid-cols-3"><div><div className="text-xs text-stone-500">{l.oilPurchaseAgreed}</div><div className="text-lg font-bold">{money(selectedOilPurchaseReceipt.agreed_amount_tnd)} TND</div></div><div><div className="text-xs text-stone-500">{l.oilPurchasePaid}</div><div className="text-lg font-bold">{money(selectedOilPurchaseReceipt.initial_paid_amount_tnd)} TND</div></div><div><div className="text-xs text-stone-500">{l.oilPurchaseOutstanding}</div><div className="text-lg font-bold text-amber-700">{money(selectedOilPurchaseReceipt.initial_outstanding_amount_tnd)} TND</div></div></div>
             {Number(selectedOilPurchaseReceipt.initial_paid_amount_tnd ?? 0) > 0 && <div className="grid gap-2 border-t border-stone-200 pt-4 text-sm sm:grid-cols-3"><div><span className="text-stone-500">{l.ownershipPaymentDate}: </span><strong>{date(selectedOilPurchaseReceipt.initial_payment_date)}</strong></div><div><span className="text-stone-500">{l.ownershipPaymentMethod}: </span><strong>{paymentMethodLabel(selectedOilPurchaseReceipt.initial_payment_method)}</strong></div>{selectedOilPurchaseReceipt.initial_payment_reference && <div><span className="text-stone-500">{l.ownershipPaymentReference}: </span><strong>{value(selectedOilPurchaseReceipt.initial_payment_reference)}</strong></div>}</div>}
             <div className="border-t border-stone-200 pt-4 text-sm"><span className="text-stone-500">{l.oilPurchaseStatus}: </span><strong>{oilPurchaseStatusLabel(selectedOilPurchaseReceipt.initial_payment_status)}</strong></div>
@@ -2442,14 +2513,31 @@ export default function Commercial() {
         {(isAdmin || (editingCustodyReceipt && canEditRecords)) && <Card><CardHeader><CardTitle>{editingCustodyReceipt ? (lang === "ar" ? "تصحيح استلام الأمانة" : "Corriger la réception en garde") : l.custodyReceiptTitle}</CardTitle><CardDescription>{editingCustodyReceipt ? (lang === "ar" ? "سيُسجّل التصحيح بقيد عكسي مع الاحتفاظ بالمستند السابق." : "La correction crée une écriture inverse et conserve le document précédent.") : l.custodyReceiptNote}</CardDescription></CardHeader><CardContent>
           {(custodyClients.data?.length ?? 0) === 0 && <p className="mb-3 text-sm text-amber-700">{l.noCustodyClients}</p>}
           <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); if (editingCustodyReceipt) { const reason = window.prompt(lang === "ar" ? "سبب تصحيح المستند (5 أحرف على الأقل):" : "Motif de correction (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) receiveCustomerCustody.mutate(reason.trim()); } else receiveCustomerCustody.mutate(undefined); }}>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyCustomer}<select required value={custodyCustomerPhone} onChange={(e) => { setCustodyCustomerPhone(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyClients.data ?? []).map((client) => <option key={client.phone} value={client.phone}>{client.client_name} · {client.phone}</option>)}</select></label>
+            <label className="grid gap-1 text-sm font-medium">{l.custodyCustomer}<select required disabled={!!editingCustodyReceipt} value={custodyCustomerPhone} onChange={(e) => { const phone = e.target.value; setCustodyCustomerPhone(phone); setCustodySelectedLoads({}); setCustodyReceiptKey(crypto.randomUUID()); setSelectedCustodyHistoryPhone(phone); const client = (custodyClients.data ?? []).find((item) => item.phone === phone); setSelectedCustodyHistoryName(String(client?.client_name ?? "")); const owner = (custodyOwners.data ?? []).find((item) => item.client_phone === phone); if (owner) { setPickupCustomerId(owner.id); setPickupBalanceKey(""); setPickupQuantity(""); } else { setPickupCustomerId(""); setPickupBalanceKey(""); setPickupQuantity(""); if (phone) resolveCustodyStatementOwner.mutate(phone); } }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyClients.data ?? []).map((client) => <option key={client.phone} value={client.phone}>{client.client_name} · {client.phone}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyDate}<input required type="date" value={custodyReceiptDate} onChange={(e) => { setCustodyReceiptDate(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyVariety}<select required value={custodyVarietyId} onChange={(e) => { setCustodyVarietyId(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(varieties.data ?? []).filter((variety) => variety.active).map((variety) => <option key={variety.id} value={variety.id}>{lang === "ar" ? (variety.name_ar || variety.name_fr) : variety.name_fr}</option>)}</select></label>
-            <label className="grid gap-1 text-sm font-medium">{l.custodyQuantity}<input required type="number" min="0.001" step="0.001" value={custodyReceiptQuantity} onChange={(e) => { setCustodyReceiptQuantity(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            {editingCustodyReceipt ? <>
+              <label className="grid gap-1 text-sm font-medium">{l.custodyVariety}<select required value={custodyVarietyId} onChange={(e) => { setCustodyVarietyId(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(varieties.data ?? []).filter((variety) => variety.active).map((variety) => <option key={variety.id} value={variety.id}>{lang === "ar" ? (variety.name_ar || variety.name_fr) : variety.name_fr}</option>)}</select></label>
+              <label className="grid gap-1 text-sm font-medium">{l.custodyQuantity}<input required type="number" min="0.001" step="0.001" value={custodyReceiptQuantity} onChange={(e) => { setCustodyReceiptQuantity(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+            </> : <div className="md:col-span-3 rounded-xl border p-3 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold">{lang === "ar" ? "حمولات الحريف المتاحة للحفظ" : "Charges du client disponibles pour la garde"}</div><div className="text-sm font-semibold text-primary">{lang === "ar" ? "مجموع الكمية المختارة" : "Total sélectionné"} : {number(custodySelectedTotal)} kg</div></div>
+              {!custodyCustomerPhone ? <p className="text-sm text-muted-foreground">{lang === "ar" ? "اختر الحريف أولاً لعرض حمولاته." : "Choisissez d’abord un client pour afficher ses charges."}</p>
+                : custodyClientHistory.isLoading ? <p className="text-sm text-muted-foreground">{lang === "ar" ? "جار تحميل حمولات الحريف…" : "Chargement des charges du client…"}</p>
+                : custodyClientHistory.isError ? <p className="text-sm text-amber-700">{lang === "ar" ? "تعذر تحميل حمولات هذا الحريف." : "Impossible de charger les charges de ce client."}</p>
+                : <div className="overflow-x-auto"><Table><TableHeader><TableRow>
+                  <TableHead>{lang === "ar" ? "اختيار حمولة واحدة" : "Choisir une seule charge"}</TableHead><TableHead>Code</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyVariety}</TableHead><TableHead>{lang === "ar" ? "الكمية الأصلية" : "Quantité initiale"}</TableHead><TableHead>{lang === "ar" ? "المستلم سابقاً" : "Déjà reçu"}</TableHead><TableHead>{lang === "ar" ? "المتبقي" : "Restant"}</TableHead><TableHead>{lang === "ar" ? "كمية الاستلام" : "À recevoir"}</TableHead>
+                </TableRow></TableHeader><TableBody>
+                  {custodySourceLoads.map((load: AnyRecord) => <TableRow key={load.id}>
+                    <TableCell><input type="radio" name="custody-source-load" checked={custodySelectedLoads[load.id] !== undefined} onChange={() => { setCustodySelectedLoads({ [load.id]: String(load.remaining_kg) }); setCustodyReceiptKey(crypto.randomUUID()); }} aria-label={lang === "ar" ? "اختيار هذه الحمولة" : "Choisir cette charge"} /></TableCell>
+                    <TableCell className="font-mono text-xs font-semibold">{value(load.code)}</TableCell><TableCell>{date(load.created_at ?? load.day)}</TableCell><TableCell>{value(load.variety, "—")}</TableCell><TableCell>{number(load.olive_kg)} kg</TableCell><TableCell>{number(load.previously_received_kg)} kg</TableCell><TableCell className="font-semibold text-emerald-700">{number(load.remaining_kg)} kg</TableCell>
+                    <TableCell><input type="number" min="0.001" step="0.001" max={load.remaining_kg} disabled={custodySelectedLoads[load.id] === undefined} value={custodySelectedLoads[load.id] ?? ""} onChange={(e) => { setCustodySelectedLoads((current) => ({ ...current, [load.id]: e.target.value })); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-9 w-28 rounded-lg border bg-background px-2 text-sm" /></TableCell>
+                  </TableRow>)}
+                  {!custodySourceLoads.length && <EmptyRow colSpan={8} text={lang === "ar" ? "لا توجد حمولات زيتون متبقية قابلة للاستلام لهذا الحريف." : "Aucune charge d’olives restante n’est disponible pour ce client."} />}
+                </TableBody></Table></div>}
+            </div>}
             <label className="grid gap-1 text-sm font-medium">{l.custodyLocation}<select required value={custodyReceivingLocationId} onChange={(e) => { setCustodyReceivingLocationId(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(locations.data ?? []).filter((location) => location.active && ["OLIVE_STORAGE", "STAGING"].includes(location.kind)).map((location) => <option key={location.id} value={location.id}>{location.code} · {location.name}</option>)}</select></label>
             <label className="grid gap-1 text-sm font-medium">{l.custodyAck}<input required minLength={3} maxLength={120} value={custodyReceiptAck} onChange={(e) => { setCustodyReceiptAck(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
             <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.custodySource}<input maxLength={120} value={custodySourceReference} onChange={(e) => { setCustodySourceReference(e.target.value); setCustodyReceiptKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
-            <div className="flex items-end gap-2"><Button type="submit" disabled={receiveCustomerCustody.isPending || !custodyCustomerPhone || !custodyVarietyId || !custodyReceivingLocationId || !(Number(custodyReceiptQuantity) > 0) || custodyReceiptAck.trim().length < 3}>{editingCustodyReceipt ? (lang === "ar" ? "حفظ التصحيح" : "Enregistrer la correction") : l.receiveCustody}</Button>{editingCustodyReceipt && <Button type="button" variant="outline" onClick={() => { setEditingCustodyReceipt(null); setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference(""); }}>{l.cancelEdit}</Button>}</div>
+            <div className="flex items-end gap-2"><Button type="submit" disabled={receiveCustomerCustody.isPending || !custodyCustomerPhone || !custodyReceivingLocationId || custodyReceiptAck.trim().length < 3 || (editingCustodyReceipt ? (!custodyVarietyId || !(Number(custodyReceiptQuantity) > 0)) : (!Object.keys(custodySelectedLoads).length || Object.entries(custodySelectedLoads).some(([id, qty]) => { const load = custodySourceLoads.find((item: AnyRecord) => item.id === id); return !load || !(Number(qty) > 0) || Number(qty) > load.remaining_kg; })) )}>{editingCustodyReceipt ? (lang === "ar" ? "حفظ التصحيح" : "Enregistrer la correction") : l.receiveCustody}</Button>{editingCustodyReceipt && <Button type="button" variant="outline" onClick={() => { setEditingCustodyReceipt(null); setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference(""); }}>{l.cancelEdit}</Button>}</div>
           </form>
         </CardContent></Card>}
 
@@ -2496,7 +2584,7 @@ export default function Commercial() {
               const historyPhone = String(item.customer_phone ?? ownerForReceipt?.client_phone ?? item.client_phone ?? "");
               const historySelected = !!historyPhone && selectedCustodyHistoryPhone === historyPhone;
               return <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
+                  <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div>{item.source_load_code && <div className="text-[11px] text-primary">{lang === "ar" ? "حمولة" : "Charge"}: {item.source_load_code}</div>}</TableCell>
                   <TableCell>{date(item.receipt_date)}</TableCell>
                   <TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض Historique من carnet client" : "Afficher l’historique du carnet client"} aria-expanded={historySelected} onClick={() => {
                     if (!historyPhone) { toast.error(lang === "ar" ? "رقم هاتف الحريف غير موجود في سجل الاستلام." : "Le téléphone du client est absent de cette réception."); return; }

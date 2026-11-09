@@ -8,9 +8,29 @@ from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCom
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 
 
+class Cursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    async def to_list(self, length=None):
+        return self.rows[:length] if length is not None else list(self.rows)
+
+
 class Collection:
     def __init__(self, rows=None):
         self.rows = list(rows or [])
+
+    def find(self, query, projection=None, session=None):
+        def matches(row):
+            for key, expected in query.items():
+                actual = row.get(key)
+                if isinstance(expected, dict) and "$in" in expected:
+                    if actual not in expected["$in"]:
+                        return False
+                elif actual != expected:
+                    return False
+            return True
+        return Cursor([row for row in self.rows if matches(row)])
 
     async def find_one(self, query, projection=None, session=None):
         return next((row for row in self.rows if all(row.get(k) == v for k, v in query.items())), None)
@@ -29,6 +49,16 @@ class Collection:
         for key, value in update.get("$push", {}).items():
             row.setdefault(key, []).append(value)
         return SimpleNamespace(matched_count=1)
+
+    async def update_many(self, query, update, session=None):
+        matched = [row for row in self.rows if all(
+            row.get(key) in expected["$in"] if isinstance(expected, dict) and "$in" in expected
+            else row.get(key) == expected
+            for key, expected in query.items()
+        )]
+        for row in matched:
+            row.update(update.get("$set", {}))
+        return SimpleNamespace(matched_count=len(matched))
 
 
 class Database:
@@ -131,6 +161,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
     db = make_db()
     sample_lot = db["commercial_lots"].rows[0]
     sample_lot.update({
+        "batch_code": "2627A0008",
         "lot_purpose": "PREPRODUCTION_SAMPLE",
         "source_preproduction_sample_id": "trial-1",
         "source_olive_lot_id": "olive-source-1",
@@ -197,7 +228,7 @@ async def test_old_preproduction_sample_cannot_be_submitted_after_a_new_trial_is
         {"id": "trial-new", "source_olive_lot_id": "olive-source-1",
          "oil_sample_lot_id": "oil-new", "status": "COMPLETED"},
     ])
-    with pytest.raises(ValueError, match="latest active preproduction trial sample"):
+    with pytest.raises(ValueError, match="latest active preproduction sample"):
         await record_oil_quality_assessment(
             db, make_draft(), season_code="2627",
             actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},

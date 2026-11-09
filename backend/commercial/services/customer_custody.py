@@ -242,6 +242,18 @@ async def receive_customer_olive_custody(
         db, draft.customer_phone, custody_owner_id, actor_user_id=actor_user_id,
         created_at=created_at, session=session
     )
+    source_load = None
+    if draft.source_load_id:
+        source_load = await db["loads"].find_one(
+            {"id": draft.source_load_id, "phone": owner["client_phone"],
+             "cancelled": {"$ne": True}, "pressing": {"$ne": True}, "oil_kg": None},
+            {"_id": 0, "id": 1, "code": 1, "variety": 1, "olive_kg": 1},
+            session=session,
+        )
+        if not source_load:
+            raise ValueError("Source olive load does not belong to this customer or is no longer eligible")
+        if str(source_load.get("variety") or "").strip().casefold() != draft.variety_id.strip().casefold():
+            raise ValueError("Custody intake variety must match the selected source load")
     settings_doc = await db["settings"].find_one(
         {"key": "app"}, {"_id": 0, "varieties": 1}, session=session,
     ) or {}
@@ -250,7 +262,11 @@ async def receive_customer_olive_custody(
         str(name).strip() for name in configured_varieties
         if isinstance(name, str) and str(name).strip()
     }
-    if draft.variety_id not in active_varieties:
+    normalized_variety_id = next(
+        (name for name in active_varieties if name.casefold() == draft.variety_id.strip().casefold()),
+        None,
+    )
+    if not normalized_variety_id:
         raise ValueError("Unknown or inactive olive variety from Paramètres > Tarif")
     location = await db["commercial_locations"].find_one(
         {"id": draft.receiving_location_id, "active": True,
@@ -259,6 +275,30 @@ async def receive_customer_olive_custody(
     )
     if not location:
         raise ValueError("Unknown or inactive olive receiving location")
+
+    if source_load:
+        reserved = await db["loads"].update_one(
+            {
+                "id": source_load["id"],
+                "phone": owner["client_phone"],
+                "cancelled": {"$ne": True},
+                "pressing": {"$ne": True},
+                "oil_kg": None,
+                "$expr": {
+                    "$lte": [
+                        {"$add": [
+                            {"$ifNull": ["$custody_received_kg", 0]},
+                            Decimal128(draft.quantity_kg),
+                        ]},
+                        "$olive_kg",
+                    ]
+                },
+            },
+            {"$inc": {"custody_received_kg": Decimal128(draft.quantity_kg)}},
+            session=session,
+        )
+        if reserved.matched_count != 1:
+            raise ValueError("Requested quantity exceeds the source load's remaining olive quantity")
 
     receipt_number = await reserve_document_number(
         db["commercial_counters"], season_code, "CIN", session=session
@@ -278,7 +318,9 @@ async def receive_customer_olive_custody(
         "customer_phone": owner["client_phone"],
         "customer_name": owner["client_name"],
         "olive_lot_id": olive_lot_id,
-        "variety_id": draft.variety_id,
+        "source_load_id": source_load["id"] if source_load else None,
+        "source_load_code": source_load.get("code") if source_load else None,
+        "variety_id": normalized_variety_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
         "receiving_location_id": draft.receiving_location_id,
         "receipt_date": draft.receipt_date.isoformat(),
@@ -298,7 +340,9 @@ async def receive_customer_olive_custody(
         "season_code": season_code,
         "batch_code": batch_code,
         "product_kind": "OLIVE",
-        "variety_id": draft.variety_id,
+        "variety_id": normalized_variety_id,
+        "source_load_id": source_load["id"] if source_load else None,
+        "source_load_code": source_load.get("code") if source_load else None,
         "source_customer_custody_receipt_id": receipt_id,
         "quantity_received_kg": Decimal128(draft.quantity_kg),
         "owner": {"kind": "CUSTOMER", "customer_id": owner["id"]},
@@ -679,6 +723,15 @@ async def cancel_customer_olive_custody_receipt(
     )
     if not balance or _decimal_quantity(balance.get("quantity_kg")) != quantity:
         raise ValueError("The custody receipt balance changed; use a reviewed stock correction")
+
+    if receipt.get("source_load_id"):
+        released = await db["loads"].update_one(
+            {"id": receipt["source_load_id"], "custody_received_kg": {"$gte": Decimal128(quantity)}},
+            {"$inc": {"custody_received_kg": Decimal128(-quantity)}},
+            session=session,
+        )
+        if released.matched_count != 1:
+            raise ValueError("Source load custody quantity could not be reconciled during cancellation")
 
     now = cancelled_at.astimezone(timezone.utc)
     movement_season_code = receipt.get("season_code") or season_code
