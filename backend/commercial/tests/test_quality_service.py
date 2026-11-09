@@ -50,6 +50,16 @@ class Collection:
             row.setdefault(key, []).append(value)
         return SimpleNamespace(matched_count=1)
 
+    async def update_many(self, query, update, session=None):
+        matched = [row for row in self.rows if all(
+            row.get(key) in expected["$in"] if isinstance(expected, dict) and "$in" in expected
+            else row.get(key) == expected
+            for key, expected in query.items()
+        )]
+        for row in matched:
+            row.update(update.get("$set", {}))
+        return SimpleNamespace(matched_count=len(matched))
+
 
 class Database:
     def __init__(self, collections):
