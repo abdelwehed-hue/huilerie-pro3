@@ -1512,8 +1512,7 @@ export default function Commercial() {
     return !!sourceOliveLot
       && sourceOliveLot.preproduction_quality_status === "RELEASED"
       && !!sourceOliveLot.preproduction_sample_id
-      && !!sourceOliveLot.preproduction_quality_assessment_id
-      && sourceOliveLot.latest_preproduction_sample_id === sourceOliveLot.preproduction_sample_id;
+      && !!sourceOliveLot.preproduction_quality_assessment_id;
   };
   const internalPurchaseCustomers = (custodyOwners.data ?? []).filter((owner) =>
     owner.active !== false && (balances.data ?? []).some((balance) => {
