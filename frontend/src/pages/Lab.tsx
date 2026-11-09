@@ -189,12 +189,17 @@ export default function Lab() {
     const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     const isPreproduction = assessment.lot_purpose === "PREPRODUCTION_SAMPLE"
       || lot?.lot_purpose === "PREPRODUCTION_SAMPLE";
-    const isLatest = !lot?.last_quality_assessment_id || lot.last_quality_assessment_id === assessment.id;
+    // The lots endpoint is capped/paginated independently. A missing lot in that
+    // response must not hide a submitted assessment from the reviewer; the backend
+    // remains authoritative and re-checks that the linked lot is open and current.
+    const lotIsReviewable = !lot || (
+      lot.status === "OPEN"
+      && (!lot.last_quality_assessment_id || lot.last_quality_assessment_id === assessment.id)
+      && ["PENDING", "REJECTED"].includes(String(lot.quality_status ?? "PENDING"))
+    );
     return isPreproduction
       && assessment.status === "AWAITING_INDEPENDENT_REVIEW"
-      && lot?.status === "OPEN"
-      && isLatest
-      && ["PENDING", "REJECTED"].includes(String(lot?.quality_status ?? "PENDING"));
+      && lotIsReviewable;
   }).sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   const reviewAssessmentCode = (assessment: Record<string, any>) => {
     const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
