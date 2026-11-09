@@ -1868,6 +1868,11 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
         assert settled["outstanding_amount_tnd"].to_decimal() == Decimal("0.000")
         assert settled["payment_status"] == "PAID"
         assert settled["version"] == 2
+        transfer_history = await db.commercial_internal_movements.find_one(
+            {"id": purchase["transfer_id"]}, {"_id": 0}
+        )
+        assert transfer_history["consideration"]["payment_status"] == "PAID"
+        assert transfer_history["consideration"]["outstanding_amount"].to_decimal() == Decimal("0.000")
         assert await db.commercial_oil_purchase_payments.count_documents(
             {"purchase_document_id": purchase["id"]}
         ) == 2
