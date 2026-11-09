@@ -19,6 +19,7 @@ import Factures from "@/pages/Factures";
 import Commercial from "@/pages/Commercial";
 import CommercialCertificate from "@/pages/CommercialCertificate";
 import Audit from "@/pages/Audit";
+import Comptabilite from "@/pages/Comptabilite";
 import Login from "@/pages/Login";
 import Help from "@/pages/Help";
 
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/factures" element={<Factures />} />
+          <Route path="/comptabilite" element={<Comptabilite />} />
           <Route path="/commercial" element={<Commercial />} />
           <Route path="/help" element={<Help />} />
           <Route path="/audit" element={<Audit />} />
