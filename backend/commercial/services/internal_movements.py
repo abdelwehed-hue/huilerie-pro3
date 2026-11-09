@@ -72,6 +72,7 @@ async def create_internal_movement(
         "consideration": ({
             "type": draft.consideration_type,
             "agreed_amount": Decimal128(draft.consideration_amount) if draft.consideration_amount is not None else None,
+            "unit_price_tnd_per_l": Decimal128(draft.consideration_unit_price_tnd_per_l) if draft.consideration_unit_price_tnd_per_l is not None else None,
             "currency": "TND",
             "accounting_status": "PENDING_ACCOUNTING_INTEGRATION" if draft.consideration_type == "SALE" else "NO_CONSIDERATION",
             "payment_status": "NOT_RECORDED" if draft.consideration_type == "SALE" else "NOT_APPLICABLE",
