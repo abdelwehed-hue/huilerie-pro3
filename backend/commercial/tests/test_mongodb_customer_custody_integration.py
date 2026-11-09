@@ -13,11 +13,13 @@ from commercial.inventory_bootstrap import ensure_inventory_indexes
 from commercial.schemas.customer_custody import (
     CustomerOliveCustodyReceiptDraft,
     CustomerOilCustodyReleaseDraft,
+    CancelCustomerCustodyDocumentCommand,
 )
 from commercial.services.customer_custody import (
     _custody_owner_audit_id,
     _snapshot_fingerprint,
     receive_customer_olive_custody,
+    cancel_customer_olive_custody_receipt,
     release_customer_oil_custody,
     get_customer_custody_statement,
 )
@@ -33,7 +35,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         await ensure_inventory_indexes(db)
         await db.commercial_counters.insert_many([
             {"season_code": "2627", "document_type": kind, "last_sequence": 0}
-            for kind in ("CIN", "LOT", "MVT")
+            for kind in ("CIN", "LOT", "MVT", "INT")
         ])
         await db.clients.insert_one({
             "phone": "21612345678", "client_name": "Customer Olive Owner"
@@ -451,10 +453,28 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
         with pytest.raises(ValueError, match="exceeds the source load"):
             await receive("0.001", "custody-source-load-overrun-001", "overrun")
 
+        async with await client.start_session() as session:
+            cancelled = await session.with_transaction(
+                lambda active: cancel_customer_olive_custody_receipt(
+                    db, second["id"],
+                    CancelCustomerCustodyDocumentCommand(
+                        expected_version=1,
+                        reason="Return the remaining unneeded olives",
+                    ),
+                    season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    reversal_document_id="source-reversal-final",
+                    stock_movement_id="source-reversal-movement-final",
+                    audit_event_id="source-reversal-audit-final",
+                    cancelled_at=now, session=active,
+                )
+            )
+        assert cancelled["status"] == "CANCELLED"
         source_load = await db.loads.find_one(
             {"id": "traditional-load-001"}, {"_id": 0}
         )
-        assert source_load["custody_received_kg"].to_decimal() == Decimal("1000.000")
+        assert source_load["custody_received_kg"].to_decimal() == Decimal("400.000")
         assert await db.commercial_customer_custody_receipts.count_documents({
             "source_load_id": "traditional-load-001",
             "status": "RECEIVED",
