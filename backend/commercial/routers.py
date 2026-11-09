@@ -2060,6 +2060,80 @@ async def list_customer_oil_purchases(
     return _safe(docs)
 
 
+@router.get("/oil-purchases/customers/{customer_id}/statement")
+async def get_customer_oil_purchase_statement(
+    customer_id: str,
+    user: dict = Depends(current_user),
+):
+    """Consolidated payable statement for oil bought from a customer by the mill."""
+    _authorize(user, "commercial.read")
+    purchases = await db.commercial_oil_purchase_documents.find(
+        {"customer_id": customer_id}, {"_id": 0}
+    ).sort([("purchase_date", 1), ("document_number", 1)]).to_list(10000)
+    purchase_ids = [item["id"] for item in purchases]
+    payments = await db.commercial_oil_purchase_payments.find(
+        {"customer_id": customer_id, "purchase_document_id": {"$in": purchase_ids}},
+        {"_id": 0},
+    ).sort([("payment_date", 1), ("document_number", 1)]).to_list(10000)
+
+    def amount(value: Any) -> Decimal:
+        if isinstance(value, Decimal128):
+            return value.to_decimal()
+        return Decimal(str(value or "0"))
+
+    entries = []
+    for purchase in purchases:
+        entries.append({
+            "date": purchase.get("purchase_date") or "",
+            "entry_type": "PURCHASE",
+            "document_number": purchase.get("document_number"),
+            "traceability_code": purchase.get("traceability_code"),
+            "quantity_l": purchase.get("quantity_l"),
+            "amount_tnd": purchase.get("agreed_amount_tnd", Decimal128("0")),
+            "purchase_document_id": purchase.get("id"),
+            "payment_method": None,
+            "reference": None,
+            "_sort": 0,
+        })
+    for payment in payments:
+        entries.append({
+            "date": payment.get("payment_date") or "",
+            "entry_type": "PAYMENT",
+            "document_number": payment.get("document_number"),
+            "traceability_code": next(
+                (item.get("traceability_code") for item in purchases
+                 if item.get("id") == payment.get("purchase_document_id")), None
+            ),
+            "quantity_l": None,
+            "amount_tnd": -amount(payment.get("amount_tnd")),
+            "purchase_document_id": payment.get("purchase_document_id"),
+            "payment_method": payment.get("method"),
+            "reference": payment.get("reference"),
+            "_sort": 1,
+        })
+    entries.sort(key=lambda item: (item["date"], item["_sort"], item.get("document_number") or ""))
+    balance = Decimal("0")
+    for entry in entries:
+        balance += amount(entry["amount_tnd"])
+        entry["balance_tnd"] = balance
+        entry.pop("_sort", None)
+
+    total_purchases = sum((amount(item.get("agreed_amount_tnd")) for item in purchases), Decimal("0"))
+    total_paid = sum((amount(item.get("amount_tnd")) for item in payments), Decimal("0"))
+    customer = purchases[0] if purchases else {}
+    return _safe({
+        "customer_id": customer_id,
+        "customer_name": customer.get("customer_name"),
+        "customer_phone": customer.get("customer_phone"),
+        "purchase_count": len(purchases),
+        "payment_count": len(payments),
+        "total_purchases_tnd": total_purchases,
+        "total_paid_tnd": total_paid,
+        "outstanding_tnd": total_purchases - total_paid,
+        "entries": entries,
+    })
+
+
 @router.get("/oil-purchases/{purchase_id}/payments")
 async def list_customer_oil_purchase_payments(
     purchase_id: str,
