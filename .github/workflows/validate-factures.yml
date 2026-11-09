@@ -58,6 +58,10 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      JWT_SECRET: unit-test-only-secret
+      MONGO_URL: mongodb://127.0.0.1:27017
+      DB_NAME: commercial_unit_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
