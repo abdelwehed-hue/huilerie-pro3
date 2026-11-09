@@ -246,7 +246,7 @@ async def receive_customer_olive_custody(
     if draft.source_load_id:
         source_load = await db["loads"].find_one(
             {"id": draft.source_load_id, "phone": owner["client_phone"],
-             "cancelled": {"$ne": True}, "oil_kg": None},
+             "cancelled": {"$ne": True}, "pressing": {"$ne": True}, "oil_kg": None},
             {"_id": 0, "id": 1, "code": 1, "variety": 1, "olive_kg": 1},
             session=session,
         )
@@ -278,6 +278,7 @@ async def receive_customer_olive_custody(
                 "id": source_load["id"],
                 "phone": owner["client_phone"],
                 "cancelled": {"$ne": True},
+                "pressing": {"$ne": True},
                 "oil_kg": None,
                 "$expr": {
                     "$lte": [
