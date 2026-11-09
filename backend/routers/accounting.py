@@ -35,8 +35,8 @@ async def _recent(collection: str, sort_field: str = "created_at", limit: int = 
     return _safe(docs)
 
 
-async def _sum(collection: str, field: str, match: dict | None = None) -> str:
-    """Sum a numeric/Decimal128/string field server-side across every matching record."""
+def _sum_pipeline(field: str, match: dict | None = None) -> list[dict]:
+    """Build a Decimal128 aggregation; never route money through binary float."""
     pipeline = []
     if match:
         pipeline.append({"$match": match})
@@ -46,7 +46,12 @@ async def _sum(collection: str, field: str, match: dict | None = None) -> str:
         }}}},
         {"$project": {"_id": 0, "total": {"$toString": "$total"}}},
     ])
-    rows = await db[collection].aggregate(pipeline).to_list(1)
+    return pipeline
+
+
+async def _sum(collection: str, field: str, match: dict | None = None) -> str:
+    """Sum a numeric/Decimal128/string field server-side across every matching record."""
+    rows = await db[collection].aggregate(_sum_pipeline(field, match)).to_list(1)
     # Keep Decimal128 precision across the API boundary; the UI formats this string.
     return rows[0]["total"] if rows else "0.000"
 
