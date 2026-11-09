@@ -1,6 +1,6 @@
 """Internal stock movement command schemas."""
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -54,7 +54,7 @@ class InternalMovementDraft(BaseModel):
                     raise ValueError("A positive agreed amount is required for a sale")
                 if self.consideration_unit_price_tnd_per_l is None or self.consideration_unit_price_tnd_per_l <= 0:
                     raise ValueError("A positive unit price per litre is required for an oil purchase")
-                expected_amount = (self.consideration_unit_price_tnd_per_l * self.quantity_kg).quantize(Decimal("0.001"), rounding="ROUND_HALF_UP")
+                expected_amount = (self.consideration_unit_price_tnd_per_l * self.quantity_kg).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
                 if self.consideration_amount != expected_amount:
                     raise ValueError("The agreed amount must equal quantity multiplied by the unit price per litre")
                 if self.product_kind != "OIL" or self.source_owner.kind != "CUSTOMER" or self.destination_owner.kind != "MILL":
