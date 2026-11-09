@@ -196,7 +196,14 @@ async def assert_oil_purchase_payments_reconcile(
         session=session,
     ).to_list(10000)
     paid = _money(sum((_decimal(item.get("amount_tnd")) for item in payments), Decimal("0")))
-    if paid != _money(_decimal(purchase.get("paid_amount_tnd"))):
+    agreed = _money(_decimal(purchase.get("agreed_amount_tnd")))
+    stored_paid = _money(_decimal(purchase.get("paid_amount_tnd")))
+    stored_outstanding = _money(_decimal(purchase.get("outstanding_amount_tnd")))
+    if (
+        paid != stored_paid
+        or paid > agreed
+        or _money(agreed - paid) != stored_outstanding
+    ):
         raise ValueError("Oil purchase payment ledger does not reconcile with the purchase balance")
 
 
