@@ -88,8 +88,9 @@ export default function Comptabilite() {
       sum(customerOilPurchases, "agreed_amount_tnd");
     const serviceCollected = sum(data?.traditional_invoices || [], "paid_amount");
     const gsCollected = sum(data?.commercial_sales_invoices || [], "paid_amount_dt");
-    const oilPaid = sum(customerOilPurchases, "initial_paid_amount_tnd") +
-      sum(data?.customer_oil_purchase_payments || [], "amount_tnd");
+    // Every initial BAH payment also creates an RPA document; count RPA only
+    // to avoid double-counting the same cash disbursement.
+    const oilPaid = sum(data?.customer_oil_purchase_payments || [], "amount_tnd");
     return { serviceRevenue, salesRevenue, supplierPurchases, customerOlivePurchases,
       customerOilPurchases, stockPurchases, serviceCollected, gsCollected, oilPaid };
   }, [data]);
