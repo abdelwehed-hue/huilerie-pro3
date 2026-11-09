@@ -1519,6 +1519,7 @@ export default function Commercial() {
       const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
       if (!tank) return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && lot.quality_status !== "RELEASED") return false;
     } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id && item.active)) {
       return false;
     }
