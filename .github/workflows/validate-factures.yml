@@ -9,6 +9,7 @@ on:
       - feature/factures-2026-10-27
       - feature/commercial-foundation
       - feature/commercial-audit
+      - feature/comptabilite
   pull_request:
     branches:
       - main
