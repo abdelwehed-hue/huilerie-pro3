@@ -451,6 +451,9 @@ async def test_partial_ownership_transfer_splits_one_lot_between_mill_and_custom
             destination_owner={"kind": "CUSTOMER", "customer_id": "custody-owner-a"},
             idempotency_key="partial-ownership-transfer-key-001",
             reason="Transfer part of this lot to customer custody",
+            consent_method="DOCUMENT",
+            consent_reference="SIGNED-CUSTODY-TRANSFER-001",
+            consideration_type="GIFT",
         )
         async with await client.start_session() as session:
             result = await session.with_transaction(
