@@ -112,7 +112,7 @@ async def create_oil_purchase_document_for_transfer(
         raise ValueError("The source oil tank is not an active normal tank")
 
     agreed = _money(draft.consideration_amount)
-    unit_price = _money(agreed / draft.quantity_kg)
+    unit_price = _money(draft.consideration_unit_price_tnd_per_l)
     paid = _money(draft.initial_payment_amount or Decimal("0"))
     outstanding = _money(agreed - paid)
     now = created_at.astimezone(timezone.utc)
