@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, TrendingDown, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ReceiptText, type LucideIcon } from "lucide-react";
 
 type Row = Record<string, any>;
 type Overview = {
@@ -27,7 +27,7 @@ const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.c
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
 function Metric({ title, value, detail, icon: Icon, tone }: {
-  title: string; value: string; detail: string; icon: typeof Wallet; tone: string;
+  title: string; value: string; detail: string; icon: LucideIcon; tone: string;
 }) {
   return <Card className="border-stone-200 shadow-sm">
     <CardContent className="flex items-start gap-3 p-4">
@@ -43,7 +43,7 @@ function Metric({ title, value, detail, icon: Icon, tone }: {
 
 function DataTable({ title, description, rows, columns, empty }: {
   title: string; description: string; rows: Row[];
-  columns: Array<{ label: string; render: (row: Row) => React.ReactNode }>;
+  columns: Array<{ label: string; render: (row: Row) => ReactNode }>;
   empty: string;
 }) {
   return <Card className="border-stone-200 shadow-sm">
