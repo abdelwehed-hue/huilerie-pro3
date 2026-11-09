@@ -13,6 +13,7 @@ type Overview = {
   commercial_sales_invoices: Row[];
   commercial_sale_payments: Row[];
   customer_oil_purchase_payments: Row[];
+  commercial_credit_notes: Row[];
   suppliers: Row[];
   summary: {
     pressing_revenue_total: number | string;
@@ -176,15 +177,19 @@ export default function Comptabilite() {
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.number || "—"}, {label:"Client",render:r=>r.client_name || "—"}, {label:"Total",render:r=>fmt(r.total)}, {label:"Encaissé",render:r=>fmt(r.paid_amount)}, {label:"À recevoir",render:r=>fmt(r.balance)}
     ]} />
 
-    <DataTable title="Ventes d’huile — GS" description="Factures commerciales récentes validées. Les paiements règlent les créances; total calculé sur tout l’historique." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
+    <DataTable title="Ventes d’huile — GS" description="Factures commerciales récentes validées. Le total net intègre déjà les avoirs acceptés; les paiements règlent les créances." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.document_number || "—"}, {label:"Acheteur",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Total net",render:r=>fmt(r.net_amount_dt)}, {label:"Encaissé",render:r=>fmt(r.paid_amount_dt)}, {label:"À recevoir",render:r=>fmt(r.outstanding_amount_dt)}
+    ]} />
+
+    <DataTable title="Avoirs émis — retours acceptés" description="Avoirs AVO récents. Ils réduisent le revenu net de la facture d’origine; ils ne sont pas soustraits une seconde fois du total." rows={(data.commercial_credit_notes || []).filter(r => r.status === "ISSUED")} empty="Aucun avoir émis." columns={[
+      {label:"Date",render:r=>dateOf(r)}, {label:"Avoir",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Facture source",render:r=>r.invoice_number || r.invoice_id || "—"}, {label:"Montant",render:r=>fmt(r.amount_dt)}
     ]} />
 
     <Card className="border-amber-200 bg-amber-50/50">
       <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-950">
         <AlertTriangle className="mt-0.5 size-5 shrink-0" />
         <div><strong>Contrôle comptable — première version.</strong>
-          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les indicateurs financiers sont agrégés côté serveur sur l’ensemble des documents; les tableaux affichent uniquement les opérations les plus récentes (limite : {data.recent_limit}). Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs et les transferts d’olives clients ne disposent pas encore d’un registre de règlements consolidé : leurs soldes de trésorerie ne sont donc pas estimés.</p>
+          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les indicateurs financiers sont agrégés côté serveur sur l’ensemble des documents; les tableaux affichent uniquement les opérations les plus récentes (limite : {data.recent_limit}). Les ventes GS sont totalisées depuis le net des factures après avoirs acceptés; les avoirs sont listés séparément pour audit sans double déduction. Les retours physiques en attente ou refusés ne réduisent pas le revenu. Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs et les transferts d’olives clients ne disposent pas encore d’un registre de règlements consolidé : leurs soldes de trésorerie ne sont donc pas estimés.</p>
         </div>
       </CardContent>
     </Card>
