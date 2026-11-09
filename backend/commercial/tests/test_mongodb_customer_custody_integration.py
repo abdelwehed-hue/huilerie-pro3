@@ -447,6 +447,9 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
         first = await receive("400.000", "custody-source-load-partial-001", "partial")
         assert first["source_load_id"] == "traditional-load-001"
         assert first["source_load_code"] == "2627A0001"
+        first_lot = await db.commercial_lots.find_one({"id": "source-lot-partial"}, {"_id": 0})
+        assert first_lot["source_load_id"] == "traditional-load-001"
+        assert first_lot["source_load_code"] == "2627A0001"
         second = await receive("600.000", "custody-source-load-final-001", "final")
         assert second["quantity_kg"].to_decimal() == Decimal("600.000")
 
