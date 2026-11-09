@@ -3,7 +3,7 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 from commercial.services.numbering import validate_numbering_components
 
 COMMERCIAL_DOCUMENT_TYPES = (
-    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS"
+    "LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS", "BAH", "RPA"
 )
 
 
@@ -193,6 +193,18 @@ INVENTORY_INDEXES = {
                    unique=True, name="uq_internal_movement_idempotency"),
         IndexModel([("season_code", ASCENDING), ("created_at", DESCENDING)],
                    name="internal_movement_season_created"),
+    ],
+    "commercial_oil_purchase_documents": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_oil_purchase_document_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_oil_purchase_document_number"),
+        IndexModel([("transfer_id", ASCENDING)], unique=True, name="uq_oil_purchase_transfer"),
+        IndexModel([("customer_id", ASCENDING), ("created_at", DESCENDING)], name="oil_purchase_customer_created"),
+    ],
+    "commercial_oil_purchase_payments": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_oil_purchase_payment_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_oil_purchase_payment_number"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_oil_purchase_payment_idempotency"),
+        IndexModel([("purchase_document_id", ASCENDING), ("payment_date", DESCENDING)], name="oil_purchase_payment_document_date"),
     ],
     "commercial_stock_movements": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_stock_movement_id"),
