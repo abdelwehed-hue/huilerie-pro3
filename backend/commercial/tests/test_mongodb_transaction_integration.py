@@ -1808,6 +1808,8 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
         assert purchase["quantity_l"].to_decimal() == Decimal("150.000")
         assert purchase["unit_price_tnd_per_l"].to_decimal() == Decimal("1.000")
         assert purchase["agreed_amount_tnd"].to_decimal() == Decimal("150.000")
+        assert purchase["initial_paid_amount_tnd"].to_decimal() == Decimal("60.000")
+        assert purchase["initial_outstanding_amount_tnd"].to_decimal() == Decimal("90.000")
         assert purchase["paid_amount_tnd"].to_decimal() == Decimal("60.000")
         assert purchase["outstanding_amount_tnd"].to_decimal() == Decimal("90.000")
         assert purchase["payment_status"] == "PARTIALLY_PAID"
