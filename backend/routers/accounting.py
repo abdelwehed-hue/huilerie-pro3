@@ -56,7 +56,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
     """Read-only complete totals plus a bounded sample of recent source documents."""
     (
         invoices, olive_purchases, internal_movements, oil_purchases,
-        sales_invoices, sale_payments, oil_payments, suppliers, owners,
+        sales_invoices, sale_payments, oil_payments, credit_notes, suppliers, owners,
         pressing_revenue, pressing_collected, gs_sales_revenue, gs_collected,
         supplier_olive_total, customer_olive_total, customer_oil_total, customer_oil_paid,
     ) = await asyncio.gather(
@@ -67,6 +67,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         _recent("commercial_sales_invoices"),
         _recent("commercial_sale_payments"),
         _recent("commercial_oil_purchase_payments"),
+        _recent("commercial_credit_notes"),
         _recent("commercial_suppliers", "name", 1000),
         _recent("commercial_custody_owners", "client_name", 5000),
         _sum("invoices", "total"),
@@ -97,6 +98,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         "commercial_sales_invoices": sales_invoices,
         "commercial_sale_payments": sale_payments,
         "customer_oil_purchase_payments": oil_payments,
+        "commercial_credit_notes": credit_notes,
         "suppliers": suppliers,
         "summary": {
             "pressing_revenue_total": pressing_revenue,
