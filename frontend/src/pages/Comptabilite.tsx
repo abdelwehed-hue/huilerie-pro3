@@ -14,6 +14,17 @@ type Overview = {
   commercial_sale_payments: Row[];
   customer_oil_purchase_payments: Row[];
   suppliers: Row[];
+  summary: {
+    pressing_revenue_total: number;
+    pressing_collected_total: number;
+    gs_sales_revenue_total: number;
+    gs_sales_collected_total: number;
+    supplier_olive_purchase_total: number;
+    customer_olive_purchase_total: number;
+    customer_oil_purchase_total: number;
+    customer_oil_paid_total: number;
+  };
+  recent_limit: number;
 };
 
 const n = (v: unknown) => {
@@ -75,24 +86,23 @@ export default function Comptabilite() {
   });
   const data = query.data;
   const calculated = useMemo(() => {
-    const serviceRevenue = sum(data?.traditional_invoices || [], "total");
-    const salesRevenue = sum(data?.commercial_sales_invoices || [], "net_amount_dt");
     const supplierPurchases = (data?.supplier_olive_purchases || []).filter(r => r.status === "APPROVED");
     const customerOlivePurchases = (data?.customer_ownership_transfers || []).filter(r =>
       r.status === "APPROVED" && r.movement_kind === "OWNERSHIP_TRANSFER" &&
       r.product_kind === "OLIVE" && r.consideration?.type === "SALE"
     );
     const customerOilPurchases = data?.customer_oil_purchases || [];
-    const stockPurchases = sum(supplierPurchases, "total_amount_dt") +
-      customerOlivePurchases.reduce((s, r) => s + n(r.consideration?.agreed_amount), 0) +
-      sum(customerOilPurchases, "agreed_amount_tnd");
-    const serviceCollected = sum(data?.traditional_invoices || [], "paid_amount");
-    const gsCollected = sum(data?.commercial_sales_invoices || [], "paid_amount_dt");
-    // Every initial BAH payment also creates an RPA document; count RPA only
-    // to avoid double-counting the same cash disbursement.
-    const oilPaid = sum(data?.customer_oil_purchase_payments || [], "amount_tnd");
-    return { serviceRevenue, salesRevenue, supplierPurchases, customerOlivePurchases,
-      customerOilPurchases, stockPurchases, serviceCollected, gsCollected, oilPaid };
+    const summary = data?.summary;
+    return {
+      serviceRevenue: n(summary?.pressing_revenue_total),
+      salesRevenue: n(summary?.gs_sales_revenue_total),
+      stockPurchases: n(summary?.supplier_olive_purchase_total) +
+        n(summary?.customer_olive_purchase_total) + n(summary?.customer_oil_purchase_total),
+      serviceCollected: n(summary?.pressing_collected_total),
+      gsCollected: n(summary?.gs_sales_collected_total),
+      oilPaid: n(summary?.customer_oil_paid_total),
+      supplierPurchases, customerOlivePurchases, customerOilPurchases,
+    };
   }, [data]);
 
   if (query.isPending) return <div className="mx-auto max-w-7xl p-6 text-stone-600">Chargement des données comptables…</div>;
@@ -116,11 +126,11 @@ export default function Comptabilite() {
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde" icon={TrendingUp} tone="bg-emerald-50 text-emerald-700" />
-      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales approuvées" icon={TrendingUp} tone="bg-blue-50 text-blue-700" />
-      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Olives fournisseurs + clients et huile clients" icon={Package} tone="bg-amber-50 text-amber-700" />
-      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements enregistrés sur factures" icon={Wallet} tone="bg-violet-50 text-violet-700" />
-      <Metric title="Paiements huile clients" value={fmt(calculated.oilPaid)} detail="Décaissements BAH connus uniquement" icon={Wallet} tone="bg-rose-50 text-rose-700" />
+      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · total complet" icon={TrendingUp} tone="bg-emerald-50 text-emerald-700" />
+      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · total complet" icon={TrendingUp} tone="bg-blue-50 text-blue-700" />
+      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats validés · total complet, tous historiques" icon={Package} tone="bg-amber-50 text-amber-700" />
+      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · total complet" icon={Wallet} tone="bg-violet-50 text-violet-700" />
+      <Metric title="Paiements huile clients" value={fmt(calculated.oilPaid)} detail="Paiements RPA enregistrés · total complet" icon={Wallet} tone="bg-rose-50 text-rose-700" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
@@ -141,23 +151,23 @@ export default function Comptabilite() {
       </Card>
     </div>
 
-    <DataTable title="Achats d’olives auprès des fournisseurs" description="Achats de stock GS — les paiements fournisseurs ne sont pas encore consolidés ici." rows={calculated.supplierPurchases} empty="Aucun achat fournisseur approuvé." columns={[
+    <DataTable title="Achats d’olives auprès des fournisseurs" description="Achats de stock GS — affichage des opérations récentes; total calculé sur tout l’historique. Les règlements fournisseurs ne sont pas consolidés." rows={calculated.supplierPurchases} empty="Aucun achat fournisseur approuvé." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || r.supplier_id || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant",render:r=>fmt(r.total_amount_dt)}
     ]} />
 
-    <DataTable title="Achats d’olives aux clients" description="Uniquement les transferts de propriété avec contrepartie financière. La garde client est exclue." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
+    <DataTable title="Achats d’olives aux clients" description="Transferts récents avec contrepartie financière. La garde client est exclue; le total comptable couvre tout l’historique." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Document",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || r.source_owner?.customer_id || "—"}, {label:"Traçabilité",render:r=>r.batch_code || "—"}, {label:"Montant convenu",render:r=>fmt(r.consideration?.agreed_amount)}
     ]} />
 
-    <DataTable title="Achats d’huile auprès des clients" description="Bons BAH. Les versements RPA sont des règlements de dette, pas de nouveaux achats." rows={calculated.customerOilPurchases} empty="Aucun achat d’huile auprès d’un client." columns={[
+    <DataTable title="Achats d’huile auprès des clients" description="Bons BAH récents. Les versements RPA règlent la dette; le total couvre tout l’historique." rows={calculated.customerOilPurchases} empty="Aucun achat d’huile auprès d’un client." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Bon d’achat",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || "—"}, {label:"Code",render:r=>r.traceability_code || "—"}, {label:"Montant",render:r=>fmt(r.agreed_amount_tnd)}, {label:"Payé",render:r=>fmt(r.paid_amount_tnd)}, {label:"Reste dû",render:r=>fmt(r.outstanding_amount_tnd)}
     ]} />
 
-    <DataTable title="Revenus de trituration — Oro Verde" description="Factures de service. Garde des clients : seule la prestation est un revenu, les olives et l’huile restent la propriété du client." rows={serviceRows} empty="Aucune facture de prestation." columns={[
+    <DataTable title="Revenus de trituration — Oro Verde" description="Factures de service récentes. Garde des clients : seule la prestation est un revenu. Total calculé sur tout l’historique." rows={serviceRows} empty="Aucune facture de prestation." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.number || "—"}, {label:"Client",render:r=>r.client_name || "—"}, {label:"Total",render:r=>fmt(r.total)}, {label:"Encaissé",render:r=>fmt(r.paid_amount)}, {label:"À recevoir",render:r=>fmt(r.balance)}
     ]} />
 
-    <DataTable title="Ventes d’huile — GS" description="Factures commerciales approuvées. Les paiements sont des encaissements de créances, pas un second revenu." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
+    <DataTable title="Ventes d’huile — GS" description="Factures commerciales récentes validées. Les paiements règlent les créances; total calculé sur tout l’historique." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.document_number || "—"}, {label:"Acheteur",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Total net",render:r=>fmt(r.net_amount_dt)}, {label:"Encaissé",render:r=>fmt(r.paid_amount_dt)}, {label:"À recevoir",render:r=>fmt(r.outstanding_amount_dt)}
     ]} />
 
@@ -165,7 +175,7 @@ export default function Comptabilite() {
       <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-950">
         <AlertTriangle className="mt-0.5 size-5 shrink-0" />
         <div><strong>Contrôle comptable — première version.</strong>
-          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs et les transferts d’olives clients ne disposent pas encore d’un registre de règlements consolidé : leurs soldes de trésorerie ne sont donc pas estimés.</p>
+          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les indicateurs financiers sont agrégés côté serveur sur l’ensemble des documents; les tableaux affichent uniquement les opérations les plus récentes (limite : {data.recent_limit}). Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs et les transferts d’olives clients ne disposent pas encore d’un registre de règlements consolidé : leurs soldes de trésorerie ne sont donc pas estimés.</p>
         </div>
       </CardContent>
     </Card>
