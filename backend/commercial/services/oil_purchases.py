@@ -70,6 +70,7 @@ async def create_oil_purchase_document_for_transfer(
         raise ValueError("The source oil tank is not an active normal tank")
 
     agreed = _money(draft.consideration_amount)
+    unit_price = _money(agreed / draft.quantity_kg)
     paid = _money(draft.initial_payment_amount or Decimal("0"))
     outstanding = _money(agreed - paid)
     now = created_at.astimezone(timezone.utc)
@@ -99,6 +100,7 @@ async def create_oil_purchase_document_for_transfer(
         "source_owner": draft.source_owner.model_dump(),
         "destination_owner": draft.destination_owner.model_dump(),
         "purchase_date": now.date().isoformat(),
+        "unit_price_tnd_per_l": Decimal128(unit_price),
         "agreed_amount_tnd": Decimal128(agreed),
         "paid_amount_tnd": Decimal128(paid),
         "outstanding_amount_tnd": Decimal128(outstanding),
@@ -129,6 +131,7 @@ async def create_oil_purchase_document_for_transfer(
             "payment_date": (draft.initial_payment_date or now.date()).isoformat(),
             "method": draft.initial_payment_method,
             "reference": draft.initial_payment_reference,
+            "currency": "TND",
             "idempotency_scope": f"{season_code}:{actor_user_id}",
             "idempotency_key": f"initial-oil-purchase:{movement['id']}",
             "request_fingerprint": hashlib.sha256(
@@ -173,8 +176,11 @@ async def create_oil_purchase_document_for_transfer(
             "oil_type": document["oil_type"],
             "quality_classification": document["quality_classification"],
             "quantity_l": Decimal128(draft.quantity_kg),
+            "unit_price_tnd_per_l": Decimal128(unit_price),
             "agreed_amount_tnd": Decimal128(agreed),
             "paid_amount_tnd": Decimal128(paid),
+            "initial_payment_method": draft.initial_payment_method,
+            "initial_payment_reference": draft.initial_payment_reference,
             "outstanding_amount_tnd": Decimal128(outstanding),
             "payment_status": status,
         },
@@ -242,6 +248,7 @@ async def record_oil_purchase_payment(
         "payment_date": draft.payment_date.isoformat(),
         "method": draft.method,
         "reference": draft.reference,
+        "currency": "TND",
         "notes": draft.notes,
         "idempotency_scope": scope,
         "idempotency_key": draft.idempotency_key,
