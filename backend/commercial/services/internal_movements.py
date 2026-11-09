@@ -23,20 +23,50 @@ def _fingerprint(draft: InternalMovementDraft) -> str:
 
 
 async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *, session: Any, actor_user_id: str, created_at: datetime) -> None:
-    """Make a fully transferred customer olive load unavailable to the legacy press workflow."""
+    """Lock a legacy load only after all its customer-owned olive stock is transferred."""
     if draft.product_kind != "OLIVE" or draft.movement_kind != "OWNERSHIP_TRANSFER":
         return
     lot = await db["commercial_lots"].find_one(
         {"id": draft.lot_id, "product_kind": "OLIVE"},
-        {"_id": 0, "source_load_id": 1, "source_load_code": 1},
+        {"_id": 0, "source_load_id": 1},
         session=session,
     )
     source_load_id = (lot or {}).get("source_load_id")
     if not source_load_id:
         return
-    # The ownership transfer is already constrained to the entire customer balance
-    # for this lot. Retain olive_kg for historical reports/invoices; zero only the
-    # actionable customer quantity and permanently block legacy pressing.
+    source_load = await db["loads"].find_one(
+        {"id": source_load_id},
+        {"_id": 0, "code": 1, "olive_kg": 1, "custody_received_kg": 1},
+        session=session,
+    )
+    if not source_load:
+        return
+    # A source load may have been received into custody in multiple batches.
+    # Do not close it until its entire original weight has been received and
+    # every linked lot has zero remaining customer-owned stock.
+    received_raw = source_load.get("custody_received_kg", 0)
+    received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw))
+    if received < Decimal(str(source_load.get("olive_kg", 0))):
+        return
+    linked_lots = await db["commercial_lots"].find(
+        {"source_load_id": source_load_id, "product_kind": "OLIVE"},
+        {"_id": 0, "id": 1},
+        session=session,
+    ).to_list(500)
+    lot_ids = [item["id"] for item in linked_lots]
+    if not lot_ids:
+        return
+    remaining = await db["commercial_stock_balances"].find(
+        {"product_kind": "OLIVE", "lot_id": {"$in": lot_ids}, "owner.kind": "CUSTOMER"},
+        {"_id": 0, "quantity_kg": 1},
+        session=session,
+    ).to_list(1000)
+    remaining_total = Decimal("0")
+    for balance in remaining:
+        raw = balance.get("quantity_kg", 0)
+        remaining_total += raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
+    if remaining_total > 0:
+        return
     load = await db["loads"].find_one_and_update(
         {"id": source_load_id, "ownership_transferred": {"$ne": True}},
         {"$set": {
@@ -51,13 +81,13 @@ async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *
     )
     if load:
         await db["commercial_audit_events"].insert_one({
-            "id": f"load-ownership-transfer:{source_load_id}:{draft.lot_id}",
+            "id": f"load-ownership-transfer:{source_load_id}",
             "entity_type": "traditional_load",
             "entity_id": source_load_id,
             "action": "LOAD_OWNERSHIP_TRANSFERRED_TO_MILL",
             "actor_user_id": actor_user_id,
             "created_at": created_at.astimezone(timezone.utc),
-            "details": {"load_code": load.get("code"), "lot_id": draft.lot_id,
+            "details": {"load_code": load.get("code"), "lot_ids": lot_ids,
                         "available_olive_kg_after": 0},
         }, session=session)
 
