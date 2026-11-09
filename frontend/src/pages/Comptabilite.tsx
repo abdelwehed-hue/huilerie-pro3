@@ -9,7 +9,9 @@ type Overview = {
   traditional_invoices: Row[];
   supplier_olive_purchases: Row[];
   customer_ownership_transfers: Row[];
+  customer_olive_purchases: Row[];
   customer_oil_purchases: Row[];
+  customer_olive_purchase_payments: Row[];
   commercial_sales_invoices: Row[];
   commercial_sale_payments: Row[];
   customer_oil_purchase_payments: Row[];
@@ -22,6 +24,7 @@ type Overview = {
     gs_sales_collected_total: number | string;
     supplier_olive_purchase_total: number | string;
     customer_olive_purchase_total: number | string;
+    customer_olive_paid_total: number | string;
     customer_oil_purchase_total: number | string;
     customer_oil_paid_total: number | string;
   };
@@ -103,10 +106,7 @@ export default function Comptabilite() {
   const data = query.data;
   const calculated = useMemo(() => {
     const supplierPurchases = (data?.supplier_olive_purchases || []).filter(r => r.status === "APPROVED");
-    const customerOlivePurchases = (data?.customer_ownership_transfers || []).filter(r =>
-      r.status === "APPROVED" && r.movement_kind === "OWNERSHIP_TRANSFER" &&
-      r.product_kind === "OLIVE" && r.consideration?.type === "SALE"
-    );
+    const customerOlivePurchases = data?.customer_olive_purchases || [];
     const customerOilPurchases = data?.customer_oil_purchases || [];
     const summary = data?.summary;
     return {
@@ -116,6 +116,7 @@ export default function Comptabilite() {
         summary?.customer_olive_purchase_total, summary?.customer_oil_purchase_total),
       serviceCollected: mills(summary?.pressing_collected_total),
       gsCollected: mills(summary?.gs_sales_collected_total),
+      olivePaid: mills(summary?.customer_olive_paid_total),
       oilPaid: mills(summary?.customer_oil_paid_total),
       supplierPurchases, customerOlivePurchases, customerOilPurchases,
     };
@@ -146,7 +147,7 @@ export default function Comptabilite() {
       <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · total complet" icon={TrendingUp} tone="bg-blue-50 text-blue-700" />
       <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats validés · total complet, tous historiques" icon={Package} tone="bg-amber-50 text-amber-700" />
       <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · total complet" icon={Wallet} tone="bg-violet-50 text-violet-700" />
-      <Metric title="Paiements huile clients" value={fmt(calculated.oilPaid)} detail="Paiements RPA enregistrés · total complet" icon={Wallet} tone="bg-rose-50 text-rose-700" />
+      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · total complet" icon={Wallet} tone="bg-rose-50 text-rose-700" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
@@ -171,8 +172,8 @@ export default function Comptabilite() {
       {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || r.supplier_id || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant",render:r=>fmt(r.total_amount_dt)}
     ]} />
 
-    <DataTable title="Achats d’olives aux clients" description="Transferts récents avec contrepartie financière. La garde client est exclue; le total comptable couvre tout l’historique." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Document",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || r.source_owner?.customer_id || "—"}, {label:"Traçabilité",render:r=>r.batch_code || "—"}, {label:"Montant convenu",render:r=>fmt(r.consideration?.agreed_amount)}
+    <DataTable title="Achats d’olives aux clients" description="Bons BAH de transfert de propriété récents. La garde client est exclue; le total comptable couvre tout l’historique." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
+      {label:"Date",render:r=>dateOf(r)}, {label:"Bon d’achat",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || "—"}, {label:"Traçabilité",render:r=>r.traceability_code || "—"}, {label:"Quantité (kg)",render:r=>n(r.quantity_kg).toLocaleString("fr-TN")}, {label:"Prix / kg",render:r=>fmt(r.unit_price_tnd_per_kg)}, {label:"Montant",render:r=>fmt(r.agreed_amount_tnd)}, {label:"Payé",render:r=>fmt(r.paid_amount_tnd)}, {label:"Reste dû",render:r=>fmt(r.outstanding_amount_tnd)}
     ]} />
 
     <DataTable title="Achats d’huile auprès des clients" description="Bons BAH récents. Les versements RPA règlent la dette; le total couvre tout l’historique." rows={calculated.customerOilPurchases} empty="Aucun achat d’huile auprès d’un client." columns={[
