@@ -433,6 +433,29 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
                 "pressing": False, "cancelled": False,
             },
         ])
+        await db.loads.insert_many([
+            {
+                "id": "traditional-load-other-customer", "code": "2627A0004",
+                "season_id": "2627", "day": "2026-11-02",
+                "phone": "21699999999", "client_name": "Other Customer",
+                "variety": "chemlali", "olive_kg": Decimal128("50.000"),
+                "oil_kg": None, "pressing": False, "cancelled": False,
+            },
+            {
+                "id": "traditional-load-cancelled", "code": "2627A0005",
+                "season_id": "2627", "day": "2026-11-02",
+                "phone": "21612345678", "client_name": "Source Load Customer",
+                "variety": "chemlali", "olive_kg": Decimal128("50.000"),
+                "oil_kg": None, "pressing": False, "cancelled": True,
+            },
+            {
+                "id": "traditional-load-pressing", "code": "2627A0006",
+                "season_id": "2627", "day": "2026-11-02",
+                "phone": "21612345678", "client_name": "Source Load Customer",
+                "variety": "chemlali", "olive_kg": Decimal128("50.000"),
+                "oil_kg": None, "pressing": True, "cancelled": False,
+            },
+        ])
 
         async def receive(quantity, key, suffix):
             draft = CustomerOliveCustodyReceiptDraft(
@@ -489,6 +512,14 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
 
             async with await client.start_session() as session:
                 return await session.with_transaction(operation)
+
+        for invalid_load, suffix in [
+            ("traditional-load-other-customer", "wrong-owner"),
+            ("traditional-load-cancelled", "cancelled"),
+            ("traditional-load-pressing", "pressing"),
+        ]:
+            with pytest.raises(ValueError, match="does not belong to this customer or is no longer eligible"):
+                await receive_batch([(invalid_load, "10.000")], suffix)
 
         first = await receive("400.000", "custody-source-load-partial-001", "partial")
         assert first["source_load_id"] == "traditional-load-001"
