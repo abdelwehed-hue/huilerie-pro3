@@ -299,6 +299,7 @@ export default function Commercial() {
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
   const [custodyVarietyId, setCustodyVarietyId] = useState("");
   const [custodyReceiptQuantity, setCustodyReceiptQuantity] = useState("");
+  const [custodySelectedLoads, setCustodySelectedLoads] = useState<Record<string, string>>({});
   const [custodyReceivingLocationId, setCustodyReceivingLocationId] = useState("");
   const [custodyReceiptAck, setCustodyReceiptAck] = useState("");
   const [custodySourceReference, setCustodySourceReference] = useState("");
@@ -449,6 +450,21 @@ export default function Commercial() {
     enabled: ready && tab === "custody" && !!selectedCustodyHistoryPhone,
     retry: false,
   });
+  const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
+    .filter((load: AnyRecord) => load.status !== "cancelled" && load.oil_kg == null)
+    .map((load: AnyRecord) => {
+      const previouslyReceived = (custodyReceipts.data ?? [])
+        .filter((receipt: AnyRecord) => receipt.source_load_id === load.id && receipt.status !== "CANCELLED")
+        .reduce((sum: number, receipt: AnyRecord) => sum + Number(receipt.quantity_kg || 0), 0);
+      const remaining = Math.max(0, Number(load.olive_kg || 0) - previouslyReceived);
+      return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining };
+    })
+    .filter((load: AnyRecord) => load.remaining_kg > 0);
+  const custodySelectedTotal = Object.entries(custodySelectedLoads)
+    .reduce((sum, [loadId, quantity]) => {
+      const load = custodySourceLoads.find((item: AnyRecord) => item.id === loadId);
+      return sum + (load && Number(quantity) > 0 && Number(quantity) <= load.remaining_kg ? Number(quantity) : 0);
+    }, 0);
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
   const addSupplier = useMutation({
     mutationFn: () => apiPost<AnyRecord>("/commercial/v1/suppliers", {
@@ -1198,14 +1214,26 @@ export default function Commercial() {
           replacement: payload,
         });
       }
-      return apiPost<AnyRecord>("/commercial/v1/customer-custody/receipts", payload);
+      const items = Object.entries(custodySelectedLoads)
+        .filter(([loadId, quantity]) => custodySourceLoads.some((load: AnyRecord) => load.id === loadId && Number(quantity) > 0 && Number(quantity) <= load.remaining_kg))
+        .map(([source_load_id, quantity_kg]) => ({ source_load_id, quantity_kg }));
+      if (!items.length) throw new Error(lang === "ar" ? "اختر حمولة واحدة على الأقل وأدخل كمية صحيحة" : "Sélectionnez au moins une charge et saisissez une quantité valide");
+      return apiPost<AnyRecord[]>("/commercial/v1/customer-custody/receipts/batch", {
+        customer_phone: custodyCustomerPhone,
+        receipt_date: custodyReceiptDate,
+        receiving_location_id: custodyReceivingLocationId,
+        customer_acknowledgement_reference: custodyReceiptAck.trim(),
+        source_reference: custodySourceReference.trim() || null,
+        idempotency_key: custodyReceiptKey,
+        items,
+      });
     },
     onSuccess: async () => {
       toast.success(editingCustodyReceipt
         ? (lang === "ar" ? "تم حفظ التصحيح مع الاحتفاظ بالمستند السابق" : "Correction enregistrée; le document précédent est conservé")
         : (lang === "ar" ? "تم استلام زيتون الحريف وتسجيله كأمانة" : "Olives du client reçues en garde"));
       setEditingCustodyReceipt(null);
-      setCustodyReceiptQuantity(""); setCustodyReceiptAck(""); setCustodySourceReference("");
+      setCustodyReceiptQuantity(""); setCustodySelectedLoads({}); setCustodyReceiptAck(""); setCustodySourceReference("");
       setCustodyReceiptKey(crypto.randomUUID());
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-receipts"] }),
