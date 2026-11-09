@@ -2527,13 +2527,6 @@ export default function Commercial() {
                 </TableBody></Table></div>
               </> : <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد بيانات في Historique لهذا الحريف." : "لا توجد بيانات في Historique لهذا الحريف."}</p>}
           </div>}
-</div>
-                      </> : <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد بيانات في Historique لهذا الحريف." : "Aucune donnée dans l’historique de ce client."}</p>}
-                  </div>
-                </TableCell></TableRow>}
-              </>;
-            })}
-          </TableBody></Table>
         </CardContent></Card><Card><CardHeader><CardTitle>{l.custodyReleases}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyOilLot}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodySourceTank}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
             {(custodyReleases.data ?? []).map((item) => {
