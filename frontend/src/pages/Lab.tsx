@@ -177,6 +177,39 @@ export default function Lab() {
   const oilType = isGsCode ? (gsOliveVariety || f.oilType) : (f.oilType || found?.variety || "");
   const oilTypes = [...new Set([...(isGsCode ? (gsVarieties.data ?? []).map((item: any) => String(item.name_fr || item.name || "").trim()).filter(Boolean) : (vq.isError ? [] : (vq.data?.varieties ?? []))), ...(oilType ? [oilType] : [])])];
   const GRADE_LABEL: Record<string, string> = { auto: t("auto"), extra_vierge: t("extra_vierge"), vierge: t("vierge"), lampante: t("lampante") };
+  const [reviewAssessmentId, setReviewAssessmentId] = useState("");
+  const [reviewDecision, setReviewDecision] = useState<"RELEASED" | "REJECTED">("RELEASED");
+  const [reviewReason, setReviewReason] = useState("");
+  const [reviewQrOpen, setReviewQrOpen] = useState(false);
+  const gsPermissions = useQuery({ queryKey: ["lab-gs-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), retry: false });
+  const canReviewGsQuality = (gsPermissions.data?.permissions ?? []).includes("commercial.quality_release");
+  const reviewableGsAssessments = (gsAssessments.data ?? []).filter((assessment) => {
+    const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
+    return assessment.lot_purpose === "PREPRODUCTION_SAMPLE" && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && lot?.status === "OPEN" && lot?.last_quality_assessment_id === assessment.id && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
+  });
+  const selectedReviewAssessment = reviewableGsAssessments.find((item) => item.id === reviewAssessmentId);
+  const selectedReviewLot = selectedReviewAssessment ? (gsLots.data ?? []).find((lot) => lot.id === selectedReviewAssessment.oil_lot_id) : undefined;
+  const releaseGsAssessment = useMutation({
+    mutationFn: async () => {
+      if (!selectedReviewAssessment || !selectedReviewLot) throw new Error("Analyse ou lot introuvable. Actualisez la page.");
+      if (reviewReason.trim().length < 10) throw new Error("La justification doit contenir au moins 10 caractères.");
+      return apiPost("/commercial/v1/quality-assessments/release", { assessment_id: selectedReviewAssessment.id, expected_lot_version: selectedReviewLot.version ?? 1, decision: reviewDecision, decision_reason: reviewReason.trim(), idempotency_key: crypto.randomUUID() });
+    },
+    onSuccess: async () => {
+      toast.success("Décision indépendante enregistrée");
+      setReviewAssessmentId(""); setReviewReason(""); setReviewDecision("RELEASED");
+      await Promise.all([qc.invalidateQueries({ queryKey: ["lab-gs-quality-assessments"] }), qc.invalidateQueries({ queryKey: ["lab-gs-lots"] }), qc.invalidateQueries({ queryKey: ["commercial"] })]);
+    },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const handleReviewQrScan = (raw: string) => {
+    const scanned = raw.trim(); let certificateId = ""; let codeValue = scanned;
+    try { const parsed = new URL(scanned); const match = parsed.pathname.match(/\\/commercial\\/certificate\\/([^/]+)/i); if (match) certificateId = decodeURIComponent(match[1]); codeValue = parsed.searchParams.get("code")?.trim() || codeValue; } catch { /* QR contenant directement le code de traçabilité. */ }
+    const match = reviewableGsAssessments.find((item) => (certificateId && item.id === certificateId) || String(item.sample_reference ?? "").trim().toLowerCase() === codeValue.toLowerCase() || String(item.batch_code ?? "").trim().toLowerCase() === codeValue.toLowerCase());
+    if (!match) { toast.error("Aucune analyse en attente ne correspond à ce QR code."); return; }
+    setReviewAssessmentId(match.id); toast.success("Analyse sélectionnée pour la revue indépendante");
+  };
+
 
   return (
     <div>
@@ -382,7 +415,22 @@ export default function Lab() {
 
 
       </div>
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+      
+      {canReviewGsQuality && <section data-testid="lab-independent-quality-decision" className="mb-6 rounded-2xl border border-violet-200 bg-white shadow-sm">
+        <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">Décision indépendante</h2><p className="mt-1 text-sm text-violet-800">Réservée au réviseur indépendant. Elle porte uniquement sur l’analyse de l’échantillon préproduction.</p></div>
+        <div className="space-y-4 p-5">
+          <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 space-y-2 text-sm font-medium">Analyse à examiner
+            <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder="Choisir une analyse en attente" /></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}>{assessment.batch_code || assessment.sample_reference} · {assessment.laboratory_name || "Laboratoire"}</SelectItem>)}</SelectContent></Select>
+          </label><Button type="button" variant="outline" onClick={() => setReviewQrOpen(true)}><ScanLine className="mr-2 size-4" />Scanner le QR</Button></div>
+          {selectedReviewAssessment && <div className="rounded-xl border bg-stone-50 p-3 text-sm"><div><strong>Code de traçabilité :</strong> <span className="font-mono">{selectedReviewAssessment.batch_code || selectedReviewAssessment.sample_reference}</span></div><div><strong>Laboratoire :</strong> {selectedReviewAssessment.laboratory_name || "—"}</div><div><strong>Date d’analyse :</strong> {fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div>Acidité : <strong>{selectedReviewAssessment.acidity ?? "—"}</strong></div><div>Peroxyde : <strong>{selectedReviewAssessment.peroxide ?? "—"}</strong></div><div>K232 : <strong>{selectedReviewAssessment.k232 ?? "—"}</strong></div><div>K270 : <strong>{selectedReviewAssessment.k270 ?? "—"}</strong></div><div>Classification : <strong>{selectedReviewAssessment.classification ?? "—"}</strong></div><div>Type : <strong>{selectedReviewAssessment.oil_type ?? "—"}</strong></div></div></div>}
+          <label className="block space-y-2 text-sm font-medium">Décision<Select value={reviewDecision} onValueChange={(value) => setReviewDecision(value as "RELEASED" | "REJECTED")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="RELEASED">Accepter le lot</SelectItem><SelectItem value="REJECTED">Refuser le lot</SelectItem></SelectContent></Select></label>
+          <label className="block space-y-2 text-sm font-medium">Justification (10 caractères minimum)<Textarea value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} minLength={10} maxLength={1000} className="min-h-24" /></label>
+          {reviewableGsAssessments.length === 0 && <p className="text-sm text-stone-500">Aucune analyse préproduction en attente de décision indépendante.</p>}
+          <Button type="button" disabled={!selectedReviewAssessment || reviewReason.trim().length < 10 || releaseGsAssessment.isPending} onClick={() => releaseGsAssessment.mutate()}>{releaseGsAssessment.isPending ? "Enregistrement…" : "Enregistrer la décision"}</Button>
+        </div>
+      </section>}
+      <QrScanDialog open={reviewQrOpen} onClose={() => setReviewQrOpen(false)} onScan={(raw) => { handleReviewQrScan(raw); setReviewQrOpen(false); }} />
+<div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
         <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold text-stone-900">{t("analyses")}</div>
         <Table data-testid="lab-table">
           <TableHeader className="bg-stone-50">
