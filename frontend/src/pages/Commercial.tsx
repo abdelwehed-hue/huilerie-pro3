@@ -306,6 +306,7 @@ export default function Commercial() {
   const [editingCustodyReceipt, setEditingCustodyReceipt] = useState<AnyRecord | null>(null);
   const [pickupCustomerId, setPickupCustomerId] = useState("");
   const [selectedCustodyHistoryPhone, setSelectedCustodyHistoryPhone] = useState("");
+  const [selectedCustodyHistoryName, setSelectedCustodyHistoryName] = useState("");
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10));
   const [pickupBalanceKey, setPickupBalanceKey] = useState("");
   const [pickupQuantity, setPickupQuantity] = useState("");
@@ -2487,7 +2488,8 @@ export default function Commercial() {
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyVariety}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyLocation}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
             {(custodyReceipts.data ?? []).map((item) => {
               const canCorrect = item.status === "RECEIVED";
-              const historyPhone = String(item.customer_phone ?? item.client_phone ?? "");
+              const ownerForReceipt = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || (!!item.customer_phone && candidate.client_phone === item.customer_phone));
+              const historyPhone = String(item.customer_phone ?? ownerForReceipt?.client_phone ?? item.client_phone ?? "");
               const historySelected = !!historyPhone && selectedCustodyHistoryPhone === historyPhone;
               return <>
                 <TableRow key={item.id}>
@@ -2496,7 +2498,8 @@ export default function Commercial() {
                   <TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض Historique من carnet client" : "Afficher l’historique du carnet client"} aria-expanded={historySelected} onClick={() => {
                     if (!historyPhone) { toast.error(lang === "ar" ? "رقم هاتف الحريف غير موجود في سجل الاستلام." : "Le téléphone du client est absent de cette réception."); return; }
                     setSelectedCustodyHistoryPhone(historySelected ? "" : historyPhone);
-                    const owner = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || candidate.client_phone === historyPhone);
+                    setSelectedCustodyHistoryName(historySelected ? "" : String(item.customer_name ?? ownerForReceipt?.client_name ?? historyPhone));
+                    const owner = ownerForReceipt;
                     if (owner) { setPickupCustomerId(owner.id); setPickupBalanceKey(""); setPickupQuantity(""); }
                     else if (item.customer_phone) resolveCustodyStatementOwner.mutate(item.customer_phone);
                   }}>{value(item.customer_name, historyPhone)}</button></TableCell>
@@ -2507,21 +2510,26 @@ export default function Commercial() {
                   <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
                   <TableCell><div className="flex gap-2">{canEditRecords && canCorrect && <Button size="sm" variant="outline" onClick={() => beginCustodyReceiptEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canDeleteRecords && canCorrect && <Button size="sm" variant="destructive" disabled={cancelCustodyReceipt.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyReceipt.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button>}</div></TableCell>
                 </TableRow>
-                {historySelected && <TableRow key={item.id + "-history"}><TableCell colSpan={9} className="bg-muted/30 p-4">
-                  <div className="space-y-3">
-                    <div className="font-semibold">{lang === "ar" ? "Historique — دفتر الحريف" : "Historique — carnet client"} · {value(item.customer_name, historyPhone)}</div>
-                    {custodyClientHistory.isLoading ? <p className="text-sm text-muted-foreground">{lang === "ar" ? "جار تحميل سجل الحريف…" : "Chargement de l’historique client…"}</p>
-                      : custodyClientHistory.isError ? <p className="text-sm text-red-700">{lang === "ar" ? "تعذر تحميل السجل. تحقق من رقم الهاتف المرتبط بالحريف." : "Impossible de charger l’historique. Vérifiez le téléphone associé au client."}</p>
-                      : custodyClientHistory.data ? <>
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "عدد العمليات" : "Nombre d’opérations"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.loads_count)}</div></div>
-                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيتون المسجل" : "Olives enregistrées"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.olive_kg)} kg</div></div>
-                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيت المسجل" : "Huile enregistrée"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.oil_kg)} L</div></div>
-                        </div>
-                        <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Code</TableHead><TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "الصنف" : "Variété"}</TableHead><TableHead>{lang === "ar" ? "الزيتون (kg)" : "Olives (kg)"}</TableHead><TableHead>{lang === "ar" ? "الزيت (L)" : "Huile (L)"}</TableHead><TableHead>{lang === "ar" ? "المردودية" : "Rendement"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader><TableBody>
-                          {(custodyClientHistory.data.loads ?? []).map((load: AnyRecord) => <TableRow key={load.id}><TableCell className="font-mono text-xs font-semibold">{value(load.code)}</TableCell><TableCell>{date(load.created_at)}</TableCell><TableCell>{value(load.variety, "—")}</TableCell><TableCell className="font-semibold text-lime-800">{number(load.olive_kg)}</TableCell><TableCell className="font-semibold text-amber-700">{number(load.oil_kg)}</TableCell><TableCell>{load.yield_pct == null ? "—" : number(load.yield_pct) + "%"}</TableCell><TableCell>{value(load.status, "—")}</TableCell></TableRow>)}
-                          {!(custodyClientHistory.data.loads ?? []).length && <EmptyRow colSpan={7} text={l.noRows} />}
-                        </TableBody></Table></div>
+              </TableRow>;
+            })}
+          </TableBody></Table>
+          {selectedCustodyHistoryPhone && <div className="mt-4 rounded-xl border-2 border-primary/30 bg-background p-4 space-y-3" aria-live="polite">
+            <div className="flex items-center justify-between gap-3"><div className="font-semibold">{lang === "ar" ? "Historique — دفتر الحريف" : "Historique — carnet client"} · {selectedCustodyHistoryName}</div><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedCustodyHistoryPhone(""); setSelectedCustodyHistoryName(""); }}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button></div>
+            {custodyClientHistory.isLoading ? <p className="text-sm text-muted-foreground">{lang === "ar" ? "جار تحميل سجل الحريف…" : "Chargement de l’historique client…"}</p>
+              : custodyClientHistory.isError ? <p className="text-sm text-red-700">{lang === "ar" ? "تعذر تحميل السجل. تحقق من رقم هاتف الحريف." : "Impossible de charger l’historique. Vérifiez le numéro de téléphone du client."}</p>
+              : custodyClientHistory.data ? <>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "عدد العمليات" : "Nombre d’opérations"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.loads_count)}</div></div>
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيتون المسجل" : "Olives enregistrées"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.olive_kg)} kg</div></div>
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيت المسجل" : "Huile enregistrée"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.oil_kg)} L</div></div>
+                </div>
+                <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Code</TableHead><TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "الصنف" : "Variété"}</TableHead><TableHead>{lang === "ar" ? "الزيتون (kg)" : "Olives (kg)"}</TableHead><TableHead>{lang === "ar" ? "الزيت (L)" : "Huile (L)"}</TableHead><TableHead>{lang === "ar" ? "المردودية" : "Rendement"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader><TableBody>
+                  {(custodyClientHistory.data.loads ?? []).map((load: AnyRecord) => <TableRow key={load.id}><TableCell className="font-mono text-xs font-semibold">{value(load.code)}</TableCell><TableCell>{date(load.created_at)}</TableCell><TableCell>{value(load.variety, "—")}</TableCell><TableCell>{number(load.olive_kg)}</TableCell><TableCell>{number(load.oil_kg)}</TableCell><TableCell>{load.yield_pct == null ? "—" : number(load.yield_pct) + "%"}</TableCell><TableCell>{value(load.status, "—")}</TableCell></TableRow>)}
+                  {!(custodyClientHistory.data.loads ?? []).length && <EmptyRow colSpan={7} text={l.noRows} />}
+                </TableBody></Table></div>
+              </> : <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد بيانات في Historique لهذا الحريف." : "لا توجد بيانات في Historique لهذا الحريف."}</p>}
+          </div>}
+</div>
                       </> : <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد بيانات في Historique لهذا الحريف." : "Aucune donnée dans l’historique de ce client."}</p>}
                   </div>
                 </TableCell></TableRow>}
