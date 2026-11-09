@@ -1970,49 +1970,7 @@ export default function Commercial() {
             {lang === "ar" ? "لا يُجرى أي تحليل للزيت بعد العصر. ينتقل اعتماد عيّنة ما قبل الإنتاج إلى دفعة الزيت الناتجة مع الاحتفاظ برابط التتبّع." : "Aucune analyse de l’huile après trituration. La libération de l’échantillon préproduction est conservée pour l’huile produite avec le même lien de traçabilité."}
           </CardContent>
         </Card>
-        {canReviewQuality && <Card><CardHeader><CardTitle>{l.reviewerPanel}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader><CardContent>
-          <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
-            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-              <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
-                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {(() => { const sampleLot = (lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id); const sourceLot = sampleLot?.source_olive_lot_id ? (lots.data ?? []).find((lot) => lot.id === sampleLot.source_olive_lot_id) : undefined; const owner = sourceLot?.owner ?? (balances.data ?? []).find((balance) => balance.lot_id === sourceLot?.id && Number(balance.quantity_kg) > 0)?.owner; const customer = owner?.kind === "CUSTOMER" ? ((custodyClients.data ?? []).find((item) => item.id === owner.customer_id) ?? (custodyOwners.data ?? []).find((item) => item.id === owner.customer_id)) : undefined; return customer?.client_name ?? customer?.name ?? owner?.customer_name ?? sourceLot?.customer_name ?? sourceLot?.client_name ?? (lang === "ar" ? "الحريف غير محدد" : "Client non renseigné"); })()} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
-              </label>
-              <Button type="button" variant="outline" onClick={() => setQualityQrScanOpen(true)} className="h-10 gap-2">
-                <ScanLine className="size-4" />{lang === "ar" ? "مسح QR للشهادة" : "Scanner le QR du certificat"}
-              </Button>
-            </div>
-            {selectedReviewAssessment && <div className="space-y-3 rounded-xl border p-4">
-              <div className="grid gap-2 text-sm md:grid-cols-2">
-                <p><strong>{l.customer}:</strong> {value(reviewCustomerName)}</p>
-                <p><strong>{l.sampleReference}:</strong> {value(selectedReviewAssessment.sample_reference)}</p>
-                <p><strong>{l.laboratory}:</strong> {value(selectedReviewAssessment.laboratory_name)}</p>
-                <p><strong>{l.sampleDate}:</strong> {date(selectedReviewAssessment.sample_date)}</p>
-                <p><strong>{l.testedDate}:</strong> {date(selectedReviewAssessment.tested_date)}</p>
-                <p className="md:col-span-2"><strong>{l.specification}:</strong> {value(selectedReviewAssessment.specification_reference)}</p>
-                <p><strong>{l.acidity}:</strong> {value(selectedReviewAssessment.acidity)}</p>
-                <p><strong>{l.peroxide}:</strong> {value(selectedReviewAssessment.peroxide)}</p>
-                <p><strong>{l.k232}:</strong> {value(selectedReviewAssessment.k232)}</p>
-                <p><strong>{l.k270}:</strong> {value(selectedReviewAssessment.k270)}</p>
-                <p><strong>{l.oilContent}:</strong> {value(selectedReviewAssessment.oil_content_pct)}</p>
-                <p><strong>{l.classification}:</strong> {value(selectedReviewAssessment.classification)}</p>
-                <p><strong>{l.oilType}:</strong> {value(selectedReviewAssessment.oil_type)}</p>
-                <p className="md:col-span-2"><strong>{l.analysisNotes}:</strong> {value(selectedReviewAssessment.notes)}</p>
-              </div>
-              <Table><TableHeader><TableRow><TableHead>{l.measurementCode}</TableHead><TableHead>{l.measurementValue}</TableHead><TableHead>{l.measurementUnit}</TableHead></TableRow></TableHeader>
-                <TableBody>{(selectedReviewAssessment.measurements ?? []).map((item: AnyRecord, index: number) => <TableRow key={item.code + "-" + index}><TableCell className="font-mono">{value(item.code)}</TableCell><TableCell>{value(item.value)}</TableCell><TableCell>{value(item.unit)}</TableCell></TableRow>)}</TableBody>
-              </Table>
-            </div>}
-            <label className="grid max-w-sm gap-1 text-sm font-medium">{l.decision}
-              <select value={reviewDecision} onChange={(e) => setReviewDecision(e.target.value as "RELEASED" | "REJECTED")} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="RELEASED">{l.releaseOil}</option><option value="REJECTED">{l.rejectOil}</option></select>
-            </label>
-            <label className="grid gap-1 text-sm font-medium">{l.decisionReason}
-              <textarea required minLength={10} maxLength={1000} value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} className="min-h-24 rounded-lg border bg-background px-3 py-2 font-normal" />
-            </label>
-            {reviewableAssessments.length === 0 && <p className="text-sm text-muted-foreground">{l.noAssessment}</p>}
-            <Button type="submit" disabled={releaseQualityAssessment.isPending || !reviewAssessmentId || reviewReason.trim().length < 10}>{l.decision}</Button>
-          </form>
-        </CardContent></Card>}
-        {!canReviewQuality && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{l.noReviewPermission}</p>}
-        <Card>
+                <Card>
           <CardHeader>
             <CardTitle>{lang === "ar" ? "سجل تجارب العصر قبل الإنتاج" : "Historique des essais de trituration"}</CardTitle>
             <CardDescription>{lang === "ar" ? "سجل التجارب الفعلية فقط؛ عينات تحليل الشراء الآلية لا تظهر هنا لأنها لا تستهلك زيتونًا ولا تمثل عملية عصر." : "Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel."}</CardDescription>
