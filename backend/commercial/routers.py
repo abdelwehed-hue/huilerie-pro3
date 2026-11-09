@@ -53,6 +53,7 @@ from commercial.schemas.customer_custody import (
     CorrectCustomerOliveCustodyReceiptCommand,
     CorrectCustomerOilCustodyReleaseCommand,
     CustomerOliveCustodyReceiptDraft,
+    CustomerOliveCustodyReceiptBatchDraft,
     CustomerOilCustodyReleaseDraft,
 )
 from commercial.schemas.credit_application import BuyerCreditApplicationDraft
@@ -2209,6 +2210,61 @@ async def create_internal_stock_movement(
                 created_at=now, session=session,
             )
         )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/customer-custody/receipts/batch", status_code=201)
+async def receive_customer_custody_olives_batch(
+    draft: CustomerOliveCustodyReceiptBatchDraft,
+    user: dict = Depends(require_admin),
+):
+    """Receive selected portions of one or more existing customer olive loads atomically."""
+    _authorize(user, "commercial.manage_custody")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.receipt_date.isoformat()) != season:
+        raise HTTPException(422, "custody_receipt_date_outside_active_season")
+    now = datetime.now(timezone.utc)
+
+    async def operation(session):
+        created = []
+        for item in draft.items:
+            source_load = await db.loads.find_one(
+                {"id": item.source_load_id, "phone": draft.customer_phone,
+                 "cancelled": {"$ne": True}, "oil_kg": None},
+                {"_id": 0, "id": 1, "variety": 1},
+                session=session,
+            )
+            if not source_load or not str(source_load.get("variety") or "").strip():
+                raise ValueError("Every selected source load must belong to the customer and have a registered variety")
+            item_key = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"oro-verde-custody-batch:{draft.idempotency_key}:{item.source_load_id}",
+            ).hex
+            item_draft = CustomerOliveCustodyReceiptDraft(
+                customer_phone=draft.customer_phone,
+                receipt_date=draft.receipt_date,
+                variety_id=str(source_load["variety"]).strip(),
+                quantity_kg=item.quantity_kg,
+                source_load_id=item.source_load_id,
+                receiving_location_id=draft.receiving_location_id,
+                customer_acknowledgement_reference=draft.customer_acknowledgement_reference,
+                source_reference=draft.source_reference,
+                notes=draft.notes,
+                idempotency_key=item_key,
+            )
+            created.append(await receive_customer_olive_custody(
+                db, item_draft, season_code=season_code, actor_user=user,
+                actor_user_id=user["id"], receipt_id=str(uuid.uuid4()),
+                custody_owner_id=str(uuid.uuid4()), olive_lot_id=str(uuid.uuid4()),
+                stock_movement_id=str(uuid.uuid4()), audit_event_id=str(uuid.uuid4()),
+                created_at=now, session=session,
+            ))
+        return created
+
+    try:
+        result = await run_transaction(operation)
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
