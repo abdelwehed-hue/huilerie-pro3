@@ -55,7 +55,7 @@ export default function Loads() {
 
   const STATUS_LABEL: Record<string, string> = { all: t("all"), pending: t("pending"), pressing: t("pressing"), done: t("done"), delivered: t("delivered"), cancelled: t("cancelled") };
   const active = rows.filter((r) => r.status !== "cancelled");
-  const totalOlive = active.reduce((a, r) => a + r.olive_kg, 0);
+  const totalOlive = active.reduce((a, r) => a + (r.available_olive_kg ?? r.olive_kg), 0);
   const totalOil = active.reduce((a, r) => a + (r.oil_kg ?? 0), 0);
   const totalAmount = active.reduce((a, r) => a + (r.amount ?? 0), 0);
 
