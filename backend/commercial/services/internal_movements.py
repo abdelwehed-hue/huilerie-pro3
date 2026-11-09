@@ -12,6 +12,7 @@ from commercial.schemas.internal_movements import InternalMovementDraft
 from commercial.schemas.inventory import StockMovementDraft
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.numbering import reserve_document_number
+from commercial.services.oil_purchases import create_oil_purchase_document_for_transfer
 from commercial.permissions import require_commercial_permission
 
 
@@ -108,4 +109,9 @@ async def create_internal_movement(
         {"id": movement_document_id, "status": "APPROVED"},
         {"$set": {"stock_movement_id": ledger["id"]}}, session=session,
     )
+    if draft.movement_kind == "OWNERSHIP_TRANSFER" and draft.consideration_type == "SALE":
+        await create_oil_purchase_document_for_transfer(
+            db, document, draft, season_code=season_code,
+            actor_user_id=actor_user_id, created_at=created_at, session=session,
+        )
     return document
