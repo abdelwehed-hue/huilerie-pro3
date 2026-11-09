@@ -152,7 +152,7 @@ async def create_oil_purchase_document_for_transfer(
         "paid_amount": Decimal128(paid),
         "outstanding_amount": Decimal128(outstanding),
     }
-    await db["commercial_internal_movements"].update_one(
+    movement_update = await db["commercial_internal_movements"].update_one(
         {"id": movement["id"], "status": "APPROVED"},
         {"$set": {
             "oil_purchase_document_id": purchase_id,
@@ -161,6 +161,8 @@ async def create_oil_purchase_document_for_transfer(
         }},
         session=session,
     )
+    if movement_update.matched_count != 1:
+        raise ValueError("Approved ownership transfer could not be linked to its oil purchase document")
     await db["commercial_audit_events"].insert_one({
         "id": _stable_id("oil-purchase-audit", movement["id"]),
         "entity_type": "commercial_oil_purchase",
