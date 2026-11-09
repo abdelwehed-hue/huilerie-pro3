@@ -436,7 +436,7 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers") });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality") });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production" || tab === "sales") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
@@ -1396,7 +1396,9 @@ export default function Commercial() {
   const selectedReviewOwner = selectedReviewSourceLot?.owner
     ?? (balances.data ?? []).find((balance) => balance.lot_id === selectedReviewSourceLot?.id && Number(balance.quantity_kg) > 0)?.owner;
   const selectedReviewCustomer = selectedReviewOwner?.kind === "CUSTOMER"
-    ? ((custodyOwners.data ?? []).find((customer) => customer.id === selectedReviewOwner.customer_id)?.client_name
+    ? ((custodyClients.data ?? []).find((client) => client.id === selectedReviewOwner.customer_id)?.client_name
+      ?? (custodyClients.data ?? []).find((client) => client.id === selectedReviewOwner.customer_id)?.name
+      ?? (custodyOwners.data ?? []).find((customer) => customer.id === selectedReviewOwner.customer_id)?.client_name
       ?? (custodyOwners.data ?? []).find((customer) => customer.id === selectedReviewOwner.customer_id)?.name
       ?? selectedReviewOwner.customer_name
       ?? selectedReviewOwner.customer_id)
@@ -1976,7 +1978,7 @@ export default function Commercial() {
           <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
             <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
-                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {(() => { const sampleLot = (lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id); const sourceLot = sampleLot?.source_olive_lot_id ? (lots.data ?? []).find((lot) => lot.id === sampleLot.source_olive_lot_id) : undefined; const owner = sourceLot?.owner ?? (balances.data ?? []).find((balance) => balance.lot_id === sourceLot?.id && Number(balance.quantity_kg) > 0)?.owner; const customer = owner?.kind === "CUSTOMER" ? (custodyOwners.data ?? []).find((item) => item.id === owner.customer_id) : undefined; return customer?.client_name ?? customer?.name ?? owner?.customer_name ?? sourceLot?.customer_name ?? sourceLot?.client_name ?? (lang === "ar" ? "الحريف غير محدد" : "Client non renseigné"); })()} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
+                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {(() => { const sampleLot = (lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id); const sourceLot = sampleLot?.source_olive_lot_id ? (lots.data ?? []).find((lot) => lot.id === sampleLot.source_olive_lot_id) : undefined; const owner = sourceLot?.owner ?? (balances.data ?? []).find((balance) => balance.lot_id === sourceLot?.id && Number(balance.quantity_kg) > 0)?.owner; const customer = owner?.kind === "CUSTOMER" ? ((custodyClients.data ?? []).find((item) => item.id === owner.customer_id) ?? (custodyOwners.data ?? []).find((item) => item.id === owner.customer_id)) : undefined; return customer?.client_name ?? customer?.name ?? owner?.customer_name ?? sourceLot?.customer_name ?? sourceLot?.client_name ?? (lang === "ar" ? "الحريف غير محدد" : "Client non renseigné"); })()} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
               </label>
               <Button type="button" variant="outline" onClick={() => setQualityQrScanOpen(true)} className="h-10 gap-2">
                 <ScanLine className="size-4" />{lang === "ar" ? "مسح QR للشهادة" : "Scanner le QR du certificat"}
