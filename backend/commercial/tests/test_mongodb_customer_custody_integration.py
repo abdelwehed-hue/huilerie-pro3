@@ -153,7 +153,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
 @pytest.mark.asyncio
 async def test_custody_owner_creation_rolls_back_when_audit_insert_fails():
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    name = "customer_custody_owner_audit_rollback_" + uuid.uuid4().hex
+    name = "custody_owner_rollback_" + uuid.uuid4().hex
     db = client[name]
     now = datetime(2026, 11, 2, tzinfo=timezone.utc)
     owner_id = "custody-owner-audit-rollback"
@@ -343,7 +343,7 @@ async def test_customer_oil_pickup_rejects_other_customer_and_pending_quality():
 @pytest.mark.asyncio
 async def test_customer_pickup_cannot_release_pending_quality_oil():
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    name = "customer_custody_pending_quality_" + uuid.uuid4().hex
+    name = "custody_pending_quality_" + uuid.uuid4().hex
     db = client[name]
     try:
         await ensure_inventory_indexes(db)
