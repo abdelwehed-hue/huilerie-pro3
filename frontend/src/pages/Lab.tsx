@@ -187,8 +187,19 @@ export default function Lab() {
   const canReviewGsQuality = me.data?.role === "admin" || (gsPermissions.data?.permissions ?? []).includes("commercial.quality_release");
   const reviewableGsAssessments = (gsAssessments.data ?? []).filter((assessment) => {
     const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
-    return assessment.lot_purpose === "PREPRODUCTION_SAMPLE" && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && lot?.status === "OPEN" && lot?.last_quality_assessment_id === assessment.id && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
-  });
+    const isPreproduction = assessment.lot_purpose === "PREPRODUCTION_SAMPLE"
+      || lot?.lot_purpose === "PREPRODUCTION_SAMPLE";
+    const isLatest = !lot?.last_quality_assessment_id || lot.last_quality_assessment_id === assessment.id;
+    return isPreproduction
+      && assessment.status === "AWAITING_INDEPENDENT_REVIEW"
+      && lot?.status === "OPEN"
+      && isLatest
+      && ["PENDING", "REJECTED"].includes(String(lot?.quality_status ?? "PENDING"));
+  }).sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+  const reviewAssessmentCode = (assessment: Record<string, any>) => {
+    const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
+    return String(assessment.batch_code || lot?.batch_code || assessment.sample_reference || "Code indisponible");
+  };
   const selectedReviewAssessment = reviewableGsAssessments.find((item) => item.id === reviewAssessmentId);
   const selectedReviewLot = selectedReviewAssessment ? (gsLots.data ?? []).find((lot) => lot.id === selectedReviewAssessment.oil_lot_id) : undefined;
   const releaseGsAssessment = useMutation({
@@ -422,12 +433,14 @@ export default function Lab() {
         <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">Décision indépendante</h2><p className="mt-1 text-sm text-violet-800">Réservée au réviseur indépendant. Elle porte uniquement sur l’analyse de l’échantillon préproduction.</p></div>
         <div className="space-y-4 p-5">
           <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 space-y-2 text-sm font-medium">Analyse à examiner
-            <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder="Choisir une analyse en attente" /></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}>{assessment.batch_code || assessment.sample_reference} · {assessment.laboratory_name || "Laboratoire"}</SelectItem>)}</SelectContent></Select>
+            <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder="Choisir une analyse en attente" /></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}><span className="font-mono font-semibold">{reviewAssessmentCode(assessment)}</span> · {assessment.laboratory_name || "Laboratoire"}</SelectItem>)}</SelectContent></Select>
           </label><Button type="button" variant="outline" onClick={() => setReviewQrOpen(true)}><ScanLine className="mr-2 size-4" />Scanner le QR</Button></div>
-          {selectedReviewAssessment && <div className="rounded-xl border bg-stone-50 p-3 text-sm"><div><strong>Code de traçabilité :</strong> <span className="font-mono">{selectedReviewAssessment.batch_code || selectedReviewAssessment.sample_reference}</span></div><div><strong>Laboratoire :</strong> {selectedReviewAssessment.laboratory_name || "—"}</div><div><strong>Date d’analyse :</strong> {fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div>Acidité : <strong>{selectedReviewAssessment.acidity ?? "—"}</strong></div><div>Peroxyde : <strong>{selectedReviewAssessment.peroxide ?? "—"}</strong></div><div>K232 : <strong>{selectedReviewAssessment.k232 ?? "—"}</strong></div><div>K270 : <strong>{selectedReviewAssessment.k270 ?? "—"}</strong></div><div>Classification : <strong>{selectedReviewAssessment.classification ?? "—"}</strong></div><div>Type : <strong>{selectedReviewAssessment.oil_type ?? "—"}</strong></div></div></div>}
+          {selectedReviewAssessment && <div className="rounded-xl border bg-stone-50 p-3 text-sm"><div><strong>Code de traçabilité :</strong> <span className="font-mono">{reviewAssessmentCode(selectedReviewAssessment)}</span></div><div><strong>Laboratoire :</strong> {selectedReviewAssessment.laboratory_name || "—"}</div><div><strong>Date d’analyse :</strong> {fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div>Acidité : <strong>{selectedReviewAssessment.acidity ?? "—"}</strong></div><div>Peroxyde : <strong>{selectedReviewAssessment.peroxide ?? "—"}</strong></div><div>K232 : <strong>{selectedReviewAssessment.k232 ?? "—"}</strong></div><div>K270 : <strong>{selectedReviewAssessment.k270 ?? "—"}</strong></div><div>Classification : <strong>{selectedReviewAssessment.classification ?? "—"}</strong></div><div>Type : <strong>{selectedReviewAssessment.oil_type ?? "—"}</strong></div></div></div>}
           <label className="block space-y-2 text-sm font-medium">Décision<Select value={reviewDecision} onValueChange={(value) => setReviewDecision(value as "RELEASED" | "REJECTED")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="RELEASED">Accepter le lot</SelectItem><SelectItem value="REJECTED">Refuser le lot</SelectItem></SelectContent></Select></label>
           <label className="block space-y-2 text-sm font-medium">Justification (10 caractères minimum)<Textarea value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} minLength={10} maxLength={1000} className="min-h-24" /></label>
-          {reviewableGsAssessments.length === 0 && <p className="text-sm text-stone-500">Aucune analyse préproduction en attente de décision indépendante.</p>}
+          {gsAssessments.isLoading || gsLots.isLoading ? <p className="text-sm text-stone-500">Chargement des analyses et des codes de traçabilité…</p> : null}
+          {(gsAssessments.isError || gsLots.isError) && <p className="text-sm text-red-600">Impossible de charger les analyses ou les lots. Vérifiez votre connexion et vos droits d’accès, puis actualisez la page.</p>}
+          {!gsAssessments.isLoading && !gsLots.isLoading && !gsAssessments.isError && !gsLots.isError && reviewableGsAssessments.length === 0 && <p className="text-sm text-stone-500">Aucune analyse préproduction en attente de décision indépendante.</p>}
           <Button type="button" disabled={!selectedReviewAssessment || reviewReason.trim().length < 10 || releaseGsAssessment.isPending} onClick={() => releaseGsAssessment.mutate()}>{releaseGsAssessment.isPending ? "Enregistrement…" : "Enregistrer la décision"}</Button>
         </div>
       </section>}
