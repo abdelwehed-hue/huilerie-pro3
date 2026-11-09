@@ -8,9 +8,29 @@ from commercial.schemas.quality import QualityAssessmentDraft, QualityReleaseCom
 from commercial.services.quality import record_oil_quality_assessment, release_oil_quality_assessment
 
 
+class Cursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    async def to_list(self, length=None):
+        return self.rows[:length] if length is not None else list(self.rows)
+
+
 class Collection:
     def __init__(self, rows=None):
         self.rows = list(rows or [])
+
+    def find(self, query, projection=None, session=None):
+        def matches(row):
+            for key, expected in query.items():
+                actual = row.get(key)
+                if isinstance(expected, dict) and "$in" in expected:
+                    if actual not in expected["$in"]:
+                        return False
+                elif actual != expected:
+                    return False
+            return True
+        return Cursor([row for row in self.rows if matches(row)])
 
     async def find_one(self, query, projection=None, session=None):
         return next((row for row in self.rows if all(row.get(k) == v for k, v in query.items())), None)
