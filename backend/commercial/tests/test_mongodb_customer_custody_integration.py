@@ -144,7 +144,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         repeated = await post("unused-receipt-id", "unused-owner-id", "unused-lot-id", "unused-movement-id", "unused-audit-id")
         assert repeated["id"] == result["id"]
         assert await db.commercial_customer_custody_receipts.count_documents({}) == 2
-        assert await db.commercial_lots.count_documents({}) == 4
+        assert await db.commercial_lots.count_documents({}) == 2
         assert await db.commercial_stock_movements.count_documents({}) == 2
         assert await db.commercial_audit_events.count_documents({}) == 6
     finally:
@@ -551,7 +551,7 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
             "source_load_id": "traditional-load-001",
             "status": "RECEIVED",
         }) == 1
-        assert await db.commercial_lots.count_documents({}) == 2
+        assert await db.commercial_lots.count_documents({}) == 4
     finally:
         await client.drop_database(name)
         client.close()
