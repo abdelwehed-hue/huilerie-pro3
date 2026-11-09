@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ReceiptText, type LucideIcon } from "lucide-react";
+import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, type LucideIcon } from "lucide-react";
 
 type Row = Record<string, any>;
 type Overview = {
@@ -118,7 +118,8 @@ export default function Comptabilite() {
       <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde" icon={TrendingUp} tone="bg-emerald-50 text-emerald-700" />
       <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales approuvées" icon={TrendingUp} tone="bg-blue-50 text-blue-700" />
       <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Olives fournisseurs + clients et huile clients" icon={Package} tone="bg-amber-50 text-amber-700" />
-      <Metric title="Encaissements connus" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements clients enregistrés sur factures" icon={Wallet} tone="bg-violet-50 text-violet-700" />
+      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements enregistrés sur factures" icon={Wallet} tone="bg-violet-50 text-violet-700" />
+      <Metric title="Paiements huile clients" value={fmt(calculated.oilPaid)} detail="Décaissements BAH connus uniquement" icon={Wallet} tone="bg-rose-50 text-rose-700" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
@@ -144,7 +145,7 @@ export default function Comptabilite() {
     ]} />
 
     <DataTable title="Achats d’olives aux clients" description="Uniquement les transferts de propriété avec contrepartie financière. La garde client est exclue." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Document",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.source_owner?.customer_id || r.customer_name || "—"}, {label:"Traçabilité",render:r=>r.batch_code || "—"}, {label:"Montant convenu",render:r=>fmt(r.consideration?.agreed_amount)}
+      {label:"Date",render:r=>dateOf(r)}, {label:"Document",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || r.source_owner?.customer_id || "—"}, {label:"Traçabilité",render:r=>r.batch_code || "—"}, {label:"Montant convenu",render:r=>fmt(r.consideration?.agreed_amount)}
     ]} />
 
     <DataTable title="Achats d’huile auprès des clients" description="Bons BAH. Les versements RPA sont des règlements de dette, pas de nouveaux achats." rows={calculated.customerOilPurchases} empty="Aucun achat d’huile auprès d’un client." columns={[
