@@ -1333,10 +1333,18 @@ export default function Commercial() {
   const canRecordLab = permissions.data?.permissions.includes("commercial.lab_record") === true;
   const canCreatePreproductionSample = permissions.data?.permissions.includes("commercial.manage_preproduction_samples") === true;
   const canReviewQuality = permissions.data?.permissions.includes("commercial.quality_release") === true;
-  // New preproduction assessments must target trial oil lots; keep a legacy lot selectable only while editing its existing assessment.
-  const qualityOilLots = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && ((lot.lot_purpose === "PREPRODUCTION_SAMPLE" && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id)) || ((editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId)));
+  // Quality control covers both preproduction trial samples and the actual oil lots created by production.
+  // A trial sample releases the olive input for pressing; it does NOT release the resulting commercial oil.
+  const qualityOilLots = (lots.data ?? []).filter((lot) => {
+    if (lot.product_kind !== "OIL" || lot.status !== "OPEN") return false;
+    const isCurrentTrialSample = lot.lot_purpose === "PREPRODUCTION_SAMPLE"
+      && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id);
+    const isProducedOil = Boolean(lot.source_production_id) && ["PENDING", "REJECTED"].includes(String(lot.quality_status));
+    const isExistingAssessmentLot = (editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId;
+    return isCurrentTrialSample || isProducedOil || isExistingAssessmentLot;
+  });
   const selectedQualityLot = qualityOilLots.find((lot) => lot.id === qualityLotId);
-  const selectedQualitySourceLot = selectedQualityLot?.source_olive_lot_id
+  const selectedQualitySourceLot = selectedQualityLot?.lot_purpose === "PREPRODUCTION_SAMPLE" && selectedQualityLot?.source_olive_lot_id
     ? (lots.data ?? []).find((lot) => lot.id === selectedQualityLot.source_olive_lot_id)
     : undefined;
   const qualitySampleReference = selectedQualitySourceLot?.batch_code ?? selectedQualityLot?.batch_code ?? sampleReference;
@@ -1945,10 +1953,14 @@ export default function Commercial() {
 
 
       {tab === "quality" && <div className="space-y-4">
-        {(editingQualityAssessmentId || correctingQualityAssessmentId || showNewQualityAssessment) && canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile")}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
+        {canRecordLab && !editingQualityAssessmentId && !correctingQualityAssessmentId && !showNewQualityAssessment && <div className="flex justify-end"><Button type="button" onClick={() => { setQualityLotId(""); setSampleReference(""); setShowNewQualityAssessment(true); }}><Plus className="mr-2 size-4" />{lang === "ar" ? "تحليل دفعة زيت" : "Nouvelle analyse d’huile"}</Button></div>}
+        {(editingQualityAssessmentId || correctingQualityAssessmentId || showNewQualityAssessment) && canRecordLab && <Card><CardHeader><CardTitle>{correctingQualityAssessmentId ? l.correctedAnalysis : showNewQualityAssessment ? (lang === "ar" ? "تحليل دفعة زيت جديدة" : "Nouvelle analyse d’huile") : (lang === "ar" ? "تعديل تحليل الزيت" : "Modifier l’analyse d’huile")}</CardTitle><CardDescription>{correctingQualityAssessmentId ? l.qualityCorrectionNote : l.qualityRule}</CardDescription></CardHeader><CardContent>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submitQualityAssessment.mutate(); }}>
             <label className="grid max-w-xl gap-1 text-sm font-medium">{l.qualityLot}
-              <select required disabled value={qualityLotId} className="h-10 rounded-lg border bg-muted px-3 font-normal"><option value={qualityLotId}>{lotCode((lots.data ?? []).find((lot) => lot.id === qualityLotId), qualityLotId)}</option></select>
+              <select required disabled={!showNewQualityAssessment} value={qualityLotId} onChange={(event) => { setQualityLotId(event.target.value); setSampleReference(""); }} className="h-10 rounded-lg border bg-muted px-3 font-normal">
+                <option value="">{lang === "ar" ? "اختر دفعة الزيت" : "Choisir un lot d’huile"}</option>
+                {qualityOilLots.map((lot) => <option key={lot.id} value={lot.id}>{lotCode(lot)} · {lot.lot_purpose === "PREPRODUCTION_SAMPLE" ? (lang === "ar" ? "عيّنة ما قبل الإنتاج" : "Échantillon préproduction") : (lang === "ar" ? "زيت الإنتاج النهائي" : "Huile produite")} · {lot.quality_status === "REJECTED" ? (lang === "ar" ? "مرفوض" : "Rejeté") : (lang === "ar" ? "بانتظار التحليل" : "En attente d’analyse")}</option>)}
+              </select>
             </label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-medium">{l.sampleReference}<input required readOnly value={qualitySampleReference} className="h-10 rounded-lg border bg-muted px-3 font-mono font-normal" /></label>
