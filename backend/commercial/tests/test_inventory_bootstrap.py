@@ -121,7 +121,7 @@ async def test_default_counter_bootstrap_creates_every_document_type_once():
     db = CounterDatabase()
     created = await provision_commercial_counters(db, "2627")
 
-    expected = {"LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS"}
+    expected = {"LOT", "MVT", "ACH", "PROD", "VTE", "FAC", "PAY", "INT", "RET", "AVO", "CIN", "CUS", "CAP", "REV", "RJT", "ESS", "BAH", "RPA"}
     assert set(COMMERCIAL_DOCUMENT_TYPES) == expected
     assert len(COMMERCIAL_DOCUMENT_TYPES) == len(expected)
     assert created == len(expected)
