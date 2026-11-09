@@ -144,7 +144,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         repeated = await post("unused-receipt-id", "unused-owner-id", "unused-lot-id", "unused-movement-id", "unused-audit-id")
         assert repeated["id"] == result["id"]
         assert await db.commercial_customer_custody_receipts.count_documents({}) == 2
-        assert await db.commercial_lots.count_documents({}) == 2
+        assert await db.commercial_lots.count_documents({}) == 4
         assert await db.commercial_stock_movements.count_documents({}) == 2
         assert await db.commercial_audit_events.count_documents({}) == 6
     finally:
@@ -417,6 +417,22 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
             "pressing": False,
             "cancelled": False,
         })
+        await db.loads.insert_many([
+            {
+                "id": "traditional-load-002", "code": "2627A0002", "season_id": "2627",
+                "day": "2026-11-02", "phone": "21612345678",
+                "client_name": "Source Load Customer", "variety": "chemlali",
+                "olive_kg": Decimal128("100.000"), "oil_kg": None,
+                "pressing": False, "cancelled": False,
+            },
+            {
+                "id": "traditional-load-003", "code": "2627A0003", "season_id": "2627",
+                "day": "2026-11-02", "phone": "21612345678",
+                "client_name": "Source Load Customer", "variety": "chemlali",
+                "olive_kg": Decimal128("100.000"), "oil_kg": None,
+                "pressing": False, "cancelled": False,
+            },
+        ])
 
         async def receive(quantity, key, suffix):
             draft = CustomerOliveCustodyReceiptDraft(
@@ -444,6 +460,36 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
                     )
                 )
 
+        async def receive_batch(entries, suffix):
+            async def operation(active):
+                created = []
+                for index, (load_id, quantity) in enumerate(entries):
+                    draft = CustomerOliveCustodyReceiptDraft(
+                        customer_phone="21612345678",
+                        receipt_date=date(2026, 11, 2),
+                        variety_id="chemlali",
+                        quantity_kg=Decimal(quantity),
+                        source_load_id=load_id,
+                        receiving_location_id="source-load-yard",
+                        customer_acknowledgement_reference=f"ACK-BATCH-{suffix}-{index}",
+                        idempotency_key=f"custody-batch-{suffix}-{index}-001",
+                    )
+                    created.append(await receive_customer_olive_custody(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        receipt_id=f"batch-{suffix}-receipt-{index}",
+                        custody_owner_id=f"batch-{suffix}-owner-{index}",
+                        olive_lot_id=f"batch-{suffix}-lot-{index}",
+                        stock_movement_id=f"batch-{suffix}-movement-{index}",
+                        audit_event_id=f"batch-{suffix}-audit-{index}",
+                        created_at=now, session=active,
+                    ))
+                return created
+
+            async with await client.start_session() as session:
+                return await session.with_transaction(operation)
+
         first = await receive("400.000", "custody-source-load-partial-001", "partial")
         assert first["source_load_id"] == "traditional-load-001"
         assert first["source_load_code"] == "2627A0001"
@@ -455,6 +501,29 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
 
         with pytest.raises(ValueError, match="exceeds the source load"):
             await receive("0.001", "custody-source-load-overrun-001", "overrun")
+
+        with pytest.raises(ValueError, match="exceeds the source load"):
+            await receive_batch([
+                ("traditional-load-002", "40.000"),
+                ("traditional-load-003", "100.001"),
+            ], "rollback")
+        assert await db.commercial_customer_custody_receipts.count_documents({
+            "id": {"$regex": "^batch-rollback"}
+        }) == 0
+        rolled_back_load = await db.loads.find_one(
+            {"id": "traditional-load-002"}, {"_id": 0}
+        )
+        assert "custody_received_kg" not in rolled_back_load
+
+        batch_receipts = await receive_batch([
+            ("traditional-load-002", "40.000"),
+            ("traditional-load-003", "100.000"),
+        ], "success")
+        assert len(batch_receipts) == 2
+        assert sum(item["quantity_kg"].to_decimal() for item in batch_receipts) == Decimal("140.000")
+        assert [item["source_load_id"] for item in batch_receipts] == [
+            "traditional-load-002", "traditional-load-003"
+        ]
 
         async with await client.start_session() as session:
             cancelled = await session.with_transaction(
