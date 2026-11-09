@@ -330,6 +330,8 @@ export default function Commercial() {
   const [ownershipInitialPaymentReference, setOwnershipInitialPaymentReference] = useState("");
   const [ownershipInitialPaymentDate, setOwnershipInitialPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedOilPurchaseId, setSelectedOilPurchaseId] = useState("");
+  const [selectedOilPurchaseReceipt, setSelectedOilPurchaseReceipt] = useState<AnyRecord | null>(null);
+  const [selectedOilPaymentReceipt, setSelectedOilPaymentReceipt] = useState<AnyRecord | null>(null);
   const [oilPurchasePaymentAmount, setOilPurchasePaymentAmount] = useState("");
   const [oilPurchasePaymentMethod, setOilPurchasePaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
   const [oilPurchasePaymentReference, setOilPurchasePaymentReference] = useState("");
@@ -377,6 +379,7 @@ export default function Commercial() {
   const creditNotes = useQuery({ queryKey: ["commercial", "credit-notes"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/credit-notes", 500), enabled: ready && tab === "sales" && salesView === "sales" });
   const salePayments = useQuery({ queryKey: ["commercial", "sale-payments", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/sales-invoices/${encodeURIComponent(selectedInvoiceId)}/payments`, 500), enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId });
   const paymentReversals = useQuery({ queryKey: ["commercial", "payment-reversals", selectedInvoiceId], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/payment-reversals", 500), enabled: ready && tab === "sales" && !!selectedInvoiceId });
+  const selectedOilPurchase = (oilPurchases.data ?? []).find((item) => item.id === selectedOilPurchaseId) ?? null;
   const supplierRows = suppliers.data ?? [];
   const purchaseRows = purchases.data ?? [];
   const selectedSupplier = supplierRows.find((supplier) => supplier.id === selectedSupplierId) ?? null;
