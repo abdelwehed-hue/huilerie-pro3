@@ -750,6 +750,37 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const recordOilPurchasePayment = useMutation({
+    mutationFn: () => {
+      const purchase = (oilPurchases.data ?? []).find((item) => item.id === selectedOilPurchaseId);
+      if (!purchase) throw new Error("Select an oil purchase document first");
+      const amount = Number(oilPurchasePaymentAmount);
+      const outstanding = Number(purchase.outstanding_amount_tnd ?? 0);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > outstanding) throw new Error("Payment must be positive and cannot exceed the amount owed");
+      if (oilPurchasePaymentMethod !== "CASH" && !oilPurchasePaymentReference.trim()) throw new Error("A payment reference is required");
+      return apiPost<AnyRecord>(`/commercial/v1/oil-purchases/${encodeURIComponent(purchase.id)}/payments`, {
+        payment_date: oilPurchasePaymentDate,
+        amount_tnd: amount.toFixed(3),
+        method: oilPurchasePaymentMethod,
+        reference: oilPurchasePaymentMethod === "CASH" ? null : oilPurchasePaymentReference.trim(),
+        expected_purchase_version: purchase.version,
+        idempotency_key: oilPurchasePaymentKey,
+      });
+    },
+    onSuccess: async () => {
+      toast.success(l.oilPurchasePaymentSaved);
+      setOilPurchasePaymentAmount("");
+      setOilPurchasePaymentReference("");
+      setOilPurchasePaymentDate(new Date().toISOString().slice(0, 10));
+      setOilPurchasePaymentKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchase-payments", selectedOilPurchaseId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const submitQualityAssessment = useMutation({
     mutationFn: () => {
       const lot = (lots.data ?? []).find((item) => item.id === qualityLotId);
