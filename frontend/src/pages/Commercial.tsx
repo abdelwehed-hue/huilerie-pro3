@@ -1859,6 +1859,40 @@ export default function Commercial() {
             })}{(!internalMovementDocuments.isLoading && !(internalMovementDocuments.data?.length)) && <EmptyRow colSpan={8} text={l.noRows} />}</TableBody>
           </Table></CardContent>
         </Card>
+        <Card>
+          <CardHeader><CardTitle>{l.oilPurchasesTitle}</CardTitle><CardDescription>{lang === "ar" ? "كل وصل شراء مرتبط بتحويل ملكية الزيت من الحريف إلى المعصرة، ويحتفظ بكود التتبع الأصلي." : "Chaque bon d’achat est lié au transfert de propriété du client vers la huilerie et conserve le code de traçabilité d’origine."}</CardDescription></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+                <TableBody>{(oilPurchases.data ?? []).map((purchase) => <TableRow key={purchase.id} className={selectedOilPurchaseId === purchase.id ? "bg-muted/50" : ""}>
+                  <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => setSelectedOilPurchaseId(purchase.id)}>{value(purchase.document_number)}</button></TableCell>
+                  <TableCell>{value(purchase.customer_name)}</TableCell>
+                  <TableCell className="font-mono text-xs">{value(purchase.traceability_code)}</TableCell>
+                  <TableCell>{number(purchase.quantity_l)} L</TableCell>
+                  <TableCell>{money(purchase.agreed_amount_tnd)}</TableCell>
+                  <TableCell>{money(purchase.paid_amount_tnd)}</TableCell>
+                  <TableCell className="font-semibold">{money(purchase.outstanding_amount_tnd)}</TableCell>
+                  <TableCell>{value(purchase.payment_status)}</TableCell>
+                  <TableCell><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedOilPurchaseReceipt(purchase); setSelectedOilPaymentReceipt(null); }}><Printer className="mr-1 size-4" />{l.printPurchase}</Button></TableCell>
+                </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}</TableBody>
+              </Table>
+            </div>
+            {selectedOilPurchase && <div className="mt-5 space-y-4 rounded-xl border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.oilPurchasePayments} · {value(selectedOilPurchase.document_number)}</h3><span className="text-sm text-muted-foreground">{l.oilPurchaseOutstanding}: <strong>{money(selectedOilPurchase.outstanding_amount_tnd)}</strong></span></div>
+              {isAdmin && Number(selectedOilPurchase.outstanding_amount_tnd ?? 0) > 0 && <form className="grid gap-3 md:grid-cols-5" onSubmit={(event) => { event.preventDefault(); recordOilPurchasePayment.mutate(); }}>
+                <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentDate}<input required type="date" value={oilPurchasePaymentDate} onChange={(e) => { setOilPurchasePaymentDate(e.target.value); setOilPurchasePaymentKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مبلغ الدفعة (د.ت)" : "Montant payé (TND)"}<input required type="number" min="0.001" step="0.001" max={selectedOilPurchase.outstanding_amount_tnd} value={oilPurchasePaymentAmount} onChange={(e) => { setOilPurchasePaymentAmount(e.target.value); setOilPurchasePaymentKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentMethod}<select value={oilPurchasePaymentMethod} onChange={(e) => { setOilPurchasePaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE"); setOilPurchasePaymentReference(""); setOilPurchasePaymentKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="CASH">{lang === "ar" ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{lang === "ar" ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{lang === "ar" ? "شيك" : "Chèque"}</option></select></label>
+                <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentReference}<input maxLength={120} required={oilPurchasePaymentMethod !== "CASH"} value={oilPurchasePaymentReference} onChange={(e) => { setOilPurchasePaymentReference(e.target.value); setOilPurchasePaymentKey(crypto.randomUUID()); }} disabled={oilPurchasePaymentMethod === "CASH"} className="h-10 rounded-lg border bg-background px-3 font-normal" /></label>
+                <div className="flex items-end"><Button type="submit" disabled={recordOilPurchasePayment.isPending || !(Number(oilPurchasePaymentAmount) > 0) || Number(oilPurchasePaymentAmount) > Number(selectedOilPurchase.outstanding_amount_tnd ?? 0) || (oilPurchasePaymentMethod !== "CASH" && !oilPurchasePaymentReference.trim())}>{l.oilPurchaseRecordPayment}</Button></div>
+              </form>}
+              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.ownershipPaymentDate}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.ownershipPaymentMethod}</TableHead><TableHead>{l.ownershipPaymentReference}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+                <TableBody>{(oilPurchasePayments.data ?? []).map((payment) => <TableRow key={payment.id}><TableCell className="font-mono text-xs">{value(payment.document_number)}</TableCell><TableCell>{date(payment.payment_date)}</TableCell><TableCell>{money(payment.amount_tnd)}</TableCell><TableCell>{value(payment.method)}</TableCell><TableCell>{value(payment.reference)}</TableCell><TableCell><Button type="button" size="sm" variant="outline" onClick={() => { setSelectedOilPaymentReceipt(payment); setSelectedOilPurchaseReceipt(null); }}><Printer className="mr-1 size-4" />{l.printPayment}</Button></TableCell></TableRow>)}{(!oilPurchasePayments.isLoading && !(oilPurchasePayments.data?.length)) && <EmptyRow colSpan={6} text={l.noRows} />}</TableBody>
+              </Table></div>
+            </div>}
+            {!selectedOilPurchaseId && <p className="mt-3 text-sm text-muted-foreground">{l.oilPurchaseNoSelection}</p>}
+          </CardContent>
+        </Card>
       </div>}
 
       {tab === "stock" && stockView === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === m.lot_id), m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)} {m.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{value(m.source_location_id)}</TableCell><TableCell>{value(m.destination_location_id)}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
