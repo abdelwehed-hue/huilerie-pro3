@@ -55,6 +55,10 @@ jobs:
 
   commercial-unit-tests:
     runs-on: ubuntu-latest
+    env:
+      MONGO_URL: mongodb://127.0.0.1:27017
+      DB_NAME: commercial_unit_test
+      JWT_SECRET: unit-test-only-secret
     defaults:
       run:
         working-directory: backend
