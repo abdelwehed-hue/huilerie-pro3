@@ -745,6 +745,9 @@ export default function Commercial() {
       if (!Number.isFinite(quantity) || quantity <= 0 || quantity > Number(balance.quantity_kg)) {
         throw new Error("Movement quantity exceeds the available source balance");
       }
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && quantity !== Number(balance.quantity_kg)) {
+        throw new Error("Le transfert de propriété doit porter sur la totalité du stock disponible");
+      }
       const agreedAmount = Number(ownershipAgreedAmount) * quantity;
       const destinationOwner = internalMovementKind === "TRANSFER"
         ? balance.owner
@@ -1872,7 +1875,7 @@ export default function Commercial() {
                 </select>
               </label>}
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
-                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(internalMovementKind === "OWNERSHIP_TRANSFER" ? String(selected?.quantity_kg ?? "") : ""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                   <option value="">—</option>
                   {availableInternalBalances.map((balance) => {
                     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
@@ -1897,7 +1900,7 @@ export default function Commercial() {
                   </select>
                 </label>}
                 <label className="grid gap-1 text-sm font-medium">{l.quantity}
-                  <input required type="number" min="0.001" step="0.001" max={selectedInternalBalance?.quantity_kg ?? undefined} value={internalMovementQuantity} onChange={(e) => { setInternalMovementQuantity(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  <input required type="number" min="0.001" step="0.001" max={selectedInternalBalance?.quantity_kg ?? undefined} value={internalMovementQuantity} onChange={(e) => { setInternalMovementQuantity(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!selectedInternalBalance || internalMovementKind === "OWNERSHIP_TRANSFER"} className="h-10 rounded-lg border bg-background px-3 font-normal" />
                   {selectedInternalBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedInternalBalance.quantity_kg)} {internalProductKind === "OIL" ? "L" : "kg"}</span>}
                 </label>
               </div>
