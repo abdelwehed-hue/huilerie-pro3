@@ -1523,7 +1523,7 @@ export default function Commercial() {
       if (internalProductKind === "OIL") {
         const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
         return lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && !!tank
-          && tank.role !== "QUARANTINE" && isCustomerOilPurchaseEligible(lot);
+          && (tank.role ?? "NORMAL") === "NORMAL" && isCustomerOilPurchaseEligible(lot);
       }
       return (locations.data ?? []).some((item) => item.id === balance.location_id
         && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind));
@@ -1531,13 +1531,16 @@ export default function Commercial() {
   );
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
     if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0) return false;
-    if (internalCustomerId && (balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId)) return false;
+    if (internalMovementKind === "OWNERSHIP_TRANSFER") {
+      if (!internalCustomerId || balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId) return false;
+    } else if (internalCustomerId && (balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId)) return false;
     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
     if (!lot) return false;
     if (internalProductKind === "OIL") {
       if (lot.lot_purpose === "PREPRODUCTION_SAMPLE") return false;
       const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
       if (!tank) return false;
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && (tank.role ?? "NORMAL") !== "NORMAL") return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
       if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && !isCustomerOilPurchaseEligible(lot)) return false;
     } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id
@@ -1830,7 +1833,7 @@ export default function Commercial() {
               </div>
               {internalMovementKind === "OWNERSHIP_TRANSFER" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{lang === "ar" ? "الحريف البائع" : "Client vendeur"}
                 <select value={internalCustomerId} onChange={(e) => { setInternalCustomerId(e.target.value); setInternalSourceBalanceKey(""); setInternalDestinationOwnerKey(e.target.value ? "MILL" : ""); setOwnershipConsiderationType(e.target.value ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                  <option value="">{lang === "ar" ? "كل الحرفاء / دون تصفية" : "Tous les clients / sans filtre"}</option>
+                  <option value="">{lang === "ar" ? "اختر الحريف البائع" : "Sélectionner le client vendeur"}</option>
                   {internalPurchaseCustomers.map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}
                 </select>
               </label>}
