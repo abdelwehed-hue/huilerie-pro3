@@ -723,7 +723,6 @@ export default function Commercial() {
         source_owner: balance.owner,
         destination_owner: destinationOwner,
         idempotency_key: internalMovementKey,
-        reason: internalMovementReason.trim(),
         ...(internalMovementKind === "OWNERSHIP_TRANSFER" ? {
           consent_method: ownershipConsentMethod,
           consent_reference: ownershipConsentMethod === "DOCUMENT" ? ownershipConsentReference.trim() : null,
@@ -1854,12 +1853,10 @@ export default function Commercial() {
                   <p className="text-xs text-muted-foreground md:col-span-2">{l.ownershipPaymentCreditNote}</p>
                 </div>}
               </div>}
-              <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.movementReason}
-                <input required minLength={3} maxLength={500} value={internalMovementReason} onChange={(e) => { setInternalMovementReason(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
-              </label>
+
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
                   {l.postInternalMovement}
                 </Button>
               </div>
