@@ -204,7 +204,7 @@ export default function Lab() {
   });
   const handleReviewQrScan = (raw: string) => {
     const scanned = raw.trim(); let certificateId = ""; let codeValue = scanned;
-    try { const parsed = new URL(scanned); const match = parsed.pathname.match(/\\/commercial\\/certificate\\/([^/]+)/i); if (match) certificateId = decodeURIComponent(match[1]); codeValue = parsed.searchParams.get("code")?.trim() || codeValue; } catch { /* QR contenant directement le code de traçabilité. */ }
+    try { const parsed = new URL(scanned); const certificatePart = parsed.pathname.includes("/commercial/certificate/") ? parsed.pathname.split("/").pop() : ""; if (certificatePart) certificateId = decodeURIComponent(certificatePart); codeValue = parsed.searchParams.get("code")?.trim() || codeValue; } catch { /* QR contenant directement le code de traçabilité. */ }
     const match = reviewableGsAssessments.find((item) => (certificateId && item.id === certificateId) || String(item.sample_reference ?? "").trim().toLowerCase() === codeValue.toLowerCase() || String(item.batch_code ?? "").trim().toLowerCase() === codeValue.toLowerCase());
     if (!match) { toast.error("Aucune analyse en attente ne correspond à ce QR code."); return; }
     setReviewAssessmentId(match.id); toast.success("Analyse sélectionnée pour la revue indépendante");
