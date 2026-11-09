@@ -102,6 +102,8 @@ async def create_oil_purchase_document_for_transfer(
         "purchase_date": now.date().isoformat(),
         "unit_price_tnd_per_l": Decimal128(unit_price),
         "agreed_amount_tnd": Decimal128(agreed),
+        "initial_paid_amount_tnd": Decimal128(paid),
+        "initial_outstanding_amount_tnd": Decimal128(outstanding),
         "paid_amount_tnd": Decimal128(paid),
         "outstanding_amount_tnd": Decimal128(outstanding),
         "currency": "TND",
