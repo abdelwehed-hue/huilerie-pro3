@@ -49,7 +49,7 @@ const labels = {
     tank: "Cuve", capacity: "Capacité max. (L)", flexible: "Flexible — capacité non définie", active: "Active", saveCapacity: "Enregistrer", clearCapacity: "Vide = flexible", capacitySaved: "Capacité de la cuve mise à jour", capacityError: "Impossible de modifier la capacité",
     product: "Produit", document: "Document", purchaseCode: "Code d’achat", purchaseReference: "Réf. achat", owner: "Propriétaire actuel", quantity: "Quantité", currentStock: "Stock actuel",
     status: "État", qualityStatus: "Contrôle qualité", created: "Créé le", location: "Emplacement",
-    source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
+    source: "Origine", destination: "Destination", movement: "Mouvement", internalMovementsTab: "Transferts", internalMovementTitle: "Nouveau transfert interne", movementType: "Type de mouvement", transferType: "Transfert entre emplacements", ownershipTransferType: "Changement de propriétaire", ownershipConsentMethod: "Preuve du consentement", consentDocument: "Document signé", consentInApp: "Déclaration dans l’application", consentDocumentReference: "Référence du document", consentCustomerName: "Nom du client déclarant", consentConfirm: "Le client a confirmé son accord devant l’employé", consentEvidenceRequired: "Une preuve de consentement est obligatoire pour changer le propriétaire", productKind: "Produit concerné", sourceBalance: "Stock source disponible", targetLocation: "Emplacement de destination", targetOwner: "Nouveau propriétaire", targetCustomer: "Client propriétaire", movementReason: "Motif du mouvement", postInternalMovement: "Valider le mouvement", internalMovementSaved: "Mouvement interne enregistré", internalMovementHistory: "Historique des transferts internes", noAvailableBalance: "Aucun stock disponible pour ce type de mouvement.", noRows: "Aucune donnée à afficher",
     refresh: "Actualiser", adminOnly: "Initialisation réservée à l'administrateur",
     olive: "Olives", oil: "Huile", mill: "Maâsra", customer: "Client",
     pending: "En attente", released: "Libéré", rejected: "Rejeté", open: "Ouvert", closed: "Fermé",
@@ -74,7 +74,7 @@ const labels = {
     tank: "الخزان", capacity: "السعة القصوى (لتر)", flexible: "مرنة — دون سعة محددة", active: "نشط", saveCapacity: "حفظ", clearCapacity: "اتركه فارغاً للسعة المرنة", capacitySaved: "تم تحديث سعة الخزان", capacityError: "تعذر تعديل سعة الخزان",
     product: "المنتج", document: "الوثيقة", purchaseCode: "كود الشراء", purchaseReference: "مرجع الشراء", owner: "المالك الحالي", quantity: "الكمية", currentStock: "الرصيد الحالي",
     status: "الحالة", qualityStatus: "حالة الجودة", created: "تاريخ الإنشاء", location: "الموقع",
-    source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
+    source: "المصدر", destination: "الوجهة", movement: "الحركة", internalMovementsTab: "التحويلات", internalMovementTitle: "تسجيل تحويل داخلي", movementType: "نوع الحركة", transferType: "تحويل بين المواقع", ownershipTransferType: "تغيير المالك", ownershipConsentMethod: "إثبات موافقة الحريف", consentDocument: "وثيقة موقّعة", consentInApp: "إقرار داخل التطبيق", consentDocumentReference: "مرجع الوثيقة", consentCustomerName: "اسم الحريف المقرّ", consentConfirm: "أكد الحريف موافقته أمام العامل", consentEvidenceRequired: "إثبات موافقة الحريف إلزامي لتغيير الملكية", productKind: "نوع المنتج", sourceBalance: "المخزون المصدر المتاح", targetLocation: "موقع الوجهة", targetOwner: "المالك الجديد", targetCustomer: "الحريف المالك", movementReason: "سبب الحركة", postInternalMovement: "تأكيد الحركة", internalMovementSaved: "تم تسجيل التحويل الداخلي", internalMovementHistory: "سجل التحويلات الداخلية", noAvailableBalance: "لا يوجد مخزون متاح لهذا النوع من الحركات.", noRows: "لا توجد بيانات للعرض",
     refresh: "تحديث", adminOnly: "التهيئة متاحة للمدير فقط",
     olive: "زيتون", oil: "زيت", mill: "المعصرة", customer: "الحريف",
     pending: "في الانتظار", released: "مقبول", rejected: "مرفوض", open: "مفتوح", closed: "مغلق",
@@ -318,6 +318,10 @@ export default function Commercial() {
   const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("");
   const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
   const [internalMovementReason, setInternalMovementReason] = useState("");
+  const [ownershipConsentMethod, setOwnershipConsentMethod] = useState<"DOCUMENT" | "IN_APP">("DOCUMENT");
+  const [ownershipConsentReference, setOwnershipConsentReference] = useState("");
+  const [ownershipConsentCustomerName, setOwnershipConsentCustomerName] = useState("");
+  const [ownershipConsentConfirmed, setOwnershipConsentConfirmed] = useState(false);
   const [internalMovementKey, setInternalMovementKey] = useState(() => crypto.randomUUID());
   const status = useQuery({
     queryKey: ["commercial", "status"],
@@ -696,6 +700,12 @@ export default function Commercial() {
         destination_owner: destinationOwner,
         idempotency_key: internalMovementKey,
         reason: internalMovementReason.trim(),
+        ...(internalMovementKind === "OWNERSHIP_TRANSFER" ? {
+          consent_method: ownershipConsentMethod,
+          consent_reference: ownershipConsentMethod === "DOCUMENT" ? ownershipConsentReference.trim() : null,
+          consent_customer_name: ownershipConsentMethod === "IN_APP" ? ownershipConsentCustomerName.trim() : null,
+          consent_confirmed: ownershipConsentMethod === "IN_APP" ? ownershipConsentConfirmed : false,
+        } : {}),
       });
     },
     onSuccess: async () => {
@@ -705,6 +715,7 @@ export default function Commercial() {
       setInternalDestinationOwnerKey("");
       setInternalMovementQuantity("");
       setInternalMovementReason("");
+      setOwnershipConsentMethod("DOCUMENT"); setOwnershipConsentReference(""); setOwnershipConsentCustomerName(""); setOwnershipConsentConfirmed(false);
       setInternalMovementKey(crypto.randomUUID());
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
@@ -1716,12 +1727,28 @@ export default function Commercial() {
                   {selectedInternalBalance && <span className="text-xs text-muted-foreground">{l.quantity}: {number(selectedInternalBalance.quantity_kg)} {internalProductKind === "OIL" ? "L" : "kg"}</span>}
                 </label>
               </div>
+              {internalMovementKind === "OWNERSHIP_TRANSFER" && <div className="space-y-3 rounded-xl border p-4">
+                <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipConsentMethod}
+                  <select required value={ownershipConsentMethod} onChange={(e) => { setOwnershipConsentMethod(e.target.value as "DOCUMENT" | "IN_APP"); setOwnershipConsentReference(""); setOwnershipConsentCustomerName(""); setOwnershipConsentConfirmed(false); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="DOCUMENT">{l.consentDocument}</option><option value="IN_APP">{l.consentInApp}</option>
+                  </select>
+                </label>
+                {ownershipConsentMethod === "DOCUMENT" ? <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.consentDocumentReference}
+                  <input required minLength={1} maxLength={120} value={ownershipConsentReference} onChange={(e) => { setOwnershipConsentReference(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                </label> : <div className="space-y-2">
+                  <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.consentCustomerName}
+                    <input required minLength={2} maxLength={120} value={ownershipConsentCustomerName} onChange={(e) => { setOwnershipConsentCustomerName(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  </label>
+                  <label className="flex items-start gap-2 text-sm font-normal"><input type="checkbox" required checked={ownershipConsentConfirmed} onChange={(e) => { setOwnershipConsentConfirmed(e.target.checked); setInternalMovementKey(crypto.randomUUID()); }} className="mt-1" />{l.consentConfirm}</label>
+                </div>}
+                <p className="text-xs text-muted-foreground">{l.consentEvidenceRequired}</p>
+              </div>}
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.movementReason}
                 <input required minLength={3} maxLength={500} value={internalMovementReason} onChange={(e) => { setInternalMovementReason(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
               </label>
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed))}>
                   {l.postInternalMovement}
                 </Button>
               </div>
