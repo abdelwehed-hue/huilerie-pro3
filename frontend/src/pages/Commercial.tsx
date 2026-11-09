@@ -1389,6 +1389,18 @@ export default function Commercial() {
       && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
   });
   const selectedReviewAssessment = (quality.data ?? []).find((assessment) => assessment.id === reviewAssessmentId);
+  const selectedReviewLot = selectedReviewAssessment ? (lots.data ?? []).find((lot) => lot.id === selectedReviewAssessment.oil_lot_id) : undefined;
+  const selectedReviewSourceLot = selectedReviewLot?.source_olive_lot_id
+    ? (lots.data ?? []).find((lot) => lot.id === selectedReviewLot.source_olive_lot_id)
+    : undefined;
+  const selectedReviewOwner = selectedReviewSourceLot?.owner;
+  const selectedReviewCustomer = selectedReviewOwner?.kind === "CUSTOMER"
+    ? ((custodyOwners.data ?? []).find((customer) => customer.id === selectedReviewOwner.customer_id)?.client_name
+      ?? (custodyOwners.data ?? []).find((customer) => customer.id === selectedReviewOwner.customer_id)?.name
+      ?? selectedReviewOwner.customer_name
+      ?? selectedReviewOwner.customer_id)
+    : (selectedReviewSourceLot?.customer_name ?? selectedReviewSourceLot?.client_name);
+  const reviewCustomerName = selectedReviewCustomer || "—";
   const handleQualityQrScan = useCallback((scannedValue: string) => {
     const scanned = scannedValue.trim();
     let certificateId = "";
@@ -1963,7 +1975,7 @@ export default function Commercial() {
           <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); releaseQualityAssessment.mutate(); }}>
             <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <label className="grid gap-1 text-sm font-medium">{l.chooseAssessment}
-                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
+                <select required value={reviewAssessmentId} onChange={(e) => setReviewAssessmentId(e.target.value)} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{reviewableAssessments.map((assessment) => <option key={assessment.id} value={assessment.id}>{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)} · {(() => { const sampleLot = (lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id); const sourceLot = sampleLot?.source_olive_lot_id ? (lots.data ?? []).find((lot) => lot.id === sampleLot.source_olive_lot_id) : undefined; const owner = sourceLot?.owner; const customer = owner?.kind === "CUSTOMER" ? (custodyOwners.data ?? []).find((item) => item.id === owner.customer_id) : undefined; return customer?.client_name ?? customer?.name ?? owner?.customer_name ?? sourceLot?.customer_name ?? sourceLot?.client_name ?? (lang === "ar" ? "الحريف غير محدد" : "Client non renseigné"); })()} · {assessment.sample_reference} · {assessment.laboratory_name}</option>)}</select>
               </label>
               <Button type="button" variant="outline" onClick={() => setQualityQrScanOpen(true)} className="h-10 gap-2">
                 <ScanLine className="size-4" />{lang === "ar" ? "مسح QR للشهادة" : "Scanner le QR du certificat"}
@@ -1971,6 +1983,7 @@ export default function Commercial() {
             </div>
             {selectedReviewAssessment && <div className="space-y-3 rounded-xl border p-4">
               <div className="grid gap-2 text-sm md:grid-cols-2">
+                <p><strong>{l.customer}:</strong> {value(reviewCustomerName)}</p>
                 <p><strong>{l.sampleReference}:</strong> {value(selectedReviewAssessment.sample_reference)}</p>
                 <p><strong>{l.laboratory}:</strong> {value(selectedReviewAssessment.laboratory_name)}</p>
                 <p><strong>{l.sampleDate}:</strong> {date(selectedReviewAssessment.sample_date)}</p>
