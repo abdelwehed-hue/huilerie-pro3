@@ -32,9 +32,15 @@ const n = (v: unknown) => {
   const value = Number(v ?? 0);
   return Number.isFinite(value) ? value : 0;
 };
-const money = (v: unknown) => new Intl.NumberFormat("fr-TN", {
-  minimumFractionDigits: 3, maximumFractionDigits: 3,
-}).format(typeof v === "bigint" ? Number(v) / 1000 : n(v)) + " TND";
+const money = (v: unknown) => {
+  const amount = mills(v);
+  const negative = amount < 0n;
+  const absolute = negative ? -amount : amount;
+  const whole = absolute / 1000n;
+  const fraction = String(absolute % 1000n).padStart(3, "0");
+  const formatted = new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 0 }).format(whole);
+  return `${negative ? "-" : ""}${formatted},${fraction} TND`;
+};
 const mills = (value: unknown): bigint => {
   const raw = String(value ?? "0").trim();
   const match = raw.match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
