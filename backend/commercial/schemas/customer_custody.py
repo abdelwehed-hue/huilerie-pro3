@@ -57,10 +57,10 @@ class CustomerOliveCustodyReceiptBatchDraft(BaseModel):
     def normalize_customer_phone(cls, value):
         if not isinstance(value, str):
             return value
-        normalized = re.sub(r"\\s+", "", value)
-        if not re.fullmatch(r"\\+?[0-9().-]{5,40}", normalized):
+        normalized = re.sub(r"\s+", "", value)
+        if not re.fullmatch(r"\+?[0-9().-]{5,40}", normalized):
             raise ValueError("Customer phone contains unsupported characters")
-        if len(re.sub(r"\\D", "", normalized)) < 5:
+        if len(re.sub(r"\D", "", normalized)) < 5:
             raise ValueError("Customer phone must contain at least five digits")
         return normalized
 
