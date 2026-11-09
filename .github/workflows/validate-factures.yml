@@ -55,6 +55,10 @@ jobs:
 
   commercial-unit-tests:
     runs-on: ubuntu-latest
+    env:
+      MONGO_URL: mongodb://127.0.0.1:27017
+      DB_NAME: commercial_unit_test
+      JWT_SECRET: unit-test-only-secret
     defaults:
       run:
         working-directory: backend
@@ -67,6 +71,25 @@ jobs:
         run: python -m pip install "pydantic>=2" pymongo motor fastapi python-dotenv pyjwt passlib pytest pytest-asyncio pytest-xdist
       - name: Test commercial schemas, bootstrap, permissions, and reference validation
         run: python -m pytest -o addopts= commercial/tests --ignore=commercial/tests/test_mongodb_transaction_integration.py --ignore=commercial/tests/test_mongodb_production_integration.py --ignore=commercial/tests/test_mongodb_quality_separation.py --ignore=commercial/tests/test_mongodb_customer_custody_integration.py --ignore=commercial/tests/test_mongodb_credit_application_integration.py --ignore=commercial/tests/test_mongodb_payment_reversal_integration.py --ignore=commercial/tests/test_payment_reversal_concurrency_integration.py --ignore=commercial/tests/test_mongodb_return_rejection_integration.py
+
+  customer-oil-purchase-unit-tests:
+    runs-on: ubuntu-latest
+    env:
+      MONGO_URL: mongodb://127.0.0.1:27017
+      DB_NAME: oil_purchase_unit_test
+      JWT_SECRET: unit-test-only-secret
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install commercial domain test dependencies
+        run: python -m pip install "pydantic>=2" pymongo motor fastapi python-dotenv pyjwt passlib pytest pytest-asyncio pytest-xdist
+      - name: Test oil purchase, ownership transfer, and counter schemas
+        run: python -m pytest -o addopts= commercial/tests/test_oil_purchase_schemas.py commercial/tests/test_internal_movement_schemas.py commercial/tests/test_inventory_bootstrap.py
 
   mongodb-transaction-integration:
     runs-on: ubuntu-latest
@@ -130,6 +153,8 @@ jobs:
               raise RuntimeError("MongoDB replica set did not elect a primary")
           replica.close()
           PY
+      - name: Verify customer oil purchase and payable settlement in isolation
+        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py::test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_payment
       - name: Verify commercial transaction and custody/accounting invariants on a real replica set
         run: |
           python -m pytest -o addopts= \
