@@ -48,13 +48,26 @@ async def create_oil_purchase_document_for_transfer(
     lot = await db["commercial_lots"].find_one(
         {"id": draft.lot_id}, {"_id": 0}, session=session
     )
-    if not lot:
+    if not lot or lot.get("product_kind") != "OIL":
         raise ValueError("The source oil lot no longer exists")
+    if lot.get("quality_status") != "RELEASED":
+        raise ValueError("Only quality-released oil can be purchased by the mill")
+    traceability_code = lot.get("batch_code")
+    if not traceability_code:
+        raise ValueError("The source oil lot has no traceability code")
+    quality_assessment = None
+    if lot.get("last_quality_assessment_id"):
+        quality_assessment = await db["commercial_quality_assessments"].find_one(
+            {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
+             "status": "REVIEWED", "decision": "RELEASED"},
+            {"_id": 0}, session=session,
+        )
     tank = await db["commercial_tanks"].find_one(
-        {"id": draft.source_location_id}, {"_id": 0}, session=session
+        {"id": draft.source_location_id, "active": True, "role": {"$in": ["NORMAL", None]}},
+        {"_id": 0}, session=session
     )
     if not tank:
-        raise ValueError("The source oil tank could not be resolved")
+        raise ValueError("The source oil tank is not an active normal tank")
 
     agreed = _money(draft.consideration_amount)
     paid = _money(draft.initial_payment_amount or Decimal("0"))
@@ -76,7 +89,10 @@ async def create_oil_purchase_document_for_transfer(
         "customer_phone": owner.get("client_phone"),
         "product_kind": "OIL",
         "lot_id": draft.lot_id,
-        "traceability_code": lot.get("batch_code"),
+        "traceability_code": traceability_code,
+        "oil_type": quality_assessment.get("oil_type") if quality_assessment else None,
+        "quality_classification": quality_assessment.get("classification") if quality_assessment else None,
+        "quality_assessment_id": quality_assessment.get("id") if quality_assessment else None,
         "quantity_l": Decimal128(draft.quantity_kg),
         "tank_id": draft.source_location_id,
         "tank_code": tank.get("code"),
@@ -153,7 +169,9 @@ async def create_oil_purchase_document_for_transfer(
             "document_number": number,
             "transfer_id": movement["id"],
             "customer_id": customer_id,
-            "traceability_code": lot.get("batch_code"),
+            "traceability_code": traceability_code,
+            "oil_type": document["oil_type"],
+            "quality_classification": document["quality_classification"],
             "quantity_l": Decimal128(draft.quantity_kg),
             "agreed_amount_tnd": Decimal128(agreed),
             "paid_amount_tnd": Decimal128(paid),
