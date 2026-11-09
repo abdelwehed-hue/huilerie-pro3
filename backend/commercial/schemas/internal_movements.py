@@ -1,4 +1,5 @@
 """Internal stock movement command schemas."""
+from datetime import date
 from decimal import Decimal
 from typing import Literal
 
@@ -26,6 +27,10 @@ class InternalMovementDraft(BaseModel):
     consent_confirmed: bool = False
     consideration_type: Literal["SALE", "GIFT"] | None = None
     consideration_amount: Decimal | None = Field(default=None, gt=Decimal("0"), max_digits=18, decimal_places=3)
+    initial_payment_amount: Decimal | None = Field(default=None, gt=Decimal("0"), max_digits=18, decimal_places=3)
+    initial_payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE"] | None = None
+    initial_payment_reference: str | None = Field(default=None, min_length=1, max_length=120)
+    initial_payment_date: date | None = None
 
     @model_validator(mode="after")
     def validate_movement_shape(self):
@@ -46,9 +51,22 @@ class InternalMovementDraft(BaseModel):
             if self.consideration_type == "SALE":
                 if self.consideration_amount is None or self.consideration_amount <= 0:
                     raise ValueError("A positive agreed amount is required for a sale")
+                if self.product_kind != "OIL" or self.source_owner.kind != "CUSTOMER" or self.destination_owner.kind != "MILL":
+                    raise ValueError("A customer-to-mill oil ownership transfer is required for an oil purchase")
+                if self.initial_payment_amount is not None:
+                    if self.initial_payment_amount > self.consideration_amount:
+                        raise ValueError("Initial payment cannot exceed the agreed purchase amount")
+                    if self.initial_payment_method is None:
+                        raise ValueError("Payment method is required when an initial payment is recorded")
+                    if self.initial_payment_method in {"BANK_TRANSFER", "CHEQUE"} and not (self.initial_payment_reference or "").strip():
+                        raise ValueError("A reference is required for bank transfers and cheques")
+                elif self.initial_payment_method is not None or self.initial_payment_reference is not None or self.initial_payment_date is not None:
+                    raise ValueError("Initial payment details require a positive initial payment amount")
             elif self.consideration_type == "GIFT":
                 if self.consideration_amount is not None:
                     raise ValueError("A gift transfer cannot include a sale amount")
+                if any(value is not None for value in (self.initial_payment_amount, self.initial_payment_method, self.initial_payment_reference, self.initial_payment_date)):
+                    raise ValueError("A gift transfer cannot include payment details")
             else:
                 raise ValueError("Ownership transfer consideration type is required")
             if self.consent_method == "DOCUMENT":
@@ -59,6 +77,6 @@ class InternalMovementDraft(BaseModel):
                     raise ValueError("Customer name and explicit confirmation are required for in-app consent")
             else:
                 raise ValueError("Consent evidence is required for ownership transfers")
-        elif self.consent_method is not None or self.consent_reference is not None or self.consent_customer_name is not None or self.consent_confirmed or self.consideration_type is not None or self.consideration_amount is not None:
+        elif self.consent_method is not None or self.consent_reference is not None or self.consent_customer_name is not None or self.consent_confirmed or self.consideration_type is not None or self.consideration_amount is not None or self.initial_payment_amount is not None or self.initial_payment_method is not None or self.initial_payment_reference is not None or self.initial_payment_date is not None:
             raise ValueError("Consent evidence and consideration are only valid for ownership transfers")
         return self
