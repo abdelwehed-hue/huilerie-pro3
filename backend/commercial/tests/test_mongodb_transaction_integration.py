@@ -1886,3 +1886,143 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
     finally:
         await client.drop_database(db_name)
         client.close()
+
+
+@pytest.mark.asyncio
+async def test_customer_olive_purchase_creates_bon_and_tracks_partial_then_final_payment():
+    from datetime import date
+    from decimal import Decimal
+    from bson.decimal128 import Decimal128
+    from commercial.inventory_bootstrap import ensure_inventory_indexes
+    from commercial.schemas.internal_movements import InternalMovementDraft
+    from commercial.schemas.oil_purchases import OilPurchasePaymentDraft
+    from commercial.services.internal_movements import create_internal_movement
+    from commercial.services.oil_purchases import record_oil_purchase_payment
+
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db_name = "cust_olive_purchase_" + uuid.uuid4().hex
+    db = client[db_name]
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("MVT", "INT", "BAH", "RPA")
+        ])
+        await db.commercial_custody_owners.insert_one({
+            "id": "custody-owner-olive-sale",
+            "legacy_client_id": "legacy-olive-customer",
+            "client_phone": "21612345678",
+            "client_name": "Customer Olive Seller",
+            "active": True,
+        })
+        await db.commercial_locations.insert_one({
+            "id": "olive-storage-purchase",
+            "code": "RECEPTION",
+            "active": True,
+            "kind": "OLIVE_STORAGE",
+        })
+        await db.commercial_lots.insert_one({
+            "id": "customer-owned-olive-lot",
+            "season_code": "2627",
+            "product_kind": "OLIVE",
+            "batch_code": "2627A0008",
+            "status": "OPEN",
+        })
+        await db.commercial_stock_balances.insert_one({
+            "product_kind": "OLIVE",
+            "lot_id": "customer-owned-olive-lot",
+            "owner": {"kind": "CUSTOMER", "customer_id": "custody-owner-olive-sale"},
+            "location_id": "olive-storage-purchase",
+            "quantity_kg": Decimal128("150.000"),
+            "created_at": now,
+        })
+        transfer = InternalMovementDraft(
+            movement_kind="OWNERSHIP_TRANSFER",
+            product_kind="OLIVE",
+            lot_id="customer-owned-olive-lot",
+            quantity_kg=Decimal("150.000"),
+            source_location_id="olive-storage-purchase",
+            destination_location_id="olive-storage-purchase",
+            source_owner={"kind": "CUSTOMER", "customer_id": "custody-owner-olive-sale"},
+            destination_owner={"kind": "MILL"},
+            idempotency_key="customer-olive-purchase-transfer-001",
+            reason="Purchase customer-owned olives",
+            consent_method="DOCUMENT",
+            consent_reference="SIGNED-OLIVE-SALE-001",
+            consideration_type="SALE",
+            consideration_amount=Decimal("150.000"),
+            initial_payment_amount=Decimal("60.000"),
+            initial_payment_method="CASH",
+            initial_payment_date=date(2026, 11, 8),
+        )
+        async with await client.start_session() as session:
+            movement = await session.with_transaction(
+                lambda active: create_internal_movement(
+                    db, transfer, season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    movement_document_id="customer-olive-transfer-doc",
+                    stock_movement_id="customer-olive-transfer-stock",
+                    audit_event_id="customer-olive-transfer-audit",
+                    created_at=now, session=active,
+                )
+            )
+
+        purchase = await db.commercial_oil_purchase_documents.find_one(
+            {"transfer_id": movement["id"]}, {"_id": 0}
+        )
+        assert purchase["document_number"] == "2627BAH0001"
+        assert purchase["product_kind"] == "OLIVE"
+        assert purchase["traceability_code"] == "2627A0008"
+        assert purchase["customer_name"] == "Customer Olive Seller"
+        assert purchase["quantity_kg"].to_decimal() == Decimal("150.000")
+        assert purchase["unit_price_tnd_per_kg"].to_decimal() == Decimal("1.000")
+        assert purchase["agreed_amount_tnd"].to_decimal() == Decimal("150.000")
+        assert purchase["initial_paid_amount_tnd"].to_decimal() == Decimal("60.000")
+        assert purchase["outstanding_amount_tnd"].to_decimal() == Decimal("90.000")
+        assert purchase["payment_status"] == "PARTIALLY_PAID"
+        initial_receipt = await db.commercial_oil_purchase_payments.find_one(
+            {"purchase_document_id": purchase["id"]}, {"_id": 0}
+        )
+        assert initial_receipt["document_number"] == "2627RPA0001"
+        assert initial_receipt["product_kind"] == "OLIVE"
+
+        later_payment = OilPurchasePaymentDraft(
+            payment_date=date(2026, 11, 9),
+            amount_tnd=Decimal("90.000"),
+            method="BANK_TRANSFER",
+            reference="BANK-TRANSFER-OLIVE-0090",
+            expected_purchase_version=1,
+            idempotency_key="customer-olive-purchase-payment-0001",
+        )
+        async with await client.start_session() as session:
+            receipt = await session.with_transaction(
+                lambda active: record_oil_purchase_payment(
+                    db, purchase["id"], later_payment,
+                    season_code="2627",
+                    actor_user={"active": True, "role": "admin"},
+                    actor_user_id="integration-admin",
+                    payment_id="customer-olive-later-payment",
+                    audit_event_id="customer-olive-later-payment-audit",
+                    created_at=datetime(2026, 11, 9, tzinfo=timezone.utc),
+                    session=active,
+                )
+            )
+        assert receipt["document_number"] == "2627RPA0002"
+        assert receipt["product_kind"] == "OLIVE"
+        settled = await db.commercial_oil_purchase_documents.find_one(
+            {"id": purchase["id"]}, {"_id": 0}
+        )
+        assert settled["paid_amount_tnd"].to_decimal() == Decimal("150.000")
+        assert settled["outstanding_amount_tnd"].to_decimal() == Decimal("0.000")
+        assert settled["payment_status"] == "PAID"
+        assert settled["version"] == 2
+        mill_balance = await db.commercial_stock_balances.find_one({
+            "product_kind": "OLIVE", "lot_id": "customer-owned-olive-lot",
+            "owner.kind": "MILL", "location_id": "olive-storage-purchase",
+        })
+        assert mill_balance["quantity_kg"].to_decimal() == Decimal("150.000")
+    finally:
+        await client.drop_database(db_name)
+        client.close()
