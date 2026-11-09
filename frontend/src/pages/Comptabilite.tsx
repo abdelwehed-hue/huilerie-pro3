@@ -33,7 +33,16 @@ const n = (v: unknown) => {
 };
 const money = (v: unknown) => new Intl.NumberFormat("fr-TN", {
   minimumFractionDigits: 3, maximumFractionDigits: 3,
-}).format(n(v)) + " TND";
+}).format(typeof v === "bigint" ? Number(v) / 1000 : n(v)) + " TND";
+const mills = (value: unknown): bigint => {
+  const raw = String(value ?? "0").trim();
+  const match = raw.match(/^([+-]?)(\\d+)(?:\\.(\\d+))?$/);
+  if (!match) return 0n;
+  const sign = match[1] === "-" ? -1n : 1n;
+  const fraction = (match[3] || "").padEnd(3, "0").slice(0, 3);
+  return sign * (BigInt(match[2]) * 1000n + BigInt(fraction || "0"));
+};
+const addMoney = (...values: unknown[]) => values.reduce<bigint>((total, value) => total + mills(value), 0n);
 const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.created_at || "").slice(0, 10);
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
@@ -94,13 +103,13 @@ export default function Comptabilite() {
     const customerOilPurchases = data?.customer_oil_purchases || [];
     const summary = data?.summary;
     return {
-      serviceRevenue: n(summary?.pressing_revenue_total),
-      salesRevenue: n(summary?.gs_sales_revenue_total),
-      stockPurchases: n(summary?.supplier_olive_purchase_total) +
-        n(summary?.customer_olive_purchase_total) + n(summary?.customer_oil_purchase_total),
-      serviceCollected: n(summary?.pressing_collected_total),
-      gsCollected: n(summary?.gs_sales_collected_total),
-      oilPaid: n(summary?.customer_oil_paid_total),
+      serviceRevenue: mills(summary?.pressing_revenue_total),
+      salesRevenue: mills(summary?.gs_sales_revenue_total),
+      stockPurchases: addMoney(summary?.supplier_olive_purchase_total,
+        summary?.customer_olive_purchase_total, summary?.customer_oil_purchase_total),
+      serviceCollected: mills(summary?.pressing_collected_total),
+      gsCollected: mills(summary?.gs_sales_collected_total),
+      oilPaid: mills(summary?.customer_oil_paid_total),
       supplierPurchases, customerOlivePurchases, customerOilPurchases,
     };
   }, [data]);
