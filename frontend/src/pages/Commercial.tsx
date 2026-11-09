@@ -1506,6 +1506,15 @@ export default function Commercial() {
       && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id && lot.latest_preproduction_sample_id === lot.preproduction_sample_id)
   );
 
+  const isCustomerOilPurchaseEligible = (oilLot: AnyRecord) => {
+    if (!oilLot.source_production_id) return oilLot.quality_status === "RELEASED";
+    const sourceOliveLot = (lots.data ?? []).find((item) => item.id === oilLot.source_olive_lot_id);
+    return !!sourceOliveLot
+      && sourceOliveLot.preproduction_quality_status === "RELEASED"
+      && !!sourceOliveLot.preproduction_sample_id
+      && !!sourceOliveLot.preproduction_quality_assessment_id
+      && sourceOliveLot.latest_preproduction_sample_id === sourceOliveLot.preproduction_sample_id;
+  };
   const internalPurchaseCustomers = (custodyOwners.data ?? []).filter((owner) =>
     owner.active !== false && (balances.data ?? []).some((balance) => {
       if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0
@@ -1515,7 +1524,7 @@ export default function Commercial() {
       if (internalProductKind === "OIL") {
         const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
         return lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && !!tank
-          && tank.role !== "QUARANTINE" && lot.quality_status === "RELEASED";
+          && tank.role !== "QUARANTINE" && isCustomerOilPurchaseEligible(lot);
       }
       return (locations.data ?? []).some((item) => item.id === balance.location_id
         && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind));
@@ -1531,7 +1540,7 @@ export default function Commercial() {
       const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
       if (!tank) return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
-      if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && lot.quality_status !== "RELEASED") return false;
+      if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && !isCustomerOilPurchaseEligible(lot)) return false;
     } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id
       && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind))) {
       return false;
