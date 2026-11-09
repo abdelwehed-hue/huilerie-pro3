@@ -2231,7 +2231,7 @@ async def receive_customer_custody_olives_batch(
         created = []
         for item in draft.items:
             source_load = await db.loads.find_one(
-                {"id": item.source_load_id, "phone": draft.customer_phone,
+                {"id": item.source_load_id, **(await season_filter()), "phone": draft.customer_phone,
                  "cancelled": {"$ne": True}, "oil_kg": None},
                 {"_id": 0, "id": 1, "variety": 1},
                 session=session,
