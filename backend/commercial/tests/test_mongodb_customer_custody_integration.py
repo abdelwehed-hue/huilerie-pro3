@@ -395,7 +395,7 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
         await ensure_inventory_indexes(db)
         await db.commercial_counters.insert_many([
             {"season_code": "2627", "document_type": kind, "last_sequence": 0}
-            for kind in ("CIN", "LOT", "MVT")
+            for kind in ("CIN", "LOT", "MVT", "INT")
         ])
         await db.clients.insert_one({
             "phone": "21612345678", "client_name": "Source Load Customer"
@@ -478,7 +478,7 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
         assert await db.commercial_customer_custody_receipts.count_documents({
             "source_load_id": "traditional-load-001",
             "status": "RECEIVED",
-        }) == 2
+        }) == 1
         assert await db.commercial_lots.count_documents({}) == 2
     finally:
         await client.drop_database(name)
