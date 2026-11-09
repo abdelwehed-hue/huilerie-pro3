@@ -15,14 +15,14 @@ type Overview = {
   customer_oil_purchase_payments: Row[];
   suppliers: Row[];
   summary: {
-    pressing_revenue_total: number;
-    pressing_collected_total: number;
-    gs_sales_revenue_total: number;
-    gs_sales_collected_total: number;
-    supplier_olive_purchase_total: number;
-    customer_olive_purchase_total: number;
-    customer_oil_purchase_total: number;
-    customer_oil_paid_total: number;
+    pressing_revenue_total: number | string;
+    pressing_collected_total: number | string;
+    gs_sales_revenue_total: number | string;
+    gs_sales_collected_total: number | string;
+    supplier_olive_purchase_total: number | string;
+    customer_olive_purchase_total: number | string;
+    customer_oil_purchase_total: number | string;
+    customer_oil_paid_total: number | string;
   };
   recent_limit: number;
 };
