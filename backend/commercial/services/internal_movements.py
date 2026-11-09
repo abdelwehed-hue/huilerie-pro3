@@ -68,6 +68,13 @@ async def create_internal_movement(
             "recorded_by": actor_user_id,
             "recorded_at": now,
         } if draft.movement_kind == "OWNERSHIP_TRANSFER" else None),
+        "consideration": ({
+            "type": draft.consideration_type,
+            "agreed_amount": Decimal128(draft.consideration_amount) if draft.consideration_amount is not None else None,
+            "currency": "TND",
+            "accounting_status": "PENDING_ACCOUNTING_INTEGRATION" if draft.consideration_type == "SALE" else "NO_CONSIDERATION",
+            "payment_status": "NOT_RECORDED" if draft.consideration_type == "SALE" else "NOT_APPLICABLE",
+        } if draft.movement_kind == "OWNERSHIP_TRANSFER" else None),
         "status": "APPROVED",
         "idempotency_scope": scope,
         "idempotency_key": draft.idempotency_key,
