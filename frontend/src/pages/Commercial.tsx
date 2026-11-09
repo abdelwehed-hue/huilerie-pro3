@@ -1755,7 +1755,7 @@ export default function Commercial() {
                 </label>
               </div>
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
-                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" && internalProductKind === "OIL" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                   <option value="">—</option>
                   {availableInternalBalances.map((balance) => {
                     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id);
@@ -1774,7 +1774,7 @@ export default function Commercial() {
                     {internalDestinationLocations.filter((item) => item.id !== selectedInternalBalance?.location_id).map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name ?? item.code}</option>)}
                   </select>
                 </label> : <label className="grid gap-1 text-sm font-medium">{l.targetOwner}
-                  <select required value={internalDestinationOwnerKey} onChange={(e) => { const selectedKey = e.target.value; setInternalDestinationOwnerKey(selectedKey); setInternalMovementKey(crypto.randomUUID()); if (selectedKey.startsWith("CLIENT:")) resolveInternalDestinationOwner.mutate(selectedKey.slice("CLIENT:".length)); }} disabled={!selectedInternalBalance || resolveInternalDestinationOwner.isPending} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select required value={internalDestinationOwnerKey} onChange={(e) => { const selectedKey = e.target.value; setInternalDestinationOwnerKey(selectedKey); setOwnershipConsiderationType(selectedInternalBalance?.owner?.kind === "CUSTOMER" && selectedKey === "MILL" && internalProductKind === "OIL" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); if (selectedKey.startsWith("CLIENT:")) resolveInternalDestinationOwner.mutate(selectedKey.slice("CLIENT:".length)); }} disabled={!selectedInternalBalance || resolveInternalDestinationOwner.isPending} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="">—</option>
                     {internalDestinationOwnerOptions.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
                   </select>
@@ -1803,7 +1803,7 @@ export default function Commercial() {
               {internalMovementKind === "OWNERSHIP_TRANSFER" && <div className="space-y-3 rounded-xl border p-4">
                 <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipConsideration}
                   <select value={ownershipConsiderationType} onChange={(e) => { setOwnershipConsiderationType(e.target.value as "SALE" | "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                    <option value="SALE">{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
+                    <option value="SALE" disabled={internalProductKind !== "OIL" || selectedInternalBalance?.owner?.kind !== "CUSTOMER" || internalDestinationOwnerKey !== "MILL"}>{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
                   </select>
                 </label>
                 {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount}
