@@ -556,6 +556,31 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
             "traditional-load-002", "traditional-load-003"
         ]
 
+        async def concurrent_receipt(suffix):
+            try:
+                return await receive_batch(
+                    [("traditional-load-002", "40.000")], suffix
+                )
+            except Exception as exc:
+                return exc
+
+        concurrent_results = await asyncio.gather(
+            concurrent_receipt("concurrent-one"),
+            concurrent_receipt("concurrent-two"),
+        )
+        concurrent_successes = [
+            result for result in concurrent_results if isinstance(result, list)
+        ]
+        concurrent_failures = [
+            result for result in concurrent_results if isinstance(result, Exception)
+        ]
+        assert len(concurrent_successes) == 1, concurrent_results
+        assert len(concurrent_failures) == 1, concurrent_results
+        concurrent_load = await db.loads.find_one(
+            {"id": "traditional-load-002"}, {"_id": 0}
+        )
+        assert concurrent_load["custody_received_kg"].to_decimal() == Decimal("80.000")
+
         async with await client.start_session() as session:
             cancelled = await session.with_transaction(
                 lambda active: cancel_customer_olive_custody_receipt(
@@ -582,7 +607,7 @@ async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_orig
             "source_load_id": "traditional-load-001",
             "status": "RECEIVED",
         }) == 1
-        assert await db.commercial_lots.count_documents({}) == 4
+        assert await db.commercial_lots.count_documents({}) == 5
     finally:
         await client.drop_database(name)
         client.close()
