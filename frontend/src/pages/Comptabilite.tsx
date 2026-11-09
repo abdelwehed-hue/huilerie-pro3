@@ -37,7 +37,7 @@ const money = (v: unknown) => new Intl.NumberFormat("fr-TN", {
 }).format(typeof v === "bigint" ? Number(v) / 1000 : n(v)) + " TND";
 const mills = (value: unknown): bigint => {
   const raw = String(value ?? "0").trim();
-  const match = raw.match(/^([+-]?)(\\d+)(?:\\.(\\d+))?$/);
+  const match = raw.match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
   if (!match) return 0n;
   const sign = match[1] === "-" ? -1n : 1n;
   const fraction = (match[3] || "").padEnd(3, "0").slice(0, 3);
