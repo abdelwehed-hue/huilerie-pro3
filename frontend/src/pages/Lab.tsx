@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import type { Grade, LabAnalysis, LabCreate, Load, Varieties } from "@/lib/types";
 import { fmtDate, fmtNum, useI18n } from "@/lib/i18n";
+import { useMe } from "@/lib/useMe";
 import { CodeBadge, GradeBadge, PageHeader } from "@/components/shared";
 import QrScanDialog from "@/components/QrScanDialog";
 
@@ -32,6 +33,7 @@ const EMPTY = { code: "", acidity: "", peroxide: "", k232: "", k270: "", oil: ""
 
 export default function Lab() {
   const { t, errMsg } = useI18n();
+  const me = useMe();
   const qc = useQueryClient();
   const [f, setF] = useState(EMPTY);
   const [scanOpen, setScanOpen] = useState(false);
@@ -182,7 +184,7 @@ export default function Lab() {
   const [reviewReason, setReviewReason] = useState("");
   const [reviewQrOpen, setReviewQrOpen] = useState(false);
   const gsPermissions = useQuery({ queryKey: ["lab-gs-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), retry: false });
-  const canReviewGsQuality = (gsPermissions.data?.permissions ?? []).includes("commercial.quality_release");
+  const canReviewGsQuality = me.data?.role === "admin" || (gsPermissions.data?.permissions ?? []).includes("commercial.quality_release");
   const reviewableGsAssessments = (gsAssessments.data ?? []).filter((assessment) => {
     const lot = (gsLots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
     return assessment.lot_purpose === "PREPRODUCTION_SAMPLE" && assessment.status === "AWAITING_INDEPENDENT_REVIEW" && lot?.status === "OPEN" && lot?.last_quality_assessment_id === assessment.id && ["PENDING", "REJECTED"].includes(String(lot?.quality_status));
