@@ -52,7 +52,7 @@ async def create_oil_purchase_document_for_transfer(
         raise ValueError("The source customer lot no longer exists or has the wrong product kind")
     traceability_code = lot.get("batch_code")
     if not traceability_code:
-        raise ValueError("The source oil lot has no traceability code")
+        raise ValueError("The source customer lot has no traceability code")
 
     quality_assessment = None
     tank = None
@@ -113,11 +113,6 @@ async def create_oil_purchase_document_for_transfer(
     paid = _money(draft.initial_payment_amount or Decimal("0"))
     outstanding = _money(agreed - paid)
     now = created_at.astimezone(timezone.utc)
-    purchase_id = _stable_id("oil-purchase", movement["id"])
-    number = await reserve_document_number(
-        db["commercial_counters"], season_code, "BAH", session=session
-    )
-    status = "PAID" if outstanding == 0 else ("PARTIALLY_PAID" if paid > 0 else "UNPAID")
     product_kind = draft.product_kind
     quantity_field = "quantity_l" if product_kind == "OIL" else "quantity_kg"
     unit_price_field = "unit_price_tnd_per_l" if product_kind == "OIL" else "unit_price_tnd_per_kg"
