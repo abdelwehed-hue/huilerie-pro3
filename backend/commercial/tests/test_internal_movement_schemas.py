@@ -169,3 +169,11 @@ def test_gift_transfer_rejects_payment_and_sale_must_be_customer_oil_to_mill():
         ))
     with pytest.raises(ValidationError, match="customer-to-mill oil"):
         InternalMovementDraft(**ownership_sale(product_kind="OLIVE"))
+
+
+def test_customer_oil_sale_rejects_payment_metadata_without_an_amount():
+    with pytest.raises(ValidationError, match="details require a positive initial payment"):
+        InternalMovementDraft(**ownership_sale(
+            initial_payment_method="CASH",
+            initial_payment_date="2026-11-08",
+        ))
