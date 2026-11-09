@@ -151,6 +151,7 @@ async def test_releasing_preproduction_sample_updates_only_its_latest_source_oli
     db = make_db()
     sample_lot = db["commercial_lots"].rows[0]
     sample_lot.update({
+        "batch_code": "2627A0008",
         "lot_purpose": "PREPRODUCTION_SAMPLE",
         "source_preproduction_sample_id": "trial-1",
         "source_olive_lot_id": "olive-source-1",
@@ -217,7 +218,7 @@ async def test_old_preproduction_sample_cannot_be_submitted_after_a_new_trial_is
         {"id": "trial-new", "source_olive_lot_id": "olive-source-1",
          "oil_sample_lot_id": "oil-new", "status": "COMPLETED"},
     ])
-    with pytest.raises(ValueError, match="latest active preproduction trial sample"):
+    with pytest.raises(ValueError, match="latest active preproduction sample"):
         await record_oil_quality_assessment(
             db, make_draft(), season_code="2627",
             actor_user={"active": True, "role": "worker", "commercial_permissions": ["commercial.lab_record"]},
