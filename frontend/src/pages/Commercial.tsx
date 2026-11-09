@@ -1338,6 +1338,7 @@ export default function Commercial() {
   const qualityOilLots = (lots.data ?? []).filter((lot) => {
     if (lot.product_kind !== "OIL" || lot.status !== "OPEN") return false;
     const isCurrentTrialSample = lot.lot_purpose === "PREPRODUCTION_SAMPLE"
+      && ["PENDING", "REJECTED"].includes(String(lot.quality_status))
       && (lots.data ?? []).some((source) => source.id === lot.source_olive_lot_id && source.latest_preproduction_sample_id === lot.source_preproduction_sample_id);
     const isProducedOil = Boolean(lot.source_production_id) && ["PENDING", "REJECTED"].includes(String(lot.quality_status));
     const isExistingAssessmentLot = (editingQualityAssessmentId || correctingQualityAssessmentId) && lot.id === qualityLotId;
