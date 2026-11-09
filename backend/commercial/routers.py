@@ -2065,7 +2065,7 @@ async def get_customer_oil_purchase_statement(
     customer_id: str,
     user: dict = Depends(current_user),
 ):
-    """Consolidated payable statement for oil bought from a customer by the mill."""
+    """Consolidated payable statement for oil and olives bought from a customer by the mill."""
     _authorize(user, "commercial.read")
     purchases = await db.commercial_oil_purchase_documents.find(
         {"customer_id": customer_id}, {"_id": 0}
@@ -2088,7 +2088,9 @@ async def get_customer_oil_purchase_statement(
             "entry_type": "PURCHASE",
             "document_number": purchase.get("document_number"),
             "traceability_code": purchase.get("traceability_code"),
+            "product_kind": purchase.get("product_kind", "OIL"),
             "quantity_l": purchase.get("quantity_l"),
+            "quantity_kg": purchase.get("quantity_kg"),
             "amount_tnd": purchase.get("agreed_amount_tnd", Decimal128("0")),
             "purchase_document_id": purchase.get("id"),
             "payment_method": None,
@@ -2104,7 +2106,9 @@ async def get_customer_oil_purchase_statement(
                 (item.get("traceability_code") for item in purchases
                  if item.get("id") == payment.get("purchase_document_id")), None
             ),
+            "product_kind": payment.get("product_kind", "OIL"),
             "quantity_l": None,
+            "quantity_kg": None,
             "amount_tnd": -amount(payment.get("amount_tnd")),
             "purchase_document_id": payment.get("purchase_document_id"),
             "payment_method": payment.get("method"),
