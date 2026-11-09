@@ -35,7 +35,7 @@ export default function OilEntryDialog({ load, onClose }: { load: Load | null; o
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  const oilLocked = !!load && (load.status === "done" || load.status === "delivered" || load.status === "cancelled");
+  const oilLocked = !!load && (load.ownership_transferred || load.available_olive_kg <= 0 || load.status === "done" || load.status === "delivered" || load.status === "cancelled");
   const val = parseFloat(oil.replace(",", "."));
   const preview = load && !isNaN(val) && load.olive_kg ? (val / load.olive_kg) * 100 : null;
 
