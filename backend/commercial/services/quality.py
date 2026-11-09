@@ -261,11 +261,12 @@ async def release_oil_quality_assessment(
     )
     if not assessment:
         raise ValueError("Quality assessment does not exist")
-    # Enforce separation of duties in the service layer, not only in the UI
-    # or permission assignment: the laboratory submitter cannot review their
-    # own assessment, even if they hold both permissions.
-    if assessment.get("created_by") == actor_user_id:
-        raise PermissionError("A laboratory submitter cannot approve their own quality assessment")
+    # Administrators may make the final decision even when they recorded
+    # the assessment. Non-admin submitters remain blocked at the service layer.
+    # Other reviewers must still hold commercial.quality_release (checked above).
+    is_admin = actor_user.get("role") == "admin"
+    if assessment.get("created_by") == actor_user_id and not is_admin:
+        raise PermissionError("A laboratory submitter cannot approve their own quality assessment; an administrator or another authorized reviewer must decide")
     if assessment.get("status") != "AWAITING_INDEPENDENT_REVIEW":
         raise ValueError("Quality assessment has already been reviewed")
     lot = await db["commercial_lots"].find_one(
