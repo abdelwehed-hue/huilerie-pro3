@@ -209,9 +209,13 @@ export default function Lab() {
   const selectedReviewLot = selectedReviewAssessment ? (gsLots.data ?? []).find((lot) => lot.id === selectedReviewAssessment.oil_lot_id) : undefined;
   const releaseGsAssessment = useMutation({
     mutationFn: async () => {
-      if (!selectedReviewAssessment || !selectedReviewLot) throw new Error("Analyse ou lot introuvable. Actualisez la page.");
+      if (!selectedReviewAssessment) throw new Error("Analyse introuvable. Actualisez la page.");
       if (reviewReason.trim().length < 10) throw new Error("La justification doit contenir au moins 10 caractères.");
-      return apiPost("/commercial/v1/quality-assessments/release", { assessment_id: selectedReviewAssessment.id, expected_lot_version: selectedReviewLot.version ?? 1, decision: reviewDecision, decision_reason: reviewReason.trim(), idempotency_key: crypto.randomUUID() });
+      // Use the version captured when the assessment was submitted if its lot
+      // is outside the independently limited lots response. The backend still
+      // validates the live lot state/version transactionally before release.
+      const expectedLotVersion = selectedReviewLot?.version ?? selectedReviewAssessment.lot_version_after_submission ?? 1;
+      return apiPost("/commercial/v1/quality-assessments/release", { assessment_id: selectedReviewAssessment.id, expected_lot_version: expectedLotVersion, decision: reviewDecision, decision_reason: reviewReason.trim(), idempotency_key: crypto.randomUUID() });
     },
     onSuccess: async () => {
       toast.success("Décision indépendante enregistrée");
