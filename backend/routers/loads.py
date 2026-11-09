@@ -50,7 +50,7 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
     oil = doc.get("oil_kg")
     return Load(
         id=doc["id"], code=doc["code"], client_name=doc["client_name"], phone=doc["phone"],
-        olive_kg=doc["olive_kg"], oil_kg=oil,
+        olive_kg=doc["olive_kg"], available_olive_kg=float(doc.get("customer_available_olive_kg", doc["olive_kg"])), ownership_transferred=bool(doc.get("ownership_transferred", False)), oil_kg=oil,
         yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
         status="cancelled" if doc.get("cancelled") else (
             "delivered" if doc.get("delivered") else (
@@ -163,7 +163,7 @@ async def _complete_load_and_invoice(id: str, oil_kg: float, user: dict):
     async def operation(session):
         before = await db.loads.find_one(
             {"id": id},
-            {"_id": 0, "oil_kg": 1, "cancelled": 1, "delivered": 1},
+            {"_id": 0, "olive_kg": 1, "customer_available_olive_kg": 1, "ownership_transferred": 1, "oil_kg": 1, "cancelled": 1, "delivered": 1},
             session=session,
         )
         if not before:
@@ -172,6 +172,8 @@ async def _complete_load_and_invoice(id: str, oil_kg: float, user: dict):
             raise HTTPException(409, "load_cancelled")
         if before.get("delivered"):
             raise HTTPException(409, "load_already_delivered")
+        if before.get("ownership_transferred") or float(before.get("customer_available_olive_kg", before.get("olive_kg", 0)) or 0) <= 0:
+            raise HTTPException(409, "load_ownership_transferred_to_mill")
 
         if before.get("oil_kg") is not None:
             if float(before["oil_kg"]) != float(oil_kg):
@@ -242,6 +244,8 @@ async def set_status(id: str, body: StatusUpdate, user: dict = Depends(current_u
             raise HTTPException(404, "not_found")
         if cur.get("cancelled"):
             raise HTTPException(409, "load_cancelled")
+        if body.status in ("pending", "pressing") and (cur.get("ownership_transferred") or float(cur.get("customer_available_olive_kg", cur.get("olive_kg", 0)) or 0) <= 0):
+            raise HTTPException(409, "load_ownership_transferred_to_mill")
         has_oil = cur.get("oil_kg") is not None
         st = body.status
         if st in ("pending", "pressing") and has_oil:

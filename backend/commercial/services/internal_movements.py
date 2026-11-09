@@ -22,6 +22,76 @@ def _fingerprint(draft: InternalMovementDraft) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *, session: Any, actor_user_id: str, created_at: datetime) -> None:
+    """Lock a legacy load only after all its customer-owned olive stock is transferred."""
+    if draft.product_kind != "OLIVE" or draft.movement_kind != "OWNERSHIP_TRANSFER":
+        return
+    lot = await db["commercial_lots"].find_one(
+        {"id": draft.lot_id, "product_kind": "OLIVE"},
+        {"_id": 0, "source_load_id": 1},
+        session=session,
+    )
+    source_load_id = (lot or {}).get("source_load_id")
+    if not source_load_id:
+        return
+    source_load = await db["loads"].find_one(
+        {"id": source_load_id},
+        {"_id": 0, "code": 1, "olive_kg": 1, "custody_received_kg": 1},
+        session=session,
+    )
+    if not source_load:
+        return
+    # A source load may have been received into custody in multiple batches.
+    # Do not close it until its entire original weight has been received and
+    # every linked lot has zero remaining customer-owned stock.
+    received_raw = source_load.get("custody_received_kg", 0)
+    received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw))
+    if received < Decimal(str(source_load.get("olive_kg", 0))):
+        return
+    linked_lots = await db["commercial_lots"].find(
+        {"source_load_id": source_load_id, "product_kind": "OLIVE"},
+        {"_id": 0, "id": 1},
+        session=session,
+    ).to_list(500)
+    lot_ids = [item["id"] for item in linked_lots]
+    if not lot_ids:
+        return
+    remaining = await db["commercial_stock_balances"].find(
+        {"product_kind": "OLIVE", "lot_id": {"$in": lot_ids}, "owner.kind": "CUSTOMER"},
+        {"_id": 0, "quantity_kg": 1},
+        session=session,
+    ).to_list(1000)
+    remaining_total = Decimal("0")
+    for balance in remaining:
+        raw = balance.get("quantity_kg", 0)
+        remaining_total += raw.to_decimal() if hasattr(raw, "to_decimal") else Decimal(str(raw))
+    if remaining_total > 0:
+        return
+    load = await db["loads"].find_one_and_update(
+        {"id": source_load_id, "ownership_transferred": {"$ne": True}},
+        {"$set": {
+            "customer_available_olive_kg": 0,
+            "ownership_transferred": True,
+            "ownership_transferred_at": created_at.astimezone(timezone.utc),
+            "ownership_transfer_lot_id": draft.lot_id,
+        }},
+        projection={"_id": 0, "id": 1, "code": 1},
+        return_document=True,
+        session=session,
+    )
+    if load:
+        await db["commercial_audit_events"].insert_one({
+            "id": f"load-ownership-transfer:{source_load_id}",
+            "entity_type": "traditional_load",
+            "entity_id": source_load_id,
+            "action": "LOAD_OWNERSHIP_TRANSFERRED_TO_MILL",
+            "actor_user_id": actor_user_id,
+            "created_at": created_at.astimezone(timezone.utc),
+            "details": {"load_code": load.get("code"), "lot_ids": lot_ids,
+                        "available_olive_kg_after": 0},
+        }, session=session)
+
+
 async def create_internal_movement(
     db: Any, draft: InternalMovementDraft, *, season_code: str,
     actor_user: dict[str, Any], actor_user_id: str, movement_document_id: str,
@@ -43,6 +113,7 @@ async def create_internal_movement(
     if prior:
         if prior.get("request_fingerprint") != fingerprint:
             raise ValueError("Idempotency key was already used for a different internal movement")
+        await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
         return prior
 
     # Ownership transfers consume the entire selected customer balance.
@@ -122,6 +193,7 @@ async def create_internal_movement(
         actor_user=actor_user, movement_id=stock_movement_id,
         audit_event_id=audit_event_id, created_at=created_at, session=session,
     )
+    await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
     document["stock_movement_id"] = ledger["id"]
     await collection.update_one(
         {"id": movement_document_id, "status": "APPROVED"},

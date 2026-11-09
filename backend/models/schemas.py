@@ -71,6 +71,8 @@ class Load(BaseModel):
     client_name: str
     phone: str
     olive_kg: float
+    available_olive_kg: float
+    ownership_transferred: bool = False
     oil_kg: Optional[float] = None
     yield_pct: Optional[float] = None
     status: Literal["pending", "pressing", "done", "delivered", "cancelled"]
