@@ -2491,8 +2491,7 @@ export default function Commercial() {
               const ownerForReceipt = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || (!!item.customer_phone && candidate.client_phone === item.customer_phone));
               const historyPhone = String(item.customer_phone ?? ownerForReceipt?.client_phone ?? item.client_phone ?? "");
               const historySelected = !!historyPhone && selectedCustodyHistoryPhone === historyPhone;
-              return <>
-                <TableRow key={item.id}>
+              return <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
                   <TableCell>{date(item.receipt_date)}</TableCell>
                   <TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض Historique من carnet client" : "Afficher l’historique du carnet client"} aria-expanded={historySelected} onClick={() => {
@@ -2509,7 +2508,6 @@ export default function Commercial() {
                   <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
                   <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
                   <TableCell><div className="flex gap-2">{canEditRecords && canCorrect && <Button size="sm" variant="outline" onClick={() => beginCustodyReceiptEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canDeleteRecords && canCorrect && <Button size="sm" variant="destructive" disabled={cancelCustodyReceipt.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyReceipt.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button>}</div></TableCell>
-                </TableRow>
               </TableRow>;
             })}
           </TableBody></Table>
