@@ -749,7 +749,8 @@ export default function Commercial() {
           consent_customer_name: ownershipConsentMethod === "IN_APP" ? ownershipConsentCustomerName.trim() : null,
           consent_confirmed: ownershipConsentMethod === "IN_APP" ? ownershipConsentConfirmed : false,
           consideration_type: ownershipConsiderationType,
-          consideration_amount: ownershipConsiderationType === "SALE" ? ownershipAgreedAmount : null,
+          consideration_amount: ownershipConsiderationType === "SALE" ? (Math.round((Number(ownershipAgreedAmount) * quantity + Number.EPSILON) * 1000) / 1000).toFixed(3) : null,
+          consideration_unit_price_tnd_per_l: ownershipConsiderationType === "SALE" ? ownershipAgreedAmount : null,
           initial_payment_amount: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 ? ownershipInitialPaymentAmount : null,
           initial_payment_method: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 ? ownershipInitialPaymentMethod : null,
           initial_payment_reference: ownershipConsiderationType === "SALE" && Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" ? ownershipInitialPaymentReference.trim() : null,
@@ -1849,13 +1850,14 @@ export default function Commercial() {
                     <option value="SALE" disabled={internalProductKind !== "OIL" || selectedInternalBalance?.owner?.kind !== "CUSTOMER" || internalDestinationOwnerKey !== "MILL"}>{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
                   </select>
                 </label>
-                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount}
+                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.oilPurchaseUnitPrice}
                   <input required type="number" min="0.001" step="0.001" value={ownershipAgreedAmount} onChange={(e) => { setOwnershipAgreedAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  <span className="text-xs text-muted-foreground">{lang === "ar" ? `المبلغ الجملي: ${(Math.round((Number(ownershipAgreedAmount || 0) * Number(internalMovementQuantity || 0) + Number.EPSILON) * 1000) / 1000).toFixed(3)} د.ت` : `Montant total : ${(Math.round((Number(ownershipAgreedAmount || 0) * Number(internalMovementQuantity || 0) + Number.EPSILON) * 1000) / 1000).toFixed(3)} TND`}</span>
                   <span className="text-xs text-muted-foreground">{l.ownershipSaleAccountingNote}</span>
                 </label>}
                 {ownershipConsiderationType === "SALE" && <div className="grid gap-3 rounded-lg bg-muted/30 p-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm font-medium">{l.ownershipInitialPayment}
-                    <input type="number" min="0" step="0.001" max={ownershipAgreedAmount || undefined} value={ownershipInitialPaymentAmount} onChange={(e) => { setOwnershipInitialPaymentAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                    <input type="number" min="0" step="0.001" max={Number(ownershipAgreedAmount || 0) * Number(internalMovementQuantity || 0) || undefined} value={ownershipInitialPaymentAmount} onChange={(e) => { setOwnershipInitialPaymentAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
                   </label>
                   <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentDate}
                     <input type="date" value={ownershipInitialPaymentDate} onChange={(e) => { setOwnershipInitialPaymentDate(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!(Number(ownershipInitialPaymentAmount) > 0)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
@@ -1874,7 +1876,7 @@ export default function Commercial() {
 
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) * Number(internalMovementQuantity) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
                   {l.postInternalMovement}
                 </Button>
               </div>

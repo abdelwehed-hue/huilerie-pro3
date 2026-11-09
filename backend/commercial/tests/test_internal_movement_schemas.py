@@ -108,10 +108,21 @@ def ownership_sale(**overrides):
         consent_method="DOCUMENT",
         consent_reference="CONSENT-002",
         consideration_type="SALE",
+        quantity_kg="100.000",
+        consideration_unit_price_tnd_per_l="1.500",
         consideration_amount="150.000",
     )
     values.update(overrides)
     return values
+
+
+def test_customer_oil_sale_requires_unit_price_and_matching_total():
+    with pytest.raises(ValidationError, match="unit price per litre"):
+        InternalMovementDraft(**ownership_sale(consideration_unit_price_tnd_per_l=None))
+    with pytest.raises(ValidationError, match="quantity multiplied by the unit price"):
+        InternalMovementDraft(**ownership_sale(consideration_amount="149.999"))
+    draft = InternalMovementDraft(**ownership_sale())
+    assert draft.consideration_unit_price_tnd_per_l == 1.5
 
 
 def test_customer_oil_sale_accepts_partial_initial_payment():
