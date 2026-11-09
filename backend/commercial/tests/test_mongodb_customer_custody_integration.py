@@ -41,6 +41,7 @@ async def test_customer_owned_olive_intake_creates_separate_lot_and_balance_atom
         await db.commercial_varieties.insert_one({
             "id": "chemlali", "code": "CH", "name_fr": "Chemlali", "active": True
         })
+        await db.settings.insert_one({"key": "app", "varieties": ["chemlali"]})
         await db.commercial_locations.insert_one({
             "id": "olive-yard-01", "code": "OLIVE-01",
             "kind": "OLIVE_STORAGE", "active": True,
@@ -377,6 +378,88 @@ async def test_customer_pickup_cannot_release_pending_quality_oil():
                 )
         assert await db.commercial_customer_custody_releases.count_documents({}) == 0
         assert await db.commercial_stock_movements.count_documents({}) == 0
+    finally:
+        await client.drop_database(name)
+        client.close()
+
+
+@pytest.mark.asyncio
+async def test_custody_receipt_reserves_partial_and_remaining_quantity_from_original_load():
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    name = "custody_source_load_" + uuid.uuid4().hex
+    db = client[name]
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    try:
+        await ensure_inventory_indexes(db)
+        await db.commercial_counters.insert_many([
+            {"season_code": "2627", "document_type": kind, "last_sequence": 0}
+            for kind in ("CIN", "LOT", "MVT")
+        ])
+        await db.clients.insert_one({
+            "phone": "21612345678", "client_name": "Source Load Customer"
+        })
+        await db.settings.insert_one({"key": "app", "varieties": ["chemlali"]})
+        await db.commercial_locations.insert_one({
+            "id": "source-load-yard", "kind": "OLIVE_STORAGE", "active": True,
+        })
+        await db.loads.insert_one({
+            "id": "traditional-load-001",
+            "code": "2627A0001",
+            "season_id": "2627",
+            "day": "2026-11-02",
+            "phone": "21612345678",
+            "client_name": "Source Load Customer",
+            "variety": "chemlali",
+            "olive_kg": Decimal128("1000.000"),
+            "oil_kg": None,
+            "pressing": False,
+            "cancelled": False,
+        })
+
+        async def receive(quantity, key, suffix):
+            draft = CustomerOliveCustodyReceiptDraft(
+                customer_phone="21612345678",
+                receipt_date=date(2026, 11, 2),
+                variety_id="chemlali",
+                quantity_kg=Decimal(quantity),
+                source_load_id="traditional-load-001",
+                receiving_location_id="source-load-yard",
+                customer_acknowledgement_reference=f"ACK-SOURCE-{suffix}",
+                idempotency_key=key,
+            )
+            async with await client.start_session() as session:
+                return await session.with_transaction(
+                    lambda active: receive_customer_olive_custody(
+                        db, draft, season_code="2627",
+                        actor_user={"active": True, "role": "admin"},
+                        actor_user_id="integration-admin",
+                        receipt_id=f"source-receipt-{suffix}",
+                        custody_owner_id=f"source-owner-{suffix}",
+                        olive_lot_id=f"source-lot-{suffix}",
+                        stock_movement_id=f"source-movement-{suffix}",
+                        audit_event_id=f"source-audit-{suffix}",
+                        created_at=now, session=active,
+                    )
+                )
+
+        first = await receive("400.000", "custody-source-load-partial-001", "partial")
+        assert first["source_load_id"] == "traditional-load-001"
+        assert first["source_load_code"] == "2627A0001"
+        second = await receive("600.000", "custody-source-load-final-001", "final")
+        assert second["quantity_kg"].to_decimal() == Decimal("600.000")
+
+        with pytest.raises(ValueError, match="exceeds the source load"):
+            await receive("0.001", "custody-source-load-overrun-001", "overrun")
+
+        source_load = await db.loads.find_one(
+            {"id": "traditional-load-001"}, {"_id": 0}
+        )
+        assert source_load["custody_received_kg"].to_decimal() == Decimal("1000.000")
+        assert await db.commercial_customer_custody_receipts.count_documents({
+            "source_load_id": "traditional-load-001",
+            "status": "RECEIVED",
+        }) == 2
+        assert await db.commercial_lots.count_documents({}) == 2
     finally:
         await client.drop_database(name)
         client.close()
