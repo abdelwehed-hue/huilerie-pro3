@@ -108,6 +108,7 @@ async def create_oil_purchase_document_for_transfer(
         "outstanding_amount_tnd": Decimal128(outstanding),
         "currency": "TND",
         "payment_status": status,
+        "initial_payment_status": status,
         "accounting_status": "PAYABLE_LEDGER_RECORDED",
         "version": 1,
         "created_by": actor_user_id,
