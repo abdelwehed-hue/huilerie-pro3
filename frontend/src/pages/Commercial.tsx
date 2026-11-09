@@ -305,6 +305,7 @@ export default function Commercial() {
   const [custodyReceiptKey, setCustodyReceiptKey] = useState(() => crypto.randomUUID());
   const [editingCustodyReceipt, setEditingCustodyReceipt] = useState<AnyRecord | null>(null);
   const [pickupCustomerId, setPickupCustomerId] = useState("");
+  const [selectedCustodyHistoryPhone, setSelectedCustodyHistoryPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10));
   const [pickupBalanceKey, setPickupBalanceKey] = useState("");
   const [pickupQuantity, setPickupQuantity] = useState("");
@@ -441,9 +442,9 @@ export default function Commercial() {
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
-    queryKey: ["commercial", "custody-client-history", selectedCustodyOwner?.client_phone],
-    queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyOwner!.client_phone)),
-    enabled: ready && tab === "custody" && !!selectedCustodyOwner?.client_phone,
+    queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
+    queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone)),
+    enabled: ready && tab === "custody" && !!selectedCustodyHistoryPhone,
     retry: false,
   });
   const custodyStatement = useQuery({ queryKey: ["commercial", "custody-statement", pickupCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/customer-custody/owners/" + encodeURIComponent(pickupCustomerId) + "/statement"), enabled: ready && tab === "custody" && !!pickupCustomerId });
@@ -2486,17 +2487,46 @@ export default function Commercial() {
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyVariety}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyLocation}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
             {(custodyReceipts.data ?? []).map((item) => {
               const canCorrect = item.status === "RECEIVED";
-              return <TableRow key={item.id}>
-                <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
-                <TableCell>{date(item.receipt_date)}</TableCell><TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض رصيد الحريف وتفاصيل الأمانة" : "Afficher le solde et le détail de garde du client"} onClick={() => { const owner = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || (!!item.customer_phone && candidate.client_phone === item.customer_phone)); if (owner) { setPickupCustomerId(owner.id); setPickupBalanceKey(""); setPickupQuantity(""); document.getElementById("custody-customer-statement")?.scrollIntoView({ behavior: "smooth", block: "start" }); } else if (item.customer_phone) { resolveCustodyStatementOwner.mutate(item.customer_phone); } else { toast.error(lang === "ar" ? "تعذر تحديد حساب ملكية هذا الحريف." : "Impossible d’identifier le compte de propriété de ce client."); } }}>{value(item.customer_name, item.customer_phone)}</button></TableCell>
-                <TableCell>{value((varieties.data ?? []).find((variety) => variety.id === item.variety_id)?.name_fr, item.variety_id)}</TableCell>
-                <TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((locations.data ?? []).find((location) => location.id === item.receiving_location_id)?.code, item.receiving_location_id)}</TableCell>
-                <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
-                <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
-                <TableCell><div className="flex gap-2">{canEditRecords && canCorrect && <Button size="sm" variant="outline" onClick={() => beginCustodyReceiptEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canDeleteRecords && canCorrect && <Button size="sm" variant="destructive" disabled={cancelCustodyReceipt.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyReceipt.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button>}</div></TableCell>
-              </TableRow>;
+              const historyPhone = String(item.customer_phone ?? item.client_phone ?? "");
+              const historySelected = !!historyPhone && selectedCustodyHistoryPhone === historyPhone;
+              return <>
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
+                  <TableCell>{date(item.receipt_date)}</TableCell>
+                  <TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض Historique من carnet client" : "Afficher l’historique du carnet client"} aria-expanded={historySelected} onClick={() => {
+                    if (!historyPhone) { toast.error(lang === "ar" ? "رقم هاتف الحريف غير موجود في سجل الاستلام." : "Le téléphone du client est absent de cette réception."); return; }
+                    setSelectedCustodyHistoryPhone(historySelected ? "" : historyPhone);
+                    const owner = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || candidate.client_phone === historyPhone);
+                    if (owner) { setPickupCustomerId(owner.id); setPickupBalanceKey(""); setPickupQuantity(""); }
+                    else if (item.customer_phone) resolveCustodyStatementOwner.mutate(item.customer_phone);
+                  }}>{value(item.customer_name, historyPhone)}</button></TableCell>
+                  <TableCell>{value((varieties.data ?? []).find((variety) => variety.id === item.variety_id)?.name_fr, item.variety_id)}</TableCell>
+                  <TableCell>{number(item.quantity_kg)} kg</TableCell>
+                  <TableCell>{value((locations.data ?? []).find((location) => location.id === item.receiving_location_id)?.code, item.receiving_location_id)}</TableCell>
+                  <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
+                  <TableCell>{item.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : (lang === "ar" ? "مسجل" : "Enregistré")}</TableCell>
+                  <TableCell><div className="flex gap-2">{canEditRecords && canCorrect && <Button size="sm" variant="outline" onClick={() => beginCustodyReceiptEdit(item)}>{lang === "ar" ? "تعديل" : "Modifier"}</Button>}{canDeleteRecords && canCorrect && <Button size="sm" variant="destructive" disabled={cancelCustodyReceipt.isPending} onClick={() => { const reason = window.prompt(lang === "ar" ? "سبب الإلغاء (5 أحرف على الأقل):" : "Motif de l’annulation (5 caractères minimum) :"); if (reason && reason.trim().length >= 5) cancelCustodyReceipt.mutate({ item, reason: reason.trim() }); }}>{lang === "ar" ? "إزالة" : "Annuler"}</Button>}</div></TableCell>
+                </TableRow>
+                {historySelected && <TableRow key={item.id + "-history"}><TableCell colSpan={9} className="bg-muted/30 p-4">
+                  <div className="space-y-3">
+                    <div className="font-semibold">{lang === "ar" ? "Historique — دفتر الحريف" : "Historique — carnet client"} · {value(item.customer_name, historyPhone)}</div>
+                    {custodyClientHistory.isLoading ? <p className="text-sm text-muted-foreground">{lang === "ar" ? "جار تحميل سجل الحريف…" : "Chargement de l’historique client…"}</p>
+                      : custodyClientHistory.isError ? <p className="text-sm text-red-700">{lang === "ar" ? "تعذر تحميل السجل. تحقق من رقم الهاتف المرتبط بالحريف." : "Impossible de charger l’historique. Vérifiez le téléphone associé au client."}</p>
+                      : custodyClientHistory.data ? <>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "عدد العمليات" : "Nombre d’opérations"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.loads_count)}</div></div>
+                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيتون المسجل" : "Olives enregistrées"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.olive_kg)} kg</div></div>
+                          <div className="rounded-lg bg-background p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "الزيت المسجل" : "Huile enregistrée"}</div><div className="text-xl font-semibold">{number(custodyClientHistory.data.oil_kg)} L</div></div>
+                        </div>
+                        <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Code</TableHead><TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "الصنف" : "Variété"}</TableHead><TableHead>{lang === "ar" ? "الزيتون (kg)" : "Olives (kg)"}</TableHead><TableHead>{lang === "ar" ? "الزيت (L)" : "Huile (L)"}</TableHead><TableHead>{lang === "ar" ? "المردودية" : "Rendement"}</TableHead><TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader><TableBody>
+                          {(custodyClientHistory.data.loads ?? []).map((load: AnyRecord) => <TableRow key={load.id}><TableCell className="font-mono text-xs font-semibold">{value(load.code)}</TableCell><TableCell>{date(load.created_at)}</TableCell><TableCell>{value(load.variety, "—")}</TableCell><TableCell className="font-semibold text-lime-800">{number(load.olive_kg)}</TableCell><TableCell className="font-semibold text-amber-700">{number(load.oil_kg)}</TableCell><TableCell>{load.yield_pct == null ? "—" : number(load.yield_pct) + "%"}</TableCell><TableCell>{value(load.status, "—")}</TableCell></TableRow>)}
+                          {!(custodyClientHistory.data.loads ?? []).length && <EmptyRow colSpan={7} text={l.noRows} />}
+                        </TableBody></Table></div>
+                      </> : <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد بيانات في Historique لهذا الحريف." : "Aucune donnée dans l’historique de ce client."}</p>}
+                  </div>
+                </TableCell></TableRow>}
+              </>;
             })}
-            {(!custodyReceipts.isLoading && !(custodyReceipts.data?.length)) && <EmptyRow colSpan={9} text={l.noRows} />}
           </TableBody></Table>
         </CardContent></Card><Card><CardHeader><CardTitle>{l.custodyReleases}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.custodyDate}</TableHead><TableHead>{l.custodyCustomer}</TableHead><TableHead>{l.custodyOilLot}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodySourceTank}</TableHead><TableHead>{l.custodyAck}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
