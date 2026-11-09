@@ -174,4 +174,4 @@ def test_gift_transfer_rejects_payment_and_customer_sale_supports_olives_and_oil
 
 def test_customer_sale_rejects_non_customer_to_mill_ownership():
     with pytest.raises(ValidationError, match="customer-to-mill ownership"):
-        InternalMovementDraft(**ownership_sale(destination_owner={"kind": "CUSTOMER", "customer_id": "customer-2"}))
+        InternalMovementDraft(**ownership_sale(source_owner={"kind": "MILL"}, destination_owner={"kind": "CUSTOMER", "customer_id": "customer-2"}))
