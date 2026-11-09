@@ -317,6 +317,7 @@ export default function Commercial() {
   const [internalMovementKind, setInternalMovementKind] = useState<"TRANSFER" | "OWNERSHIP_TRANSFER">("TRANSFER");
   const [internalProductKind, setInternalProductKind] = useState<"OLIVE" | "OIL">("OIL");
   const [internalSourceBalanceKey, setInternalSourceBalanceKey] = useState("");
+  const [internalCustomerId, setInternalCustomerId] = useState("");
   const [internalDestinationLocationId, setInternalDestinationLocationId] = useState("");
   const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("");
   const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
@@ -1502,8 +1503,15 @@ export default function Commercial() {
       && !!lot.preproduction_sample_id && !!lot.preproduction_quality_assessment_id && lot.latest_preproduction_sample_id === lot.preproduction_sample_id)
   );
 
+  const internalPurchaseCustomers = (custodyOwners.data ?? []).filter((owner) =>
+    owner.active !== false && (balances.data ?? []).some((balance) =>
+      balance.product_kind === internalProductKind && Number(balance.quantity_kg) > 0
+      && balance.owner?.kind === "CUSTOMER" && balance.owner.customer_id === owner.id
+    )
+  );
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
     if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0) return false;
+    if (internalCustomerId && (balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== internalCustomerId)) return false;
     const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
     if (!lot) return false;
     if (internalProductKind === "OIL") {
@@ -1798,6 +1806,12 @@ export default function Commercial() {
                   </select>
                 </label>
               </div>
+              {internalMovementKind === "OWNERSHIP_TRANSFER" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{lang === "ar" ? "الحريف البائع" : "Client vendeur"}
+                <select value={internalCustomerId} onChange={(e) => { setInternalCustomerId(e.target.value); setInternalSourceBalanceKey(""); setInternalDestinationOwnerKey(e.target.value ? "MILL" : ""); setOwnershipConsiderationType(e.target.value ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">{lang === "ar" ? "كل الحرفاء / دون تصفية" : "Tous les clients / sans filtre"}</option>
+                  {internalPurchaseCustomers.map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}
+                </select>
+              </label>}
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.sourceBalance}
                 <select required value={internalSourceBalanceKey} onChange={(e) => { const selectedKey = e.target.value; const selected = availableInternalBalances.find((balance) => [balance.product_kind, balance.lot_id, balance.location_id, ownerIdentity(balance.owner)].join("::") === selectedKey); setInternalSourceBalanceKey(selectedKey); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(selected?.owner?.kind === "CUSTOMER" ? "MILL" : ""); setOwnershipConsiderationType(selected?.owner?.kind === "CUSTOMER" ? "SALE" : "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementQuantity(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                   <option value="">—</option>
