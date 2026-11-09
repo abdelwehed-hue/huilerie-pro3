@@ -15,7 +15,6 @@ import {
   Ban,
   Tv,
   ReceiptText,
-  Calculator,
   Warehouse,
   Clock3,
   Volume2,
