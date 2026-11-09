@@ -686,6 +686,17 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const resolveCustodyStatementOwner = useMutation({
+    mutationFn: (phone: string) => apiPost<AnyRecord>("/commercial/v1/customer-custody/owners/resolve", { customer_phone: phone }),
+    onSuccess: async (owner) => {
+      setPickupCustomerId(owner.id);
+      setPickupBalanceKey("");
+      setPickupQuantity("");
+      await queryClient.invalidateQueries({ queryKey: ["commercial", "custody-owners"] });
+      document.getElementById("custody-customer-statement")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const resolveInternalDestinationOwner = useMutation({
     mutationFn: (phone: string) => apiPost<AnyRecord>("/commercial/v1/customer-custody/owners/resolve", { customer_phone: phone }),
     onSuccess: async (owner) => {
@@ -2441,7 +2452,7 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
 
-        <Card><CardHeader><CardTitle>{l.custodyStatementTitle}</CardTitle><CardDescription>{l.selectCustodyOwner}</CardDescription><label className="mt-2 grid max-w-xl gap-1 text-sm font-medium">{l.custodyCustomer}<select value={pickupCustomerId} onChange={(e) => { setPickupCustomerId(e.target.value); setPickupBalanceKey(""); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyOwners.data ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}</select></label></CardHeader><CardContent>
+        <Card id="custody-customer-statement"><CardHeader><CardTitle>{l.custodyStatementTitle}</CardTitle><CardDescription>{l.selectCustodyOwner}</CardDescription><label className="mt-2 grid max-w-xl gap-1 text-sm font-medium">{l.custodyCustomer}<select value={pickupCustomerId} onChange={(e) => { setPickupCustomerId(e.target.value); setPickupBalanceKey(""); setPickupQuantity(""); setPickupKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal"><option value="">—</option>{(custodyOwners.data ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.client_name} · {owner.client_phone}</option>)}</select></label></CardHeader><CardContent>
           {pickupCustomerId && custodyStatement.data ? <><div className="mb-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{l.olive}</p><p className="text-2xl font-semibold">{number(custodyStatement.data.current_balances_kg?.OLIVE)} kg</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{l.oil}</p><p className="text-2xl font-semibold">{number(custodyStatement.data.current_balances_kg?.OIL)} L</p></div></div><Table><TableHeader><TableRow><TableHead>{l.custodyRecordedAt}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.custodyProduct}</TableHead><TableHead>{l.custodyMovement}</TableHead><TableHead>{l.custodyQuantity}</TableHead><TableHead>{l.custodyDelta}</TableHead><TableHead>{l.custodyBalance}</TableHead></TableRow></TableHeader><TableBody>{(custodyStatement.data.movements ?? []).map((movement: AnyRecord) => <TableRow key={movement.id}><TableCell>{date(movement.created_at)}</TableCell><TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === movement.lot_id), movement.document_number)}</TableCell><TableCell>{movement.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{value(movement.movement_kind)}</TableCell><TableCell>{number(movement.quantity_kg)} {movement.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell className={Number(movement.delta_kg) < 0 ? "text-red-700" : Number(movement.delta_kg) > 0 ? "text-emerald-700" : ""}>{Number(movement.delta_kg) > 0 ? "+" : ""}{number(movement.delta_kg)} {movement.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{number(movement.balance_after_kg)} {movement.product_kind === "OIL" ? "L" : "kg"}</TableCell></TableRow>)}{(!custodyStatement.isLoading && !(custodyStatement.data.movements?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></> : <p className="text-sm text-muted-foreground">{pickupCustomerId ? (lang === "ar" ? "جار تحميل كشف الأمانة…" : "Chargement de l’état de garde…") : l.selectCustodyOwner}</p>}
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{l.custodyReceipts}</CardTitle></CardHeader><CardContent>
@@ -2450,7 +2461,7 @@ export default function Commercial() {
               const canCorrect = item.status === "RECEIVED";
               return <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{canCorrect && canEditRecords ? <button type="button" className="text-primary underline underline-offset-2" title={lang === "ar" ? "انقر لتعديل المستند" : "Cliquer pour corriger le document"} onClick={() => beginCustodyReceiptEdit(item)}>{value(item.document_number, item.batch_code)}</button> : value(item.document_number, item.batch_code)}<div className="text-muted-foreground">{value(item.batch_code)}</div></TableCell>
-                <TableCell>{date(item.receipt_date)}</TableCell><TableCell>{value(item.customer_name, item.customer_phone)}</TableCell>
+                <TableCell>{date(item.receipt_date)}</TableCell><TableCell><button type="button" className="text-left font-medium text-primary underline underline-offset-2 hover:opacity-80" title={lang === "ar" ? "عرض رصيد الحريف وتفاصيل الأمانة" : "Afficher le solde et le détail de garde du client"} onClick={() => { const owner = (custodyOwners.data ?? []).find((candidate) => candidate.id === item.customer_id || (!!item.customer_phone && candidate.client_phone === item.customer_phone)); if (owner) { setPickupCustomerId(owner.id); setPickupBalanceKey(""); setPickupQuantity(""); document.getElementById("custody-customer-statement")?.scrollIntoView({ behavior: "smooth", block: "start" }); } else if (item.customer_phone) { resolveCustodyStatementOwner.mutate(item.customer_phone); } else { toast.error(lang === "ar" ? "تعذر تحديد حساب ملكية هذا الحريف." : "Impossible d’identifier le compte de propriété de ce client."); } }}>{value(item.customer_name, item.customer_phone)}</button></TableCell>
                 <TableCell>{value((varieties.data ?? []).find((variety) => variety.id === item.variety_id)?.name_fr, item.variety_id)}</TableCell>
                 <TableCell>{number(item.quantity_kg)} kg</TableCell><TableCell>{value((locations.data ?? []).find((location) => location.id === item.receiving_location_id)?.code, item.receiving_location_id)}</TableCell>
                 <TableCell>{value(item.customer_acknowledgement_reference)}</TableCell>
