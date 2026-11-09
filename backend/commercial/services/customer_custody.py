@@ -720,8 +720,8 @@ async def cancel_customer_olive_custody_receipt(
 
     if receipt.get("source_load_id"):
         released = await db["loads"].update_one(
-            {"id": receipt["source_load_id"], "custody_received_kg": {"$gte": quantity}},
-            {"$inc": {"custody_received_kg": -quantity}},
+            {"id": receipt["source_load_id"], "custody_received_kg": {"$gte": Decimal128(quantity)}},
+            {"$inc": {"custody_received_kg": Decimal128(-quantity)}},
             session=session,
         )
         if released.matched_count != 1:
