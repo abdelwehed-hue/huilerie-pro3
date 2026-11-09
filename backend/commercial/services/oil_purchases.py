@@ -50,18 +50,60 @@ async def create_oil_purchase_document_for_transfer(
     )
     if not lot or lot.get("product_kind") != "OIL":
         raise ValueError("The source oil lot no longer exists")
-    if lot.get("quality_status") != "RELEASED":
-        raise ValueError("Only quality-released oil can be purchased by the mill")
     traceability_code = lot.get("batch_code")
     if not traceability_code:
         raise ValueError("The source oil lot has no traceability code")
+
+    # Quality is tested once, in Laboratoire, on the preproduction sample.
+    # Produced oil inherits that approval through its source olive lot; it is
+    # never subjected to a second, post-pressing oil analysis.
     quality_assessment = None
-    if lot.get("last_quality_assessment_id"):
-        quality_assessment = await db["commercial_quality_assessments"].find_one(
-            {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
-             "status": "REVIEWED", "decision": "RELEASED"},
+    if lot.get("source_production_id"):
+        source_olive_lot = await db["commercial_lots"].find_one(
+            {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+             "status": "OPEN", "batch_code": traceability_code,
+             "preproduction_quality_status": "RELEASED",
+             "preproduction_sample_id": {"$exists": True},
+             "preproduction_quality_assessment_id": {"$exists": True},
+             "latest_preproduction_sample_id": lot.get("source_preproduction_sample_id",
+                 lot.get("latest_preproduction_sample_id", None))},
             {"_id": 0}, session=session,
         )
+        # Older production records may not copy the sample ID to the output lot;
+        # the source olive lot's current approved assessment remains authoritative.
+        if not source_olive_lot:
+            source_olive_lot = await db["commercial_lots"].find_one(
+                {"id": lot.get("source_olive_lot_id"), "product_kind": "OLIVE",
+                 "status": "OPEN", "batch_code": traceability_code,
+                 "preproduction_quality_status": "RELEASED",
+                 "preproduction_sample_id": {"$exists": True},
+                 "preproduction_quality_assessment_id": {"$exists": True}},
+                {"_id": 0}, session=session,
+            )
+        if source_olive_lot:
+            sample = await db["commercial_preproduction_samples"].find_one(
+                {"id": source_olive_lot.get("preproduction_sample_id"),
+                 "status": "COMPLETED", "oil_sample_lot_id": {"$exists": True}},
+                {"_id": 0}, session=session,
+            )
+            quality_assessment = await db["commercial_quality_assessments"].find_one(
+                {"id": source_olive_lot.get("preproduction_quality_assessment_id"),
+                 "oil_lot_id": sample.get("oil_sample_lot_id") if sample else None,
+                 "status": "REVIEWED", "decision": "RELEASED"},
+                {"_id": 0}, session=session,
+            )
+        if not source_olive_lot or not sample or not quality_assessment:
+            raise ValueError("Only oil produced from a preproduction-sample-approved olive lot can be purchased by the mill")
+    else:
+        # Compatibility for non-production oil lots: require their own recorded release.
+        if lot.get("quality_status") != "RELEASED":
+            raise ValueError("Only quality-released oil can be purchased by the mill")
+        if lot.get("last_quality_assessment_id"):
+            quality_assessment = await db["commercial_quality_assessments"].find_one(
+                {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
+                 "status": "REVIEWED", "decision": "RELEASED"},
+                {"_id": 0}, session=session,
+            )
     tank = await db["commercial_tanks"].find_one(
         {"id": draft.source_location_id, "active": True, "role": {"$in": ["NORMAL", None]}},
         {"_id": 0}, session=session
