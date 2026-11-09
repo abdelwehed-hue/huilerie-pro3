@@ -252,7 +252,7 @@ async def receive_customer_olive_custody(
         )
         if not source_load:
             raise ValueError("Source olive load does not belong to this customer or is no longer eligible")
-        if str(source_load.get("variety") or "").strip() != draft.variety_id:
+        if str(source_load.get("variety") or "").strip().casefold() != draft.variety_id.strip().casefold():
             raise ValueError("Custody intake variety must match the selected source load")
     settings_doc = await db["settings"].find_one(
         {"key": "app"}, {"_id": 0, "varieties": 1}, session=session,
@@ -262,7 +262,11 @@ async def receive_customer_olive_custody(
         str(name).strip() for name in configured_varieties
         if isinstance(name, str) and str(name).strip()
     }
-    if draft.variety_id not in active_varieties:
+    normalized_variety_id = next(
+        (name for name in active_varieties if name.casefold() == draft.variety_id.strip().casefold()),
+        None,
+    )
+    if not normalized_variety_id:
         raise ValueError("Unknown or inactive olive variety from Paramètres > Tarif")
     location = await db["commercial_locations"].find_one(
         {"id": draft.receiving_location_id, "active": True,
@@ -316,7 +320,7 @@ async def receive_customer_olive_custody(
         "olive_lot_id": olive_lot_id,
         "source_load_id": source_load["id"] if source_load else None,
         "source_load_code": source_load.get("code") if source_load else None,
-        "variety_id": draft.variety_id,
+        "variety_id": normalized_variety_id,
         "quantity_kg": Decimal128(draft.quantity_kg),
         "receiving_location_id": draft.receiving_location_id,
         "receipt_date": draft.receipt_date.isoformat(),
