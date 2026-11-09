@@ -663,6 +663,7 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
@@ -1801,7 +1802,7 @@ export default function Commercial() {
               </div>}
               {internalMovementKind === "OWNERSHIP_TRANSFER" && <div className="space-y-3 rounded-xl border p-4">
                 <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipConsideration}
-                  <select value={ownershipConsiderationType} onChange={(e) => { setOwnershipConsiderationType(e.target.value as "SALE" | "GIFT"); setOwnershipAgreedAmount(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={ownershipConsiderationType} onChange={(e) => { setOwnershipConsiderationType(e.target.value as "SALE" | "GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="SALE">{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
                   </select>
                 </label>
