@@ -318,7 +318,6 @@ export default function Commercial() {
   const [internalDestinationLocationId, setInternalDestinationLocationId] = useState("");
   const [internalDestinationOwnerKey, setInternalDestinationOwnerKey] = useState("");
   const [internalMovementQuantity, setInternalMovementQuantity] = useState("");
-  const [internalMovementReason, setInternalMovementReason] = useState("");
   const [ownershipConsentMethod, setOwnershipConsentMethod] = useState<"DOCUMENT" | "IN_APP">("DOCUMENT");
   const [ownershipConsentReference, setOwnershipConsentReference] = useState("");
   const [ownershipConsentCustomerName, setOwnershipConsentCustomerName] = useState("");
@@ -723,6 +722,7 @@ export default function Commercial() {
         source_owner: balance.owner,
         destination_owner: destinationOwner,
         idempotency_key: internalMovementKey,
+        reason: "Transfert interne",
         ...(internalMovementKind === "OWNERSHIP_TRANSFER" ? {
           consent_method: ownershipConsentMethod,
           consent_reference: ownershipConsentMethod === "DOCUMENT" ? ownershipConsentReference.trim() : null,
@@ -743,7 +743,6 @@ export default function Commercial() {
       setInternalDestinationLocationId("");
       setInternalDestinationOwnerKey("");
       setInternalMovementQuantity("");
-      setInternalMovementReason("");
       setOwnershipConsentMethod("DOCUMENT"); setOwnershipConsentReference(""); setOwnershipConsentCustomerName(""); setOwnershipConsentConfirmed(false); setOwnershipConsiderationType("SALE"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentMethod("CASH"); setOwnershipInitialPaymentReference(""); setOwnershipInitialPaymentDate(new Date().toISOString().slice(0, 10));
       setInternalMovementKey(crypto.randomUUID());
       await Promise.all([
