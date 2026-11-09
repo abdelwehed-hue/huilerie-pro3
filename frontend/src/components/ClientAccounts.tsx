@@ -123,7 +123,14 @@ export default function ClientAccounts() {
       </div>
       <div className="client-account-no-print grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
         <div>
-          <div className="relative" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setClientDropdownOpen(false); }}>
+          <div className="relative" onBlur={(e) => {
+            // On mobile browsers, tapping an option can blur the focused input
+            // before the option's click handler runs. Delay closing so selection
+            // gets a chance to complete; desktop focus transitions remain immediate enough.
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              window.setTimeout(() => setClientDropdownOpen(false), 250);
+            }
+          }}>
             <button
               type="button"
               aria-haspopup="listbox"
