@@ -782,6 +782,7 @@ export default function Commercial() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchase-payments", selectedOilPurchaseId] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
       ]);
     },
