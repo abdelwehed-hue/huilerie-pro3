@@ -1507,10 +1507,19 @@ export default function Commercial() {
   );
 
   const internalPurchaseCustomers = (custodyOwners.data ?? []).filter((owner) =>
-    owner.active !== false && (balances.data ?? []).some((balance) =>
-      balance.product_kind === internalProductKind && Number(balance.quantity_kg) > 0
-      && balance.owner?.kind === "CUSTOMER" && balance.owner.customer_id === owner.id
-    )
+    owner.active !== false && (balances.data ?? []).some((balance) => {
+      if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0
+        || balance.owner?.kind !== "CUSTOMER" || balance.owner.customer_id !== owner.id) return false;
+      const lot = (lots.data ?? []).find((item) => item.id === balance.lot_id && item.status === "OPEN");
+      if (!lot) return false;
+      if (internalProductKind === "OIL") {
+        const tank = (tanks.data ?? []).find((item) => item.id === balance.location_id && item.active);
+        return lot.lot_purpose !== "PREPRODUCTION_SAMPLE" && !!tank
+          && tank.role !== "QUARANTINE" && lot.quality_status === "RELEASED";
+      }
+      return (locations.data ?? []).some((item) => item.id === balance.location_id
+        && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind));
+    })
   );
   const availableInternalBalances = (balances.data ?? []).filter((balance) => {
     if (balance.product_kind !== internalProductKind || Number(balance.quantity_kg) <= 0) return false;
@@ -1523,7 +1532,8 @@ export default function Commercial() {
       if (!tank) return false;
       if (tank.role === "QUARANTINE" && (internalMovementKind !== "TRANSFER" || lot.quality_status !== "RELEASED")) return false;
       if (internalMovementKind === "OWNERSHIP_TRANSFER" && balance.owner?.kind === "CUSTOMER" && lot.quality_status !== "RELEASED") return false;
-    } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id && item.active)) {
+    } else if (!(locations.data ?? []).some((item) => item.id === balance.location_id
+      && item.active && ["OLIVE_STORAGE", "STAGING"].includes(item.kind))) {
       return false;
     }
     return true;
