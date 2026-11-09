@@ -35,7 +35,7 @@ async def _recent(collection: str, sort_field: str = "created_at", limit: int = 
     return _safe(docs)
 
 
-async def _sum(collection: str, field: str, match: dict | None = None) -> float:
+async def _sum(collection: str, field: str, match: dict | None = None) -> str:
     """Sum a numeric/Decimal128/string field server-side across every matching record."""
     pipeline = []
     if match:
@@ -47,7 +47,7 @@ async def _sum(collection: str, field: str, match: dict | None = None) -> float:
         {"$project": {"_id": 0, "total": {"$toString": "$total"}}},
     ])
     rows = await db[collection].aggregate(pipeline).to_list(1)
-    return float(rows[0]["total"]) if rows else 0.0
+    # Keep Decimal128 precision across the API boundary; the UI formats this string.\n    return rows[0]["total"] if rows else "0.000"
 
 
 @router.get("/overview")
