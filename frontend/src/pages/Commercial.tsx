@@ -330,6 +330,7 @@ export default function Commercial() {
   const [ownershipInitialPaymentReference, setOwnershipInitialPaymentReference] = useState("");
   const [ownershipInitialPaymentDate, setOwnershipInitialPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedOilPurchaseId, setSelectedOilPurchaseId] = useState("");
+  const [oilPurchaseStatementCustomerId, setOilPurchaseStatementCustomerId] = useState("");
   const [selectedOilPurchaseReceipt, setSelectedOilPurchaseReceipt] = useState<AnyRecord | null>(null);
   const [selectedOilPaymentReceipt, setSelectedOilPaymentReceipt] = useState<AnyRecord | null>(null);
   const [oilPurchasePaymentAmount, setOilPurchasePaymentAmount] = useState("");
@@ -356,6 +357,7 @@ export default function Commercial() {
   const internalMovementDocuments = useQuery({ queryKey: ["commercial", "internal-movements"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/internal-movements", 500), enabled: ready && tab === "transfers" });
   const oilPurchases = useQuery({ queryKey: ["commercial", "oil-purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/oil-purchases", 500), enabled: ready && tab === "transfers" });
   const oilPurchasePayments = useQuery({ queryKey: ["commercial", "oil-purchase-payments", selectedOilPurchaseId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/oil-purchases/${encodeURIComponent(selectedOilPurchaseId)}/payments`, 500), enabled: ready && tab === "transfers" && !!selectedOilPurchaseId });
+  const oilPurchaseStatement = useQuery({ queryKey: ["commercial", "oil-purchase-statement", oilPurchaseStatementCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/oil-purchases/customers/" + encodeURIComponent(oilPurchaseStatementCustomerId) + "/statement"), enabled: ready && tab === "transfers" && !!oilPurchaseStatementCustomerId });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "quality" || (tab === "stock" && stockView === "chargement")) });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
   const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "procurement" });
@@ -1882,6 +1884,25 @@ export default function Commercial() {
                 </TableRow>)}{(!oilPurchases.isLoading && !(oilPurchases.data?.length)) && <EmptyRow colSpan={10} text={l.noRows} />}</TableBody>
               </Table>
             </div>
+          <div className="mt-5 rounded-xl border p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-semibold">{lang === "ar" ? "كشف حساب مستحقات الحريف" : "Relevé des dettes envers le client"}</h3>
+              <select value={oilPurchaseStatementCustomerId} onChange={(e) => setOilPurchaseStatementCustomerId(e.target.value)} className="h-10 min-w-64 rounded-lg border bg-background px-3">
+                <option value="">{lang === "ar" ? "اختر الحريف" : "Choisir un client"}</option>
+                {Array.from(new Map((oilPurchases.data ?? []).map((p) => [p.customer_id, p.customer_name])).entries()).map(([id, name]) => <option key={id} value={String(id)}>{value(name, String(id))}</option>)}
+              </select>
+            </div>
+            {oilPurchaseStatementCustomerId && oilPurchaseStatement.data && <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg bg-muted/40 p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المشتريات" : "Total des achats"}</div><div className="text-lg font-semibold">{money(oilPurchaseStatement.data.total_purchases_tnd)} TND</div></div>
+                <div className="rounded-lg bg-muted/40 p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المدفوع" : "Total payé"}</div><div className="text-lg font-semibold">{money(oilPurchaseStatement.data.total_paid_tnd)} TND</div></div>
+                <div className="rounded-lg bg-amber-50 p-3"><div className="text-xs text-amber-800">{lang === "ar" ? "المتبقي على المعصرة" : "Reste dû par la huilerie"}</div><div className="text-lg font-semibold text-amber-900">{money(oilPurchaseStatement.data.outstanding_tnd)} TND</div></div>
+              </div>
+              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{l.ownershipPaymentDate}</TableHead><TableHead>{l.document}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead>{lang === "ar" ? "المبلغ (د.ت)" : "Montant (TND)"}</TableHead><TableHead>{lang === "ar" ? "الرصيد" : "Solde"}</TableHead></TableRow></TableHeader>
+                <TableBody>{(oilPurchaseStatement.data.entries ?? []).map((entry: AnyRecord) => <TableRow key={String(entry.document_number)}><TableCell>{date(entry.date)}</TableCell><TableCell className="font-mono text-xs">{value(entry.document_number)}</TableCell><TableCell className="font-mono text-xs">{value(entry.traceability_code)}</TableCell><TableCell>{entry.quantity_l == null ? "—" : number(entry.quantity_l) + " L"}</TableCell><TableCell>{entry.entry_type === "PURCHASE" ? (lang === "ar" ? "شراء زيت" : "Achat d’huile") : (lang === "ar" ? "دفع للحريف" : "Paiement au client")}</TableCell><TableCell className={Number(entry.amount_tnd) < 0 ? "text-emerald-700" : "font-semibold"}>{money(entry.amount_tnd)}</TableCell><TableCell className="font-semibold">{money(entry.balance_tnd)} TND</TableCell></TableRow>)}{!oilPurchaseStatement.data.entries?.length && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
+              </Table></div>
+            </div>}
+          </div>
             {selectedOilPurchase && <div className="mt-5 space-y-4 rounded-xl border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{l.oilPurchasePayments} · {value(selectedOilPurchase.document_number)}</h3><span className="text-sm text-muted-foreground">{l.oilPurchaseOutstanding}: <strong>{money(selectedOilPurchase.outstanding_amount_tnd)}</strong></span></div>
               {isAdmin && Number(selectedOilPurchase.outstanding_amount_tnd ?? 0) > 0 && <form className="grid gap-3 md:grid-cols-5" onSubmit={(event) => { event.preventDefault(); recordOilPurchasePayment.mutate(); }}>
