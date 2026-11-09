@@ -177,7 +177,7 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "custody", "transfers", "buyers", "sales", "reports"];
+  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "transfers", "buyers", "sales", "reports"];
   const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
@@ -1557,7 +1557,6 @@ export default function Commercial() {
     { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "reports", label: "Rapport", icon: FileText },
-    { id: "custody", label: l.custodyTab, icon: Handshake },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     { id: "factures", label: l.facturesTab, icon: FileText },
     // Supporting/setup sections are grouped after the operational flow.
