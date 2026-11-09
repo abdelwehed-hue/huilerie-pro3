@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from bson.decimal128 import Decimal128
@@ -43,6 +44,23 @@ async def create_internal_movement(
         if prior.get("request_fingerprint") != fingerprint:
             raise ValueError("Idempotency key was already used for a different internal movement")
         return prior
+
+    # Ownership transfers consume the entire selected customer balance.
+    # This transactional check prevents partial transfers and concurrent races.
+    if draft.movement_kind == "OWNERSHIP_TRANSFER":
+        if draft.source_owner.kind != "CUSTOMER" or draft.destination_owner.kind != "MILL":
+            raise ValueError("Ownership transfer must move stock from a customer to the mill")
+        source_balance = await db["commercial_stock_balances"].find_one({
+            "product_kind": draft.product_kind, "lot_id": draft.lot_id,
+            "location_id": draft.source_location_id, "owner.kind": "CUSTOMER",
+            "owner.customer_id": draft.source_owner.customer_id,
+        }, {"_id": 0, "quantity_kg": 1}, session=session)
+        if not source_balance:
+            raise ValueError("Customer stock is no longer available for ownership transfer")
+        raw_available = source_balance.get("quantity_kg", 0)
+        available = raw_available.to_decimal() if hasattr(raw_available, "to_decimal") else Decimal(str(raw_available))
+        if draft.quantity_kg != available:
+            raise ValueError("Partial ownership transfers are not allowed; transfer the full available quantity")
 
     now = created_at.astimezone(timezone.utc)
     document_number = await reserve_document_number(
