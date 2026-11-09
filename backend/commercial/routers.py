@@ -2372,7 +2372,7 @@ async def list_customer_custody_receipts(
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
     docs = await db.commercial_customer_custody_receipts.find(
-        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
+        query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "source_load_id": 1, "source_load_code": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
 
