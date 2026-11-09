@@ -15,6 +15,7 @@ import {
   Ban,
   Tv,
   ReceiptText,
+  Calculator,
   Warehouse,
   Clock3,
   Volume2,
@@ -59,6 +60,7 @@ const NAV = [
   { to: "/cancellations", key: "cancellations", icon: Ban, id: "nav-cancellations", color: "text-red-300", admin: true },
   { to: "/tv-admin", key: "tv", icon: Tv, id: "nav-tv-screen", color: "text-orange-300" },
   { to: "/commercial", key: "commercial", icon: Warehouse, id: "nav-commercial", color: "text-lime-300" },
+  { to: "/comptabilite", key: "comptabilite", icon: Calculator, id: "nav-comptabilite", color: "text-emerald-300", admin: true },
 
   { to: "/settings", key: "settings", icon: Settings, id: "nav-settings", color: "text-violet-300", admin: true },
 ] as const;
