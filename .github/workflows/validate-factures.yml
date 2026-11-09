@@ -134,6 +134,8 @@ jobs:
               raise RuntimeError("MongoDB replica set did not elect a primary")
           replica.close()
           PY
+      - name: Verify customer oil purchase and payable settlement in isolation
+        run: python -m pytest -o addopts= commercial/tests/test_mongodb_transaction_integration.py::test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_payment
       - name: Verify commercial transaction and custody/accounting invariants on a real replica set
         run: |
           python -m pytest -o addopts= \
