@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText,
+  Activity, AlertTriangle, Beaker, Boxes, ClipboardList, Factory, FileText, Calculator,
   RefreshCw, ShieldCheck, Warehouse, ShoppingCart, UserRound, Wallet, Pencil, UserCheck, X, Ban, Trash2, Printer,
   Truck, ShoppingBasket, ArrowLeftRight, Handshake, Home, MapPin, Plus, Search, BookUser, Phone, Sprout, Layers, ScanLine,
 } from "lucide-react";
@@ -18,6 +18,7 @@ import CommercialFactures from "@/components/CommercialFactures";
 import { StatCard } from "@/components/shared";
 import QrScanDialog from "@/components/QrScanDialog";
 import CommercialReports from "@/components/CommercialReports";
+import Comptabilite from "@/pages/Comptabilite";
 
 import { QRCodeSVG } from "qrcode.react";
 
@@ -30,7 +31,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "stock" | "lots" | "movements" | "quality" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports";
+type TabKey = "overview" | "factures" | "stock" | "lots" | "movements" | "quality" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
 
 const labels = {
   fr: {
@@ -177,7 +178,7 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "transfers", "buyers", "sales", "reports"];
+  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
   const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
@@ -1559,6 +1560,7 @@ export default function Commercial() {
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
     { id: "factures", label: l.facturesTab, icon: FileText },
+    { id: "accounting", label: lang === "ar" ? "المحاسبة" : "Comptabilité", icon: Calculator },
     // Supporting/setup sections are grouped after the operational flow.
   ];
 
@@ -1697,7 +1699,7 @@ export default function Commercial() {
               overview: "text-lime-300", procurement: "text-amber-300", quality: "text-cyan-300",
               production: "text-orange-300", stock: "text-emerald-300", transfers: "text-sky-300",
               reports: "text-fuchsia-300", custody: "text-violet-300", sales: "text-pink-300",
-              factures: "text-teal-300",
+              factures: "text-teal-300", accounting: "text-emerald-300",
             };
             return (
               <button key={id} type="button" onClick={() => selectTab(id)} aria-pressed={tab === id} className={`group flex min-h-[3.9rem] min-w-[5.1rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border-2 px-1.5 py-1 text-[12px] font-semibold transition-colors ${tab === id ? "border-[#CFE3C4] bg-[#2C4A30] text-white" : "border-transparent text-[#D3DDCF] hover:bg-white/10 hover:text-white"}`}>
@@ -1712,6 +1714,8 @@ export default function Commercial() {
           </button>
         </div>
       </nav>
+
+      {tab === "accounting" && <Comptabilite />}
 
       {tab === "overview" && (
         <div className="space-y-4">
