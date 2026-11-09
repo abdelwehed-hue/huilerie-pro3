@@ -1782,6 +1782,7 @@ async def test_customer_oil_purchase_creates_bon_and_tracks_partial_then_final_p
             consent_reference="SIGNED-OIL-SALE-001",
             consideration_type="SALE",
             consideration_amount=Decimal("150.000"),
+            consideration_unit_price_tnd_per_l=Decimal("1.000"),
             initial_payment_amount=Decimal("60.000"),
             initial_payment_method="CASH",
             initial_payment_date=date(2026, 11, 8),
