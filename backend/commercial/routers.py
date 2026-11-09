@@ -95,7 +95,7 @@ from commercial.services.payment_reversal import reverse_sale_payment
 from commercial.services.sales import create_wholesale_sale_draft, approve_wholesale_sale, record_sale_payment, cancel_wholesale_sale_draft
 from lib.auth import current_user, require_admin
 from lib.db import client, db, run_transaction
-from lib.season import DEFAULT_VARIETIES, active_season, season_of, season_prefix, valid_season
+from lib.season import DEFAULT_VARIETIES, active_season, season_filter, season_of, season_prefix, valid_season
 
 router = APIRouter(prefix="/commercial/v1", tags=["commercial"])
 
