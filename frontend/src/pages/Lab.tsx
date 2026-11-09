@@ -439,7 +439,7 @@ export default function Lab() {
       </div>
       
       {canReviewGsQuality && <section data-testid="lab-independent-quality-decision" className="mb-6 rounded-2xl border border-violet-200 bg-white shadow-sm">
-        <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">Décision indépendante</h2><p className="mt-1 text-sm text-violet-800">Réservée au réviseur indépendant. Elle porte uniquement sur l’analyse de l’échantillon préproduction.</p></div>
+        <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">Décision indépendante</h2><p className="mt-1 text-sm text-violet-800">Réservée aux réviseurs autorisés et aux administrateurs. Un administrateur peut décider même s’il a enregistré l’analyse ; un autre utilisateur ne peut pas valider sa propre analyse.</p></div>
         <div className="space-y-4 p-5">
           <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 space-y-2 text-sm font-medium">Analyse à examiner
             <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder="Choisir une analyse en attente" /></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}><span className="font-mono font-semibold">{reviewAssessmentCode(assessment)}</span> · {assessment.laboratory_name || "Laboratoire"}</SelectItem>)}</SelectContent></Select>
