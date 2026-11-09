@@ -1775,13 +1775,30 @@ export default function Commercial() {
                   <input required type="number" min="0.001" step="0.001" value={ownershipAgreedAmount} onChange={(e) => { setOwnershipAgreedAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
                   <span className="text-xs text-muted-foreground">{l.ownershipSaleAccountingNote}</span>
                 </label>}
+                {ownershipConsiderationType === "SALE" && <div className="grid gap-3 rounded-lg bg-muted/30 p-3 md:grid-cols-2">
+                  <label className="grid gap-1 text-sm font-medium">{l.ownershipInitialPayment}
+                    <input type="number" min="0" step="0.001" max={ownershipAgreedAmount || undefined} value={ownershipInitialPaymentAmount} onChange={(e) => { setOwnershipInitialPaymentAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentDate}
+                    <input type="date" value={ownershipInitialPaymentDate} onChange={(e) => { setOwnershipInitialPaymentDate(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!(Number(ownershipInitialPaymentAmount) > 0)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentMethod}
+                    <select value={ownershipInitialPaymentMethod} onChange={(e) => { setOwnershipInitialPaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE"); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} disabled={!(Number(ownershipInitialPaymentAmount) > 0)} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                      <option value="CASH">{lang === "ar" ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{lang === "ar" ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{lang === "ar" ? "شيك" : "Chèque"}</option>
+                    </select>
+                  </label>
+                  {ownershipInitialPaymentMethod !== "CASH" && <label className="grid gap-1 text-sm font-medium">{l.ownershipPaymentReference}
+                    <input required={Number(ownershipInitialPaymentAmount) > 0} maxLength={120} value={ownershipInitialPaymentReference} onChange={(e) => { setOwnershipInitialPaymentReference(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} disabled={!(Number(ownershipInitialPaymentAmount) > 0)} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                  </label>}
+                  <p className="text-xs text-muted-foreground md:col-span-2">{l.ownershipPaymentCreditNote}</p>
+                </div>}
               </div>}
               <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.movementReason}
                 <input required minLength={3} maxLength={500} value={internalMovementReason} onChange={(e) => { setInternalMovementReason(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
               </label>
               {availableInternalBalances.length === 0 && <p className="text-sm text-amber-700">{l.noAvailableBalance}</p>}
               <div className="flex justify-end">
-                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && !(Number(ownershipAgreedAmount) > 0)))}>
+                <Button type="submit" disabled={postInternalMovement.isPending || resolveInternalDestinationOwner.isPending || !selectedInternalBalance || !(Number(internalMovementQuantity) > 0) || Number(internalMovementQuantity) > Number(selectedInternalBalance?.quantity_kg ?? 0) || internalMovementReason.trim().length < 3 || (internalMovementKind === "TRANSFER" ? !internalDestinationLocationId : !internalDestinationOwnerKey || !internalDestinationOwnerOptions.some((item) => item.key === internalDestinationOwnerKey) || (ownershipConsentMethod === "DOCUMENT" ? !ownershipConsentReference.trim() : !ownershipConsentCustomerName.trim() || !ownershipConsentConfirmed) || (ownershipConsiderationType === "SALE" && (!(Number(ownershipAgreedAmount) > 0) || Number(ownershipInitialPaymentAmount || 0) > Number(ownershipAgreedAmount) || (Number(ownershipInitialPaymentAmount) > 0 && ownershipInitialPaymentMethod !== "CASH" && !ownershipInitialPaymentReference.trim()))))}>
                   {l.postInternalMovement}
                 </Button>
               </div>
