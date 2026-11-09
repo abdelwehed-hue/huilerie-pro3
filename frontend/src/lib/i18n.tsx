@@ -743,6 +743,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           if (key in fr) return DICTS[lang][key];
         }
       }
+      if (e instanceof ApiError && e.message.trim()) return e.message;
+      if (e instanceof Error && e.message.trim()) return e.message;
       return DICTS[lang].err_generic;
     },
     [lang],
