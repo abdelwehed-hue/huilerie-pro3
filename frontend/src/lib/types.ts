@@ -61,6 +61,8 @@ export interface Load {
   client_name: string;
   phone: string;
   olive_kg: number;
+  available_olive_kg: number;
+  ownership_transferred: boolean;
   oil_kg: number | null;
   yield_pct: number | null;
   status: LoadStatus;
