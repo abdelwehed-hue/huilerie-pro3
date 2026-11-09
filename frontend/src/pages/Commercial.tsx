@@ -1743,7 +1743,7 @@ export default function Commercial() {
             {canPostStock && <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); postInternalMovement.mutate(); }}>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-sm font-medium">{l.movementType}
-                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <select value={internalMovementKind} onChange={(e) => { setInternalMovementKind(e.target.value as "TRANSFER" | "OWNERSHIP_TRANSFER"); setInternalDestinationLocationId(""); setInternalDestinationOwnerKey(""); setOwnershipConsiderationType("GIFT"); setOwnershipAgreedAmount(""); setOwnershipInitialPaymentAmount(""); setOwnershipInitialPaymentReference(""); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="TRANSFER">{l.transferType}</option>
                     <option value="OWNERSHIP_TRANSFER">{l.ownershipTransferType}</option>
                   </select>
