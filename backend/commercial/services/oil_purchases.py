@@ -99,15 +99,18 @@ async def create_oil_purchase_document_for_transfer(
             if not source_olive_lot or not sample or not quality_assessment:
                 raise ValueError("Only oil produced from a preproduction-sample-approved olive lot can be purchased by the mill")
         else:
-            # Compatibility for non-production oil lots: require their own recorded release.
-            if lot.get("quality_status") != "RELEASED":
-                raise ValueError("Only quality-released oil can be purchased by the mill")
-            if lot.get("last_quality_assessment_id"):
-                quality_assessment = await db["commercial_quality_assessments"].find_one(
-                    {"id": lot["last_quality_assessment_id"], "oil_lot_id": draft.lot_id,
-                     "status": "REVIEWED", "decision": "RELEASED"},
-                    {"_id": 0}, session=session,
-                )
+            # Customer-owned oil must have its own latest laboratory analysis
+            # independently reviewed and released. Classification is not a purchase gate.
+            assessment_id = lot.get("last_quality_assessment_id")
+            if lot.get("quality_status") != "RELEASED" or not assessment_id:
+                raise ValueError("Only oil with a reviewed and released laboratory analysis can be purchased by the mill")
+            quality_assessment = await db["commercial_quality_assessments"].find_one(
+                {"id": assessment_id, "oil_lot_id": draft.lot_id,
+                 "status": "REVIEWED", "decision": "RELEASED"},
+                {"_id": 0}, session=session,
+            )
+            if not quality_assessment:
+                raise ValueError("Only oil with a valid, latest released laboratory analysis can be purchased by the mill")
         tank = await db["commercial_tanks"].find_one(
             {"id": draft.source_location_id, "active": True, "role": {"$in": ["NORMAL", None]}},
             {"_id": 0}, session=session
