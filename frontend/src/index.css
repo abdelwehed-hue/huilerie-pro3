@@ -341,7 +341,7 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 
 
 /* Oro Verde selectable visual identities. Scoped to presentation only; no business logic or data changes. */
-html[data-app-appearance="premium"] {
+html[data-app-area="oroverde"][data-app-appearance="premium"] {
   --background: #f6f1e5;
   --foreground: #203326;
   --card: #fffdf7;
@@ -371,7 +371,7 @@ html[data-app-appearance="premium"] {
   --sidebar-border: #315b3b;
   --sidebar-ring: #d6bd62;
 }
-html[data-app-appearance="modern"] {
+html[data-app-area="oroverde"][data-app-appearance="modern"] {
   --background: #f5f8fb;
   --foreground: #1e293b;
   --card: #ffffff;
@@ -385,29 +385,15 @@ html[data-app-appearance="modern"] {
   --sidebar-primary: #8dc9a4;
   --sidebar-accent: #285440;
 }
-html[data-app-appearance="premium"] body { background: #f6f1e5; }
-html[data-app-appearance="modern"] body { background: #f5f8fb; }
-html[data-app-appearance="premium"] .app-topbar-header {
+html[data-app-area="oroverde"][data-app-appearance="premium"] body { background: #f6f1e5; }
+html[data-app-area="oroverde"][data-app-appearance="modern"] body { background: #f5f8fb; }
+html[data-app-area="oroverde"][data-app-appearance="premium"] .app-topbar-header {
   background: linear-gradient(100deg, #173b25 0%, #234b30 72%, #315d38 100%) !important;
   border-bottom-color: #456447 !important;
 }
-html[data-app-appearance="premium"] [data-testid="header-brand-name"] { color: #fffdf4 !important; }
-html[data-app-appearance="premium"] [data-testid="header-brand"] [class*="text-stone-500"] { color: #d7dfcf !important; }
-html[data-app-appearance="premium"] .app-topbar-header button,
-html[data-app-appearance="premium"] .app-topbar-header a {
+html[data-app-area="oroverde"][data-app-appearance="premium"] [data-testid="header-brand-name"] { color: #fffdf4 !important; }
+html[data-app-area="oroverde"][data-app-appearance="premium"] [data-testid="header-brand"] [class*="text-stone-500"] { color: #d7dfcf !important; }
+html[data-app-area="oroverde"][data-app-appearance="premium"] .app-topbar-header button,
+html[data-app-area="oroverde"][data-app-appearance="premium"] .app-topbar-header a {
   border-color: rgb(235 229 202 / 28%);
 }
-html[data-app-appearance="premium"] .commercial-workspace [data-slot="card"] {
-  background: linear-gradient(145deg, #fffdf7 0%, #f4efdf 100%);
-  border-color: #d9d0b9;
-}
-html[data-app-appearance="premium"] .commercial-workspace [data-slot="card-title"] { color: #285236; }
-html[data-app-appearance="premium"] .commercial-workspace table thead { background: #e9efdf; }
-html[data-app-appearance="premium"] .commercial-workspace table thead th { color: #294b31; }
-html[data-app-appearance="modern"] .commercial-workspace [data-slot="card"] {
-  background: #ffffff;
-  border-color: #dbe5ee;
-}
-html[data-app-appearance="modern"] .commercial-workspace [data-slot="card-title"] { color: #245b45; }
-html[data-app-appearance="modern"] .commercial-workspace table thead { background: #eaf1f8; }
-html[data-app-appearance="modern"] .commercial-workspace table thead th { color: #31536f; }
