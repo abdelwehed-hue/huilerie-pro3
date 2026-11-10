@@ -329,9 +329,16 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
 @router.post("/loads/{id}/cancel", response_model=Load)
 async def cancel_load(id: str, body: CancelBody, user: dict = Depends(require_admin)):
     async def operation(session):
+        current = await db.loads.find_one({"id": id}, {"_id": 0, "ownership_transferred": 1}, session=session)
+        if not current:
+            raise HTTPException(404, "not_found")
+        if current.get("ownership_transferred"):
+            raise HTTPException(409, "load_ownership_transferred_to_mill")
+        if current.get("cancelled"):
+            raise HTTPException(409, "load_cancelled")
         cancelled_at = datetime.now(timezone.utc)
         doc = await db.loads.find_one_and_update(
-            {"id": id, "cancelled": {"$ne": True}},
+            {"id": id, "cancelled": {"$ne": True}, "ownership_transferred": {"$ne": True}},
             {"$set": {"cancelled": True, "cancel_reason": body.reason.strip(),
                       "cancelled_at": cancelled_at, "cancelled_by": user["username"]}},
             projection={"_id": 0}, return_document=True, session=session,
@@ -367,6 +374,8 @@ async def _delete_load_in_transaction(load_id: str, session, user: dict):
     doc = await db.loads.find_one({"id": load_id}, {"_id": 0}, session=session)
     if not doc:
         raise HTTPException(404, "not_found")
+    if doc.get("ownership_transferred"):
+        raise HTTPException(409, "load_ownership_transferred_to_mill")
     res = await db.loads.delete_one({"id": load_id}, session=session)
     if not res.deleted_count:
         raise HTTPException(404, "not_found")
