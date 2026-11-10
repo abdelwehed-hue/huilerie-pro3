@@ -11,8 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
-from lib.db import db
-from lib.money import money_float, to_decimal, run_transaction
+from lib.db import db, run_transaction
+from lib.money import money_float, to_decimal
 from lib.reminders import run_reminders
 from lib.season import season_filter
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
@@ -30,7 +30,7 @@ FONTS = Path(__file__).resolve().parent.parent / "fonts"
 
 def _tn_money(value: float | int | None) -> str:
     """Format Tunisian dinars as grouped dinars, comma, and three millimes digits."""
-    return f"{float(value or 0):,.3f}".replace(",", "\u202f").replace(".", ",")
+    return f"{money_float(value):,.3f}".replace(",", "\u202f").replace(".", ",")
 
 
 def _aware(dt: datetime) -> datetime:
@@ -451,9 +451,9 @@ async def revenue_pdf(period: str = PeriodQ, start: str | None = None, end: str 
         {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1},
     ).to_list(100000)
     invoice_totals = {
-        "total": round(sum(float(i.get("total") or 0) for i in invoice_docs), 3),
-        "paid": round(sum(float(i.get("paid_amount") or 0) for i in invoice_docs), 3),
-        "balance": round(sum(float(i.get("balance") or 0) for i in invoice_docs), 3),
+        "total": round(sum(money_float(i.get("total")) for i in invoice_docs), 3),
+        "paid": round(sum(money_float(i.get("paid_amount")) for i in invoice_docs), 3),
+        "balance": round(sum(money_float(i.get("balance")) for i in invoice_docs), 3),
     }
     m = await _mill()
     mill = m.mill_name or "Huilerie Pro"
