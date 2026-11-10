@@ -63,6 +63,7 @@ export interface Load {
   olive_kg: number;
   available_olive_kg: number;
   ownership_transferred: boolean;
+  ownership_transferred_at: string | null;
   oil_kg: number | null;
   yield_pct: number | null;
   status: LoadStatus;
