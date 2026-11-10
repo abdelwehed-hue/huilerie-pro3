@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Palette } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { KeyRound, ShieldAlert, UserPlus, Users, Coins, MessageSquareText, Pencil, Trash2, CalendarRange, LogIn, ClipboardList, Warehouse, Fuel, Eye } from "lucide-react";
@@ -25,6 +27,34 @@ import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import Audit from "@/pages/Audit";
 
+
+function AppAppearanceSettings() {
+  const { lang } = useI18n();
+  const { appearance, setAppearance } = useTheme();
+  const ar = lang === "ar";
+  const choices = [
+    { value: "premium" as const, title: "Oro Verde Premium", subtitle: ar ? "أخضر داكن وذهبي وخلفيات كريمية" : "Vert profond, or et fonds crème", swatches: ["#173B25", "#C5A64A", "#F6F1E5"] },
+    { value: "modern" as const, title: "Oro Verde Modern", subtitle: ar ? "أبيض وأخضر وأزرق، عملي وواضح" : "Blanc, vert et bleu, clair et fonctionnel", swatches: ["#FFFFFF", "#28734D", "#397CB5"] },
+  ];
+  return <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="app-appearance-settings">
+    <div className="mb-4 flex items-center gap-3">
+      <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-800"><Palette className="size-5" /></span>
+      <div><h2 className="font-semibold text-stone-900">{ar ? "مظهر التطبيق" : "Apparence de l’application"}</h2>
+      <p className="text-sm text-stone-500">{ar ? "اختر التصميم الذي سيُطبق على Oro Verde وGestion commerciale." : "Choisissez le design appliqué à Oro Verde et à Gestion commerciale."}</p></div>
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {choices.map((choice) => <button key={choice.value} type="button" data-testid={`appearance-${choice.value}`} aria-pressed={appearance === choice.value} onClick={() => setAppearance(choice.value)} className={cn("rounded-xl border-2 p-4 text-start transition-all", appearance === choice.value ? "border-emerald-700 bg-emerald-50 shadow-sm" : "border-stone-200 bg-white hover:border-stone-400")}>
+        <div className="mb-3 flex h-12 overflow-hidden rounded-lg border border-black/10">
+          {choice.swatches.map((color) => <span key={color} className="flex-1" style={{ backgroundColor: color }} />)}
+        </div>
+        <div className="font-semibold text-stone-900">{choice.title}</div>
+        <div className="mt-1 text-sm text-stone-500">{choice.subtitle}</div>
+        <div className={cn("mt-3 text-xs font-bold", appearance === choice.value ? "text-emerald-800" : "text-stone-400")}>{appearance === choice.value ? (ar ? "المظهر الحالي" : "ACTIF") : (ar ? "اختيار هذا المظهر" : "SÉLECTIONNER")}</div>
+      </button>)}
+    </div>
+    <p className="mt-3 text-xs text-stone-500">{ar ? "يُحفظ الاختيار لهذا الحساب على هذا الجهاز، ولا يغيّر البيانات أو العمليات." : "Le choix est mémorisé pour ce compte sur cet appareil. Il ne modifie aucune donnée ni opération."}</p>
+  </section>;
+}
 
 function NavigationRevealSettings() {
   const { lang } = useI18n();
@@ -611,7 +641,7 @@ export default function SettingsPage() {
                 <Users className="me-2 size-4" />{t("users")}
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="user-list"><div className="space-y-5"><NavigationRevealSettings /><UsersPanel /></div></TabsContent>
+            <TabsContent value="user-list"><div className="space-y-5"><AppAppearanceSettings /><NavigationRevealSettings /><UsersPanel /></div></TabsContent>
               </Tabs>
         </TabsContent>
         <TabsContent value="tariff"><div className="space-y-6"><PriceForm /><NumericConventionsPanel /></div></TabsContent>
