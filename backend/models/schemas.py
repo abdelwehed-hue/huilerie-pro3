@@ -228,6 +228,7 @@ class AppSettings(MillInfo):
     pump_system_enabled: bool = False
     pumps: list[PumpConfig] = Field(default_factory=list, max_length=100)
     price_per_kg: float = Field(ge=0)
+    numeric_format_sample: str = Field(default="1 234,567", pattern=r"^\d{1,3}(?: \d{3})*,\d{3}$", max_length=32)
     login_image: str = Field(default="", max_length=700_000)
     tv_image: str = Field(default="", max_length=700_000)
     tv_youtube_url: str = Field(default="", max_length=2000)
