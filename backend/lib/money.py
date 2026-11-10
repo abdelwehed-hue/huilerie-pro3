@@ -40,5 +40,5 @@ def money_db(value: Any) -> Decimal128:
 def money_float(value: Any) -> float:
     try:
         return float(money_decimal(value))
-    except (ValueError, TypeError, OverflowError):
+    except (InvalidOperation, ValueError, TypeError, OverflowError):
         return 0.0
