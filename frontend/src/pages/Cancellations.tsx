@@ -67,7 +67,7 @@ export default function Cancellations() {
                 <TableCell className="max-w-72" data-testid={`cancellation-reason-${l.code}`}>
                   {l.ownership_transferred && !l.cancel_reason ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
-                      <ArrowRightLeft className="size-3.5" /> تم بيعه إلى المعصرة
+                      <ArrowRightLeft className="size-3.5" /> VENDUE À L'HUILERIE
                     </span>
                   ) : (
                     <span className="text-red-700">{l.cancel_reason || "إلغاء الحمولة"}</span>
