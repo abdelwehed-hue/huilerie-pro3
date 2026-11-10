@@ -121,6 +121,7 @@ export default function Lab() {
         oil: s(existing?.oil_content_pct), notes: existing?.notes ?? "", oilType: existing?.oil_type ?? "",
         grade: existing && existing.classification !== autoG ? existing.classification : "auto",
       }));
+      setSpecificationReference(existing?.specification_reference ?? "");
     }
   }
 
@@ -246,6 +247,7 @@ export default function Lab() {
             m.mutate({
               code, acidity: acid, peroxide: num(f.peroxide), k232: num(f.k232), k270: num(f.k270),
               oil_content_pct: num(f.oil), notes: f.notes, oil_type: oilType || null,
+              specification_reference: specificationReference.trim() || null,
               classification: f.grade === "auto" ? null : (f.grade as Grade),
             });
           }}
@@ -258,7 +260,7 @@ export default function Lab() {
           <div className="space-y-2">
             <Label htmlFor="lc">{t("code")}</Label>
             <div className="flex gap-2">
-              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onFocus={() => setCodeListOpen(true)} onChange={(e) => { setSelectedGsAssessment(null); set("code")(e.target.value); setCodeListOpen(true); }} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
+              <Input id="lc" dir="ltr" data-testid="lab-code-input" value={f.code} onFocus={() => setCodeListOpen(true)} onChange={(e) => { setSelectedGsAssessment(null); setSpecificationReference(""); set("code")(e.target.value); setCodeListOpen(true); }} placeholder="2503141035" className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-lg tracking-wider" />
               <Button type="button" onClick={() => setScanOpen(true)} data-testid="lab-qr-scan-button" title={t("scan_qr")} aria-label={t("scan_qr")} className="h-11 shrink-0 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 px-3 text-white shadow-md hover:from-cyan-700 hover:to-teal-700">
                 <ScanLine className="size-5" />
                 <span className="hidden sm:inline">Scan QR Code</span>
@@ -328,7 +330,7 @@ export default function Lab() {
               </div>
             )}
           </div>
-          {isGsCode && <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required minLength={2} maxLength={160} value={specificationReference} disabled={gsAnalysisLocked} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." /></div>}
+          <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required={isGsCode} minLength={isGsCode ? 2 : undefined} maxLength={160} value={specificationReference} disabled={gsAnalysisLocked} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." data-testid="lab-specification-reference-input" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="la">{t("acidity")}</Label>
@@ -461,6 +463,7 @@ export default function Lab() {
             <TableRow>
               <TableHead className="text-start">{t("code")}</TableHead>
               <TableHead className="text-start">{t("client")}</TableHead>
+              <TableHead className="text-start">Référence de la norme</TableHead>
               <TableHead className="text-end">{t("acidity")}</TableHead>
               <TableHead className="text-end">Perox.</TableHead>
               <TableHead className="text-end">K232</TableHead>
@@ -475,7 +478,7 @@ export default function Lab() {
           </TableHeader>
           <TableBody>
             {rows.length === 0 && gsAnalysisRows.length === 0 && (
-              <TableRow><TableCell colSpan={12} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
             )}
             {gsAnalysisRows.map((r) => (
               <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
@@ -492,6 +495,7 @@ export default function Lab() {
                   ) : <span title="Décision enregistrée : analyse verrouillée"><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
                 </TableCell>
                 <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
+                <TableCell className="text-sm font-medium">{r.specification_reference || "—"}</TableCell>
                 <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
                 <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
                 <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
@@ -515,6 +519,7 @@ export default function Lab() {
                   {r.client_name}
                   {r.notes && <div className="max-w-48 truncate text-xs text-stone-500">{r.notes}</div>}
                 </TableCell>
+                <TableCell className="text-sm font-medium" data-testid={`lab-row-specification-${r.code}`}>{r.specification_reference || "—"}</TableCell>
                 <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
                 <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
                 <TableCell className="text-end">{fmtNum(r.k232, 3)}</TableCell>
