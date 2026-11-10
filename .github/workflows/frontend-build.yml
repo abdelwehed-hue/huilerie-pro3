@@ -25,6 +25,6 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install --no-package-lock
+        run: npm install --no-audit --no-fund --legacy-peer-deps --package-lock=false
       - name: TypeScript and Vite production build
         run: npm run build
