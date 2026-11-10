@@ -395,6 +395,54 @@ function UsersPanel() {
   );
 }
 
+function NumericConventionsPanel() {
+  const { lang } = useI18n();
+  const ar = lang === "ar";
+  const rows = [
+    [ar ? "العملة" : "Devise", "TND", ar ? "الدينار التونسي هو وحدة الحساب الوحيدة." : "Le dinar tunisien est l’unité de compte unique."],
+    [ar ? "الدقة" : "Précision", "3 décimales", ar ? "ثلاث خانات بعد الفاصلة لتمثيل المليم." : "Trois décimales après la virgule pour représenter les millimes."],
+    [ar ? "فاصل الآلاف" : "Séparateur des milliers", "Espace", ar ? "مثال: 6 499,300" : "Exemple : 6 499,300"],
+    [ar ? "الفاصل العشري" : "Séparateur décimal", ",", ar ? "الفاصلة تفصل الدينار عن المليم." : "La virgule sépare les dinars des millimes."],
+    [ar ? "قاعدة التحويل" : "Conversion", "1 TND = 1 000 millimes", ar ? "لا يُعامل المليم كأنه دينار." : "Les millimes ne doivent jamais être interprétés comme des dinars."],
+    [ar ? "التخزين في قاعدة البيانات" : "Stockage en base", "TND numérique · 0,001", ar ? "قيمة رقمية معيارية، ويفضّل Decimal128؛ لا تُخزّن كنص منسّق." : "Valeur numérique canonique, Decimal128 privilégié ; jamais une chaîne déjà formatée."],
+    [ar ? "الحساب" : "Calculs", ar ? "بالقيمة الرقمية" : "Valeur numérique", ar ? "تُجرى العمليات قبل التنسيق، مع التقريب إلى أقرب مليم مرة واحدة عند الحاجة." : "Les calculs précèdent le formatage ; arrondi au millime le plus proche une seule fois si nécessaire."],
+    [ar ? "الإدخال" : "Saisie", ar ? "دينار + 3 خانات" : "Dinars + 3 décimales", ar ? "تُقبل الفاصلة العشرية، وتُرفض الصيغ الملتبسة." : "La virgule décimale est acceptée ; les formats ambigus sont rejetés."],
+  ];
+  return (
+    <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm" data-testid="numeric-conventions-panel">
+      <div className="border-b border-emerald-100 bg-emerald-50 px-5 py-4">
+        <h2 className="text-lg font-bold text-emerald-950">{ar ? "معايير الأرقام والمبالغ" : "Normes numériques et monétaires"}</h2>
+        <p className="mt-1 text-sm text-emerald-800">{ar ? "معيار موحّد للتطبيق العادي وGestion commerciale وقاعدة البيانات." : "Une norme commune à l’application principale, à la Gestion commerciale et à la base de données."}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[680px] text-sm">
+          <thead className="bg-stone-50 text-start text-stone-600">
+            <tr>
+              <th className="px-4 py-3 font-semibold">{ar ? "البند" : "Règle"}</th>
+              <th className="px-4 py-3 font-semibold">{ar ? "المعيار المعتمد" : "Norme retenue"}</th>
+              <th className="px-4 py-3 font-semibold">{ar ? "التوضيح" : "Précision"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([name, value, detail]) => (
+              <tr key={name} className="border-t border-stone-100 align-top">
+                <td className="px-4 py-3 font-semibold text-stone-800">{name}</td>
+                <td className="px-4 py-3 font-mono font-semibold text-emerald-800" dir="ltr">{value}</td>
+                <td className="px-4 py-3 text-stone-600">{detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-sm text-amber-900">
+        {ar
+          ? "تنبيه: اعتماد هذا الجدول لا يعني أن كل السجلات القديمة حُوّلت تلقائياً. يجب تدقيق وحدات الحقول الحالية قبل أي ترحيل، وعدم تعديل الأرصدة التاريخية دون مطابقة."
+          : "Attention : cette norme n’implique pas la conversion automatique des anciennes écritures. Les unités des champs existants doivent être auditées avant toute migration, sans modifier les soldes historiques sans rapprochement."}
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const { t, lang } = useI18n();
   const me = useMe();
@@ -448,7 +496,7 @@ export default function SettingsPage() {
             <TabsContent value="user-list"><div className="space-y-5"><NavigationRevealSettings /><UsersPanel /></div></TabsContent>
               </Tabs>
         </TabsContent>
-        <TabsContent value="tariff"><PriceForm /></TabsContent>
+        <TabsContent value="tariff"><div className="space-y-6"><PriceForm /><NumericConventionsPanel /></div></TabsContent>
         <TabsContent value="tanks"><CommercialTanksSettings /></TabsContent>
         <TabsContent value="pumps"><PumpSettings /></TabsContent>
                 <TabsContent value="sms"><div className="space-y-6"><div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2"><div className="min-w-0 sm:col-start-2 sm:row-start-1"><TwilioSettings /></div><div className="min-w-0 sm:col-start-1 sm:row-start-1"><TunisieSmsSettings /></div></div><SmsSettings /></div></TabsContent>
