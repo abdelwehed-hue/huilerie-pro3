@@ -73,6 +73,7 @@ class Load(BaseModel):
     olive_kg: float
     available_olive_kg: float
     ownership_transferred: bool = False
+    ownership_transferred_at: Optional[datetime] = None
     oil_kg: Optional[float] = None
     yield_pct: Optional[float] = None
     status: Literal["pending", "pressing", "done", "delivered", "cancelled"]
