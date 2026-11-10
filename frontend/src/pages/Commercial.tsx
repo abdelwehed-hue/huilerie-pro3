@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { dinarsToMillimesInput, millimesInputNumber, millimesInputToDinars, unitPriceMillimesToTotalDinars } from "@/lib/commercial-money";
-import { useI18n } from "@/lib/i18n";
+import { fmtMoney, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,8 +98,7 @@ function number(v: unknown) {
   return Number.isFinite(n) ? n.toLocaleString("fr-FR", { maximumFractionDigits: 3 }) : "—";
 }
 function money(v: unknown) {
-  const n = Number(v);
-  return Number.isFinite(n) ? new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(n) : "—";
+  return fmtMoney(v == null ? null : String(v));
 }
 function date(v: unknown) {
   if (!v) return "—";
