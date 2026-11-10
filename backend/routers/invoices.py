@@ -3,35 +3,45 @@ import math
 import re
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import DuplicateKeyError
 
 from lib.auth import current_user, require_admin
 from lib.db import db, run_transaction
+from lib.money import money_db, money_decimal, to_decimal
 
 router = APIRouter(tags=["invoices"])
 
 
 def _money(value):
-    return round(float(value or 0), 3)
-
-
-def _number(value, error_code: str) -> float:
     try:
-        number = float(value)
+        return money_decimal(value)
+    except (ValueError, TypeError, OverflowError):
+        raise HTTPException(422, "money_invalid")
+
+
+def _number(value, error_code: str) -> Decimal:
+    try:
+        number = to_decimal(value)
     except (TypeError, ValueError, OverflowError):
         raise HTTPException(422, error_code)
-    if not math.isfinite(number):
+    if not number.is_finite():
         raise HTTPException(422, error_code)
     return number
 
 
-def _public(doc):
-    if not doc:
-        return None
-    doc.pop("_id", None)
-    return doc
+def _public(value):
+    if isinstance(value, dict):
+        return {key: _public(item) for key, item in value.items() if key != "_id"}
+    if isinstance(value, list):
+        return [_public(item) for item in value]
+    if hasattr(value, "to_decimal"):
+        return float(value.to_decimal())
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
 
 
 @router.get("/invoices")
@@ -62,16 +72,16 @@ async def list_invoices(q: str = "", user: dict = Depends(current_user)):
             doc["variety"] = load.get("variety")
         if doc.get("oil_kg") is None and load.get("oil_kg") is not None:
             oil_kg = float(load["oil_kg"])
-            total = _money(oil_kg * float(doc.get("price_per_kg", 0)))
+            total = _money(to_decimal(oil_kg) * _money(doc.get("price_per_kg", 0)))
             paid = _money(doc.get("paid_amount", 0))
-            balance = _money(max(0, total - paid))
+            balance = _money(max(Decimal("0.000"), total - paid))
             repaired_at = datetime.now(timezone.utc)
 
             async def repair_legacy_invoice(session):
                 result = await db.invoices.update_one(
                     {"id": doc["id"], "oil_kg": None},
                     {"$set": {
-                        "oil_kg": oil_kg, "total": total, "balance": balance,
+                        "oil_kg": oil_kg, "total": money_db(total), "balance": money_db(balance),
                         "updated_at": repaired_at,
                     }},
                     session=session,
@@ -83,15 +93,15 @@ async def list_invoices(q: str = "", user: dict = Depends(current_user)):
                         "actor_user_id": user.get("id"), "created_at": repaired_at,
                         "details": {
                             "number": doc.get("number"), "oil_kg": oil_kg,
-                            "total": total, "balance": balance,
+                            "total": money_db(total), "balance": money_db(balance),
                             "reason": "backfill_missing_oil_weight_from_source_load",
                         },
                     }, session=session)
                 return bool(result.modified_count)
 
             if await run_transaction(repair_legacy_invoice):
-                doc.update({"oil_kg": oil_kg, "total": total, "balance": balance})
-    return docs
+                doc.update({"oil_kg": oil_kg, "total": money_db(total), "balance": money_db(balance)})
+    return [_public(doc) for doc in docs]
 
 
 @router.get("/invoices/eligible-loads")
@@ -116,15 +126,14 @@ async def _create_invoice_in_session(body: dict, user: dict, session):
     if await db.invoices.find_one({"load_id": load_id}, session=session):
         raise HTTPException(409, "load_already_invoiced")
     settings = await db.settings.find_one({"key": "app"}, {"_id": 0}, session=session) or {}
-    price = _number(settings.get("price_per_kg", 0), "price_invalid")
+    price = _money(_number(settings.get("price_per_kg", 0), "price_invalid"))
     if price < 0:
         raise HTTPException(422, "price_invalid")
-    price = _money(price)
     paid = _money(_number(body.get("paid_amount", 0), "paid_amount_invalid"))
     if paid < 0:
         raise HTTPException(422, "paid_amount_invalid")
     oil_kg = float(load["oil_kg"])
-    total = _money(oil_kg * price)
+    total = _money(to_decimal(oil_kg) * price)
     if paid > total:
         raise HTTPException(422, "paid_amount_exceeds_total")
     now = datetime.now(timezone.utc)
@@ -134,17 +143,17 @@ async def _create_invoice_in_session(body: dict, user: dict, session):
         "load_id": load["id"], "load_code": load["code"],
         "client_name": load["client_name"], "phone": load.get("phone", ""),
         "variety": load.get("variety"),
-        "olive_kg": float(load["olive_kg"]), "oil_kg": oil_kg, "price_per_kg": price,
-        "total": total, "paid_amount": paid, "balance": _money(total - paid),
-        "payments": ([{"at": now, "by": user.get("username", ""), "amount": paid}] if paid > 0 else []),
+        "olive_kg": float(load["olive_kg"]), "oil_kg": oil_kg, "price_per_kg": money_db(price),
+        "total": money_db(total), "paid_amount": money_db(paid), "balance": money_db(total - paid),
+        "payments": ([{"at": now, "by": user.get("username", ""), "amount": money_db(paid)}] if paid > 0 else []),
         "day": load.get("day", now.strftime("%Y-%m-%d")),
         "created_at": now, "updated_at": now,
         "mill_name": settings.get("mill_name", ""), "mill_address": settings.get("mill_address", ""),
         "mill_phone": settings.get("mill_phone", ""), "mill_logo": settings.get("mill_logo", ""),
         "created_by": user.get("username", ""),
         "history": [{"at": now, "by": user.get("username", ""), "action": "created",
-                     "before": None, "after": {"price_per_kg": price, "paid_amount": paid,
-                                                  "total": total, "balance": _money(total - paid)}}],
+                     "before": None, "after": {"price_per_kg": money_db(price), "paid_amount": money_db(paid),
+                                                  "total": money_db(total), "balance": money_db(total - paid)}}],
     }
 
     # Touch the source load in the same transaction as the invoice insert.
@@ -163,8 +172,8 @@ async def _create_invoice_in_session(body: dict, user: dict, session):
         "entity_id": doc["id"], "action": "INVOICE_CREATED",
         "actor_user_id": user.get("id"), "created_at": now,
         "details": {"number": doc["number"], "load_id": load_id,
-                    "client_name": doc["client_name"], "total": total,
-                    "paid_amount": paid, "balance": doc["balance"]},
+                    "client_name": doc["client_name"], "total": money_db(total),
+                    "paid_amount": money_db(paid), "balance": doc["balance"]},
     }, session=session)
     return _public(doc)
 
@@ -194,10 +203,10 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
             price = _number(body["price_per_kg"], "price_invalid")
             if price < 0:
                 raise HTTPException(422, "price_invalid")
-            allowed["price_per_kg"] = _money(price)
+            allowed["price_per_kg"] = money_db(_money(price))
 
         old_paid = _money(doc.get("paid_amount", 0))
-        payment_amount = 0.0
+        payment_amount = Decimal("0.000")
         if "payment_amount" in body:
             payment_amount = _money(_number(body["payment_amount"], "paid_amount_invalid"))
             if payment_amount < 0:
@@ -209,7 +218,7 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
                 raise HTTPException(422, "paid_amount_invalid")
             old_paid = paid_value
 
-        price = allowed.get("price_per_kg", float(doc["price_per_kg"]))
+        price = _money(allowed.get("price_per_kg", doc["price_per_kg"]))
         oil_kg = doc.get("oil_kg")
         if oil_kg is None:
             load = await db.loads.find_one(
@@ -220,14 +229,14 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
             oil_kg = float(load["oil_kg"])
             allowed["oil_kg"] = oil_kg
 
-        total = _money(float(oil_kg) * price)
+        total = _money(to_decimal(oil_kg) * price)
         paid = _money(old_paid + payment_amount) if "payment_amount" in body else old_paid
         if paid > total:
             raise HTTPException(422, "paid_amount_exceeds_total")
         allowed.update({
-            "paid_amount": paid,
-            "total": total,
-            "balance": _money(total - paid),
+            "paid_amount": money_db(paid),
+            "total": money_db(total),
+            "balance": money_db(total - paid),
         })
 
         now = datetime.now(timezone.utc)
@@ -240,10 +249,10 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
         after = {
             "price_per_kg": allowed["price_per_kg"] if "price_per_kg" in allowed else doc["price_per_kg"],
             "paid_amount": allowed["paid_amount"],
-            "total": total,
+            "total": money_db(total),
             "balance": allowed["balance"],
         }
-        if all(before[key] == after[key] for key in before) and payment_amount == 0:
+        if all(_money(before[key]) == _money(after[key]) for key in before) and payment_amount == 0:
             return _public(doc)
 
         update_fields = {**allowed, "updated_at": now}
@@ -264,10 +273,10 @@ async def update_invoice(invoice_id: str, body: dict, user: dict = Depends(requi
             "entity_id": invoice_id, "action": "INVOICE_UPDATED",
             "actor_user_id": user.get("id"), "created_at": now,
             "details": {"number": doc.get("number"), "previous_values": before,
-                        "new_values": after, "payment_amount": payment_amount},
+                        "new_values": after, "payment_amount": money_db(payment_amount)},
         }, session=session)
         updated = await db.invoices.find_one({"id": invoice_id}, {"_id": 0}, session=session)
-        return updated
+        return _public(updated)
 
     return await run_transaction(operation)
 
