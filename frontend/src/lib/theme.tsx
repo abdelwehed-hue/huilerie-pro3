@@ -17,7 +17,7 @@ export function ThemeProvider({ userId, children }: { userId: string; children: 
   const [appearance, setAppearanceState] = useState<AppAppearance>(() => {
     try { const saved = localStorage.getItem(appearanceStorageKey);
       return saved === "modern" ? "modern" : "premium"; }
-    catch { return "modern"; }
+    catch { return "premium"; }
   });
   const [mode, setModeState] = useState<ThemeMode>(() => {
     try {
