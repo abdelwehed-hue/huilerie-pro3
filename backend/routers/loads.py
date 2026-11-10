@@ -12,6 +12,7 @@ from lib.auth import current_user, require_admin
 from lib.dates import today_iso
 from lib.db import db, run_transaction
 from lib.season import active_season, next_load_code, season_filter, season_of
+from lib.money import money_db, money_float, to_decimal
 from lib.sms import send_load_sms
 from routers.invoices import create_invoice as create_load_invoice, _create_invoice_in_session
 from models.schemas import CancelBody, DailyPoint, LabAnalysis, Load, LoadCreate, OilUpdate, Stats, StatusUpdate
@@ -42,7 +43,7 @@ def _aware(dt: datetime) -> datetime:
 
 async def _price() -> float:
     s = await db.settings.find_one({"key": "app"})
-    return float(s["price_per_kg"]) if s else 0.0
+    return money_float(s["price_per_kg"]) if s else 0.0
 
 
 def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
@@ -65,8 +66,8 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
         reminder_sent_at=_aware(doc["reminder_sent_at"]) if doc.get("reminder_sent_at") else None,
         cancel_reason=doc.get("cancel_reason"), cancelled_by=doc.get("cancelled_by"),
         cancelled_at=_aware(doc["cancelled_at"]) if doc.get("cancelled_at") else None,
-        price_per_kg=doc.get("price_per_kg") if is_admin else None,
-        amount=round(doc["olive_kg"] * doc.get("price_per_kg", 0), 3) if is_admin else None,
+        price_per_kg=money_float(doc.get("price_per_kg")) if is_admin else None,
+        amount=money_float(to_decimal(doc["olive_kg"]) * to_decimal(doc.get("price_per_kg", 0))) if is_admin else None,
         lab=LabAnalysis(**{**lab, "created_at": _aware(lab["created_at"])}) if lab else None,
     )
 
@@ -89,7 +90,7 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
         "phone": re.sub(r"\s+", "", body.phone), "olive_kg": body.olive_kg, "oil_kg": None,
         "day": now_local.strftime("%Y-%m-%d"), "created_at": now,
         "created_by": user["username"], "created_by_name": user.get("full_name") or user["username"],
-        "price_per_kg": await _price(),
+        "price_per_kg": money_db(await _price()),
         "bags": body.bags, "variety": (body.variety or "").strip() or None,
         "notes": (body.notes or "").strip() or None, "pressing": body.initial_status == "pressing",
     }
@@ -402,7 +403,7 @@ async def stats(user: dict = Depends(current_user)):
     o_t = oil_t = rev_t = 0.0
     olive_done = oil_done = 0.0
     for d in docs:
-        rev = d["olive_kg"] * d.get("price_per_kg", 0)
+        rev = money_float(to_decimal(d["olive_kg"]) * to_decimal(d.get("price_per_kg", 0)))
         oil = d.get("oil_kg") or 0.0
         agg = by_day.setdefault(d["day"], [0.0, 0.0, 0.0, 0.0])
         agg[0] += d["olive_kg"]; agg[1] += oil; agg[2] += rev; agg[3] += 1
