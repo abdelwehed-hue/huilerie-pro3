@@ -11,7 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from lib.auth import current_user, require_admin
 from lib.dates import today_iso
-from lib.db import db, run_transaction
+from lib.db import db
+from lib.money import money_float, to_decimal, run_transaction
 from lib.reminders import run_reminders
 from lib.season import season_filter
 from lib.sms import get_creds, send_test, sms_mode, verify_twilio
@@ -230,7 +231,7 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
             payments = invoice.get("payments") or []
             if payments:
                 for payment in payments:
-                    amount = float(payment.get("amount") or 0.0)
+                    amount = money_float(payment.get("amount"))
                     at = payment.get("at")
                     if amount <= 0 or at is None:
                         continue
@@ -247,7 +248,7 @@ async def build_report(period: str, start: str | None, end: str | None, worker: 
             else:
                 # Legacy compatibility: invoices created before payment events
                 # were stored use paid_amount and their creation date.
-                amount = float(invoice.get("paid_amount") or 0.0)
+                amount = money_float(invoice.get("paid_amount"))
                 at = invoice.get("created_at")
                 if amount > 0 and at is not None:
                     if isinstance(at, str):
@@ -282,7 +283,7 @@ async def build_worker_report(period: str, start: str | None, end: str | None, w
     per: dict[tuple[str, str], list[float]] = {}
     tot: dict[str, list[float]] = {}
     for d in docs:
-        rev = d["olive_kg"] * d.get("price_per_kg", 0)
+        rev = money_float(to_decimal(d["olive_kg"]) * to_decimal(d.get("price_per_kg", 0)))
         for bucket, key in ((per, (d["day"], d["created_by"])), (tot, d["created_by"])):
             a = bucket.setdefault(key, [0, 0.0, 0.0, 0.0])
             a[0] += 1; a[1] += d["olive_kg"]; a[2] += d.get("oil_kg") or 0.0; a[3] += rev
@@ -334,9 +335,9 @@ async def revenue_xlsx(period: str = PeriodQ, start: str | None = None, end: str
     wrep = await build_worker_report(period, start, end, worker)
     invoice_docs = await db.invoices.find({"day": {"$gte": rep.start, "$lte": rep.end}}, {"_id": 0, "total": 1, "paid_amount": 1, "balance": 1}).to_list(100000)
     invoice_totals = {
-        "total": round(sum(float(i.get("total") or 0) for i in invoice_docs), 3),
-        "paid": round(sum(float(i.get("paid_amount") or 0) for i in invoice_docs), 3),
-        "balance": round(sum(float(i.get("balance") or 0) for i in invoice_docs), 3),
+        "total": round(sum(money_float(i.get("total")) for i in invoice_docs), 3),
+        "paid": round(sum(money_float(i.get("paid_amount")) for i in invoice_docs), 3),
+        "balance": round(sum(money_float(i.get("balance")) for i in invoice_docs), 3),
     }
     mill = (await _mill()).mill_name or "Huilerie Pro"
     t_fr, t_ar = _titles(period)
