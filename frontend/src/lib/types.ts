@@ -166,6 +166,7 @@ export interface AppSettings extends MillInfo {
   pump_system_enabled: boolean;
   pumps: PumpConfig[];
   price_per_kg: number;
+  numeric_format_sample: string;
   login_image: string;
   tv_image: string;
   tv_youtube_url: string;
