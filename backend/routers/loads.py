@@ -50,7 +50,7 @@ def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
     oil = doc.get("oil_kg")
     return Load(
         id=doc["id"], code=doc["code"], client_name=doc["client_name"], phone=doc["phone"],
-        olive_kg=doc["olive_kg"], available_olive_kg=float(doc.get("customer_available_olive_kg", doc["olive_kg"])), ownership_transferred=bool(doc.get("ownership_transferred", False)), oil_kg=oil,
+        olive_kg=doc["olive_kg"], available_olive_kg=float(doc.get("customer_available_olive_kg", doc["olive_kg"])), ownership_transferred=bool(doc.get("ownership_transferred", False)), ownership_transferred_at=_aware(doc["ownership_transferred_at"]) if doc.get("ownership_transferred_at") else None, oil_kg=oil,
         yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
         status="cancelled" if doc.get("cancelled") else (
             "delivered" if doc.get("delivered") else (
@@ -110,6 +110,8 @@ async def create_load(body: LoadCreate, user: dict = Depends(current_user)):
 @router.get("/loads", response_model=list[Load])
 async def list_loads(q: str = "", status: str = "", season: str = "", worker: str = "", user: dict = Depends(current_user)):
     flt: dict = await season_filter(season)
+    # A fully transferred load is no longer an active customer load.
+    flt["ownership_transferred"] = {"$ne": True}
     if worker:
         flt["created_by"] = worker
     if q.strip():
@@ -310,11 +312,17 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
     tz = _tz()
     start = datetime(y, mo, 1, tzinfo=tz)
     end = datetime(y + (mo == 12), 1 if mo == 12 else mo + 1, 1, tzinfo=tz)
+    start_utc, end_utc = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
     docs = await db.loads.find(
-        {"cancelled": True, "cancelled_at": {"$gte": start.astimezone(timezone.utc), "$lt": end.astimezone(timezone.utc)},
-         **(await season_filter())},
+        {
+            "$or": [
+                {"cancelled": True, "cancelled_at": {"$gte": start_utc, "$lt": end_utc}},
+                {"ownership_transferred": True, "ownership_transferred_at": {"$gte": start_utc, "$lt": end_utc}},
+            ],
+            **(await season_filter()),
+        },
         {"_id": 0},
-    ).sort("cancelled_at", -1).to_list(1000)
+    ).sort([("cancelled_at", -1), ("ownership_transferred_at", -1)]).to_list(1000)
     return [to_load(d, user) for d in docs]
 
 
