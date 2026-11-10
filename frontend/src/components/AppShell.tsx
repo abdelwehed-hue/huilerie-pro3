@@ -223,6 +223,9 @@ function Brand() {
 export default function AppShell() {
   const location = useLocation();
   const isCommercialWorkspace = location.pathname.startsWith("/commercial");
+  useEffect(() => {
+    document.documentElement.dataset.appArea = isCommercialWorkspace ? "commercial" : "oroverde";
+  }, [isCommercialWorkspace]);
   const me = useMe();
   const { t, lang } = useI18n();
   const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");
