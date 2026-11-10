@@ -22,3 +22,20 @@ export function millimesInputNumber(value: string): number {
   const amount = Number(raw);
   return Number.isSafeInteger(amount) ? amount : Number.NaN;
 }
+
+/** Convert a millimes-per-unit price and a quantity (up to 3 decimals)
+ * into a TND total, rounding once to the nearest millime.
+ */
+export function unitPriceMillimesToTotalDinars(unitPriceValue: string, quantityValue: string): string {
+  const unitPrice = millimesInputNumber(unitPriceValue);
+  const quantityMatch = String(quantityValue ?? "").trim().match(/^(\d+)(?:\.(\d{1,3}))?$/);
+  if (!Number.isSafeInteger(unitPrice) || unitPrice < 0 || !quantityMatch) {
+    throw new Error("Enter a whole-millime unit price and a quantity with up to 3 decimals");
+  }
+  const quantityMilliunits =
+    BigInt(quantityMatch[1]) * 1000n +
+    BigInt((quantityMatch[2] || "").padEnd(3, "0") || "0");
+  if (quantityMilliunits <= 0n) throw new Error("Quantity must be positive");
+  const totalMillimes = (BigInt(unitPrice) * quantityMilliunits + 500n) / 1000n;
+  return millimesInputToDinars(totalMillimes.toString());
+}
