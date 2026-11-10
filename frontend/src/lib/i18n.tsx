@@ -766,9 +766,25 @@ export function useI18n(): I18nCtx {
 export const fmtNum = (n: number | null | undefined, digits = 1) =>
   n == null ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: digits });
 
-// Tunisian dinar display: three millimes digits and a comma decimal separator.
-export const fmtMoney = (n: number | null | undefined) =>
-  n == null || !Number.isFinite(Number(n)) ? "—" : new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(Number(n));
+// Canonical TND display shared by the main app and Gestion commerciale.
+// Accepts numeric dinars (or a decimal string), rounds once to the nearest millime,
+// groups thousands with a French space, and always displays exactly 3 decimals.
+export const fmtMoney = (value: number | string | null | undefined) => {
+  if (value == null || value === "") return "—";
+  const raw = String(value).trim().replace(/[\\s\\u00a0\\u202f]/g, "").replace(",", ".");
+  const match = raw.match(/^([+-]?)(\\d+)(?:\\.(\\d+))?$/);
+  if (!match) return "—";
+  let whole = BigInt(match[2]);
+  const fraction = (match[3] || "").padEnd(4, "0");
+  let millimes = BigInt(fraction.slice(0, 3));
+  if (Number(fraction[3] || "0") >= 5) millimes += 1n;
+  if (millimes === 1000n) {
+    whole += 1n;
+    millimes = 0n;
+  }
+  const grouped = whole.toLocaleString("fr-FR");
+  return `${match[1] === "-" ? "-" : ""}${grouped},${String(millimes).padStart(3, "0")}`;
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const fmtDate = (iso: string) =>
