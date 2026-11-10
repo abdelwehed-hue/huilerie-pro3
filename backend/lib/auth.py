@@ -1,5 +1,6 @@
 import os
 import uuid
+from bson.decimal128 import Decimal128
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -84,4 +85,4 @@ async def seed_defaults() -> None:
                 "password_hash": hash_password(pw), "role": role, "active": True, "created_at": now,
             })
     if not await db.settings.find_one({"key": "app"}):
-        await db.settings.insert_one({"key": "app", "price_per_kg": 0.18})
+        await db.settings.insert_one({"key": "app", "price_per_kg": Decimal128("0.180")})
