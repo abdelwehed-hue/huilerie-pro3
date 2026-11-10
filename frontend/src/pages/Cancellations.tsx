@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Ban, ShieldAlert } from "lucide-react";
+import { Ban, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,7 +40,7 @@ export default function Cancellations() {
           <Input id="cm" type="month" data-testid="cancellations-month-input" value={month} onChange={(e) => setMonth(e.target.value)} className="h-10 w-48 rounded-xl bg-white" />
         </div>
         <div className="w-60">
-          <StatCard tone="rose" testId="cancellations-count" label={t("cancellations")} value={rows.length} icon={<Ban />} sub={`${fmtNum(rows.reduce((a, r) => a + r.olive_kg, 0))} ${t("kg")}`} />
+          <StatCard tone="rose" testId="cancellations-count" label="Annuler" value={rows.length} icon={<Ban />} sub={`${fmtNum(rows.reduce((a, r) => a + r.olive_kg, 0))} ${t("kg")}`} />
         </div>
       </div>
       <div className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
@@ -50,9 +50,9 @@ export default function Cancellations() {
               <TableHead className="text-start">{t("code")}</TableHead>
               <TableHead className="text-start">{t("client")}</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
-              <TableHead className="text-start">{t("reason")}</TableHead>
-              <TableHead className="text-start">{t("cancelled_by")}</TableHead>
-              <TableHead className="text-start">{t("cancelled_at")}</TableHead>
+              <TableHead className="text-start">Type / motif</TableHead>
+              <TableHead className="text-start">Responsable</TableHead>
+              <TableHead className="text-start">Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -64,9 +64,23 @@ export default function Cancellations() {
                 <TableCell><Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link></TableCell>
                 <TableCell className="font-medium">{l.client_name}<div className="text-xs text-stone-500" dir="ltr">{l.phone}</div></TableCell>
                 <TableCell className="text-end text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
-                <TableCell className="max-w-72 text-red-700" data-testid={`cancellation-reason-${l.code}`}>{l.cancel_reason}</TableCell>
-                <TableCell dir="ltr" className="text-start">@{l.cancelled_by}</TableCell>
-                <TableCell dir="ltr" className="text-start text-sm">{l.cancelled_at ? fmtDate(l.cancelled_at) : "—"}</TableCell>
+                <TableCell className="max-w-72" data-testid={`cancellation-reason-${l.code}`}>
+                  {l.ownership_transferred && !l.cancel_reason ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
+                      <ArrowRightLeft className="size-3.5" /> تم بيعه إلى المعصرة
+                    </span>
+                  ) : (
+                    <span className="text-red-700">{l.cancel_reason || "إلغاء الحمولة"}</span>
+                  )}
+                </TableCell>
+                <TableCell dir="ltr" className="text-start">
+                  {l.ownership_transferred && !l.cancel_reason ? "Huilerie" : `@${l.cancelled_by || "—"}`}
+                </TableCell>
+                <TableCell dir="ltr" className="text-start text-sm">
+                  {l.ownership_transferred && !l.cancel_reason
+                    ? (l.ownership_transferred_at ? fmtDate(l.ownership_transferred_at) : "—")
+                    : (l.cancelled_at ? fmtDate(l.cancelled_at) : "—")}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
