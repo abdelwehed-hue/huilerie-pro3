@@ -780,7 +780,10 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
             "_id": "$phone", "client_name": {"$first": "$client_name"}, "loads_count": {"$sum": 1},
             "olive_kg": {"$sum": "$olive_kg"}, "oil_kg": {"$sum": {"$ifNull": ["$oil_kg", 0]}},
             "last_visit": {"$first": "$created_at"},
-            "amount": {"$sum": {"$multiply": ["$olive_kg", {"$ifNull": ["$price_per_kg", 0]}]}},
+            "amount": {"$sum": {"$multiply": [
+                {"$convert": {"input": "$olive_kg", "to": "decimal", "onError": 0, "onNull": 0}},
+                {"$convert": {"input": {"$ifNull": ["$price_per_kg", 0]}, "to": "decimal", "onError": 0, "onNull": 0}},
+            ]}},
         }},
         {"$sort": {"last_visit": -1}},
         {"$limit": 300},
@@ -791,7 +794,7 @@ async def list_clients(q: str = "", user: dict = Depends(current_user)):
         out.append(ClientSummary(
             phone=g["_id"], client_name=g["client_name"], loads_count=g["loads_count"],
             olive_kg=round(g["olive_kg"], 2), oil_kg=round(g["oil_kg"], 2),
-            last_visit=_aware(g["last_visit"]), amount=round(g["amount"], 3) if is_admin else None,
+            last_visit=_aware(g["last_visit"]), amount=money_float(g["amount"]) if is_admin else None,
         ))
     # carnet is global: clients known from other seasons appear with this season's totals = 0
     seen = {c.phone for c in out}
