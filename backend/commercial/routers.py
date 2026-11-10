@@ -252,7 +252,7 @@ async def global_search(
         # Explicit field allow-lists prevent the global search endpoint from
         # exposing financial, identity, or audit payloads not needed in results.
         sources = (
-            ("commercial_lots", "GS — Lots", ("batch_code", "code", "supplier_name", "buyer_name", "customer_name", "owner_name", "phone", "customer_phone", "supplier_phone", "buyer_phone")),
+            ("commercial_lots", "GS — Lots", ("batch_code", "lot_code", "traceability_code", "code", "supplier_name", "buyer_name", "customer_name", "owner_name", "phone", "customer_phone", "supplier_phone", "buyer_phone")),
             ("commercial_suppliers", "GS — Fournisseurs", ("name", "supplier_name", "phone", "mobile", "code", "tax_identifier")),
             ("commercial_buyers", "GS — Acheteurs", ("name", "buyer_name", "phone", "mobile", "code", "tax_identifier")),
             ("commercial_custody_owners", "GS — Garde des clients", ("client_name", "client_phone", "code")),
@@ -261,14 +261,21 @@ async def global_search(
             ("commercial_customer_custody_releases", "GS — Restitutions clients", ("document_number", "batch_code", "customer_name", "customer_phone")),
             ("commercial_sales", "GS — Ventes", ("document_number", "invoice_number", "batch_code", "buyer_name", "buyer_phone", "code")),
             ("commercial_sales_invoices", "GS — Factures", ("document_number", "invoice_number", "buyer_name", "buyer_phone", "code")),
-            ("commercial_quality_assessments", "GS — Analyses qualité", ("batch_code", "sample_reference", "code")),
+            ("commercial_quality_assessments", "GS — Analyses qualité", ("batch_code", "sample_reference", "code", "traceability_code")),
+            ("commercial_oil_purchase_documents", "GS — Achats d’huile", ("document_number", "invoice_number", "batch_code", "supplier_name", "supplier_phone", "code")),
+            ("commercial_oil_purchase_payments", "GS — Paiements achats d’huile", ("document_number", "payment_number", "reference", "supplier_name", "supplier_phone", "code")),
+            ("commercial_internal_movements", "GS — Transferts", ("document_number", "batch_code", "code", "source_reference")),
+            ("commercial_stock_movements", "GS — Mouvements de stock", ("document_number", "batch_code", "code", "reference")),
+            ("commercial_sale_returns", "GS — Retours ventes", ("document_number", "invoice_number", "batch_code", "buyer_name", "buyer_phone", "code")),
+            ("commercial_preproduction_samples", "GS — Échantillons", ("document_number", "batch_code", "sample_reference", "code")),
         )
         for collection_name, source_label, fields in sources:
             clauses = [{field: pattern} for field in fields]
             docs = await db[collection_name].find(
                 {"$or": clauses},
-                {"_id": 0, "id": 1, "code": 1, "batch_code": 1,
-                 "document_number": 1, "invoice_number": 1,
+                {"_id": 0, "id": 1, "code": 1, "batch_code": 1, "lot_code": 1,
+                 "traceability_code": 1, "document_number": 1, "invoice_number": 1,
+                 "payment_number": 1, "reference": 1,
                  "name": 1, "supplier_name": 1, "buyer_name": 1,
                  "customer_name": 1, "client_name": 1, "owner_name": 1,
                  "phone": 1, "mobile": 1, "supplier_phone": 1,
@@ -276,8 +283,10 @@ async def global_search(
                  "status": 1, "created_at": 1},
             ).sort([("created_at", -1), ("id", 1)]).to_list(limit)
             for doc in docs:
-                code = (doc.get("batch_code") or doc.get("code")
-                        or doc.get("document_number") or doc.get("invoice_number"))
+                code = (doc.get("batch_code") or doc.get("lot_code") or doc.get("traceability_code")
+                        or doc.get("code") or doc.get("document_number")
+                        or doc.get("invoice_number") or doc.get("payment_number")
+                        or doc.get("reference"))
                 name = (doc.get("name") or doc.get("supplier_name")
                         or doc.get("buyer_name") or doc.get("customer_name")
                         or doc.get("client_name") or doc.get("owner_name"))
