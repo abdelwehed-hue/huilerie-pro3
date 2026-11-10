@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -61,7 +60,7 @@ export default function Cancellations() {
             )}
             {rows.map((l) => (
               <TableRow key={l.id} data-testid={`cancellation-row-${l.code}`}>
-                <TableCell><Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link></TableCell>
+                <TableCell><CodeBadge code={l.code} /></TableCell>
                 <TableCell className="font-medium">{l.client_name}<div className="text-xs text-stone-500" dir="ltr">{l.phone}</div></TableCell>
                 <TableCell className="text-end text-lime-800">{fmtNum(l.olive_kg)}</TableCell>
                 <TableCell className="max-w-72" data-testid={`cancellation-reason-${l.code}`}>
