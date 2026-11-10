@@ -37,7 +37,7 @@ async def _require_released_quality_evidence(db: Any, lot: dict[str, Any], *, se
     """Require a reviewed release, without imposing an Extra-Vierge classification."""
     production_id = lot.get("source_production_id")
     if production_id:
-        production = await db["commercial_productions"].find_one(
+        production = await db["commercial_production_runs"].find_one(
             {"id": production_id, "status": "COMPLETED", "output_oil_lot_id": lot["id"]},
             {"_id": 0, "preproduction_quality_approvals": 1}, session=session,
         )
