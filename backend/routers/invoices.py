@@ -1,9 +1,8 @@
 """Invoice management tied to existing completed loads. Admin-only; no destructive load changes."""
-import math
 import re
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException
 from pymongo.errors import DuplicateKeyError
@@ -18,7 +17,7 @@ router = APIRouter(tags=["invoices"])
 def _money(value):
     try:
         return money_decimal(value)
-    except (ValueError, TypeError, OverflowError):
+    except (InvalidOperation, ValueError, TypeError, OverflowError):
         raise HTTPException(422, "money_invalid")
 
 
