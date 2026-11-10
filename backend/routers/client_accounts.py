@@ -6,16 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.auth import require_admin
 from lib.db import db
+from lib.money import money_float
 from lib.season import season_of
 
 router = APIRouter(tags=["client-accounts"])
 
 
 def _money(value):
-    try:
-        return round(float(value or 0), 3)
-    except (TypeError, ValueError, OverflowError):
-        return 0.0
+    return money_float(value)
 
 
 def _dt(value):
