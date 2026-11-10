@@ -396,17 +396,30 @@ function UsersPanel() {
 }
 
 function NumericConventionsPanel() {
-  const { lang } = useI18n();
+  const { lang, errMsg } = useI18n();
   const ar = lang === "ar";
+  const qc = useQueryClient();
+  const appSettings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
+  const [sample, setSample] = useState<string | null>(null);
+  const currentSample = sample ?? appSettings.data?.numeric_format_sample ?? "1 234,567";
+  const validSample = /^\d{1,3}(?: \d{3})*,\d{3}$/.test(currentSample);
+  const save = useMutation({
+    mutationFn: (numeric_format_sample: string) => apiPut<AppSettings>("/settings", { ...appSettings.data!, numeric_format_sample }),
+    onSuccess: async () => {
+      toast.success(ar ? "تم حفظ نموذج الأرقام" : "Modèle numérique enregistré");
+      setSample(null);
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
   const rows = [
     [ar ? "العملة" : "Devise", "TND", ar ? "الدينار التونسي هو وحدة الحساب الوحيدة." : "Le dinar tunisien est l’unité de compte unique."],
-    [ar ? "الدقة" : "Précision", "3 décimales", ar ? "ثلاث خانات بعد الفاصلة لتمثيل المليم." : "Trois décimales après la virgule pour représenter les millimes."],
+    [ar ? "الدقة" : "Précision", "3 décimales", ar ? "ثلاث خانات بعد الفاصلة لتمثيل المليم." : "Trois chiffres après la virgule pour représenter les millimes."],
     [ar ? "فاصل الآلاف" : "Séparateur des milliers", "Espace", ar ? "مثال: 6 499,300" : "Exemple : 6 499,300"],
     [ar ? "الفاصل العشري" : "Séparateur décimal", ",", ar ? "الفاصلة تفصل الدينار عن المليم." : "La virgule sépare les dinars des millimes."],
     [ar ? "قاعدة التحويل" : "Conversion", "1 TND = 1 000 millimes", ar ? "لا يُعامل المليم كأنه دينار." : "Les millimes ne doivent jamais être interprétés comme des dinars."],
     [ar ? "التخزين في قاعدة البيانات" : "Stockage en base", "TND numérique · 0,001", ar ? "قيمة رقمية معيارية، ويفضّل Decimal128؛ لا تُخزّن كنص منسّق." : "Valeur numérique canonique, Decimal128 privilégié ; jamais une chaîne déjà formatée."],
-    [ar ? "الحساب" : "Calculs", ar ? "بالقيمة الرقمية" : "Valeur numérique", ar ? "تُجرى العمليات قبل التنسيق، مع التقريب إلى أقرب مليم مرة واحدة عند الحاجة." : "Les calculs précèdent le formatage ; arrondi au millime le plus proche une seule fois si nécessaire."],
-    [ar ? "الإدخال" : "Saisie", ar ? "دينار + 3 خانات" : "Dinars + 3 décimales", ar ? "تُقبل الفاصلة العشرية، وتُرفض الصيغ الملتبسة." : "La virgule décimale est acceptée ; les formats ambigus sont rejetés."],
+    [ar ? "الحساب" : "Calculs", ar ? "بالقيمة الرقمية" : "Valeur numérique", ar ? "تُجرى العمليات قبل التنسيق." : "Les calculs précèdent le formatage."],
   ];
   return (
     <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm" data-testid="numeric-conventions-panel">
@@ -414,35 +427,28 @@ function NumericConventionsPanel() {
         <h2 className="text-lg font-bold text-emerald-950">{ar ? "معايير الأرقام والمبالغ" : "Normes numériques et monétaires"}</h2>
         <p className="mt-1 text-sm text-emerald-800">{ar ? "معيار موحّد للتطبيق العادي وGestion commerciale وقاعدة البيانات." : "Une norme commune à l’application principale, à la Gestion commerciale et à la base de données."}</p>
       </div>
+      <div className="space-y-3 border-b border-stone-100 p-5">
+        <label className="grid max-w-xl gap-2 text-sm font-semibold">
+          {ar ? "نموذج الأرقام المعتمد" : "Modèle numérique à appliquer"}
+          <Input dir="ltr" inputMode="decimal" value={currentSample} onChange={(e) => setSample(e.target.value)} placeholder="1 234,567" data-testid="numeric-format-sample" className="font-mono text-lg" />
+        </label>
+        <p className="text-sm text-stone-600">{ar ? "اكتب نموذجاً بالشكل: مسافة للآلاف، فاصلة عشرية، وثلاث خانات عشرية." : "Format attendu : espace pour les milliers, virgule décimale et exactement trois décimales."}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-stone-600">{ar ? "المعاينة:" : "Aperçu :"}</span>
+          <span dir="ltr" className="rounded-lg bg-emerald-50 px-3 py-2 font-mono text-lg font-bold text-emerald-800">{validSample ? currentSample : (ar ? "نموذج غير صالح" : "Modèle invalide")}</span>
+          <Button type="button" disabled={!validSample || save.isPending || !appSettings.data || currentSample === appSettings.data.numeric_format_sample} onClick={() => save.mutate(currentSample)} data-testid="numeric-format-save" className="bg-emerald-700 hover:bg-emerald-800">{ar ? "حفظ واعتماد" : "Enregistrer et appliquer"}</Button>
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
-          <thead className="bg-stone-50 text-start text-stone-600">
-            <tr>
-              <th className="px-4 py-3 font-semibold">{ar ? "البند" : "Règle"}</th>
-              <th className="px-4 py-3 font-semibold">{ar ? "المعيار المعتمد" : "Norme retenue"}</th>
-              <th className="px-4 py-3 font-semibold">{ar ? "التوضيح" : "Précision"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([name, value, detail]) => (
-              <tr key={name} className="border-t border-stone-100 align-top">
-                <td className="px-4 py-3 font-semibold text-stone-800">{name}</td>
-                <td className="px-4 py-3 font-mono font-semibold text-emerald-800" dir="ltr">{value}</td>
-                <td className="px-4 py-3 text-stone-600">{detail}</td>
-              </tr>
-            ))}
-          </tbody>
+          <thead className="bg-stone-50 text-start text-stone-600"><tr><th className="px-4 py-3 font-semibold">{ar ? "البند" : "Règle"}</th><th className="px-4 py-3 font-semibold">{ar ? "المعيار المعتمد" : "Norme retenue"}</th><th className="px-4 py-3 font-semibold">{ar ? "التوضيح" : "Précision"}</th></tr></thead>
+          <tbody>{rows.map(([name, value, detail]) => <tr key={name} className="border-t border-stone-100 align-top"><td className="px-4 py-3 font-semibold text-stone-800">{name}</td><td className="px-4 py-3 font-mono font-semibold text-emerald-800" dir="ltr">{value}</td><td className="px-4 py-3 text-stone-600">{detail}</td></tr>)}</tbody>
         </table>
       </div>
-      <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-sm text-amber-900">
-        {ar
-          ? "تنبيه: اعتماد هذا الجدول لا يعني أن كل السجلات القديمة حُوّلت تلقائياً. يجب تدقيق وحدات الحقول الحالية قبل أي ترحيل، وعدم تعديل الأرصدة التاريخية دون مطابقة."
-          : "Attention : cette norme n’implique pas la conversion automatique des anciennes écritures. Les unités des champs existants doivent être auditées avant toute migration, sans modifier les soldes historiques sans rapprochement."}
-      </div>
+      <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-sm text-amber-900">{ar ? "هذا النموذج يحدد نمط العرض فقط؛ لا يغيّر القيم المحاسبية أو البيانات التاريخية." : "Ce modèle concerne le format d’affichage uniquement ; il ne modifie ni les valeurs comptables ni les données historiques."}</div>
     </section>
   );
 }
-
 
 function FullResetPanel() {
   const { lang, errMsg } = useI18n();
