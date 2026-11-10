@@ -221,6 +221,82 @@ async def _require_commercial_ready() -> tuple[str, str]:
     return season, season_code
 
 
+
+@router.get("/global-search")
+async def global_search(
+    q: str = Query(min_length=1, max_length=120),
+    limit: int = Query(default=30, ge=1, le=100),
+    user: dict = Depends(current_user),
+):
+    """Search traceability codes, names and phone numbers across Oroverde and GS."""
+    term = q.strip()
+    if not term:
+        return {"loads": [], "commercial": []}
+    pattern = {"$regex": re.escape(term), "$options": "i"}
+
+    # Oroverde pressing loads: include historical, cancelled and fully transferred
+    # records so a traceability code remains searchable after ownership changes.
+    from routers.loads import to_load, _labs_for
+    legacy_filter = {"$or": [
+        {"code": pattern}, {"client_name": pattern}, {"phone": pattern},
+    ]}
+    legacy_docs = await db.loads.find(
+        legacy_filter, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    labs = await _labs_for([doc["id"] for doc in legacy_docs])
+    legacy_results = [to_load(doc, user, labs.get(doc["id"])).model_dump(mode="json")
+                      for doc in legacy_docs]
+
+    commercial_results: list[dict[str, Any]] = []
+    if "commercial.read" in effective_commercial_permissions(user):
+        # Explicit field allow-lists prevent the global search endpoint from
+        # exposing financial, identity, or audit payloads not needed in results.
+        sources = (
+            ("commercial_lots", "GS — Lots", ("batch_code", "code", "supplier_name", "buyer_name", "customer_name", "owner_name", "phone", "customer_phone", "supplier_phone", "buyer_phone")),
+            ("commercial_suppliers", "GS — Fournisseurs", ("name", "supplier_name", "phone", "mobile", "code", "tax_identifier")),
+            ("commercial_buyers", "GS — Acheteurs", ("name", "buyer_name", "phone", "mobile", "code", "tax_identifier")),
+            ("commercial_custody_owners", "GS — Garde des clients", ("client_name", "client_phone", "code")),
+            ("commercial_olive_purchases", "GS — Achats d’olives", ("document_number", "batch_code", "supplier_name", "supplier_phone", "code")),
+            ("commercial_customer_custody_receipts", "GS — Réceptions clients", ("document_number", "batch_code", "customer_name", "customer_phone", "source_load_code")),
+            ("commercial_customer_custody_releases", "GS — Restitutions clients", ("document_number", "batch_code", "customer_name", "customer_phone")),
+            ("commercial_sales", "GS — Ventes", ("document_number", "invoice_number", "batch_code", "buyer_name", "buyer_phone", "code")),
+            ("commercial_sales_invoices", "GS — Factures", ("document_number", "invoice_number", "buyer_name", "buyer_phone", "code")),
+            ("commercial_quality_assessments", "GS — Analyses qualité", ("batch_code", "sample_reference", "code")),
+        )
+        for collection_name, source_label, fields in sources:
+            clauses = [{field: pattern} for field in fields]
+            docs = await db[collection_name].find(
+                {"$or": clauses},
+                {"_id": 0, "id": 1, "code": 1, "batch_code": 1,
+                 "document_number": 1, "invoice_number": 1,
+                 "name": 1, "supplier_name": 1, "buyer_name": 1,
+                 "customer_name": 1, "client_name": 1, "owner_name": 1,
+                 "phone": 1, "mobile": 1, "supplier_phone": 1,
+                 "buyer_phone": 1, "customer_phone": 1, "client_phone": 1,
+                 "status": 1, "created_at": 1},
+            ).sort([("created_at", -1), ("id", 1)]).to_list(limit)
+            for doc in docs:
+                code = (doc.get("batch_code") or doc.get("code")
+                        or doc.get("document_number") or doc.get("invoice_number"))
+                name = (doc.get("name") or doc.get("supplier_name")
+                        or doc.get("buyer_name") or doc.get("customer_name")
+                        or doc.get("client_name") or doc.get("owner_name"))
+                phone = (doc.get("phone") or doc.get("mobile")
+                         or doc.get("supplier_phone") or doc.get("buyer_phone")
+                         or doc.get("customer_phone") or doc.get("client_phone"))
+                commercial_results.append({
+                    "id": doc.get("id"), "source": source_label,
+                    "code": code, "name": name, "phone": phone,
+                    "status": doc.get("status"),
+                })
+                if len(commercial_results) >= limit:
+                    break
+            if len(commercial_results) >= limit:
+                break
+
+    return {"loads": legacy_results, "commercial": commercial_results[:limit]}
+
+
 @router.get("/status")
 async def commercial_status(user: dict = Depends(current_user)):
     _authorize(user, "commercial.read")
