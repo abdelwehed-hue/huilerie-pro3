@@ -33,6 +33,60 @@ def _money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
+async def _require_released_quality_evidence(db: Any, lot: dict[str, Any], *, session: Any) -> None:
+    """Require a reviewed release, without imposing an Extra-Vierge classification."""
+    production_id = lot.get("source_production_id")
+    if production_id:
+        production = await db["commercial_productions"].find_one(
+            {"id": production_id, "status": "COMPLETED", "output_oil_lot_id": lot["id"]},
+            {"_id": 0, "preproduction_quality_approvals": 1}, session=session,
+        )
+        approvals = (production or {}).get("preproduction_quality_approvals") or []
+        if not approvals:
+            raise ValueError("Oil cannot be sold without a recorded preproduction quality analysis")
+        for evidence in approvals:
+            olive_lot_id = evidence.get("olive_lot_id")
+            sample_id = evidence.get("sample_id")
+            sample_oil_lot_id = evidence.get("sample_oil_lot_id")
+            assessment_id = evidence.get("assessment_id")
+            if not all((olive_lot_id, sample_id, sample_oil_lot_id, assessment_id)):
+                raise ValueError("Production quality evidence is incomplete; oil cannot be sold")
+            olive_lot = await db["commercial_lots"].find_one(
+                {"id": olive_lot_id, "product_kind": "OLIVE",
+                 "preproduction_quality_status": "RELEASED",
+                 "preproduction_sample_id": sample_id,
+                 "latest_preproduction_sample_id": sample_id,
+                 "preproduction_quality_assessment_id": assessment_id},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            sample = await db["commercial_preproduction_samples"].find_one(
+                {"id": sample_id, "status": "COMPLETED",
+                 "oil_sample_lot_id": sample_oil_lot_id,
+                 "$or": [{"source_olive_lot_id": olive_lot_id},
+                         {"source_olive_lot_ids": olive_lot_id}]},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            assessment = await db["commercial_quality_assessments"].find_one(
+                {"id": assessment_id, "oil_lot_id": sample_oil_lot_id,
+                 "status": "REVIEWED", "decision": "RELEASED"},
+                {"_id": 0, "id": 1}, session=session,
+            )
+            if not olive_lot or not sample or not assessment:
+                raise ValueError("Oil cannot be sold: its preproduction quality analysis is missing, rejected, or superseded")
+        return
+
+    assessment_id = lot.get("last_quality_assessment_id")
+    if lot.get("quality_status") != "RELEASED" or not assessment_id:
+        raise ValueError("Oil cannot be sold without a reviewed and released laboratory analysis")
+    assessment = await db["commercial_quality_assessments"].find_one(
+        {"id": assessment_id, "oil_lot_id": lot["id"],
+         "status": "REVIEWED", "decision": "RELEASED"},
+        {"_id": 0, "id": 1}, session=session,
+    )
+    if not assessment:
+        raise ValueError("Oil cannot be sold: its laboratory analysis is missing, rejected, or superseded")
+
+
 async def create_wholesale_sale_draft(
     db: Any, draft: WholesaleSaleDraft, *, season_code: str,
     actor_user: dict[str, Any], actor_user_id: str, sale_id: str,
@@ -156,7 +210,8 @@ async def approve_wholesale_sale(
     for balance in balances:
         lot = await db["commercial_lots"].find_one(
             {"id": balance["lot_id"], "product_kind": "OIL"},
-            {"_id": 0, "id": 1, "batch_code": 1, "quality_status": 1},
+            {"_id": 0, "id": 1, "batch_code": 1, "quality_status": 1,
+             "last_quality_assessment_id": 1, "source_production_id": 1},
             session=session,
         )
         if not lot:
@@ -171,6 +226,7 @@ async def approve_wholesale_sale(
         if remaining <= 0:
             break
         taken = min(available, remaining)
+        await _require_released_quality_evidence(db, lot, session=session)
         allocations.append({
             "lot_id": lot["id"], "batch_code": lot.get("batch_code"),
             "quantity_kg": Decimal128(taken),
