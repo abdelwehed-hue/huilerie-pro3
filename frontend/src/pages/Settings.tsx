@@ -40,7 +40,7 @@ function AppAppearanceSettings() {
     <div className="mb-4 flex items-center gap-3">
       <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-800"><Palette className="size-5" /></span>
       <div><h2 className="font-semibold text-stone-900">{ar ? "مظهر التطبيق" : "Apparence de l’application"}</h2>
-      <p className="text-sm text-stone-500">{ar ? "اختر التصميم الذي سيُطبق على Oro Verde وGestion commerciale." : "Choisissez le design appliqué à Oro Verde et à Gestion commerciale."}</p></div>
+      <p className="text-sm text-stone-500">{ar ? "اختر التصميم الذي سيُطبق على تطبيق Oro Verde العادي فقط." : "Choisissez le design appliqué uniquement à l’application Oro Verde classique."}</p></div>
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
       {choices.map((choice) => <button key={choice.value} type="button" data-testid={`appearance-${choice.value}`} aria-pressed={appearance === choice.value} onClick={() => setAppearance(choice.value)} className={cn("rounded-xl border-2 p-4 text-start transition-all", appearance === choice.value ? "border-emerald-700 bg-emerald-50 shadow-sm" : "border-stone-200 bg-white hover:border-stone-400")}>
