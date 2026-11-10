@@ -23,7 +23,6 @@ import { fmtDate, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
-import { ShieldCheck } from "lucide-react";
 import Audit from "@/pages/Audit";
 
 
@@ -410,7 +409,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title={t("settings")} accent="bg-violet-500" />
       <Tabs defaultValue="users">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-8">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-9">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-sky-100 text-sky-700"><Users className="size-4 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
@@ -432,6 +431,9 @@ export default function SettingsPage() {
           <TabsTrigger value="audit" data-testid="settings-tab-audit" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-50 data-[state=active]:border-rose-600 data-[state=active]:bg-rose-200 data-[state=active]:text-rose-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-rose-100 text-rose-700"><ClipboardList className="size-4 stroke-[2.2]" /></span><span>{t("audit")}</span>
           </TabsTrigger>
+          <TabsTrigger value="employee-permissions" data-testid="settings-tab-employee-permissions" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 data-[state=active]:border-indigo-600 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-950 data-[state=active]:shadow-md">
+            <span className="grid size-7 place-items-center rounded-lg bg-indigo-100 text-indigo-700"><ShieldAlert className="size-4 stroke-[2.2]" /></span><span>{lang === "ar" ? "صلاحيات العمال" : "Droits des employés"}</span>
+          </TabsTrigger>
           <TabsTrigger value="login-image" data-testid="settings-tab-login-image" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-200 data-[state=active]:text-emerald-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-emerald-100 text-emerald-700"><LogIn className="size-4 stroke-[2.2]" /></span><span>Page Login</span>
           </TabsTrigger>
@@ -441,9 +443,6 @@ export default function SettingsPage() {
             <TabsList className="mb-5 flex h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="user-list" data-testid="users-subtab-list" className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-100 data-[state=active]:text-sky-950">
                 <Users className="me-2 size-4" />{t("users")}
-              </TabsTrigger>
-              <TabsTrigger value="employee-permissions" data-testid="users-subtab-employee-permissions" className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 data-[state=active]:border-indigo-600 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-950">
-                <ShieldCheck className="me-2 size-4" />{lang === "ar" ? "صلاحيات العمال" : "Droits des employés"}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="user-list"><div className="space-y-5"><NavigationRevealSettings /><UsersPanel /></div></TabsContent>
