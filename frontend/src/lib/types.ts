@@ -38,6 +38,7 @@ export interface LabAnalysis {
   oil_content_pct: number | null;
   classification: Grade;
   oil_type: string | null;
+  specification_reference?: string | null;
   notes: string;
   created_at: string;
   created_by: string;
@@ -52,6 +53,7 @@ export interface LabCreate {
   oil_content_pct: number | null;
   classification?: Grade | null;
   oil_type?: string | null;
+  specification_reference?: string | null;
   notes: string;
 }
 
