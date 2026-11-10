@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
+import { fmtMoney } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, type LucideIcon } from "lucide-react";
 
@@ -43,8 +44,7 @@ const money = (v: unknown) => {
   const absolute = negative ? -amount : amount;
   const whole = absolute / 1000n;
   const fraction = String(absolute % 1000n).padStart(3, "0");
-  const formatted = new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 0 }).format(whole);
-  return `${negative ? "-" : ""}${formatted},${fraction} TND`;
+  return `${fmtMoney(`${negative ? "-" : ""}${whole}.${fraction}`)} TND`;
 };
 const mills = (value: unknown): bigint => {
   const raw = String(value ?? "0").trim();
