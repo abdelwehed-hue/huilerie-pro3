@@ -17,7 +17,7 @@ function formatTariffPrice(value: string | number): string {
   const normalized = String(value).trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
   if (!normalized) return "";
   const number = Number(normalized);
-  return Number.isFinite(number) ? new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number) : String(value);
+  return Number.isFinite(number) ? fmtMoney(number) : String(value);
 }
 function parseTariffPrice(value: string): number {
   const normalized = value.trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
