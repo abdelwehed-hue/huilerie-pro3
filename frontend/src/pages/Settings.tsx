@@ -443,6 +443,115 @@ function NumericConventionsPanel() {
   );
 }
 
+
+function FullResetPanel() {
+  const { lang, errMsg } = useI18n();
+  const ar = lang === "ar";
+  const qc = useQueryClient();
+  const [confirmation, setConfirmation] = useState("");
+  const [clearAudit, setClearAudit] = useState(false);
+  const preview = useQuery({
+    queryKey: ["admin", "reset-preview"],
+    queryFn: () => apiGet<{ collections: Record<string, number>; total_documents: number; preserved: string[] }>("/admin/reset/preview"),
+  });
+  const reset = useMutation({
+    mutationFn: () => apiPost<{ ok: boolean; deleted: Record<string, number> }>("/admin/reset", {
+      confirmation, clear_audit: clearAudit,
+    }),
+    onSuccess: async () => {
+      toast.success(ar ? "تم تصفير بيانات التشغيل بنجاح. الإعدادات والعدادات محفوظة." : "Les données opérationnelles ont été réinitialisées. Paramètres et compteurs conservés.");
+      setConfirmation("");
+      await qc.invalidateQueries();
+      await preview.refetch();
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+  const total = preview.data?.total_documents ?? 0;
+  const names: Record<string, string> = {
+    loads: ar ? "الحمولات" : "Chargements",
+    lab: ar ? "تحاليل المخبر" : "Analyses laboratoire",
+    invoices: ar ? "فواتير التطبيق العادي" : "Factures Oro Verde",
+    clients: ar ? "الحرفاء" : "Clients",
+    sms_log: ar ? "سجل الرسائل" : "Journal SMS",
+    commercial_suppliers: ar ? "المزودون" : "Fournisseurs GS",
+    commercial_buyers: ar ? "حرفاء GS" : "Acheteurs GS",
+    commercial_custody_owners: ar ? "أصحاب الحمولات المحفوظة" : "Propriétaires en garde",
+    commercial_olive_purchases: ar ? "مشتريات الزيتون" : "Achats d’olives",
+    commercial_oil_purchase_documents: ar ? "وثائق شراء الزيت" : "Achats d’huile",
+    commercial_oil_purchase_payments: ar ? "دفعات المشتريات" : "Paiements des achats",
+    commercial_sales: ar ? "المبيعات" : "Ventes",
+    commercial_sales_invoices: ar ? "فواتير GS" : "Factures GS",
+    commercial_sale_payments: ar ? "دفعات المبيعات" : "Paiements des ventes",
+    commercial_production_runs: ar ? "عمليات الإنتاج" : "Productions",
+    commercial_lots: ar ? "الدفعات والمخزون" : "Lots et stocks",
+    commercial_stock_movements: ar ? "حركات المخزون" : "Mouvements de stock",
+    commercial_stock_balances: ar ? "أرصدة المخزون" : "Soldes de stock",
+    commercial_internal_movements: ar ? "التحويلات" : "Transferts",
+    commercial_quality_assessments: ar ? "تحاليل الجودة" : "Analyses qualité",
+    commercial_preproduction_samples: ar ? "عينات ما قبل الإنتاج" : "Échantillons préproduction",
+    commercial_customer_custody_receipts: ar ? "استلام حمولات الحرفاء" : "Réceptions en garde",
+    commercial_customer_custody_releases: ar ? "إرجاع حمولات الحرفاء" : "Restitutions en garde",
+    commercial_sale_returns: ar ? "مرتجعات المبيعات" : "Retours de ventes",
+    commercial_sale_return_rejections: ar ? "رفض المرتجعات" : "Rejets de retours",
+    commercial_buyer_return_rejections: ar ? "رفض مرتجعات المشترين" : "Rejets retours acheteurs",
+    commercial_credit_notes: ar ? "إشعارات الدائن" : "Avoirs",
+    commercial_buyer_credit_ledger: ar ? "دفتر أرصدة المشترين" : "Grand livre acheteurs",
+    commercial_buyer_credit_applications: ar ? "تسويات الأرصدة" : "Affectations de crédits",
+    commercial_payment_reversals: ar ? "عكس الدفعات" : "Annulations de paiements",
+    commercial_quality_releases: ar ? "قرارات تحرير الجودة" : "Décisions qualité",
+    commercial_pump_runtime: ar ? "حالة المضخات المؤقتة" : "État temporaire des pompes",
+    commercial_audit_events: ar ? "سجل التدقيق GS" : "Journal d’audit GS",
+  };
+  return (
+    <section className="space-y-5 rounded-2xl border border-red-200 bg-white p-5 shadow-sm" data-testid="full-reset-panel">
+      <div className="flex items-start gap-3">
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><Trash2 className="size-5" /></div>
+        <div>
+          <h2 className="text-lg font-bold text-red-900">{ar ? "إرجاع التطبيقين إلى حالة البداية" : "Réinitialiser Oro Verde et Gestion commerciale"}</h2>
+          <p className="mt-1 text-sm text-stone-600">{ar ? "يمسح جميع بيانات التجارب والمعاملات في التطبيق العادي وGS حتى تبدأ إدخال البيانات الحقيقية من الصفر." : "Supprime les données de test et les opérations des deux modules afin de recommencer la saisie réelle à zéro."}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">{ar ? "ما سيبقى محفوظاً" : "Éléments conservés"}</p>
+        <p className="mt-1">{ar ? "الإعدادات، المستخدمون وصلاحياتهم، الموسم، الخزانات، المواقع، الأصناف، إعدادات المضخات، ملفات شاشة TV، وعدادات counters وcommercial_counters. لن يعاد استخدام أرقام الأكواد والفواتير." : "Paramètres, utilisateurs et droits, campagne, cuves, emplacements, variétés, configuration des pompes, médias TV et compteurs counters / commercial_counters. Les numéros de codes et factures ne seront pas réutilisés."}</p>
+      </div>
+      <div className="rounded-xl border border-stone-200 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="font-semibold">{ar ? "معاينة البيانات التي ستحذف" : "Aperçu des données à supprimer"}</h3>
+          <Button type="button" variant="outline" size="sm" onClick={() => preview.refetch()} disabled={preview.isFetching}>{ar ? "تحديث المعاينة" : "Actualiser"}</Button>
+        </div>
+        {preview.isLoading ? <p className="text-sm text-stone-500">{ar ? "جارٍ حساب السجلات..." : "Calcul des documents…"}</p> :
+          preview.isError ? <p className="text-sm text-red-700">{ar ? "تعذر تحميل المعاينة." : "Impossible de charger l’aperçu."}</p> :
+          <div className="grid gap-2 sm:grid-cols-2">
+            {Object.entries(preview.data?.collections ?? {}).filter(([key]) => key !== "commercial_audit_events" || clearAudit).map(([key, count]) => (
+              <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-stone-50 px-3 py-2 text-sm">
+                <span>{names[key] ?? key}</span><strong className="font-mono tabular-nums">{count.toLocaleString()}</strong>
+              </div>
+            ))}
+            <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-900 sm:col-span-2">
+              <span>{ar ? "مجموع السجلات المحددة" : "Total des documents sélectionnés"}</span>
+              <span className="font-mono tabular-nums">{(total + (clearAudit ? 0 : -(preview.data?.collections?.commercial_audit_events ?? 0))).toLocaleString()}</span>
+            </div>
+          </div>}
+      </div>
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200 p-3 text-sm">
+        <input type="checkbox" checked={clearAudit} onChange={(e) => setClearAudit(e.target.checked)} className="mt-0.5 size-4 accent-red-700" />
+        <span><strong>{ar ? "مسح سجل التدقيق القديم أيضاً" : "Effacer également l’ancien journal d’audit"}</strong><span className="mt-1 block text-stone-500">{ar ? "إذا لم تحدد هذا الخيار، يبقى سجل التدقيق القديم. وفي الحالتين يُسجل تنفيذ عملية التصفير في سجل إداري مستقل." : "Sinon, l’historique d’audit est conservé. Dans les deux cas, l’opération de réinitialisation est inscrite dans un journal administratif séparé."}</span></span>
+      </label>
+      <div className="space-y-2">
+        <Label htmlFor="full-reset-confirm">{ar ? "للتأكيد، اكتب RESET" : "Pour confirmer, saisissez RESET"}</Label>
+        <Input id="full-reset-confirm" data-testid="full-reset-confirm-input" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" className="max-w-sm font-mono" placeholder="RESET" />
+      </div>
+      <Button type="button" data-testid="full-reset-submit" disabled={confirmation !== "RESET" || reset.isPending || preview.isLoading || preview.isError} onClick={() => {
+        if (window.confirm(ar ? "تحذير نهائي: سيتم حذف جميع بيانات التشغيل والتجارب في التطبيقين. هل تريد المتابعة؟" : "Dernier avertissement : toutes les données opérationnelles et de test des deux modules seront supprimées. Continuer ?")) reset.mutate();
+      }} className="bg-red-700 text-white hover:bg-red-800">
+        <Trash2 className="me-2 size-4" />{reset.isPending ? (ar ? "جارٍ التصفير..." : "Réinitialisation…") : (ar ? "تصفير التطبيقين" : "Réinitialiser les deux modules")}
+      </Button>
+      <p className="text-xs text-stone-500">{ar ? "هذا الإجراء نهائي ولا يمكن التراجع عنه. لا ينفذ أي حذف بمجرد فتح الصفحة أو نشر التعديل." : "Cette action est définitive. Aucun effacement n’est déclenché à l’ouverture de la page ni lors du déploiement."}</p>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const { t, lang } = useI18n();
   const me = useMe();
@@ -457,7 +566,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader title={t("settings")} accent="bg-violet-500" />
       <Tabs defaultValue="users">
-        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-9">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-sky-100 text-sky-700"><Users className="size-4 stroke-[2.2]" /></span><span>{t("users")}</span>
           </TabsTrigger>
@@ -482,6 +591,9 @@ export default function SettingsPage() {
           <TabsTrigger value="employee-permissions" data-testid="settings-tab-employee-permissions" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 data-[state=active]:border-indigo-600 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-indigo-100 text-indigo-700"><ShieldAlert className="size-4 stroke-[2.2]" /></span><span>{lang === "ar" ? "صلاحيات العمال" : "Droits des employés"}</span>
           </TabsTrigger>
+          <TabsTrigger value="full-reset" data-testid="settings-tab-full-reset" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-red-200 bg-white px-2 py-1 text-sm font-semibold text-red-700 shadow-sm transition-all hover:border-red-400 hover:bg-red-50 data-[state=active]:border-red-700 data-[state=active]:bg-red-100 data-[state=active]:text-red-950 data-[state=active]:shadow-md">
+            <span className="grid size-7 place-items-center rounded-lg bg-red-100 text-red-700"><Trash2 className="size-4 stroke-[2.2]" /></span><span>{lang === "ar" ? "تصفير البيانات" : "Réinitialisation"}</span>
+          </TabsTrigger>
           <TabsTrigger value="login-image" data-testid="settings-tab-login-image" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-200 data-[state=active]:text-emerald-950 data-[state=active]:shadow-md">
             <span className="grid size-7 place-items-center rounded-lg bg-emerald-100 text-emerald-700"><LogIn className="size-4 stroke-[2.2]" /></span><span>Page Login</span>
           </TabsTrigger>
@@ -504,6 +616,7 @@ export default function SettingsPage() {
         <TabsContent value="employee-permissions"><EmployeePermissionsPanel /></TabsContent>
         <TabsContent value="audit"><Audit /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
+        <TabsContent value="full-reset"><FullResetPanel /></TabsContent>
       </Tabs>
     </div>
   );
