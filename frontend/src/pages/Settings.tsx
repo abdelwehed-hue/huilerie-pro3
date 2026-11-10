@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 import type { AppSettings, Role, User, UserCreate, UserUpdate } from "@/lib/types";
-import { fmtDate, useI18n } from "@/lib/i18n";
+import { fmtDate, fmtMoney, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { PageHeader } from "@/components/shared";
 import { cn } from "@/lib/utils";
@@ -101,7 +101,7 @@ function formatTariffPrice(value: string): string {
   const normalized = value.trim().replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
   if (!normalized) return "";
   const number = Number(normalized);
-  return Number.isFinite(number) ? new Intl.NumberFormat("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(number) : value;
+  return Number.isFinite(number) ? fmtMoney(number) : value;
 }
 
 function parseTariffPrice(value: string): number {
