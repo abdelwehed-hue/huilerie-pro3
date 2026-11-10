@@ -21,6 +21,87 @@ def _user(doc: dict) -> User:
     return User(**{**doc, "created_at": dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)})
 
 
+# Collections containing operational/test records. Configuration, users, and
+# both numbering sequences are intentionally excluded from this reset.
+RESET_DATA_COLLECTIONS = (
+    "loads", "lab", "invoices", "clients", "sms_log",
+    "commercial_suppliers", "commercial_buyers", "commercial_custody_owners",
+    "commercial_olive_purchases", "commercial_oil_purchase_documents",
+    "commercial_oil_purchase_payments", "commercial_sales",
+    "commercial_sales_invoices", "commercial_sale_payments",
+    "commercial_production_runs", "commercial_lots",
+    "commercial_stock_movements", "commercial_stock_balances",
+    "commercial_internal_movements", "commercial_quality_assessments",
+    "commercial_preproduction_samples", "commercial_customer_custody_receipts",
+    "commercial_customer_custody_releases", "commercial_sale_returns",
+    "commercial_sale_return_rejections", "commercial_buyer_return_rejections",
+    "commercial_credit_notes", "commercial_buyer_credit_ledger",
+    "commercial_buyer_credit_applications", "commercial_payment_reversals",
+    "commercial_quality_releases", "commercial_pump_runtime",
+)
+RESET_AUDIT_COLLECTIONS = ("commercial_audit_events",)
+
+
+@router.get("/admin/reset/preview")
+async def preview_full_reset(_: dict = Depends(require_admin)):
+    counts = {}
+    existing = set(await db.list_collection_names())
+    for name in RESET_DATA_COLLECTIONS:
+        counts[name] = await db[name].count_documents({}) if name in existing else 0
+    counts["commercial_audit_events"] = (
+        await db["commercial_audit_events"].count_documents({})
+        if "commercial_audit_events" in existing else 0
+    )
+    return {
+        "collections": counts,
+        "total_documents": sum(counts.values()),
+        "preserved": [
+            "settings", "users", "counters", "commercial_counters",
+            "commercial_tanks", "commercial_locations", "commercial_varieties",
+            "tv_state", "tv_music_files.files", "tv_music_files.chunks",
+            "backup_numeric_policy_*",
+        ],
+    }
+
+
+@router.post("/admin/reset")
+async def reset_operational_data(body: dict, admin: dict = Depends(require_admin)):
+    if body.get("confirmation") != "RESET":
+        raise HTTPException(400, "reset_confirmation_required")
+    clear_audit = body.get("clear_audit") is True
+    collections = RESET_DATA_COLLECTIONS + (RESET_AUDIT_COLLECTIONS if clear_audit else ())
+    existing = set(await db.list_collection_names())
+    before = {
+        name: await db[name].count_documents({}) if name in existing else 0
+        for name in collections
+    }
+
+    async def perform(session):
+        deleted = {}
+        for name in collections:
+            if name in existing:
+                result = await db[name].delete_many({}, session=session)
+                deleted[name] = result.deleted_count
+            else:
+                deleted[name] = 0
+        return deleted
+
+    from lib.db import run_transaction
+    deleted = await run_transaction(perform)
+
+    # This immutable operational record is deliberately outside the cleared audit
+    # collection so the reset remains traceable even when historical audit is cleared.
+    await db["admin_reset_audit"].insert_one({
+        "event": "FULL_OPERATIONAL_RESET",
+        "admin_id": admin.get("id"),
+        "admin_username": admin.get("username"),
+        "clear_audit": clear_audit,
+        "deleted": deleted,
+        "created_at": datetime.now(timezone.utc),
+    })
+    return {"ok": True, "deleted": deleted, "preserved_counters": True}
+
+
 @router.get("/admin/export.zip")
 async def export_database(_: dict = Depends(require_admin)):
     """Admin-only full export: one Extended-JSON file per collection (mongoimport-compatible,
