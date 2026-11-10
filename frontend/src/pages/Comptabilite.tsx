@@ -6,6 +6,8 @@ import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, typ
 
 type Row = Record<string, any>;
 type Overview = {
+  active_season: string;
+  season_code: string;
   traditional_invoices: Row[];
   supplier_olive_purchases: Row[];
   customer_ownership_transfers: Row[];
