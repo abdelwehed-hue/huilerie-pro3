@@ -771,8 +771,8 @@ export const fmtNum = (n: number | null | undefined, digits = 1) =>
 // groups thousands with a French space, and always displays exactly 3 decimals.
 export const fmtMoney = (value: number | string | null | undefined) => {
   if (value == null || value === "") return "—";
-  const raw = String(value).trim().replace(/[\\s\\u00a0\\u202f]/g, "").replace(",", ".");
-  const match = raw.match(/^([+-]?)(\\d+)(?:\\.(\\d+))?$/);
+  const raw = String(value).trim().replace(/[\s\u00a0\u202f]/g, "").replace(",", ".");
+  const match = raw.match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
   if (!match) return "—";
   let whole = BigInt(match[2]);
   const fraction = (match[3] || "").padEnd(4, "0");
