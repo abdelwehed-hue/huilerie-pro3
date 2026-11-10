@@ -338,3 +338,76 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
     pointer-events: auto !important;
   }
 }
+
+
+/* Oro Verde selectable visual identities. Scoped to presentation only; no business logic or data changes. */
+html[data-app-appearance="premium"] {
+  --background: #f6f1e5;
+  --foreground: #203326;
+  --card: #fffdf7;
+  --card-foreground: #203326;
+  --popover: #fffdf7;
+  --popover-foreground: #203326;
+  --primary: #285b35;
+  --primary-foreground: #fffdf7;
+  --secondary: #eee7d8;
+  --secondary-foreground: #263a2c;
+  --muted: #eee9dc;
+  --muted-foreground: #687366;
+  --accent: #e9efdc;
+  --accent-foreground: #29452d;
+  --border: #ded7c6;
+  --input: #ded7c6;
+  --ring: #9b8a3c;
+  --chart-1: #668a32;
+  --chart-2: #c5a33c;
+  --chart-3: #477b91;
+  --sidebar: #173b25;
+  --sidebar-foreground: #f8f4e9;
+  --sidebar-primary: #d6bd62;
+  --sidebar-primary-foreground: #173b25;
+  --sidebar-accent: #285638;
+  --sidebar-accent-foreground: #fffdf7;
+  --sidebar-border: #315b3b;
+  --sidebar-ring: #d6bd62;
+}
+html[data-app-appearance="modern"] {
+  --background: #f5f8fb;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --primary: #28734d;
+  --primary-foreground: #ffffff;
+  --accent: #eaf3ee;
+  --accent-foreground: #205b3d;
+  --ring: #397cb5;
+  --sidebar: #173b2c;
+  --sidebar-primary: #8dc9a4;
+  --sidebar-accent: #285440;
+}
+html[data-app-appearance="premium"] body { background: #f6f1e5; }
+html[data-app-appearance="modern"] body { background: #f5f8fb; }
+html[data-app-appearance="premium"] .app-topbar-header {
+  background: linear-gradient(100deg, #173b25 0%, #234b30 72%, #315d38 100%) !important;
+  border-bottom-color: #456447 !important;
+}
+html[data-app-appearance="premium"] [data-testid="header-brand-name"] { color: #fffdf4 !important; }
+html[data-app-appearance="premium"] [data-testid="header-brand"] [class*="text-stone-500"] { color: #d7dfcf !important; }
+html[data-app-appearance="premium"] .app-topbar-header button,
+html[data-app-appearance="premium"] .app-topbar-header a {
+  border-color: rgb(235 229 202 / 28%);
+}
+html[data-app-appearance="premium"] .commercial-workspace [data-slot="card"] {
+  background: linear-gradient(145deg, #fffdf7 0%, #f4efdf 100%);
+  border-color: #d9d0b9;
+}
+html[data-app-appearance="premium"] .commercial-workspace [data-slot="card-title"] { color: #285236; }
+html[data-app-appearance="premium"] .commercial-workspace table thead { background: #e9efdf; }
+html[data-app-appearance="premium"] .commercial-workspace table thead th { color: #294b31; }
+html[data-app-appearance="modern"] .commercial-workspace [data-slot="card"] {
+  background: #ffffff;
+  border-color: #dbe5ee;
+}
+html[data-app-appearance="modern"] .commercial-workspace [data-slot="card-title"] { color: #245b45; }
+html[data-app-appearance="modern"] .commercial-workspace table thead { background: #eaf1f8; }
+html[data-app-appearance="modern"] .commercial-workspace table thead th { color: #31536f; }
