@@ -83,12 +83,13 @@ export default function SearchPage() {
     retry: false,
   });
   const list = useQuery({
-    queryKey: ["loads-search", term],
-    queryFn: () => apiGet<Load[]>(`/loads?q=${encodeURIComponent(term)}`),
+    queryKey: ["global-search", term],
+    queryFn: () => apiGet<{ loads: Load[]; commercial: Array<{ id: string | null; source: string; code: string | null; name: string | null; phone: string | null; status: string | null }> }>(`/commercial/v1/global-search?q=${encodeURIComponent(term)}&limit=50`),
     enabled: !!term,
   });
-  const results = list.isError ? [] : (list.data ?? []);
-  const notFound = (one.isError && one.error instanceof ApiError && one.error.status === 404) || (!!term && !selectedCode && list.isSuccess && results.length === 0);
+  const results = list.isError ? [] : (list.data?.loads ?? []);
+  const commercialResults = list.isError ? [] : (list.data?.commercial ?? []);
+  const notFound = (one.isError && one.error instanceof ApiError && one.error.status === 404) || (!!term && !selectedCode && list.isSuccess && results.length === 0 && commercialResults.length === 0);
   const shown = selectedCode ? (one.isError ? undefined : one.data) : (!term && !code && results.length === 1 ? results[0] : undefined);
 
   return (
@@ -102,7 +103,7 @@ export default function SearchPage() {
           const v = input.trim();
           if (!v) return;
           setSelectedCode("");
-          setParams(/^\\d{10}$/.test(v) ? { code: v } : { q: v });
+          setParams({ q: v });
         }}
         className="mb-5 flex w-fit max-w-full flex-wrap items-center gap-1"
       >
@@ -122,8 +123,7 @@ export default function SearchPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t("search_any_hint")}
-            maxLength={10}
-            inputMode="numeric"
+            maxLength={120}
             className="h-14 w-full rounded-2xl border-sky-200 bg-white ps-12 text-xl"
           />
         </div>
@@ -141,9 +141,9 @@ export default function SearchPage() {
 
       </div>
 
-      {!!term && results.length > 0 && (
+      {!!term && (results.length > 0 || commercialResults.length > 0) && (
         <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" data-testid="search-results">
-          <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">{t("results")} ({results.length})</div>
+          <div className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-600">{t("results")} ({results.length + commercialResults.length}) — Oroverde + GS</div>
           <ul className="divide-y divide-stone-100">
             {results.map((l) => (
               <li key={l.id}>
@@ -162,6 +162,22 @@ export default function SearchPage() {
               </li>
             ))}
           </ul>
+          {commercialResults.length > 0 && (
+            <div className="border-t border-stone-100">
+              <div className="bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">Gestion commerciale (GS)</div>
+              <ul className="divide-y divide-stone-100">
+                {commercialResults.map((item, index) => (
+                  <li key={item.id ?? `${item.source}-${index}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                    <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">{item.source}</span>
+                    <span className="font-mono font-bold text-stone-900" dir="ltr">{item.code || "—"}</span>
+                    <span className="flex min-w-40 flex-1 items-center gap-2 text-stone-700"><UserRound className="size-4 text-teal-600" />{item.name || "—"}</span>
+                    {item.phone && <span className="text-xs text-stone-500" dir="ltr">{item.phone}</span>}
+                    {item.status && <span className="text-xs text-stone-500">{item.status}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
       </div>
