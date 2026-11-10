@@ -48,6 +48,7 @@ class LabAnalysis(BaseModel):
     oil_content_pct: Optional[float] = None
     classification: Grade
     oil_type: Optional[str] = None
+    specification_reference: Optional[str] = None
     notes: str = ""
     created_at: datetime
     created_by: str
@@ -62,6 +63,7 @@ class LabCreate(BaseModel):
     oil_content_pct: Optional[float] = Field(default=None, ge=0, le=100)
     classification: Optional[Grade] = None
     oil_type: Optional[str] = Field(default=None, max_length=60)
+    specification_reference: Optional[str] = Field(default=None, max_length=160)
     notes: str = ""
 
 
