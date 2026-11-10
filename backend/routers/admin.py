@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from lib.auth import hash_password, require_admin
 from lib.security_config import has_known_demo_password
 from lib.db import db
+from lib.money import money_db, money_float
 from models.schemas import AppSettings, User, UserCreate, UserUpdate
 
 router = APIRouter(tags=["admin"])
@@ -236,10 +237,13 @@ async def delete_user(id: str, admin: dict = Depends(require_admin)):
 @router.get("/settings", response_model=AppSettings)
 async def get_settings(_: dict = Depends(require_admin)):
     s = await db.settings.find_one({"key": "app"}, {"_id": 0, "key": 0}) or {"price_per_kg": 0}
+    s["price_per_kg"] = money_float(s.get("price_per_kg", 0))
     return AppSettings(**s)
 
 
 @router.put("/settings", response_model=AppSettings)
 async def put_settings(body: AppSettings, _: dict = Depends(require_admin)):
-    await db.settings.update_one({"key": "app"}, {"$set": body.model_dump()}, upsert=True)
+    payload = body.model_dump()
+    payload["price_per_kg"] = money_db(body.price_per_kg)
+    await db.settings.update_one({"key": "app"}, {"$set": payload}, upsert=True)
     return body
