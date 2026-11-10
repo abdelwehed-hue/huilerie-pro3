@@ -1,7 +1,7 @@
-"""Read-only accounting overview assembled from authoritative source documents.
+"""Read-only accounting overview scoped to the active olive season.
 
-Financial totals are aggregated over complete collections. Recent-document lists are
-intentionally capped for display only and must never be used to calculate totals.
+Financial totals are aggregated from authoritative source documents for the active
+season only. Recent-document lists are bounded for display and never drive totals.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends
 
 from lib.auth import require_admin
 from lib.db import db
+from lib.season import active_season, season_prefix
 
 router = APIRouter(prefix="/accounting", tags=["accounting"])
 RECENT_LIMIT = 200
@@ -30,8 +31,11 @@ def _safe(value: Any) -> Any:
     return value
 
 
-async def _recent(collection: str, sort_field: str = "created_at", limit: int = RECENT_LIMIT):
-    docs = await db[collection].find({}, {"_id": 0}).sort(sort_field, -1).to_list(limit)
+async def _recent(
+    collection: str, sort_field: str = "created_at",
+    limit: int = RECENT_LIMIT, match: dict | None = None,
+):
+    docs = await db[collection].find(match or {}, {"_id": 0}).sort(sort_field, -1).to_list(limit)
     return _safe(docs)
 
 
@@ -50,44 +54,56 @@ def _sum_pipeline(field: str, match: dict | None = None) -> list[dict]:
 
 
 async def _sum(collection: str, field: str, match: dict | None = None) -> str:
-    """Sum a numeric/Decimal128/string field server-side across every matching record."""
+    """Sum a numeric/Decimal128/string field server-side across matching records."""
     rows = await db[collection].aggregate(_sum_pipeline(field, match)).to_list(1)
-    # Keep Decimal128 precision across the API boundary; the UI formats this string.
     return rows[0]["total"] if rows else "0.000"
 
 
 @router.get("/overview")
 async def accounting_overview(_: dict = Depends(require_admin)):
-    """Read-only complete totals plus a bounded sample of recent source documents."""
+    """Read-only totals and recent source documents for the active season only."""
+    season = await active_season()
+    season_code = season_prefix(season)
+    commercial_match = {"season_code": season_code}
+
+    # Traditional invoices predate season_code. Their authoritative season is
+    # the season_id on the source olive load, so join by its load_id.
+    seasonal_load_ids = await db.loads.distinct("id", {"season_id": season})
+    invoice_match = {"load_id": {"$in": seasonal_load_ids}}
+
     (
         invoices, olive_purchases, internal_movements, oil_purchases,
         sales_invoices, sale_payments, oil_payments, credit_notes, suppliers, owners,
         pressing_revenue, pressing_collected, gs_sales_revenue, gs_collected,
         supplier_olive_total, customer_olive_total, customer_olive_paid, customer_oil_total, customer_oil_paid,
     ) = await asyncio.gather(
-        _recent("invoices", "day"),
-        _recent("commercial_olive_purchases"),
-        _recent("commercial_internal_movements"),
-        _recent("commercial_oil_purchase_documents"),
-        _recent("commercial_sales_invoices"),
-        _recent("commercial_sale_payments"),
-        _recent("commercial_oil_purchase_payments"),
-        _recent("commercial_credit_notes"),
+        _recent("invoices", "day", match=invoice_match),
+        _recent("commercial_olive_purchases", match=commercial_match),
+        _recent("commercial_internal_movements", match=commercial_match),
+        _recent("commercial_oil_purchase_documents", match=commercial_match),
+        _recent("commercial_sales_invoices", match=commercial_match),
+        _recent("commercial_sale_payments", match=commercial_match),
+        _recent("commercial_oil_purchase_payments", match=commercial_match),
+        _recent("commercial_credit_notes", match=commercial_match),
         _recent("commercial_suppliers", "name", 1000),
         _recent("commercial_custody_owners", "client_name", 5000),
-        _sum("invoices", "total"),
-        _sum("invoices", "paid_amount"),
-        _sum("commercial_sales_invoices", "net_amount_dt"),
-        _sum("commercial_sales_invoices", "paid_amount_dt"),
-        _sum("commercial_olive_purchases", "total_amount_dt", {"status": "APPROVED"}),
-        # Customer olive purchases are counted from their BAH documents, not
-        # from the ownership-transfer record, to avoid counting one purchase twice.
-        _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {"product_kind": "OLIVE"}),
-        _sum("commercial_oil_purchase_payments", "amount_tnd", {"product_kind": "OLIVE"}),
+        _sum("invoices", "total", invoice_match),
+        _sum("invoices", "paid_amount", invoice_match),
+        _sum("commercial_sales_invoices", "net_amount_dt", commercial_match),
+        _sum("commercial_sales_invoices", "paid_amount_dt", commercial_match),
+        _sum("commercial_olive_purchases", "total_amount_dt", {**commercial_match, "status": "APPROVED"}),
         _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {
+            **commercial_match, "product_kind": "OLIVE",
+        }),
+        _sum("commercial_oil_purchase_payments", "amount_tnd", {
+            **commercial_match, "product_kind": "OLIVE",
+        }),
+        _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {
+            **commercial_match,
             "$or": [{"product_kind": "OIL"}, {"product_kind": {"$exists": False}}],
         }),
         _sum("commercial_oil_purchase_payments", "amount_tnd", {
+            **commercial_match,
             "$or": [{"product_kind": "OIL"}, {"product_kind": {"$exists": False}}],
         }),
     )
@@ -100,6 +116,8 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         movement["customer_name"] = owner_names.get(str(source_owner.get("customer_id")))
 
     return {
+        "active_season": season,
+        "season_code": season_code,
         "traditional_invoices": invoices,
         "supplier_olive_purchases": olive_purchases,
         "customer_ownership_transfers": internal_movements,
@@ -123,5 +141,5 @@ async def accounting_overview(_: dict = Depends(require_admin)):
             "customer_oil_paid_total": customer_oil_paid,
         },
         "recent_limit": RECENT_LIMIT,
-        "accounting_basis": "SOURCE_DOCUMENTS_READ_ONLY",
+        "accounting_basis": "ACTIVE_SEASON_SOURCE_DOCUMENTS_READ_ONLY",
     }
