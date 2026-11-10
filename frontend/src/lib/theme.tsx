@@ -15,7 +15,8 @@ export function ThemeProvider({ userId, children }: { userId: string; children: 
   const storageKey = `olive-press-theme:${userId}`;
   const appearanceStorageKey = `oroverde-appearance:${userId}`;
   const [appearance, setAppearanceState] = useState<AppAppearance>(() => {
-    try { return localStorage.getItem(appearanceStorageKey) === "premium" ? "premium" : "modern"; }
+    try { const saved = localStorage.getItem(appearanceStorageKey);
+      return saved === "modern" ? "modern" : "premium"; }
     catch { return "modern"; }
   });
   const [mode, setModeState] = useState<ThemeMode>(() => {
@@ -36,8 +37,8 @@ export function ThemeProvider({ userId, children }: { userId: string; children: 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(appearanceStorageKey);
-      setAppearanceState(saved === "premium" ? "premium" : "modern");
-    } catch { setAppearanceState("modern"); }
+      setAppearanceState(saved === "modern" ? "modern" : "premium");
+    } catch { setAppearanceState("premium"); }
   }, [appearanceStorageKey]);
 
   useEffect(() => {
