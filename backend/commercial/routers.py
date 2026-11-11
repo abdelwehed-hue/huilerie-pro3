@@ -122,6 +122,20 @@ class OliveReceptionPurchaseCommand(BaseModel):
     idempotency_key: str = Field(min_length=16, max_length=128)
 
 
+class DirectOliveLoadPurchaseCommand(BaseModel):
+    """Buy one complete legacy Oro Verde olive load directly into GS."""
+    source_load_id: str = Field(min_length=1, max_length=100)
+    receiving_location_id: str = Field(min_length=1, max_length=100)
+    purchase_date: date
+    customer_acknowledgement_reference: str = Field(min_length=3, max_length=120)
+    agreed_amount: Decimal = Field(gt=0, max_digits=18, decimal_places=3)
+    initial_payment_amount: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=3)
+    initial_payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE"] | None = None
+    initial_payment_reference: str | None = Field(default=None, min_length=1, max_length=120)
+    initial_payment_date: date | None = None
+    idempotency_key: str = Field(min_length=16, max_length=128)
+
+
 class CustomerCustodyOwnerResolveCommand(BaseModel):
     customer_phone: str = Field(min_length=5, max_length=40)
 
@@ -2257,6 +2271,154 @@ async def create_customer_oil_purchase_payment(
                 created_at=now, session=session,
             )
         )
+        return _safe(result)
+    except Exception as exc:
+        _raise_domain_error(exc)
+
+
+@router.post("/customer-purchases/loads", status_code=201)
+async def purchase_customer_olive_load_directly(
+    draft: DirectOliveLoadPurchaseCommand,
+    user: dict = Depends(current_user),
+):
+    """Atomically buy a complete Oro Verde load directly into mill-owned GS stock.
+
+    The customer-custody receipt is an internal stock-ledger primitive only; this
+    endpoint does not create a user-facing Garde des clients workflow.
+    """
+    _authorize(user, "commercial.post_stock")
+    _authorize(user, "commercial.manage_custody")
+    season, season_code = await _require_commercial_ready()
+    if season_of(draft.purchase_date.isoformat()) != season:
+        raise HTTPException(422, "customer_purchase_date_outside_active_season")
+    if draft.initial_payment_amount is None:
+        if draft.initial_payment_method is not None or draft.initial_payment_reference is not None or draft.initial_payment_date is not None:
+            raise HTTPException(422, "initial_payment_details_require_a_positive_payment")
+    else:
+        if draft.initial_payment_amount > draft.agreed_amount:
+            raise HTTPException(422, "initial_payment_exceeds_agreed_amount")
+        if draft.initial_payment_method is None:
+            raise HTTPException(422, "initial_payment_method_required")
+        if draft.initial_payment_method in {"BANK_TRANSFER", "CHEQUE"} and not (draft.initial_payment_reference or "").strip():
+            raise HTTPException(422, "initial_payment_reference_required")
+
+    now = datetime.now(timezone.utc)
+    stable = lambda label: str(uuid.uuid5(uuid.NAMESPACE_URL, f"oro-verde-direct-load-purchase:{draft.idempotency_key}:{label}"))
+
+    async def operation(session):
+        source_load = await db.loads.find_one(
+            {"id": draft.source_load_id, **(await season_filter()),
+             "cancelled": {"$ne": True}, "ownership_transferred": {"$ne": True},
+             "pressing": {"$ne": True}, "oil_kg": None},
+            {"_id": 0, "id": 1, "code": 1, "phone": 1, "client_name": 1,
+             "olive_kg": 1, "variety": 1, "custody_received_kg": 1},
+            session=session,
+        )
+        if not source_load:
+            raise ValueError("Source load is unavailable, already transferred, cancelled, or no longer eligible")
+        received_raw = source_load.get("custody_received_kg", 0)
+        received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw or 0))
+        if received != 0:
+            raise ValueError("A load already received through Garde des clients cannot be purchased through the direct route")
+        quantity_raw = source_load.get("olive_kg", 0)
+        quantity = quantity_raw.to_decimal() if hasattr(quantity_raw, "to_decimal") else Decimal(str(quantity_raw or 0))
+        if quantity <= 0 or not str(source_load.get("variety") or "").strip():
+            raise ValueError("Source load must have a positive quantity and a registered olive variety")
+
+        receipt_draft = CustomerOliveCustodyReceiptDraft(
+            customer_phone=source_load["phone"],
+            receipt_date=draft.purchase_date,
+            variety_id=str(source_load["variety"]).strip(),
+            quantity_kg=quantity,
+            source_load_id=source_load["id"],
+            receiving_location_id=draft.receiving_location_id,
+            customer_acknowledgement_reference=draft.customer_acknowledgement_reference.strip(),
+            source_reference=f"Direct purchase from Oro Verde load {source_load.get('code')}",
+            notes="Direct customer-to-mill ownership purchase; no Garde des clients workflow",
+            idempotency_key=stable("receipt-key"),
+        )
+        receipt = await receive_customer_olive_custody(
+            db, receipt_draft, season_code=season_code, actor_user=user,
+            actor_user_id=user["id"], receipt_id=stable("receipt"),
+            custody_owner_id=stable("custody-owner"), olive_lot_id=stable("olive-lot"),
+            stock_movement_id=stable("receipt-stock"), audit_event_id=stable("receipt-audit"),
+            created_at=now, session=session,
+        )
+        movement_draft = InternalMovementDraft.model_validate({
+            "movement_kind": "OWNERSHIP_TRANSFER",
+            "product_kind": "OLIVE",
+            "lot_id": receipt["olive_lot_id"],
+            "quantity_kg": quantity,
+            "source_location_id": draft.receiving_location_id,
+            "destination_location_id": draft.receiving_location_id,
+            "source_owner": {"kind": "CUSTOMER", "customer_id": receipt["customer_id"]},
+            "destination_owner": {"kind": "MILL"},
+            "idempotency_key": stable("ownership-movement-key"),
+            "reason": f"Vendu à Huilerie — charge source {source_load.get('code')}",
+            "consent_method": "DOCUMENT",
+            "consent_reference": draft.customer_acknowledgement_reference.strip(),
+            "consideration_type": "SALE",
+            "consideration_amount": draft.agreed_amount,
+            "initial_payment_amount": draft.initial_payment_amount,
+            "initial_payment_method": draft.initial_payment_method,
+            "initial_payment_reference": draft.initial_payment_reference,
+            "initial_payment_date": draft.initial_payment_date,
+        })
+        movement = await create_internal_movement(
+            db, movement_draft, season_code=season_code, actor_user=user,
+            actor_user_id=user["id"], movement_document_id=stable("movement-document"),
+            stock_movement_id=stable("ownership-stock"), audit_event_id=stable("ownership-audit"),
+            created_at=now, session=session,
+        )
+        closed = await db.loads.update_one(
+            {"id": source_load["id"], "ownership_transferred": True, "cancelled": {"$ne": True}},
+            {"$set": {
+                "cancelled": True,
+                "cancel_reason": "Vendu à Huilerie",
+                "cancelled_at": now,
+                "cancelled_by": user["username"],
+                "customer_available_olive_kg": Decimal128(Decimal("0")),
+                "ownership_transfer_lot_id": receipt["olive_lot_id"],
+                "ownership_transfer_document_id": movement["id"],
+            }},
+            session=session,
+        )
+        if closed.matched_count != 1:
+            raise ValueError("The source Oro Verde load could not be closed after its ownership transfer")
+        await db["commercial_audit_events"].insert_one({
+            "id": stable("source-load-closed-audit"),
+            "entity_type": "traditional_load",
+            "entity_id": source_load["id"],
+            "action": "LOAD_MARKED_SOLD_TO_MILL",
+            "actor_user_id": user["id"],
+            "created_at": now,
+            "details": {
+                "source_load_code": source_load.get("code"),
+                "gs_traceability_code": receipt.get("batch_code"),
+                "purchase_document_number": movement.get("customer_purchase_document_number"),
+                "reason": "Vendu à Huilerie",
+                "quantity_kg": Decimal128(quantity),
+                "agreed_amount_tnd": Decimal128(draft.agreed_amount),
+            },
+        }, session=session)
+        return {
+            "source_load_id": source_load["id"],
+            "source_load_code": source_load.get("code"),
+            "gs_lot_id": receipt["olive_lot_id"],
+            "gs_traceability_code": receipt.get("batch_code"),
+            "ownership_transfer_id": movement["id"],
+            "purchase_document_id": movement.get("customer_purchase_document_id"),
+            "purchase_document_number": movement.get("customer_purchase_document_number"),
+            "quantity_kg": quantity,
+            "agreed_amount_tnd": draft.agreed_amount,
+            "paid_amount_tnd": draft.initial_payment_amount or Decimal("0"),
+            "outstanding_amount_tnd": draft.agreed_amount - (draft.initial_payment_amount or Decimal("0")),
+            "source_status": "CANCELLED",
+            "source_reason": "Vendu à Huilerie",
+        }
+
+    try:
+        result = await run_transaction(operation)
         return _safe(result)
     except Exception as exc:
         _raise_domain_error(exc)
