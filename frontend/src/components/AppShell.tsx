@@ -79,7 +79,7 @@ export function LangToggle({ className }: { className?: string }) {
   );
 }
 
-function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled: boolean }) {
+function BottomNav({ isAdmin, revealEnabled, pendingLabCount }: { isAdmin: boolean; revealEnabled: boolean; pendingLabCount: number | undefined }) {
   const { t } = useI18n();
   return (
     <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
@@ -101,7 +101,18 @@ function BottomNav({ isAdmin, revealEnabled }: { isAdmin: boolean; revealEnabled
                 )
               }
             >
-              <n.icon className={cn("size-6 stroke-[2] transition-all duration-200 group-hover:-translate-y-0.5", n.color)} />
+              <span className="relative inline-flex">
+                <n.icon className={cn("size-6 stroke-[2] transition-all duration-200 group-hover:-translate-y-0.5", n.color)} />
+                {n.key === "lab" && (pendingLabCount ?? 0) > 0 && (
+                  <span
+                    data-testid="nav-lab-pending-count"
+                    aria-label={`${pendingLabCount} lots en attente d’analyse`}
+                    className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-[#1E2B20] bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+                  >
+                    {pendingLabCount}
+                  </span>
+                )}
+              </span>
               <span className="whitespace-nowrap">{t(MENU_LABEL[n.key] ?? n.key)}</span>
             </NavLink>
           ))}
@@ -344,18 +355,6 @@ export default function AppShell() {
               <Brand />
             </div>
             <div
-              data-testid="header-lab-pending-count"
-              title="Lots d’huile en attente d’analyse"
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-1.5 py-1 text-cyan-950 shadow-sm"
-              aria-live="polite"
-            >
-              <FlaskConical className="size-4 text-cyan-700" />
-              <span className="hidden text-sm font-semibold sm:inline">En attente d’analyse</span>
-              <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-cyan-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                {pendingLabLots.data ?? "—"}
-              </span>
-            </div>
-            <div
               data-testid="header-non-terminated"
               title="كل الحمولات التي لم تنتهِ من العصر"
               className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-1.5 py-1 text-amber-950 shadow-sm"
@@ -415,7 +414,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} />}
+      {!isCommercialWorkspace && <BottomNav isAdmin={isAdmin} revealEnabled={navRevealEnabled} pendingLabCount={pendingLabLots.data} />}
     </div>
     </ThemeProvider>
   );
