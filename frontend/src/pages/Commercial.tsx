@@ -1273,7 +1273,7 @@ export default function Commercial() {
       const selected = directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId);
       if (!selected) throw new Error("Selected source load is no longer available");
       const amount = tndInputToDinars(directPurchaseAmount);
-      const paid = directPurchasePaid.trim() ? tndInputToDinars(directPurchasePaid) : null;
+      const paid = parseTndInputToMillimes(directPurchasePaid) > 0 ? tndInputToDinars(directPurchasePaid) : null;
       return apiPost<AnyRecord>("/commercial/v1/customer-purchases/loads", {
         source_load_id: selected.id,
         receiving_location_id: directPurchaseLocationId,
@@ -1944,7 +1944,7 @@ export default function Commercial() {
               <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "المبلغ المدفوع الآن (اختياري)" : "Montant payé maintenant (facultatif)"}
                 <input inputMode="decimal" placeholder="0,000" value={directPurchasePaid} onChange={(e) => { setDirectPurchasePaid(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
               </label>
-              {Number(directPurchasePaid.replace(",", ".")) > 0 && <>
+              {parseTndInputToMillimes(directPurchasePaid) > 0 && <>
                 <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "طريقة الدفع" : "Mode de paiement"}
                   <select value={directPurchaseMethod} onChange={(e) => { setDirectPurchaseMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE"); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
                     <option value="CASH">{lang === "ar" ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{lang === "ar" ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{lang === "ar" ? "شيك" : "Chèque"}</option>
