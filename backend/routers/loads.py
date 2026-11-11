@@ -320,7 +320,6 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
                 {"cancelled": True, "cancelled_at": {"$gte": start_utc, "$lt": end_utc}},
                 {"ownership_transferred": True, "ownership_transferred_at": {"$gte": start_utc, "$lt": end_utc}},
             ],
-            **(await season_filter()),
         },
         {"_id": 0},
     ).sort([("cancelled_at", -1), ("ownership_transferred_at", -1)]).to_list(1000)
