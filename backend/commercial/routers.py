@@ -2364,7 +2364,7 @@ async def purchase_customer_olive_load_directly(
             "source_owner": {"kind": "CUSTOMER", "customer_id": receipt["customer_id"]},
             "destination_owner": {"kind": "MILL"},
             "idempotency_key": stable("ownership-movement-key"),
-            "reason": f"Vendu à Huilerie — charge source {source_load.get('code')}",
+            "reason": f"Vendu a Huilerie — charge source {source_load.get('code')}",
             "consent_method": "DOCUMENT",
             "consent_reference": draft.customer_acknowledgement_reference.strip(),
             "consideration_type": "SALE",
@@ -2390,7 +2390,7 @@ async def purchase_customer_olive_load_directly(
             {"id": source_load["id"], "ownership_transferred": True, "cancelled": {"$ne": True}},
             {"$set": {
                 "cancelled": True,
-                "cancel_reason": "Vendu à Huilerie",
+                "cancel_reason": "Vendu a Huilerie",
                 "cancelled_at": now,
                 "cancelled_by": user["username"],
                 "customer_available_olive_kg": Decimal128(Decimal("0")),
@@ -2412,7 +2412,7 @@ async def purchase_customer_olive_load_directly(
                 "source_load_code": source_load.get("code"),
                 "gs_traceability_code": receipt.get("batch_code"),
                 "purchase_document_number": movement.get("customer_purchase_document_number"),
-                "reason": "Vendu à Huilerie",
+                "reason": "Vendu a Huilerie",
                 "quantity_kg": Decimal128(quantity),
                 "agreed_amount_tnd": Decimal128(draft.agreed_amount),
             },
@@ -2430,7 +2430,7 @@ async def purchase_customer_olive_load_directly(
             "paid_amount_tnd": Decimal128(draft.initial_payment_amount or Decimal("0")),
             "outstanding_amount_tnd": Decimal128(draft.agreed_amount - (draft.initial_payment_amount or Decimal("0"))),
             "source_status": "CANCELLED",
-            "source_reason": "Vendu à Huilerie",
+            "source_reason": "Vendu a Huilerie",
         }
         await db["commercial_direct_load_purchases"].insert_one({
             "id": stable("direct-purchase-record"),
