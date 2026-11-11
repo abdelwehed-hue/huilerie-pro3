@@ -48,11 +48,16 @@ async def _price() -> float:
 
 def to_load(doc: dict, user: dict, lab: Optional[dict] = None) -> Load:
     is_admin = user["role"] == "admin"
-    oil = doc.get("oil_kg")
+    raw_oil = doc.get("oil_kg")
+    oil = money_float(to_decimal(raw_oil)) if raw_oil is not None else None
+    olive_kg = money_float(to_decimal(doc["olive_kg"]))
+    available_olive_kg = money_float(
+        to_decimal(doc.get("customer_available_olive_kg", doc["olive_kg"]) or 0)
+    )
     return Load(
         id=doc["id"], code=doc["code"], client_name=doc["client_name"], phone=doc["phone"],
-        olive_kg=doc["olive_kg"], available_olive_kg=float(doc.get("customer_available_olive_kg", doc["olive_kg"])), ownership_transferred=bool(doc.get("ownership_transferred", False)), ownership_transferred_at=_aware(doc["ownership_transferred_at"]) if doc.get("ownership_transferred_at") else None, oil_kg=oil,
-        yield_pct=round(oil / doc["olive_kg"] * 100, 2) if oil is not None and doc["olive_kg"] else None,
+        olive_kg=olive_kg, available_olive_kg=available_olive_kg, ownership_transferred=bool(doc.get("ownership_transferred", False)), ownership_transferred_at=_aware(doc["ownership_transferred_at"]) if doc.get("ownership_transferred_at") else None, oil_kg=oil,
+        yield_pct=round(oil / olive_kg * 100, 2) if oil is not None and olive_kg else None,
         status="cancelled" if doc.get("cancelled") else (
             "delivered" if doc.get("delivered") else (
                 "done" if oil is not None else ("pressing" if doc.get("pressing") else "pending"))),
