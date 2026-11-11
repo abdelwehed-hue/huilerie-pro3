@@ -30,7 +30,18 @@ def _out(doc: dict) -> LabAnalysis:
 @router.get("", response_model=list[LabAnalysis])
 async def list_lab(_: dict = Depends(current_user)):
     docs = await db.lab.find(await season_filter(), {"_id": 0}).sort("created_at", -1).to_list(500)
-    return [_out(d) for d in docs]
+    # Keep historical analyses in the database, but do not show them as active
+    # Oro Verde analyses after the source load has been transferred to GS.
+    load_ids = list({doc.get("load_id") for doc in docs if doc.get("load_id")})
+    transferred_load_ids: set[str] = set()
+    if load_ids:
+        transferred_loads = await db.loads.find(
+            {"id": {"$in": load_ids}, "ownership_transferred": True},
+            {"_id": 0, "id": 1},
+        ).to_list(len(load_ids))
+        transferred_load_ids = {load["id"] for load in transferred_loads}
+    active_docs = [doc for doc in docs if doc.get("load_id") not in transferred_load_ids]
+    return [_out(d) for d in active_docs]
 
 
 @router.post("", response_model=LabAnalysis)
@@ -40,6 +51,10 @@ async def create_lab(body: LabCreate, user: dict = Depends(current_user)):
         raise HTTPException(404, "code_not_found")
     if load.get("cancelled"):
         raise HTTPException(409, "load_cancelled")
+    if load.get("ownership_transferred") or float(
+        load.get("customer_available_olive_kg", load.get("olive_kg", 0)) or 0
+    ) <= 0:
+        raise HTTPException(409, "load_ownership_transferred_to_mill")
     fields = {
         **body.model_dump(),
         "code": load["code"], "season_id": load.get("season_id"),
