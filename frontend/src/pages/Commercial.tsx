@@ -455,7 +455,27 @@ export default function Commercial() {
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
     queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
-    queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone) + "/all-loads"),
+    queryFn: async () => {
+      // Primary source: complete history across all seasons and statuses.
+      let history: AnyRecord = { phone: selectedCustodyHistoryPhone, loads: [] };
+      try {
+        history = await apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone) + "/all-loads");
+      } catch {
+        // Fall back to the traditional loads endpoint instead of hiding the source list.
+      }
+      const historicalLoads = Array.isArray(history?.loads) ? history.loads : [];
+      let activeLoads: AnyRecord[] = [];
+      try {
+        activeLoads = await apiGet<AnyRecord[]>("/loads?q=" + encodeURIComponent(selectedCustodyHistoryPhone));
+      } catch {
+        // Keep the complete-history response if the fallback is unavailable.
+      }
+      const byId = new Map<string, AnyRecord>();
+      [...historicalLoads, ...(Array.isArray(activeLoads) ? activeLoads : [])].forEach((load) => {
+        if (load?.id) byId.set(String(load.id), load);
+      });
+      return { ...history, phone: selectedCustodyHistoryPhone, loads: [...byId.values()] };
+    },
     enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
     // A customer may add a new traditional load while this GS form stays open.
     // Refresh the selected customer's source-load history while direct purchases are active.
