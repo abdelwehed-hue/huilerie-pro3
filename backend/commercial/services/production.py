@@ -112,7 +112,15 @@ async def complete_commercial_production(
             {"_id": 0, "id": 1, "oil_sample_lot_id": 1,
              "source_purchase_id": 1, "source_olive_lot_ids": 1}, session=session,
         )
-        if sample and sample.get("source_purchase_id") and sample.get("source_purchase_id") != lot.get("source_purchase_id"):
+        # Automatic purchase-analysis samples historically stored the purchase
+        # reference as source_document_id. Accept that canonical legacy field,
+        # while continuing to reject a genuinely different purchase.
+        sample_purchase_id = (
+            sample.get("source_purchase_id")
+            or (sample.get("source_document_id")
+                if sample.get("source_document_type") == "PURCHASE" else None)
+        ) if sample else None
+        if sample_purchase_id and sample_purchase_id != lot.get("source_purchase_id"):
             raise ValueError("Preproduction sample belongs to a different olive purchase")
         sample_oil_query = {
             "id": sample.get("oil_sample_lot_id") if sample else None,
@@ -124,10 +132,13 @@ async def complete_commercial_production(
         }
         # New purchase-wide automatic samples carry the purchase ID. Legacy
         # manual samples do not, so preserve their original validation path.
-        if sample and sample.get("source_olive_lot_ids"):
-            sample_oil_query["source_purchase_id"] = lot.get("source_purchase_id")
-            if sample.get("source_purchase_id") != lot.get("source_purchase_id"):
-                raise ValueError("Preproduction sample belongs to a different olive purchase")
+        if sample and sample.get("source_olive_lot_ids") and sample_purchase_id:
+            sample_oil_query["$and"] = [{
+                "$or": [
+                    {"source_purchase_id": sample_purchase_id},
+                    {"source_document_type": "PURCHASE", "source_document_id": sample_purchase_id},
+                ]
+            }]
         sample_oil_lot = await db["commercial_lots"].find_one(
             sample_oil_query,
             {"_id": 0, "id": 1, "owner": 1, "source_purchase_id": 1}, session=session,
