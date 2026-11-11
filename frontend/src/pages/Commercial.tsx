@@ -177,18 +177,18 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
-  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
+  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [stockView, setStockView] = useState<"lots" | "movements" | "chargement">(requestedTab === "movements" || requestedTab === "chargement" ? requestedTab : "lots");
-  const [procurementView, setProcurementView] = useState<"suppliers" | "purchases">(requestedTab === "purchases" ? "purchases" : "suppliers");
+  const [procurementView, setProcurementView] = useState<"suppliers" | "purchases" | "customer-purchases">(requestedTab === "customer-purchases" ? "customer-purchases" : requestedTab === "purchases" ? "purchases" : "suppliers");
   const [salesView, setSalesView] = useState<"buyers" | "sales">("buyers");
   const selectTab = (nextTab: TabKey) => {
-    const targetTab = nextTab === "lots" || nextTab === "movements" || nextTab === "chargement" ? "stock" : nextTab === "suppliers" || nextTab === "purchases" ? "procurement" : nextTab === "buyers" ? "sales" : nextTab;
+    const targetTab = nextTab === "lots" || nextTab === "movements" || nextTab === "chargement" ? "stock" : nextTab === "suppliers" || nextTab === "purchases" || nextTab === "customer-purchases" ? "procurement" : nextTab === "buyers" ? "sales" : nextTab;
     if (nextTab === "lots" || nextTab === "movements" || nextTab === "chargement") setStockView(nextTab);
-    if (nextTab === "suppliers" || nextTab === "purchases") setProcurementView(nextTab);
+    if (nextTab === "suppliers" || nextTab === "purchases" || nextTab === "customer-purchases") setProcurementView(nextTab);
     if (nextTab === "buyers" || nextTab === "sales") setSalesView(nextTab);
     setTab(targetTab);
     setSearchParams((current) => {
@@ -378,7 +378,7 @@ export default function Commercial() {
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers" || tab === "customer-purchases") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "quality" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "quality" || tab === "stock" || tab === "sales") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "stock" || tab === "sales") });
@@ -448,9 +448,9 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality" || tab === "customer-purchases") });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality" || (tab === "procurement" && procurementView === "customer-purchases")) });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production" || tab === "sales") });
-  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && (tab === "custody" || tab === "customer-purchases") });
+  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && (tab === "custody" || (tab === "procurement" && procurementView === "customer-purchases")) });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
@@ -479,7 +479,7 @@ export default function Commercial() {
     enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
     // A customer may add a new traditional load while this GS form stays open.
     // Refresh the selected customer's source-load history while direct purchases are active.
-    refetchInterval: tab === "customer-purchases" && !!selectedCustodyHistoryPhone ? 15000 : false,
+    refetchInterval: tab === "procurement" && procurementView === "customer-purchases" && !!selectedCustodyHistoryPhone ? 15000 : false,
     refetchOnWindowFocus: "always",
     refetchOnMount: "always",
     retry: false,
@@ -1709,7 +1709,7 @@ export default function Commercial() {
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
     { id: "custody", label: lang === "ar" ? "حفظ أمانات الحرفاء" : "Garde des clients", icon: UserCheck },
-    { id: "customer-purchases", label: lang === "ar" ? "شراء حمولات الحرفاء" : "Achats directs clients", icon: ShoppingCart },
+    
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
@@ -1722,7 +1722,7 @@ export default function Commercial() {
     <div className="commercial-workspace mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : tab === "procurement" && procurementView === "customer-purchases" ? (lang === "ar" ? "شراء" : "Achat") : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
           {tab === "overview" && <p className="mt-2 max-w-3xl text-sm text-stone-500 md:text-base">{l.subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
@@ -1937,7 +1937,7 @@ export default function Commercial() {
         {stockView === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
       </div>}
 
-      {tab === "customer-purchases" && <div className="space-y-4">
+      {tab === "procurement" && procurementView === "customer-purchases" && <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>{lang === "ar" ? "شراء حمولة مباشرة من Oro Verde" : "Achat direct d’une charge Oro Verde"}</CardTitle>
@@ -2272,6 +2272,7 @@ export default function Commercial() {
       {tab === "procurement" && <div className="flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white p-2 shadow-sm" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
         <Button type="button" size="sm" variant={procurementView === "suppliers" ? "default" : "outline"} role="tab" aria-selected={procurementView === "suppliers"} onClick={() => selectTab("suppliers")}><Truck className="mr-2 size-4" />{l.suppliers}</Button>
         <Button type="button" size="sm" variant={procurementView === "purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "purchases"} onClick={() => selectTab("purchases")}><ShoppingBasket className="mr-2 size-4" />{l.purchasesTab}</Button>
+        <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء" : "Achat"}</Button>
       </div>}
 
       {tab === "procurement" && procurementView === "suppliers" && <div className="space-y-5">
