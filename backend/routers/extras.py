@@ -826,7 +826,7 @@ async def list_client_options(
 ):
     """Return a stable, globally deduplicated client selector without the legacy 300-row cap."""
     pipeline = [
-        {"$match": {"cancelled": {"$ne": True}, "phone": {"$type": "string", "$ne": ""}}},
+        {"$match": {"phone": {"$type": "string", "$ne": ""}}},
         {"$sort": {"created_at": -1, "id": 1}},
         {"$project": {"_id": 0, "phone": 1, "client_name": 1, "created_at": 1}},
         {"$unionWith": {
