@@ -102,7 +102,17 @@ export default function Lab() {
   const loadsList = useQuery({ queryKey: ["lab-pending-load-codes"], queryFn: () => apiGet<Load[]>("/loads?limit=500"), retry: false });
   const pendingGsCodes = [...new Set((gsLots.data ?? []).filter((lot) => lot.product_kind === "OLIVE" && lot.status === "OPEN" && lot.batch_code && !(gsAssessments.data ?? []).some((assessment) => String(assessment.batch_code || assessment.sample_reference || "").trim().toUpperCase() === String(lot.batch_code).trim().toUpperCase())).map((lot) => String(lot.batch_code || "").trim()).filter(Boolean))];
   const rows = list.isError ? [] : (list.data ?? []);
-  const pendingLoads = (loadsList.data ?? []).filter((load) => !load.lab && load.status !== "cancelled" && !rows.some((analysis) => analysis.load_id === load.id));
+  const fullyReceivedCustodyLoadIds = new Set((loadsList.data ?? []).filter((load) => {
+    const receivedKg = (gsCustodyReceipts.data ?? [])
+      .filter((receipt) => receipt.source_load_id === load.id && receipt.status === "RECEIVED")
+      .reduce((sum, receipt) => sum + Number(receipt.quantity_kg || 0), 0);
+    return Number(load.olive_kg || 0) > 0 && receivedKg >= Number(load.olive_kg || 0);
+  }).map((load) => load.id));
+  const pendingLoads = (loadsList.data ?? []).filter((load) =>
+    !load.lab && load.status !== "cancelled"
+    && !fullyReceivedCustodyLoadIds.has(load.id)
+    && !rows.some((analysis) => analysis.load_id === load.id)
+  );
   const gsAnalysisRows = (gsAssessments.data ?? []).filter((assessment) => assessment.lot_purpose === "PREPRODUCTION_SAMPLE" && (assessment.batch_code || assessment.sample_reference));
   const found = lookup.data && !lookup.isError ? lookup.data : null;
   const oliveVarietyLabel = isGsCode ? gsOliveVariety : (found?.variety || "");
