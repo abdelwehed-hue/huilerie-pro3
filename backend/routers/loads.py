@@ -317,8 +317,12 @@ async def cancellations(month: str = Query("", pattern=r"^(\d{4}-\d{2})?$"), use
     docs = await db.loads.find(
         {
             "$or": [
+                # Ordinary cancellations remain scoped to the selected month.
                 {"cancelled": True, "cancelled_at": {"$gte": start_utc, "$lt": end_utc}},
-                {"ownership_transferred": True, "ownership_transferred_at": {"$gte": start_utc, "$lt": end_utc}},
+                # A direct sale to the mill must remain visible in Annuler even
+                # when the purchase date differs from the current month, or an
+                # older record is missing its transfer timestamp.
+                {"ownership_transferred": True},
             ],
         },
         {"_id": 0},
