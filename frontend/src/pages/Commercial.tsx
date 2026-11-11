@@ -460,7 +460,7 @@ export default function Commercial() {
     retry: false,
   });
   const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
-    .filter((load: AnyRecord) => load.status === "pending" && load.oil_kg == null)
+    .filter((load: AnyRecord) => (load.status == null || load.status === "pending") && load.cancelled !== true && load.pressing !== true && load.ownership_transferred !== true && load.oil_kg == null)
     .map((load: AnyRecord) => {
       const previouslyReceived = (custodyReceipts.data ?? [])
         .filter((receipt: AnyRecord) => receipt.source_load_id === load.id && receipt.status !== "CANCELLED")
