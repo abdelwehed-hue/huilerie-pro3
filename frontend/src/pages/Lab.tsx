@@ -51,6 +51,7 @@ export default function Lab() {
     .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   const gsCodeAssessment = gsCodeAssessments[0];
   const gsPurchases = useQuery({ queryKey: ["lab-gs-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/olive-purchases?limit=500"), retry: false });
+  const gsDirectPurchases = useQuery({ queryKey: ["lab-gs-direct-purchases"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/oil-purchases?limit=500"), retry: false });
   const gsCustodyReceipts = useQuery({ queryKey: ["lab-gs-custody-receipts"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/customer-custody/receipts?limit=500"), retry: false });
   const gsVarieties = useQuery({ queryKey: ["lab-gs-varieties"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/varieties?limit=500"), retry: false });
   const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<{ mill_name?: string }>("/mill"), enabled: isGsCode, retry: false });
@@ -76,18 +77,23 @@ export default function Lab() {
   const gsAnalysisLocked = isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment;
   const gsLotCanBeAnalysed = !!gsOilLot && ["PENDING", "REJECTED"].includes(String(gsOilLot.quality_status)) && !gsCodeAssessment;
   const gsPurchaseForCode = (gsPurchases.data ?? []).find((purchase) => String(purchase.batch_code || "").trim().toUpperCase() === code.toUpperCase());
+  const gsDirectPurchaseForCode = (gsDirectPurchases.data ?? []).find((purchase) => String(purchase.traceability_code || "").trim().toUpperCase() === code.toUpperCase());
   const gsCustodyReceiptForCode = (gsCustodyReceipts.data ?? []).find((receipt) => String(receipt.batch_code || "").trim().toUpperCase() === code.toUpperCase() && receipt.status === "RECEIVED");
   const gsCustodyVariety = (gsVarieties.data ?? []).find((item) => item.id === gsCustodyReceiptForCode?.variety_id);
+  const gsLotVariety = (gsVarieties.data ?? []).find((item) => item.id === gsOliveLot?.variety_id);
   const gsOliveVariety = [...new Set([
     ...(gsPurchaseForCode?.lines ?? []).map((line: any) => {
       const variety = (gsVarieties.data ?? []).find((item) => item.id === line.variety_id);
       return String(variety?.name_fr || variety?.name || line.variety_id || "").trim();
     }),
     ...(gsCustodyReceiptForCode ? [String(gsCustodyVariety?.name_fr || gsCustodyVariety?.name || gsCustodyReceiptForCode.variety_id || "").trim()] : []),
+    ...(gsOliveLot?.variety_id ? [String(gsLotVariety?.name_fr || gsLotVariety?.name || gsOliveLot.variety_id).trim()] : []),
   ].filter(Boolean))].join(", ");
-  const gsOwnerLabel = gsOliveLot?.owner?.kind === "CUSTOMER"
-    ? (gsCustodyReceiptForCode?.customer_name || "Garde du client")
-    : "Achat de la maâsra";
+  const gsOwnerLabel = gsDirectPurchaseForCode
+    ? `Achat direct · ${gsDirectPurchaseForCode.customer_name || "Client"}`
+    : gsOliveLot?.owner?.kind === "CUSTOMER"
+      ? (gsCustodyReceiptForCode?.customer_name || "Garde du client")
+      : "Achat de la maâsra";
   const gsLaboratoryName = String(mill.data?.mill_name ?? "").trim();
   const gsConfiguredLaboratoryName = gsLaboratoryName ? (/^labo\b/i.test(gsLaboratoryName) ? gsLaboratoryName : `Labo ${gsLaboratoryName}`) : "Labo Oroverde";
   const set = (k: keyof typeof EMPTY) => (v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -411,6 +417,7 @@ export default function Lab() {
                 <TableBody>
                   {pendingGsCodes.map((pendingCode) => {
                     const purchase = (gsPurchases.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
+                    const directPurchase = (gsDirectPurchases.data ?? []).find((item) => String(item.traceability_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
                     const custodyReceipt = (gsCustodyReceipts.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase() && item.status === "RECEIVED");
                     const oliveLot = (gsLots.data ?? []).find((lot) => lot.product_kind === "OLIVE" && String(lot.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
                     const purchaseTypes = (purchase?.lines ?? []).map((line: any) => {
@@ -418,16 +425,20 @@ export default function Lab() {
                       return String(item?.name_fr || item?.name || line.variety_id || "").trim();
                     });
                     const custodyVariety = (gsVarieties.data ?? []).find((v) => v.id === custodyReceipt?.variety_id);
+                    const lotVariety = (gsVarieties.data ?? []).find((v) => v.id === oliveLot?.variety_id);
                     const types = [...new Set([
                       ...purchaseTypes,
                       ...(custodyReceipt ? [String(custodyVariety?.name_fr || custodyVariety?.name || custodyReceipt.variety_id || "").trim()] : []),
+                      ...(oliveLot?.variety_id ? [String(lotVariety?.name_fr || lotVariety?.name || oliveLot.variety_id).trim()] : []),
                     ].filter(Boolean))].join(", ");
-                    const sourceLabel = purchase
-                      ? String(purchase.document_number || oliveLot?.source_purchase_id || "Achat de la huilerie")
-                      : custodyReceipt
-                        ? "Garde du client" + (custodyReceipt.customer_name ? " · " + custodyReceipt.customer_name : "")
-                        : "—";
-                    const statusLabel = custodyReceipt ? "Garde client · En attente d’analyse" : "Achat reçu · En attente d’analyse";
+                    const sourceLabel = directPurchase
+                      ? `${directPurchase.document_number || "Bon d’achat"} · ${directPurchase.customer_name || "Achat direct"}`
+                      : purchase
+                        ? String(purchase.document_number || oliveLot?.source_purchase_id || "Achat de la huilerie")
+                        : custodyReceipt
+                          ? "Garde du client" + (custodyReceipt.customer_name ? " · " + custodyReceipt.customer_name : "")
+                          : "—";
+                    const statusLabel = directPurchase ? "Achat direct · En attente d’analyse" : custodyReceipt ? "Garde client · En attente d’analyse" : "Achat reçu · En attente d’analyse";
                     return <TableRow key={pendingCode}>
                       <TableCell><button type="button" onClick={() => { setSelectedGsAssessment(null); setSpecificationReference(""); setF({ ...EMPTY, code: pendingCode }); setCodeListOpen(false); }} className="rounded-lg text-left font-mono text-xs font-semibold text-cyan-800 underline decoration-dotted underline-offset-4 hover:text-cyan-950" title="Sélectionner ce code pour l’analyse">{pendingCode}</button></TableCell>
                       <TableCell>{sourceLabel}</TableCell>
