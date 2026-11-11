@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Droplets, PackagePlus, Scale, ScanLine, Coins, Clock, FileText, Layers } from "lucide-react";
@@ -35,7 +35,16 @@ export default function Dashboard() {
   const [scanOpen, setScanOpen] = useState(false);
   const closeScan = useCallback(() => setScanOpen(false), []);
   const [code, setCode] = useState("");
-  const [premiumTheme] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
+  const [premiumTheme, setPremiumTheme] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
+  useEffect(() => {
+    const syncTheme = () => setPremiumTheme(localStorage.getItem("oroverde-dashboard-theme") === "premium");
+    window.addEventListener("oroverde-dashboard-theme-change", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener("oroverde-dashboard-theme-change", syncTheme);
+      window.removeEventListener("storage", syncTheme);
+    };
+  }, []);
   const stats = useQuery({ queryKey: ["stats"], queryFn: () => apiGet<Stats>("/stats") });
   const loads = useQuery({ queryKey: ["loads", "", ""], queryFn: () => apiGet<Load[]>("/loads") });
   const s = stats.isError ? undefined : stats.data;
