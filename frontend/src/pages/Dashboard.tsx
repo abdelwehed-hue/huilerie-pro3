@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [scanOpen, setScanOpen] = useState(false);
   const closeScan = useCallback(() => setScanOpen(false), []);
   const [code, setCode] = useState("");
+  const [premiumTheme] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
   const stats = useQuery({ queryKey: ["stats"], queryFn: () => apiGet<Stats>("/stats") });
   const loads = useQuery({ queryKey: ["loads", "", ""], queryFn: () => apiGet<Load[]>("/loads") });
   const s = stats.isError ? undefined : stats.data;
@@ -43,8 +44,8 @@ export default function Dashboard() {
   const invoiceByLoad = new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice]));
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className={`mx-auto max-w-7xl dashboard-home ${premiumTheme ? "dashboard-home--premium" : ""}`} data-dashboard-theme={premiumTheme ? "premium" : "classic"}>
+      <div className="dashboard-home__welcome mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-4xl font-bold tracking-tight text-stone-900 md:text-5xl" data-testid="dashboard-greeting">
             {t("welcome")}, {me.data?.full_name ?? ""}
@@ -56,14 +57,14 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.15fr_2fr]">
+      <div className="dashboard-home__top-grid grid gap-5 lg:grid-cols-[1.15fr_2fr]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const v = code.trim();
             if (v) navigate(/^\d{10}$/.test(v) ? `/search?code=${v}` : `/search?q=${encodeURIComponent(v)}`);
           }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B2A1C] via-[#203320] to-[#3A3A1C] p-7 text-white shadow-xl shadow-green-950/25"
+          className="dashboard-home__search relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B2A1C] via-[#203320] to-[#3A3A1C] p-7 text-white shadow-xl shadow-green-950/25"
           data-testid="dashboard-quick-search"
         >
           <div className="pointer-events-none absolute -end-16 -top-16 size-48 rounded-full bg-lime-400/10 blur-2xl" />
@@ -100,8 +101,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <h2 className="mb-4 mt-10 font-heading text-2xl font-bold text-stone-900">{t("today_arrivals")}</h2>
-      <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm">
+      <h2 className="dashboard-home__section-title mb-4 mt-10 font-heading text-2xl font-bold text-stone-900">{t("today_arrivals")}</h2>
+      <div className="dashboard-home__table overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm">
         <Table data-testid="today-arrivals-table">
           <TableHeader>
             <TableRow className="bg-[#E5EFF7] hover:bg-[#E5EFF7]">
