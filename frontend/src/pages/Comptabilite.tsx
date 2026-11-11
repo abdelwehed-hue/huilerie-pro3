@@ -55,6 +55,9 @@ const mills = (value: unknown): bigint => {
   return sign * (BigInt(match[2]) * 1000n + BigInt(fraction || "0"));
 };
 const addMoney = (...values: unknown[]) => values.reduce<bigint>((total, value) => total + mills(value), 0n);
+// Customer olive purchase amounts are stored in millimes by the legacy purchase path,
+// while this accounting view expects decimal TND. Normalize only this category for display.
+const customerOliveTnd = (value: unknown) => (mills(value) / 1000n).toString().replace(/(\\d+)$/, "$1");
 const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.created_at || "").slice(0, 10);
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
@@ -115,13 +118,20 @@ export default function Comptabilite() {
       serviceRevenue: mills(summary?.pressing_revenue_total),
       salesRevenue: mills(summary?.gs_sales_revenue_total),
       stockPurchases: mills(summary?.supplier_olive_purchase_total),
-      customerOlivePurchaseTotal: mills(summary?.customer_olive_purchase_total),
+      customerOlivePurchaseTotal: mills(customerOliveTnd(summary?.customer_olive_purchase_total)),
       customerOilPurchaseTotal: mills(summary?.customer_oil_purchase_total),
       serviceCollected: mills(summary?.pressing_collected_total),
       gsCollected: mills(summary?.gs_sales_collected_total),
       olivePaid: mills(summary?.customer_olive_paid_total),
       oilPaid: mills(summary?.customer_oil_paid_total),
-      supplierPurchases, customerOlivePurchases, customerOilPurchases,
+      supplierPurchases,
+      customerOlivePurchases: customerOlivePurchases.map((row) => ({
+        ...row,
+        agreed_amount_tnd: customerOliveTnd(row.agreed_amount_tnd),
+        paid_amount_tnd: customerOliveTnd(row.paid_amount_tnd),
+        outstanding_amount_tnd: customerOliveTnd(row.outstanding_amount_tnd),
+      })),
+      customerOilPurchases,
     };
   }, [data]);
 
