@@ -339,3 +339,84 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
   }
 }
 
+
+
+/* Premium olive-inspired theme is deliberately scoped to Accueil only. */
+.dashboard-home--premium {
+  max-width: 100%;
+  color: #243a25;
+}
+.dashboard-home--premium .dashboard-home__welcome {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  min-height: 180px;
+  margin: 0 0 1.5rem;
+  padding: 2rem clamp(1.25rem, 4vw, 3rem);
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at 82% 18%, rgb(245 203 79 / 32%), transparent 22%),
+    linear-gradient(112deg, #173a22 0%, #315d2d 48%, #a0a64b 100%);
+  box-shadow: 0 14px 35px rgb(35 67 34 / 16%);
+}
+.dashboard-home--premium .dashboard-home__welcome::after {
+  content: "🌿";
+  position: absolute;
+  inset-inline-end: 2rem;
+  bottom: -2.6rem;
+  font-size: clamp(7rem, 16vw, 12rem);
+  line-height: 1;
+  opacity: .2;
+  pointer-events: none;
+}
+.dashboard-home--premium .dashboard-home__welcome h1,
+.dashboard-home--premium .dashboard-home__welcome p {
+  position: relative;
+  z-index: 1;
+  color: #fffdf2 !important;
+}
+.dashboard-home--premium .dashboard-home__welcome p { color: rgb(255 253 242 / 78%) !important; }
+.dashboard-home--premium .dashboard-home__welcome button {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgb(255 255 255 / 35%);
+  background: #f3c64e;
+  color: #263b1e;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 16%);
+}
+.dashboard-home--premium .dashboard-home__welcome button:hover { background: #ffda70; }
+.dashboard-home--premium .dashboard-home__top-grid { gap: 1.25rem; }
+.dashboard-home--premium .dashboard-home__search {
+  border: 1px solid rgb(255 255 255 / 30%);
+  background: linear-gradient(135deg, #1d4328 0%, #315b32 58%, #6d7834 100%);
+  box-shadow: 0 12px 28px rgb(31 67 38 / 18%);
+}
+.dashboard-home--premium [data-testid^="kpi-"],
+.dashboard-home--premium [data-testid="admin-revenue-metric-card"] {
+  min-height: 10.5rem;
+  border: 1px solid rgb(255 255 255 / 65%);
+  border-radius: 1.4rem;
+  box-shadow: 0 8px 20px rgb(41 65 34 / 9%);
+}
+.dashboard-home--premium .dashboard-home__section-title {
+  color: #29472b;
+  letter-spacing: -.02em;
+}
+.dashboard-home--premium .dashboard-home__table {
+  border-color: #dce8d5;
+  border-radius: 1.35rem;
+  box-shadow: 0 8px 24px rgb(41 65 34 / 7%);
+}
+.dashboard-home--premium .dashboard-home__table thead tr { background: #edf4e7; }
+.dashboard-home--premium .dashboard-home__table thead th { color: #35583a; }
+.dashboard-home--premium .dashboard-home__table tbody tr:hover { background: #f5f8ef; }
+@media (max-width: 640px) {
+  .dashboard-home--premium .dashboard-home__welcome {
+    min-height: 150px;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+  }
+  .dashboard-home--premium .dashboard-home__welcome h1 { font-size: 1.8rem; line-height: 1.15; }
+  .dashboard-home--premium .dashboard-home__welcome::after { inset-inline-end: .5rem; font-size: 6rem; }
+}
