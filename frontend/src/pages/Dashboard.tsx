@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [scanOpen, setScanOpen] = useState(false);
   const closeScan = useCallback(() => setScanOpen(false), []);
   const [code, setCode] = useState("");
-  const [premiumTheme, setPremiumTheme] = useState(false);
+  const [premiumTheme, setPremiumTheme] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
   useEffect(() => {
     const syncTheme = () => setPremiumTheme(localStorage.getItem("oroverde-dashboard-theme") === "premium");
     window.addEventListener("oroverde-dashboard-theme-change", syncTheme);
