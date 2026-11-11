@@ -300,15 +300,14 @@ async def receive_customer_olive_custody(
             "pressing": {"$ne": True},
             "oil_kg": None,
             "$expr": {
-                    "$lte": [
-                        {"$add": [
-                            {"$ifNull": ["$custody_received_kg", 0]},
-                            Decimal128(draft.quantity_kg),
-                        ]},
-                        "$olive_kg",
-                    ]
-                },
-            }
+                "$lte": [
+                    {"$add": [
+                        {"$ifNull": ["$custody_received_kg", 0]},
+                        Decimal128(draft.quantity_kg),
+                    ]},
+                    "$olive_kg",
+                ]
+            },
         }
         if allow_direct_purchase_cancelled_source:
             reservation_query.update({
