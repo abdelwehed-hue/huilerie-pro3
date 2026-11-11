@@ -371,6 +371,7 @@ async def auto_complete_preproduction_sample_for_purchase(
         "auto_generated_for_purchase_analysis": is_mill_purchase,
         "auto_generated_for_customer_custody_analysis": bool(custody_receipt),
         "source_document_type": source_document_type, "source_document_id": source_document_id,
+        **({"source_purchase_id": source_document_id} if source_document_type == "PURCHASE" else {}),
         "idempotency_scope": f"{season_code}:{actor_user_id}",
         "idempotency_key": f"batch-analysis:{source_document_type}:{source_document_id}",
         "request_fingerprint": hashlib.sha256(
@@ -386,6 +387,7 @@ async def auto_complete_preproduction_sample_for_purchase(
         "source_preproduction_sample_id": sample_id,
         "source_olive_lot_id": source_ids[0], "source_olive_lot_ids": source_ids,
         "source_document_type": source_document_type, "source_document_id": source_document_id,
+        **({"source_purchase_id": source_document_id} if source_document_type == "PURCHASE" else {}),
         "quantity_received_kg": Decimal128("0"), "owner": owner,
         "quality_status": "PENDING", "status": "OPEN", "version": 1,
         "created_by": actor_user_id, "created_at": created_utc, "analysis_only": True,
