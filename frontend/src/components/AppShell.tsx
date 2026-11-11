@@ -87,19 +87,22 @@ function BottomNav({ isAdmin, revealEnabled, pendingLabCount, premium }: { isAdm
         data-testid="bottom-nav"
         className={cn(cn("absolute inset-x-0 bottom-0 translate-y-1 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-xl transition-opacity duration-700 ease-in-out motion-reduce:transition-none", premium ? "border-t border-emerald-900/10 bg-[#FFFDF5]/95" : "border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80"), revealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}
       >
-        <div className="mx-auto flex max-w-7xl items-stretch gap-0.5 overflow-x-auto px-2 py-1 [scrollbar-width:none]">
+        <div className="mx-auto flex max-w-7xl items-stretch justify-around gap-0.5 overflow-x-auto px-2 py-1 [scrollbar-width:none] sm:justify-start">
           {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
               end={n.to === "/"}
               data-testid={n.id}
-              className={({ isActive }) =>
-                cn(
+              className={({ isActive }) => {
+                const mobilePrimary = ["nav-dashboard", "nav-intake", "nav-search", "nav-clients", "nav-factures"].includes(n.id);
+                return cn(
                   "group flex min-h-[3.8rem] min-w-[4.75rem] flex-1 flex-col items-center justify-center gap-1 rounded-lg border-2 px-1 py-1.5 text-[12px] font-semibold transition-[background-color,border-color,color] duration-200",
+                  !mobilePrimary && "hidden sm:flex",
+                  mobilePrimary && "max-sm:min-w-0 max-sm:px-0.5",
                   isActive ? (premium ? "border-emerald-700 bg-emerald-800 text-white shadow-md" : "border-[#CFE3C4] bg-[#2C4A30]/95 text-white") : (premium ? "border-transparent text-[#29432A] hover:bg-emerald-50 hover:text-emerald-900" : "border-transparent text-[#C9D4C6] hover:bg-white/10 hover:text-white"),
-                )
-              }
+                );
+              }}
             >
               <span className="relative inline-flex">
                 <n.icon className={cn("size-6 stroke-[2] transition-all duration-200 group-hover:-translate-y-0.5", n.color)} />
