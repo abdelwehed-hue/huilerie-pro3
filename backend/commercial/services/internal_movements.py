@@ -53,14 +53,11 @@ async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *
     received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw))
     if received < Decimal(str(source_load.get("olive_kg", 0))):
         return
+    source_link_filters = [{"source_load_id": source_load_id}]
+    if source_load.get("code"):
+        source_link_filters.append({"source_load_code": source_load["code"]})
     linked_lots = await db["commercial_lots"].find(
-        {
-            "product_kind": "OLIVE",
-            "$or": [
-                {"source_load_id": source_load_id},
-                {"source_load_code": source_load.get("code")},
-            ],
-        },
+        {"product_kind": "OLIVE", "$or": source_link_filters},
         {"_id": 0, "id": 1},
         session=session,
     ).to_list(500)
