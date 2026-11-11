@@ -262,6 +262,7 @@ async def auto_complete_preproduction_sample_for_purchase(
         {"_id": 0}, session=session,
     )
     custody_receipt = None
+    direct_receipt = None
     if purchase:
         source_document_id = purchase["id"]
         source_document_type = "PURCHASE"
@@ -348,7 +349,12 @@ async def auto_complete_preproduction_sample_for_purchase(
 
     created_utc = created_at.astimezone(timezone.utc)
     document_number = await reserve_document_number(db["commercial_counters"], season_code, "ESS", session=session)
-    receiving_location_id = purchase.get("receiving_location_id") if purchase else custody_receipt.get("receiving_location_id")
+    source_receipt = custody_receipt or direct_receipt
+    receiving_location_id = (
+        purchase.get("receiving_location_id") if purchase else
+        source_receipt.get("receiving_location_id") if source_receipt else None
+    )
+    is_mill_purchase = bool(purchase or direct_receipt)
     record = {
         "id": sample_id, "season_code": season_code, "document_type": "ESS",
         "document_number": document_number, "batch_code": batch_code, "status": "COMPLETED",
@@ -359,10 +365,10 @@ async def auto_complete_preproduction_sample_for_purchase(
         "stock_movement_id": None, "trial_date": created_at.date().isoformat(),
         "notes": (
             "Échantillon automatique pour analyse du code d’achat. Aucun stock consommé."
-            if purchase else
+            if is_mill_purchase else
             "Échantillon automatique pour analyse d’olives en garde client. Aucun stock consommé; propriété client conservée."
         ),
-        "auto_generated_for_purchase_analysis": bool(purchase),
+        "auto_generated_for_purchase_analysis": is_mill_purchase,
         "auto_generated_for_customer_custody_analysis": bool(custody_receipt),
         "source_document_type": source_document_type, "source_document_id": source_document_id,
         "idempotency_scope": f"{season_code}:{actor_user_id}",
