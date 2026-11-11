@@ -28,17 +28,22 @@ async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *
         return
     lot = await db["commercial_lots"].find_one(
         {"id": draft.lot_id, "product_kind": "OLIVE"},
-        {"_id": 0, "source_load_id": 1},
+        {"_id": 0, "source_load_id": 1, "source_load_code": 1},
         session=session,
     )
     source_load_id = (lot or {}).get("source_load_id")
-    if not source_load_id:
+    source_load_code = (lot or {}).get("source_load_code")
+    if not source_load_id and not source_load_code:
         return
+    source_load_filter = {"id": source_load_id} if source_load_id else {"code": source_load_code}
     source_load = await db["loads"].find_one(
-        {"id": source_load_id},
-        {"_id": 0, "code": 1, "olive_kg": 1, "custody_received_kg": 1},
+        source_load_filter,
+        {"_id": 0, "id": 1, "code": 1, "olive_kg": 1, "custody_received_kg": 1},
         session=session,
     )
+    if not source_load:
+        return
+    source_load_id = source_load["id"]
     if not source_load:
         return
     # A source load may have been received into custody in multiple batches.
@@ -49,7 +54,13 @@ async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *
     if received < Decimal(str(source_load.get("olive_kg", 0))):
         return
     linked_lots = await db["commercial_lots"].find(
-        {"source_load_id": source_load_id, "product_kind": "OLIVE"},
+        {
+            "product_kind": "OLIVE",
+            "$or": [
+                {"source_load_id": source_load_id},
+                {"source_load_code": source_load.get("code")},
+            ],
+        },
         {"_id": 0, "id": 1},
         session=session,
     ).to_list(500)
