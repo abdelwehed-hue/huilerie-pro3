@@ -795,6 +795,12 @@ export default function Commercial() {
         queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchase-statement"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
         queryClient.invalidateQueries({ queryKey: ["commercial", "custody-statement"] }),
+        // A full customer-to-mill ownership transfer closes the source Oro Verde load.
+        // Refresh the laboratory pending queue so its old customer code disappears;
+        // the new GS batch code remains pending under its own traceability code.
+        queryClient.invalidateQueries({ queryKey: ["loads"] }),
+        queryClient.invalidateQueries({ queryKey: ["lab-pending-load-codes"] }),
+        queryClient.invalidateQueries({ queryKey: ["lab"] }),
       ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
