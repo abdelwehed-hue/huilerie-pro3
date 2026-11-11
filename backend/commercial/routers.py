@@ -2380,6 +2380,12 @@ async def purchase_customer_olive_load_directly(
             stock_movement_id=stable("ownership-stock"), audit_event_id=stable("ownership-audit"),
             created_at=now, session=session,
         )
+        # This receipt is an internal stock-ledger source document, not a Garde des clients entry.
+        await db["commercial_customer_custody_receipts"].update_one(
+            {"id": receipt["id"], "status": "RECEIVED"},
+            {"$set": {"status": "PURCHASED_DIRECTLY", "ownership_transfer_id": movement["id"]}},
+            session=session,
+        )
         closed = await db.loads.update_one(
             {"id": source_load["id"], "ownership_transferred": True, "cancelled": {"$ne": True}},
             {"$set": {
@@ -2641,6 +2647,7 @@ async def list_customer_custody_receipts(
 ):
     _authorize(user, "commercial.read")
     query = {"customer_id": customer_id} if customer_id else ({"customer_phone": customer_phone} if customer_phone else {})
+    query["status"] = {"$ne": "PURCHASED_DIRECTLY"}
     docs = await db.commercial_customer_custody_receipts.find(
         query, {"_id": 0, "id": 1, "document_number": 1, "batch_code": 1, "customer_id": 1, "customer_phone": 1, "customer_name": 1, "olive_lot_id": 1, "source_load_id": 1, "source_load_code": 1, "variety_id": 1, "quantity_kg": 1, "receiving_location_id": 1, "receipt_date": 1, "customer_acknowledgement_reference": 1, "source_reference": 1, "status": 1, "version": 1, "created_at": 1}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
