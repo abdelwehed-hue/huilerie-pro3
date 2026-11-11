@@ -476,7 +476,7 @@ export default function Commercial() {
       });
       return { ...history, phone: selectedCustodyHistoryPhone, loads: [...byId.values()] };
     },
-    enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
+    enabled: ready && (tab === "custody" || (tab === "procurement" && procurementView === "customer-purchases")) && !!selectedCustodyHistoryPhone,
     // A customer may add a new traditional load while this GS form stays open.
     // Refresh the selected customer's source-load history while direct purchases are active.
     refetchInterval: tab === "procurement" && procurementView === "customer-purchases" && !!selectedCustodyHistoryPhone ? 15000 : false,
