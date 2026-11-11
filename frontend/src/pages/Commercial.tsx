@@ -450,7 +450,7 @@ export default function Commercial() {
   });
   const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality" || tab === "customer-purchases") });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production" || tab === "sales") });
-  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
+  const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && (tab === "custody" || tab === "customer-purchases") });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
@@ -1915,8 +1915,8 @@ export default function Commercial() {
               event.preventDefault();
               const selected = directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId);
               if (!selected) { toast.error(lang === "ar" ? "اختر حمولة متاحة" : "Sélectionnez une charge disponible"); return; }
-              if (Number(directPurchaseAmount.replace(",", ".")) <= 0) { toast.error(lang === "ar" ? "أدخل ثمن الشراء الجملي" : "Saisissez le montant total d’achat"); return; }
-              if (directPurchasePaid.trim() && Number(directPurchasePaid.replace(",", ".")) > Number(directPurchaseAmount.replace(",", "."))) { toast.error(lang === "ar" ? "المبلغ المدفوع أكبر من ثمن الشراء" : "Le montant payé dépasse le prix d’achat"); return; }
+              if (parseTndInputToMillimes(directPurchaseAmount) <= 0) { toast.error(lang === "ar" ? "أدخل ثمن الشراء الجملي" : "Saisissez le montant total d’achat"); return; }
+              if (directPurchasePaid.trim() && parseTndInputToMillimes(directPurchasePaid) > parseTndInputToMillimes(directPurchaseAmount)) { toast.error(lang === "ar" ? "المبلغ المدفوع أكبر من ثمن الشراء" : "Le montant payé dépasse le prix d’achat"); return; }
               if (!window.confirm(lang === "ar" ? "تأكيد شراء الحمولة كاملة ونقل ملكيتها إلى المعصرة؟ ستصبح الحمولة الأصلية Annuler ولن يمكن تحويلها مرة ثانية." : "Confirmer l’achat de toute la charge et le transfert de propriété au moulin ? La charge d’origine passera dans Annuler et ne pourra plus être transférée.")) return;
               directPurchaseLoad.mutate();
             }}>
@@ -1958,10 +1958,10 @@ export default function Commercial() {
                 <input required minLength={3} maxLength={120} value={directPurchaseAck} onChange={(e) => { setDirectPurchaseAck(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
               </label>
               {directPurchaseLoadId && <div className="rounded-lg bg-muted/40 p-3 text-sm md:col-span-3">
-                {lang === "ar" ? "المبلغ المتبقي للحريف:" : "Reste dû au client :"} <strong>{money(Math.max(0, Number(directPurchaseAmount.replace(",", ".")) - Number(directPurchasePaid.replace(",", "."))))} TND</strong>
+                {lang === "ar" ? "المبلغ المتبقي للحريف:" : "Reste dû au client :"} <strong>{money(Math.max(0, Number(tndInputToDinars(directPurchaseAmount)) - Number(tndInputToDinars(directPurchasePaid || "0"))))} TND</strong>
                 <span className="ms-3 text-muted-foreground">{lang === "ar" ? "الكمية:" : "Quantité :"} {number(directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId)?.olive_kg)} kg</span>
               </div>}
-              <div className="md:col-span-3"><Button type="submit" disabled={directPurchaseLoad.isPending || !directPurchaseCustomerPhone || !directPurchaseLoadId || !directPurchaseLocationId || directPurchaseAck.trim().length < 3 || !(Number(directPurchaseAmount.replace(",", ".")) > 0)}>{directPurchaseLoad.isPending ? (lang === "ar" ? "جار تنفيذ الشراء…" : "Achat en cours…") : (lang === "ar" ? "شراء الحمولة وتحويل ملكيتها إلى المعصرة" : "Acheter la charge et transférer la propriété au moulin")}</Button></div>
+              <div className="md:col-span-3"><Button type="submit" disabled={directPurchaseLoad.isPending || !directPurchaseCustomerPhone || !directPurchaseLoadId || !directPurchaseLocationId || directPurchaseAck.trim().length < 3 || !(parseTndInputToMillimes(directPurchaseAmount) > 0)}>{directPurchaseLoad.isPending ? (lang === "ar" ? "جار تنفيذ الشراء…" : "Achat en cours…") : (lang === "ar" ? "شراء الحمولة وتحويل ملكيتها إلى المعصرة" : "Acheter la charge et transférer la propriété au moulin")}</Button></div>
             </form>}
             {!canPostStock && <p className="text-sm text-amber-700">{lang === "ar" ? "ليست لديك صلاحية تسجيل تحويل الملكية." : "Vous n’avez pas l’autorisation de transférer la propriété."}</p>}
           </CardContent>
