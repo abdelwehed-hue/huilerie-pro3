@@ -2372,6 +2372,7 @@ async def purchase_customer_olive_load_directly(
             custody_owner_id=stable("custody-owner"), olive_lot_id=stable("olive-lot"),
             stock_movement_id=stable("receipt-stock"), audit_event_id=stable("receipt-audit"),
             created_at=now, session=session,
+            allow_direct_purchase_cancelled_source=True,
         )
         movement_draft = InternalMovementDraft.model_validate({
             "movement_kind": "OWNERSHIP_TRANSFER",
