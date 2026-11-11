@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,17 +31,24 @@ def _out(doc: dict) -> LabAnalysis:
 @router.get("", response_model=list[LabAnalysis])
 async def list_lab(_: dict = Depends(current_user)):
     docs = await db.lab.find(await season_filter(), {"_id": 0}).sort("created_at", -1).to_list(500)
-    # Keep historical analyses in the database, but do not show them as active
-    # Oro Verde analyses after the source load has been transferred to GS.
+    # A full Garde des clients receipt moves the olive load into GS custody,
+    # even though the customer remains its legal owner. Keep the old analysis
+    # as history, but remove it from the active Oro Verde laboratory list.
     load_ids = list({doc.get("load_id") for doc in docs if doc.get("load_id")})
-    transferred_load_ids: set[str] = set()
+    closed_to_custody_ids: set[str] = set()
     if load_ids:
-        transferred_loads = await db.loads.find(
-            {"id": {"$in": load_ids}, "ownership_transferred": True},
-            {"_id": 0, "id": 1},
+        source_loads = await db.loads.find(
+            {"id": {"$in": load_ids}},
+            {"_id": 0, "id": 1, "olive_kg": 1, "custody_received_kg": 1},
         ).to_list(len(load_ids))
-        transferred_load_ids = {load["id"] for load in transferred_loads}
-    active_docs = [doc for doc in docs if doc.get("load_id") not in transferred_load_ids]
+        for source in source_loads:
+            received_raw = source.get("custody_received_kg", 0)
+            original_raw = source.get("olive_kg", 0)
+            received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw or 0))
+            original = original_raw.to_decimal() if hasattr(original_raw, "to_decimal") else Decimal(str(original_raw or 0))
+            if original > 0 and received >= original:
+                closed_to_custody_ids.add(source["id"])
+    active_docs = [doc for doc in docs if doc.get("load_id") not in closed_to_custody_ids]
     return [_out(d) for d in active_docs]
 
 
@@ -51,10 +59,14 @@ async def create_lab(body: LabCreate, user: dict = Depends(current_user)):
         raise HTTPException(404, "code_not_found")
     if load.get("cancelled"):
         raise HTTPException(409, "load_cancelled")
+    received_raw = load.get("custody_received_kg", 0)
+    original_raw = load.get("olive_kg", 0)
+    received = received_raw.to_decimal() if hasattr(received_raw, "to_decimal") else Decimal(str(received_raw or 0))
+    original = original_raw.to_decimal() if hasattr(original_raw, "to_decimal") else Decimal(str(original_raw or 0))
     if load.get("ownership_transferred") or float(
         load.get("customer_available_olive_kg", load.get("olive_kg", 0)) or 0
-    ) <= 0:
-        raise HTTPException(409, "load_ownership_transferred_to_mill")
+    ) <= 0 or (original > 0 and received >= original):
+        raise HTTPException(409, "load_already_received_in_gs_custody_or_transferred")
     fields = {
         **body.model_dump(),
         "code": load["code"], "season_id": load.get("season_id"),
