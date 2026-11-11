@@ -275,16 +275,35 @@ async def auto_complete_preproduction_sample_for_purchase(
             {"batch_code": batch_code, "season_code": season_code, "status": "RECEIVED"},
             {"_id": 0}, session=session,
         )
-        if not custody_receipt:
-            raise ValueError("No approved purchase or active customer-custody receipt exists for this code")
-        source_document_id = custody_receipt["id"]
-        source_document_type = "CUSTOMER_CUSTODY"
-        source_lots = await db["commercial_lots"].find(
-            {"id": custody_receipt["olive_lot_id"], "batch_code": batch_code,
-             "source_customer_custody_receipt_id": custody_receipt["id"],
-             "product_kind": "OLIVE", "status": "OPEN"},
-            {"_id": 0}, session=session,
-        ).to_list(1)
+        if custody_receipt:
+            source_document_id = custody_receipt["id"]
+            source_document_type = "CUSTOMER_CUSTODY"
+            source_lots = await db["commercial_lots"].find(
+                {"id": custody_receipt["olive_lot_id"], "batch_code": batch_code,
+                 "source_customer_custody_receipt_id": custody_receipt["id"],
+                 "product_kind": "OLIVE", "status": "OPEN"},
+                {"_id": 0}, session=session,
+            ).to_list(1)
+        else:
+            # Direct customer-to-mill purchases deliberately close their internal
+            # custody receipt as PURCHASED_DIRECTLY after transferring ownership.
+            # They are not active customer custody, but remain a valid mill purchase
+            # source for laboratory sampling and must not be mistaken for one.
+            direct_receipt = await db["commercial_customer_custody_receipts"].find_one(
+                {"batch_code": batch_code, "season_code": season_code,
+                 "status": "PURCHASED_DIRECTLY"},
+                {"_id": 0}, session=session,
+            )
+            if not direct_receipt:
+                raise ValueError("No approved purchase or active customer-custody receipt exists for this code")
+            source_document_id = direct_receipt["id"]
+            source_document_type = "DIRECT_PURCHASE"
+            source_lots = await db["commercial_lots"].find(
+                {"id": direct_receipt["olive_lot_id"], "batch_code": batch_code,
+                 "source_customer_custody_receipt_id": direct_receipt["id"],
+                 "product_kind": "OLIVE", "status": "OPEN"},
+                {"_id": 0}, session=session,
+            ).to_list(1)
 
     if not source_lots:
         raise ValueError("No open olive stock lot is linked to this code")
@@ -293,7 +312,7 @@ async def auto_complete_preproduction_sample_for_purchase(
     if len(owners) != 1:
         raise ValueError("Olive lots under this code have different owners; automatic sample cannot combine them")
     owner = _owner_document(source_lots[0].get("owner") or {})
-    if source_document_type == "PURCHASE" and owner.get("kind") != "MILL":
+    if source_document_type in {"PURCHASE", "DIRECT_PURCHASE"} and owner.get("kind") != "MILL":
         raise ValueError("An approved mill purchase must be mill-owned")
     if source_document_type == "CUSTOMER_CUSTODY":
         if owner.get("kind") != "CUSTOMER" or owner.get("customer_id") != custody_receipt.get("customer_id"):
@@ -303,7 +322,7 @@ async def auto_complete_preproduction_sample_for_purchase(
     sample_identity = (
         f"{season_code}:{source_document_id}:{batch_code}"
         if purchase else
-        f"{season_code}:CUSTOMER_CUSTODY:{source_document_id}:{batch_code}"
+        f"{season_code}:{source_document_type}:{source_document_id}:{batch_code}"
     )
     sample_id = _stable_id("auto-preproduction-sample", sample_identity)
     oil_lot_id = _stable_id("auto-preproduction-oil-lot", sample_id)
