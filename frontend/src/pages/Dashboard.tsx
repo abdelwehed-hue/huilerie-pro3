@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowRight, CalendarDays, ChartColumnIncreasing, Clock3, Droplets, FileText, FlaskConical, Leaf, PackagePlus, Search, Settings, ShoppingBasket, Sun, UserRound, Warehouse, ScanLine, ReceiptText, Users, Calculator, Tv, Cog } from "lucide-react";
+import { ArrowRight, CalendarDays, ChartColumnIncreasing, Clock3, Droplets, FileText, FlaskConical, Leaf, PackagePlus, Search, ShoppingBasket, Sun, UserRound, Warehouse, ScanLine, ReceiptText, Users, Calculator, Tv, Cog } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { AppSettings, Load, Stats } from "@/lib/types";
 import { fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
@@ -64,7 +64,7 @@ export default function Dashboard() {
       <div className="home-hero__message">
         <h1>Bienvenue sur <em>{millName}</em></h1>
         <p>Tradition et qualité<br/>au service de votre huile d’olive</p>
-        <Button onClick={() => setIntakeOpen(true)} className="home-hero__cta"><PackagePlus size={19}/>{t("new_reception")}</Button>
+        <div className="home-hero__actions"><Button onClick={() => setIntakeOpen(true)} className="home-hero__cta"><PackagePlus size={19}/>{t("new_reception")}</Button><form className="home-hero__search" onSubmit={(e) => { e.preventDefault(); const value = code.trim(); if (value) navigate(/^\\d{10}$/.test(value) ? `/search?code=${value}` : `/search?q=${encodeURIComponent(value)}`); }}><Input value={code} onChange={e => setCode(e.target.value)} placeholder={lang === "ar" ? "ابحث عن كود أو حريف" : "Code ou nom du client"} aria-label="Recherche rapide"/><button type="submit" aria-label="Rechercher"><Search size={18}/></button><button type="button" onClick={() => setScanOpen(true)} aria-label={t("scan_qr")}><ScanLine size={18}/></button></form></div>
       </div>
       {!heroImage && <div className="home-hero__olive-art" aria-hidden="true"><span>🌿</span><span>🫒</span></div>}
     </section>
