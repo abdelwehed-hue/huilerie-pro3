@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useCallback, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Droplets, PackagePlus, Scale, ScanLine, Coins, Clock, FileText, Layers } from "lucide-react";
+import { Activity, ArrowRight, CalendarDays, ChartColumnIncreasing, Clock3, Droplets, FileText, FlaskConical, Leaf, PackagePlus, Search, Settings, ShoppingBasket, Sun, UserRound, Warehouse, ScanLine, ReceiptText, Users, Calculator, Tv, Cog } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { Load, Stats } from "@/lib/types";
+import type { AppSettings, Load, Stats } from "@/lib/types";
 import { fmtMoney, fmtNum, useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { CodeBadge, StatusPill } from "@/components/shared";
@@ -14,144 +14,125 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import IntakePanel from "@/components/IntakePanel";
 import QrScanDialog from "@/components/QrScanDialog";
 
-function KpiCard({ label, value, icon, testId, tint }: { label: string; value: React.ReactNode; icon: React.ReactNode; testId: string; tint: string }) {
-  return (
-    <div data-testid={testId} className={`flex min-h-40 flex-col justify-between rounded-3xl border p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md ${tint}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-[15px] leading-snug font-semibold opacity-80">{label}</div>
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/90 shadow-sm [&_svg]:size-5 [&_svg]:stroke-[2.5]">{icon}</div>
-      </div>
-      <div className="mt-4 font-heading text-3xl font-bold tracking-tight" dir="ltr">{value}</div>
+function Metric({ title, value, unit, icon, tone, note }: { title: string; value: React.ReactNode; unit?: string; icon: React.ReactNode; tone: string; note: string }) {
+  return <article className={`home-metric home-metric--${tone}`}>
+    <div className="home-metric__icon">{icon}</div>
+    <div className="min-w-0 flex-1">
+      <div className="home-metric__label">{title}</div>
+      <div className="home-metric__value" dir="ltr">{value}{unit && <small> {unit}</small>}</div>
+      <div className="home-metric__note">{note}</div>
     </div>
-  );
+    <ChartColumnIncreasing className="home-metric__watermark" />
+  </article>;
 }
 
 export default function Dashboard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const me = useMe();
   const navigate = useNavigate();
   const isAdmin = me.data?.role === "admin";
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
-  const closeScan = useCallback(() => setScanOpen(false), []);
   const [code, setCode] = useState("");
-  const [premiumTheme, setPremiumTheme] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
-  useEffect(() => {
-    const syncTheme = () => setPremiumTheme(localStorage.getItem("oroverde-dashboard-theme") === "premium");
-    window.addEventListener("oroverde-dashboard-theme-change", syncTheme);
-    window.addEventListener("storage", syncTheme);
-    return () => {
-      window.removeEventListener("oroverde-dashboard-theme-change", syncTheme);
-      window.removeEventListener("storage", syncTheme);
-    };
-  }, []);
+  const closeScan = useCallback(() => setScanOpen(false), []);
   const stats = useQuery({ queryKey: ["stats"], queryFn: () => apiGet<Stats>("/stats") });
   const loads = useQuery({ queryKey: ["loads", "", ""], queryFn: () => apiGet<Load[]>("/loads") });
-  const s = stats.isError ? undefined : stats.data;
-  const today = (loads.isError ? [] : (loads.data ?? [])).filter((l) => s && l.day === s.today);
+  const mill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AppSettings>("/settings") });
   const invoices = useQuery({ queryKey: ["invoices", "load-links"], queryFn: () => apiGet<Array<{ id: string; load_id: string; number: string }>>("/invoices") });
-  const invoiceByLoad = new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice]));
+  const s = stats.data;
+  const allLoads = loads.data ?? [];
+  const todayLoads = useMemo(() => allLoads.filter((l) => s && l.day === s.today), [allLoads, s?.today]);
+  const invoiceByLoad = useMemo(() => new Map((invoices.data ?? []).map((invoice) => [invoice.load_id, invoice])), [invoices.data]);
+  const recent = useMemo(() => [...allLoads].sort((a,b) => b.created_at.localeCompare(a.created_at)).slice(0,5), [allLoads]);
+  const daily = (s?.daily ?? []).slice(-7);
+  const maxDaily = Math.max(1, ...daily.map(p => p.oil_kg));
+  const heroImage = mill.data?.login_image || mill.data?.tv_image || "";
+  const millName = mill.data?.mill_name || "Oro Verde";
+  const dateLabel = new Intl.DateTimeFormat(lang === "ar" ? "ar-TN" : "fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
 
-  return (
-    <div className={`mx-auto max-w-7xl dashboard-home ${premiumTheme ? "dashboard-home--premium" : ""}`} data-dashboard-theme={premiumTheme ? "premium" : "classic"}>
-      <div className="dashboard-home__welcome mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-4xl font-bold tracking-tight text-stone-900 md:text-5xl" data-testid="dashboard-greeting">
-            {t("welcome")}, {me.data?.full_name ?? ""}
-          </h1>
-          <p className="mt-1 text-lg text-stone-500">{t("app_tagline")}</p>
-        </div>
-        <Button onClick={() => setIntakeOpen(true)} data-testid="dashboard-new-reception-button" className="h-11 rounded-xl bg-[#1F4D2B] px-5 text-base shadow-md shadow-green-900/20 transition-transform hover:bg-[#173B21] active:scale-[0.97]">
-          <PackagePlus className="size-5" /> {t("new_reception")}
-        </Button>
+  return <div className="mx-auto max-w-[1600px] dashboard-home dashboard-home--premium home-redesign">
+    <section className="home-hero" style={heroImage ? { backgroundImage: `linear-gradient(90deg,rgba(17,43,18,.83),rgba(20,47,20,.30) 58%,rgba(20,47,20,.04)),url("${heroImage}")` } : undefined}>
+      <div className="home-brand">
+        <div className="home-brand__mark"><Leaf /></div>
+        <div><div className="home-brand__name">{millName}</div><div className="home-brand__tag">Huilerie Moderne</div></div>
       </div>
+      <div className="home-hero__tools">
+        <span className="home-date"><CalendarDays size={18}/>{dateLabel}</span>
+        <Link to="/settings" aria-label="Paramètres" className="home-round-tool"><Sun size={22}/></Link>
+        <span className="home-round-tool"><UserRound size={22}/></span>
+      </div>
+      <div className="home-hero__message">
+        <h1>Bienvenue sur <em>{millName}</em></h1>
+        <p>Tradition et qualité<br/>au service de votre huile d’olive</p>
+        <Button onClick={() => setIntakeOpen(true)} className="home-hero__cta"><PackagePlus size={19}/>{t("new_reception")}</Button>
+      </div>
+      {!heroImage && <div className="home-hero__olive-art" aria-hidden="true"><span>🌿</span><span>🫒</span></div>}
+    </section>
 
-      <div className="dashboard-home__top-grid grid gap-5 lg:grid-cols-[1.15fr_2fr]">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const v = code.trim();
-            if (v) navigate(/^\d{10}$/.test(v) ? `/search?code=${v}` : `/search?q=${encodeURIComponent(v)}`);
-          }}
-          className="dashboard-home__search relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B2A1C] via-[#203320] to-[#3A3A1C] p-7 text-white shadow-xl shadow-green-950/25"
-          data-testid="dashboard-quick-search"
-        >
-          <div className="pointer-events-none absolute -end-16 -top-16 size-48 rounded-full bg-lime-400/10 blur-2xl" />
-          <div className="text-sm font-semibold uppercase tracking-wide text-lime-300">{t("quick_search_title")}</div>
-          <div className="mt-1 text-sm text-white/70">{t("quick_search_hint")}</div>
-          <div className="mt-7 flex gap-3">
-            <button type="button" onClick={() => setScanOpen(true)} data-testid="qr-scan-button" title={t("scan_qr")} className="grid size-14 shrink-0 place-items-center rounded-xl bg-lime-400 text-[#1B2A1C] shadow-lg shadow-lime-500/30 transition-transform duration-150 hover:scale-105 active:scale-95">
-              <ScanLine className="size-8" />
-            </button>
-            <div className="relative flex-1">
-              <Input
-                data-testid="quick-code-search-input"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder={t("search_any_hint")}
-                className="h-14 rounded-xl border-white/15 bg-white/5 text-lg text-white placeholder:text-sm placeholder:text-white/35 focus-visible:ring-lime-400/40"
-              />
+    <section className="home-metrics" aria-label="Indicateurs">
+      <Metric title={t("olive_today")} value={fmtNum(s?.olive_kg_today)} unit="kg" icon={<Leaf/>} tone="green" note={`${fmtNum(s?.loads_today)} ${t("today_arrivals").toLowerCase()}`}/>
+      <Metric title={t("oil_today")} value={fmtNum(s?.oil_kg_today)} unit="L" icon={<Droplets/>} tone="gold" note={`${fmtNum(s?.avg_yield)}% rendement moyen`}/>
+      <Metric title={lang === "ar" ? "حمولات قيد الانتظار" : "Réceptions en attente"} value={fmtNum(s?.pending)} icon={<ShoppingBasket/>} tone="forest" note={`${fmtNum(s?.non_terminated)} ${lang === "ar" ? "عملية غير منتهية" : "opérations en cours"}`}/>
+      <Metric title={lang === "ar" ? "المداخيل اليوم" : "Revenus du jour"} value={isAdmin ? fmtMoney(s?.revenue_today) : "—"} unit={isAdmin ? "TND" : undefined} icon={<ReceiptText/>} tone="olive" note={isAdmin ? (lang === "ar" ? "حسب الفواتير المسجلة" : "Selon les factures enregistrées") : t("admin_only")}/>
+    </section>
+
+    <section className="home-lower-grid">
+      <article className="home-panel home-activity">
+        <header className="home-panel__header"><div className="home-panel__title"><Leaf/><h2>{lang === "ar" ? "النشاط الأخير" : "Activité récente"}</h2></div><Link to="/loads" className="home-view-all">{lang === "ar" ? "عرض الكل" : "Voir tout"} <ArrowRight size={16}/></Link></header>
+        <div className="home-activity__list">
+          {recent.length === 0 && <p className="home-empty">{t("no_data")}</p>}
+          {recent.map((load, index) => {
+            const invoice = invoiceByLoad.get(load.id);
+            const label = load.lab ? (lang === "ar" ? "تحليل الجودة" : "Analyse qualité") : load.oil_kg != null ? (lang === "ar" ? "إنتاج الزيت" : "Production d’huile") : (lang === "ar" ? "استلام زيتون" : "Réception d’olives");
+            const Icon = load.lab ? FlaskConical : load.oil_kg != null ? Droplets : ShoppingBasket;
+            return <Link to={`/search?code=${encodeURIComponent(load.code)}`} key={load.id} className="home-activity__item">
+              <span className={`home-activity__icon home-activity__icon--${index % 4}`}><Icon size={20}/></span>
+              <span className="home-activity__body"><strong>{label}</strong><small>{load.code} — {load.oil_kg != null ? `${fmtNum(load.oil_kg)} L` : `${fmtNum(load.olive_kg)} kg`}</small></span>
+              <span className="home-activity__time">{new Intl.DateTimeFormat(lang === "ar" ? "ar-TN" : "fr-FR", {hour:"2-digit",minute:"2-digit"}).format(new Date(load.created_at))}{invoice && <small>{invoice.number}</small>}</span>
+            </Link>;
+          })}
+        </div>
+      </article>
+
+      <article className="home-panel home-charts">
+        <header className="home-panel__header"><div className="home-panel__title"><ChartColumnIncreasing/><h2>{lang === "ar" ? "الإحصائيات" : "Graphiques"}</h2></div><span className="home-season">{lang === "ar" ? "هذا الموسم" : "Cette saison"} · {s?.season ?? "—"}</span></header>
+        <div className="home-chart-content">
+          <div className="home-bar-chart">
+            <h3>{lang === "ar" ? "إنتاج الزيت (L)" : "Production d’huile (L)"}</h3>
+            <div className="home-bars">
+              {daily.length ? daily.map((point) => <div className="home-bar-col" key={point.day}><span className="home-bar-value">{fmtNum(point.oil_kg)}</span><div className="home-bar" style={{height:`${Math.max(5, point.oil_kg/maxDaily*100)}%`}}/><small>{new Intl.DateTimeFormat(lang === "ar" ? "ar-TN" : "fr-FR", {day:"2-digit",month:"short"}).format(new Date(point.day+"T12:00:00"))}</small></div>) : <p className="home-empty">{t("no_data")}</p>}
             </div>
-            <Button type="submit" data-testid="quick-code-search-btn" className="h-14 rounded-xl bg-[#2F6B3A] px-6 text-base hover:bg-[#387E45]">
-              {t("search_btn")}
-            </Button>
           </div>
-        </form>
-
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <KpiCard testId="kpi-loads-today" label={t("today_arrivals")} value={s?.loads_today ?? "—"} icon={<Layers />} tint="border-rose-200 bg-rose-50 text-rose-900 [&_svg]:text-rose-600" />
-          <KpiCard testId="kpi-olive-today" label={t("olive_today")} value={<>{fmtNum(s?.olive_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Scale />} tint="border-lime-200 bg-[#F2F8EE] text-[#1E3A14] [&_svg]:text-lime-700" />
-          <KpiCard testId="kpi-oil-today" label={t("oil_today")} value={<>{fmtNum(s?.oil_kg_today)} <span className="text-2xl">{t("kg")}</span></>} icon={<Droplets />} tint="border-yellow-200 bg-[#FEFCE8] text-[#713F12] [&_svg]:text-amber-600" />
-          {isAdmin ? (
-            <KpiCard testId="admin-revenue-metric-card" label={t("revenue_today")} value={<>{fmtMoney(s?.revenue_today)}</>} icon={<Coins />} tint="border-violet-200 bg-[#FAF5FF] text-[#581C87] [&_svg]:text-violet-600" />
-          ) : (
-            <KpiCard testId="kpi-pending" label={t("pending_loads")} value={s?.pending ?? "—"} icon={<Clock />} tint="border-orange-200 bg-orange-50 text-orange-900 [&_svg]:text-orange-600" />
-          )}
+          <div className="home-season-summary">
+            <h3>{lang === "ar" ? "ملخص الموسم" : "Bilan de la saison"}</h3>
+            <div className="home-donut"><div><strong>{fmtNum(s?.loads_total)}</strong><small>{lang === "ar" ? "حمولة" : "réceptions"}</small></div></div>
+            <div className="home-legend"><span><i/> {lang === "ar" ? "الزيتون" : "Olives reçues"} <b>{fmtNum(s?.olive_kg_total)} kg</b></span><span><i/> {lang === "ar" ? "الزيت" : "Huile produite"} <b>{fmtNum(s?.oil_kg_total)} L</b></span></div>
+          </div>
         </div>
-      </div>
+      </article>
+    </section>
 
-      <h2 className="dashboard-home__section-title mb-4 mt-10 font-heading text-2xl font-bold text-stone-900">{t("today_arrivals")}</h2>
-      <div className="dashboard-home__table overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm">
-        <Table data-testid="today-arrivals-table">
-          <TableHeader>
-            <TableRow className="bg-[#E5EFF7] hover:bg-[#E5EFF7]">
-              <TableHead className="h-12 ps-4 text-start text-[15px] font-semibold text-[#31536F]">{t("code")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("client")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("phone")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("varieties")}</TableHead>
-              <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("olive_kg")}</TableHead>
-              <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("oil_kg")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("status")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">Facture</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {today.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="py-12 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>
-            )}
-            {today.map((l) => (
-              <TableRow key={l.id} data-testid={`today-row-${l.code}`} className={l.status === "cancelled" ? "bg-red-50/40 text-[15px] opacity-70" : "text-[15px] transition-colors hover:bg-amber-50/40"}>
-                <TableCell className="ps-4"><Link to={`/search?code=${l.code}`}><CodeBadge code={l.code} /></Link></TableCell>
-                <TableCell className="text-stone-900">{l.client_name}</TableCell>
-                <TableCell className="font-mono text-stone-500" dir="ltr">{l.phone}</TableCell>
-                <TableCell className="text-stone-700">{l.variety || "—"}</TableCell>
-                <TableCell className="text-end font-semibold text-lime-800">{fmtNum(l.olive_kg)} {t("kg")}</TableCell>
-                <TableCell className="text-end font-semibold text-amber-700">{l.oil_kg != null ? `${fmtNum(l.oil_kg, 1)} ${t("liter")}` : "—"}</TableCell>
-                <TableCell><StatusPill status={l.status} size="large" /></TableCell>
-                <TableCell>{invoiceByLoad.has(l.id) ? <Link to={`/factures?invoice_id=${encodeURIComponent(invoiceByLoad.get(l.id)!.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><FileText className="size-4" />{invoiceByLoad.get(l.id)!.number}</Link> : <span className="text-stone-400">—</span>}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+    <section className="home-shortcuts">
+      <Link to="/clients"><Users/><span>Clients</span></Link>
+      <Link to="/factures"><FileText/><span>Factures</span></Link>
+      <Link to="/reports"><Calculator/><span>Comptabilité</span></Link>
+      <button onClick={() => setIntakeOpen(true)}><ShoppingBasket/><span>Achat d’olives</span></button>
+      <Link to="/loads"><Droplets/><span>Production</span></Link>
+      <Link to="/commercial"><Warehouse/><span>GS</span></Link>
+      <Link to="/tv-admin"><Tv/><span>Écran TV</span></Link>
+      <Link to="/settings"><Cog/><span>Paramètres</span></Link>
+    </section>
 
-      <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet">
-          <SheetTitle className="mb-2 font-heading text-lg">{t("new_reception")}</SheetTitle>
-          <div className="origin-top-left" style={{ zoom: 0.82 }}><IntakePanel stacked /></div>
-        </SheetContent>
-      </Sheet>
-      <QrScanDialog open={scanOpen} onClose={closeScan} />
-    </div>
-  );
+    <h2 className="dashboard-home__section-title sr-only">{t("today_arrivals")}</h2>
+    <div className="home-today-table">
+      <div className="home-panel__header"><div className="home-panel__title"><Clock3/><h2>{t("today_arrivals")}</h2></div><span className="home-season">{fmtNum(todayLoads.length)} {lang === "ar" ? "اليوم" : "aujourd’hui"}</span></div>
+      <div className="overflow-x-auto"><Table data-testid="today-arrivals-table"><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("client")}</TableHead><TableHead>{t("olive_kg")}</TableHead><TableHead>{t("oil_kg")}</TableHead><TableHead>{t("status")}</TableHead></TableRow></TableHeader><TableBody>
+        {todayLoads.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center">{t("no_data")}</TableCell></TableRow>}
+        {todayLoads.slice(0,5).map(load => <TableRow key={load.id}><TableCell><Link to={`/search?code=${load.code}`}><CodeBadge code={load.code}/></Link></TableCell><TableCell>{load.client_name}</TableCell><TableCell>{fmtNum(load.olive_kg)} kg</TableCell><TableCell>{load.oil_kg == null ? "—" : `${fmtNum(load.oil_kg)} L`}</TableCell><TableCell><StatusPill status={load.status} size="large"/></TableCell></TableRow>)}
+      </TableBody></Table></div>
+    </section>
+
+    <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}><SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet"><SheetTitle className="mb-2 font-heading text-lg">{t("new_reception")}</SheetTitle><div className="origin-top-left" style={{zoom:0.82}}><IntakePanel stacked/></div></SheetContent></Sheet>
+    <QrScanDialog open={scanOpen} onClose={closeScan}/>
+  </div>;
 }
