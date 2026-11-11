@@ -100,6 +100,28 @@ async def _lock_transferred_source_load(db: Any, draft: InternalMovementDraft, *
         }, session=session)
 
 
+async def _synchronize_lot_owner_after_transfer(db: Any, draft: InternalMovementDraft, *, session: Any) -> None:
+    """Keep the lot's ownership snapshot aligned with the approved stock-ledger transfer."""
+    if draft.movement_kind != "OWNERSHIP_TRANSFER":
+        return
+    source_owner = draft.source_owner.model_dump(exclude_none=True)
+    destination_owner = draft.destination_owner.model_dump(exclude_none=True)
+    lot_filter = {"id": draft.lot_id, "product_kind": draft.product_kind}
+    result = await db["commercial_lots"].update_one(
+        {**lot_filter, "owner": source_owner},
+        {"$set": {"owner": destination_owner}, "$inc": {"version": 1}},
+        session=session,
+    )
+    if result.modified_count == 1:
+        return
+    # Idempotent retries may encounter a lot already updated by this same transfer.
+    current = await db["commercial_lots"].find_one(
+        lot_filter, {"_id": 0, "owner": 1}, session=session,
+    )
+    if not current or current.get("owner") != destination_owner:
+        raise ValueError("Ownership transfer was posted but the olive lot owner could not be synchronized")
+
+
 async def create_internal_movement(
     db: Any, draft: InternalMovementDraft, *, season_code: str,
     actor_user: dict[str, Any], actor_user_id: str, movement_document_id: str,
@@ -121,6 +143,7 @@ async def create_internal_movement(
     if prior:
         if prior.get("request_fingerprint") != fingerprint:
             raise ValueError("Idempotency key was already used for a different internal movement")
+        await _synchronize_lot_owner_after_transfer(db, draft, session=session)
         await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
         return prior
 
@@ -201,6 +224,7 @@ async def create_internal_movement(
         actor_user=actor_user, movement_id=stock_movement_id,
         audit_event_id=audit_event_id, created_at=created_at, session=session,
     )
+    await _synchronize_lot_owner_after_transfer(db, draft, session=session)
     await _lock_transferred_source_load(db, draft, session=session, actor_user_id=actor_user_id, created_at=created_at)
     document["stock_movement_id"] = ledger["id"]
     await collection.update_one(
