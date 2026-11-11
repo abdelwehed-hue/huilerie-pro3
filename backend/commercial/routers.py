@@ -2335,6 +2335,25 @@ async def purchase_customer_olive_load_directly(
         if quantity <= 0 or not str(source_load.get("variety") or "").strip():
             raise ValueError("Source load must have a positive quantity and a registered olive variety")
 
+        # Move the original Oro Verde load to Annuler before creating
+        # the mill purchase/ownership-transfer records. This is in the same
+        # Mongo transaction: any later failure rolls this closure back.
+        closed = await db.loads.update_one(
+            {"id": source_load["id"], "cancelled": {"$ne": True},
+             "ownership_transferred": {"$ne": True},
+             "pressing": {"$ne": True}, "oil_kg": None},
+            {"$set": {
+                "cancelled": True,
+                "cancel_reason": "Vendu a Huilerie",
+                "cancelled_at": now,
+                "cancelled_by": user["username"],
+                "customer_available_olive_kg": Decimal128(Decimal("0")),
+            }},
+            session=session,
+        )
+        if closed.matched_count != 1:
+            raise ValueError("The source Oro Verde load could not be moved to Annuler before purchase approval")
+
         receipt_draft = CustomerOliveCustodyReceiptDraft(
             customer_phone=source_load["phone"],
             receipt_date=draft.purchase_date,
@@ -2386,18 +2405,12 @@ async def purchase_customer_olive_load_directly(
             {"$set": {"status": "PURCHASED_DIRECTLY", "ownership_transfer_id": movement["id"]}},
             session=session,
         )
-        # This direct-purchase workflow buys the complete original load. Close it
-        # here explicitly rather than relying only on the generic custody-transfer
-        # helper, which intentionally waits for every linked custody lot to clear.
-        closed = await db.loads.update_one(
-            {"id": source_load["id"], "cancelled": {"$ne": True},
-             "pressing": {"$ne": True}, "oil_kg": None},
+        # Complete the ownership-transfer metadata only after the purchase
+        # and mill stock movement have been successfully recorded.
+        await db.loads.update_one(
+            {"id": source_load["id"], "cancelled": True,
+             "cancel_reason": "Vendu a Huilerie"},
             {"$set": {
-                "cancelled": True,
-                "cancel_reason": "Vendu a Huilerie",
-                "cancelled_at": now,
-                "cancelled_by": user["username"],
-                "customer_available_olive_kg": Decimal128(Decimal("0")),
                 "ownership_transferred": True,
                 "ownership_transferred_at": now,
                 "ownership_transfer_lot_id": receipt["olive_lot_id"],
@@ -2405,8 +2418,6 @@ async def purchase_customer_olive_load_directly(
             }},
             session=session,
         )
-        if closed.matched_count != 1:
-            raise ValueError("The source Oro Verde load could not be closed after its ownership transfer")
         await db["commercial_audit_events"].insert_one({
             "id": stable("source-load-closed-audit"),
             "entity_type": "traditional_load",
