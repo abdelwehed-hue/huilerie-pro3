@@ -31,7 +31,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "factures" | "stock" | "lots" | "movements" | "quality" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
+type TabKey = "overview" | "customer-purchases" | "factures" | "stock" | "lots" | "movements" | "quality" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
 
 const labels = {
   fr: {
@@ -295,6 +295,16 @@ export default function Commercial() {
   const [reversalKey, setReversalKey] = useState(() => crypto.randomUUID());
   useEffect(() => { setCreditApplicationAmount(""); setCreditApplicationReason(""); setCreditApplicationKey(crypto.randomUUID()); setSelectedPaymentForReversal(""); setReversalAmount(""); setReversalReason(""); setReversalDate(new Date().toISOString().slice(0, 10)); setReversalEvidenceReference(""); setReversalKey(crypto.randomUUID()); }, [selectedInvoiceId]);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
+  const [directPurchaseCustomerPhone, setDirectPurchaseCustomerPhone] = useState("");
+  const [directPurchaseLoadId, setDirectPurchaseLoadId] = useState("");
+  const [directPurchaseLocationId, setDirectPurchaseLocationId] = useState("");
+  const [directPurchaseDate, setDirectPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [directPurchaseAck, setDirectPurchaseAck] = useState("");
+  const [directPurchaseAmount, setDirectPurchaseAmount] = useState("");
+  const [directPurchasePaid, setDirectPurchasePaid] = useState("");
+  const [directPurchaseMethod, setDirectPurchaseMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
+  const [directPurchaseReference, setDirectPurchaseReference] = useState("");
+  const [directPurchaseKey, setDirectPurchaseKey] = useState(() => crypto.randomUUID());
   const [custodyCustomerPhone, setCustodyCustomerPhone] = useState("");
   const [custodyReceiptDate, setCustodyReceiptDate] = useState(new Date().toISOString().slice(0, 10));
   const [custodyVarietyId, setCustodyVarietyId] = useState("");
@@ -368,7 +378,7 @@ export default function Commercial() {
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers" || tab === "customer-purchases") });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "quality" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "quality" || tab === "stock" || tab === "sales") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "stock" || tab === "sales") });
@@ -438,7 +448,7 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality") });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality" || tab === "customer-purchases") });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production" || tab === "sales") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && tab === "custody" });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
@@ -446,7 +456,7 @@ export default function Commercial() {
   const custodyClientHistory = useQuery({
     queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
     queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone)),
-    enabled: ready && tab === "custody" && !!selectedCustodyHistoryPhone,
+    enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
     retry: false,
   });
   const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
@@ -459,6 +469,7 @@ export default function Commercial() {
       return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining };
     })
     .filter((load: AnyRecord) => load.remaining_kg > 0);
+  const directPurchaseSourceLoads = custodySourceLoads.filter((load: AnyRecord) => Number(load.previously_received_kg || 0) === 0);
   const custodySelectedTotal = Object.entries(custodySelectedLoads)
     .reduce((sum, [loadId, quantity]) => {
       const load = custodySourceLoads.find((item: AnyRecord) => item.id === loadId);
@@ -1257,6 +1268,44 @@ export default function Commercial() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
+  const directPurchaseLoad = useMutation({
+    mutationFn: () => {
+      const selected = directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId);
+      if (!selected) throw new Error("Selected source load is no longer available");
+      const amount = tndInputToDinars(directPurchaseAmount);
+      const paid = directPurchasePaid.trim() ? tndInputToDinars(directPurchasePaid) : null;
+      return apiPost<AnyRecord>("/commercial/v1/customer-purchases/loads", {
+        source_load_id: selected.id,
+        receiving_location_id: directPurchaseLocationId,
+        purchase_date: directPurchaseDate,
+        customer_acknowledgement_reference: directPurchaseAck.trim(),
+        agreed_amount: amount,
+        initial_payment_amount: paid,
+        initial_payment_method: paid ? directPurchaseMethod : null,
+        initial_payment_reference: paid && directPurchaseMethod !== "CASH" ? directPurchaseReference.trim() : null,
+        initial_payment_date: paid ? directPurchaseDate : null,
+        idempotency_key: directPurchaseKey,
+      });
+    },
+    onSuccess: async (result) => {
+      toast.success((lang === "ar" ? "تم شراء الحمولة " : "Charge achetée : ") + result.source_load_code + " → " + result.gs_traceability_code + " · " + value(result.purchase_document_number));
+      setDirectPurchaseLoadId(""); setDirectPurchaseAck(""); setDirectPurchaseAmount(""); setDirectPurchasePaid(""); setDirectPurchaseReference(""); setDirectPurchaseKey(crypto.randomUUID());
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["loads"] }),
+        queryClient.invalidateQueries({ queryKey: ["clients"] }),
+        queryClient.invalidateQueries({ queryKey: ["client"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "lots"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "internal-movements"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "oil-purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-receipts"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "audit"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "custody-client-history", directPurchaseCustomerPhone] }),
+      ]);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
   const cancelCustodyReceipt = useMutation({
     mutationFn: ({ item, reason }: { item: AnyRecord; reason: string }) =>
       apiPost<AnyRecord>(`/commercial/v1/customer-custody/receipts/${encodeURIComponent(item.id)}/cancel`, {
@@ -1627,6 +1676,7 @@ export default function Commercial() {
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
     { id: "custody", label: lang === "ar" ? "حفظ أمانات الحرفاء" : "Garde des clients", icon: UserCheck },
+    { id: "customer-purchases", label: lang === "ar" ? "شراء حمولات الحرفاء" : "Achats directs clients", icon: ShoppingCart },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
@@ -1852,6 +1902,70 @@ export default function Commercial() {
           <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>Chargement</Button>
         </div>
         {stockView === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
+      </div>}
+
+      {tab === "customer-purchases" && <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>{lang === "ar" ? "شراء حمولة مباشرة من Oro Verde" : "Achat direct d’une charge Oro Verde"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "نقل كامل الحمولة وملكيتها إلى المعصرة في عملية واحدة، دون تسجيلها في Garde des clients. ستُنقل الحمولة الأصلية إلى Annuler مع السبب Vendu à Huilerie." : "Transfert intégral de la charge et de sa propriété au moulin en une seule opération, sans passage par Garde des clients. La charge d’origine sera classée dans Annuler avec le motif Vendu à Huilerie."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {canPostStock && <form className="grid gap-3 md:grid-cols-3" onSubmit={(event) => {
+              event.preventDefault();
+              const selected = directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId);
+              if (!selected) { toast.error(lang === "ar" ? "اختر حمولة متاحة" : "Sélectionnez une charge disponible"); return; }
+              if (Number(directPurchaseAmount.replace(",", ".")) <= 0) { toast.error(lang === "ar" ? "أدخل ثمن الشراء الجملي" : "Saisissez le montant total d’achat"); return; }
+              if (directPurchasePaid.trim() && Number(directPurchasePaid.replace(",", ".")) > Number(directPurchaseAmount.replace(",", "."))) { toast.error(lang === "ar" ? "المبلغ المدفوع أكبر من ثمن الشراء" : "Le montant payé dépasse le prix d’achat"); return; }
+              if (!window.confirm(lang === "ar" ? "تأكيد شراء الحمولة كاملة ونقل ملكيتها إلى المعصرة؟ ستصبح الحمولة الأصلية Annuler ولن يمكن تحويلها مرة ثانية." : "Confirmer l’achat de toute la charge et le transfert de propriété au moulin ? La charge d’origine passera dans Annuler et ne pourra plus être transférée.")) return;
+              directPurchaseLoad.mutate();
+            }}>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "الحريف" : "Client"}
+                <select required value={directPurchaseCustomerPhone} onChange={(e) => { const phone=e.target.value; setDirectPurchaseCustomerPhone(phone); setDirectPurchaseLoadId(""); setSelectedCustodyHistoryPhone(phone); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">—</option>{(custodyClients.data ?? []).map((client: AnyRecord) => <option key={client.phone} value={client.phone}>{client.client_name} · {client.phone}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "الحمولة الأصلية" : "Charge d’origine"}
+                <select required value={directPurchaseLoadId} onChange={(e) => { setDirectPurchaseLoadId(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">—</option>{directPurchaseSourceLoads.map((load: AnyRecord) => <option key={load.id} value={load.id}>{load.code} · {number(load.olive_kg)} kg · {load.variety}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مكان استلام الزيتون" : "Emplacement de réception"}
+                <select required value={directPurchaseLocationId} onChange={(e) => { setDirectPurchaseLocationId(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                  <option value="">—</option>{(locations.data ?? []).filter((location: AnyRecord) => location.active && ["OLIVE_STORAGE", "STAGING"].includes(location.kind)).map((location: AnyRecord) => <option key={location.id} value={location.id}>{location.code} · {location.name}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}
+                <input required type="date" value={directPurchaseDate} onChange={(e) => { setDirectPurchaseDate(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "ثمن الشراء الجملي (TND)" : "Prix total d’achat (TND)"}
+                <input required inputMode="decimal" placeholder="0,000" value={directPurchaseAmount} onChange={(e) => { setDirectPurchaseAmount(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "المبلغ المدفوع الآن (اختياري)" : "Montant payé maintenant (facultatif)"}
+                <input inputMode="decimal" placeholder="0,000" value={directPurchasePaid} onChange={(e) => { setDirectPurchasePaid(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              {Number(directPurchasePaid.replace(",", ".")) > 0 && <>
+                <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "طريقة الدفع" : "Mode de paiement"}
+                  <select value={directPurchaseMethod} onChange={(e) => { setDirectPurchaseMethod(e.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE"); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
+                    <option value="CASH">{lang === "ar" ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{lang === "ar" ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{lang === "ar" ? "شيك" : "Chèque"}</option>
+                  </select>
+                </label>
+                {directPurchaseMethod !== "CASH" && <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مرجع الدفع" : "Référence de paiement"}
+                  <input required value={directPurchaseReference} onChange={(e) => { setDirectPurchaseReference(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+                </label>}
+              </>}
+              <label className="grid gap-1 text-sm font-medium md:col-span-2">{lang === "ar" ? "مرجع موافقة / وصل الحريف" : "Référence de l’accord / reçu client"}
+                <input required minLength={3} maxLength={120} value={directPurchaseAck} onChange={(e) => { setDirectPurchaseAck(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
+              </label>
+              {directPurchaseLoadId && <div className="rounded-lg bg-muted/40 p-3 text-sm md:col-span-3">
+                {lang === "ar" ? "المبلغ المتبقي للحريف:" : "Reste dû au client :"} <strong>{money(Math.max(0, Number(directPurchaseAmount.replace(",", ".")) - Number(directPurchasePaid.replace(",", "."))))} TND</strong>
+                <span className="ms-3 text-muted-foreground">{lang === "ar" ? "الكمية:" : "Quantité :"} {number(directPurchaseSourceLoads.find((load: AnyRecord) => load.id === directPurchaseLoadId)?.olive_kg)} kg</span>
+              </div>}
+              <div className="md:col-span-3"><Button type="submit" disabled={directPurchaseLoad.isPending || !directPurchaseCustomerPhone || !directPurchaseLoadId || !directPurchaseLocationId || directPurchaseAck.trim().length < 3 || !(Number(directPurchaseAmount.replace(",", ".")) > 0)}>{directPurchaseLoad.isPending ? (lang === "ar" ? "جار تنفيذ الشراء…" : "Achat en cours…") : (lang === "ar" ? "شراء الحمولة وتحويل ملكيتها إلى المعصرة" : "Acheter la charge et transférer la propriété au moulin")}</Button></div>
+            </form>}
+            {!canPostStock && <p className="text-sm text-amber-700">{lang === "ar" ? "ليست لديك صلاحية تسجيل تحويل الملكية." : "Vous n’avez pas l’autorisation de transférer la propriété."}</p>}
+          </CardContent>
+        </Card>
       </div>}
 
       {tab === "transfers" && <div className="space-y-4">
