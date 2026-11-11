@@ -2386,14 +2386,20 @@ async def purchase_customer_olive_load_directly(
             {"$set": {"status": "PURCHASED_DIRECTLY", "ownership_transfer_id": movement["id"]}},
             session=session,
         )
+        # This direct-purchase workflow buys the complete original load. Close it
+        # here explicitly rather than relying only on the generic custody-transfer
+        # helper, which intentionally waits for every linked custody lot to clear.
         closed = await db.loads.update_one(
-            {"id": source_load["id"], "ownership_transferred": True, "cancelled": {"$ne": True}},
+            {"id": source_load["id"], "cancelled": {"$ne": True},
+             "pressing": {"$ne": True}, "oil_kg": None},
             {"$set": {
                 "cancelled": True,
                 "cancel_reason": "Vendu a Huilerie",
                 "cancelled_at": now,
                 "cancelled_by": user["username"],
                 "customer_available_olive_kg": Decimal128(Decimal("0")),
+                "ownership_transferred": True,
+                "ownership_transferred_at": now,
                 "ownership_transfer_lot_id": receipt["olive_lot_id"],
                 "ownership_transfer_document_id": movement["id"],
             }},
