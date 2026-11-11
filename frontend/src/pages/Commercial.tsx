@@ -455,7 +455,7 @@ export default function Commercial() {
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
     queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
-    queryFn: async () => {
+    queryFn: async (): Promise<AnyRecord> => {
       // Primary source: complete history across all seasons and statuses.
       let history: AnyRecord = { phone: selectedCustodyHistoryPhone, loads: [] };
       try {
@@ -487,7 +487,7 @@ export default function Commercial() {
   // Keep the complete customer history visible in Charge d’origine.
   // Eligibility is separate: only a pending, unprocessed, customer-owned load
   // with no prior custody receipt can be purchased directly.
-  const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
+  const custodySourceLoads: AnyRecord[] = (custodyClientHistory.data?.loads ?? [])
     .map((load: AnyRecord) => {
       const previouslyReceived = (custodyReceipts.data ?? [])
         .filter((receipt: AnyRecord) => receipt.source_load_id === load.id && receipt.status !== "CANCELLED")
@@ -502,7 +502,7 @@ export default function Commercial() {
         remaining > 0;
       return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining, direct_purchase_eligible: directPurchaseEligible };
     });
-  const directPurchaseSourceLoads = custodySourceLoads.filter((load: AnyRecord) => load.direct_purchase_eligible);
+  const directPurchaseSourceLoads: AnyRecord[] = custodySourceLoads.filter((load: AnyRecord) => load.direct_purchase_eligible);
   const custodySelectedTotal = Object.entries(custodySelectedLoads)
     .reduce((sum, [loadId, quantity]) => {
       const load = custodySourceLoads.find((item: AnyRecord) => item.id === loadId);
