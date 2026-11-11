@@ -457,6 +457,11 @@ export default function Commercial() {
     queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
     queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone)),
     enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
+    // A customer may add a new traditional load while this GS form stays open.
+    // Refresh the selected customer's source-load history while direct purchases are active.
+    refetchInterval: tab === "customer-purchases" && !!selectedCustodyHistoryPhone ? 15000 : false,
+    refetchOnWindowFocus: "always",
+    refetchOnMount: "always",
     retry: false,
   });
   const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
