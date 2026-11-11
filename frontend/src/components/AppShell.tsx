@@ -238,7 +238,8 @@ export default function AppShell() {
   const { t, lang } = useI18n();
   const [navRevealEnabled, setNavRevealEnabled] = useState(() => localStorage.getItem("oroverde-nav-reveal") === "true");
   const [dashboardPremium, setDashboardPremium] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
-  useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);\n  useEffect(() => { const sync = () => setDashboardPremium(localStorage.getItem("oroverde-dashboard-theme") === "premium"); window.addEventListener("oroverde-dashboard-theme-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-dashboard-theme-change", sync); window.removeEventListener("storage", sync); }; }, []);
+  useEffect(() => { const sync = () => setNavRevealEnabled(localStorage.getItem("oroverde-nav-reveal") === "true"); window.addEventListener("oroverde-nav-reveal-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-nav-reveal-change", sync); window.removeEventListener("storage", sync); }; }, []);
+  useEffect(() => { const sync = () => setDashboardPremium(localStorage.getItem("oroverde-dashboard-theme") === "premium"); window.addEventListener("oroverde-dashboard-theme-change", sync); window.addEventListener("storage", sync); return () => { window.removeEventListener("oroverde-dashboard-theme-change", sync); window.removeEventListener("storage", sync); }; }, []);
   const queryClient = useQueryClient();
   const tvControl = useQuery({
     queryKey: ["tv-control"],
