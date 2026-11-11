@@ -182,7 +182,7 @@ export default function Commercial() {
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
-  const [stockView, setStockView] = useState<"lots" | "movements" | "chargement">(requestedTab === "movements" || requestedTab === "chargement" ? requestedTab : "lots");
+  const [stockView, setStockView] = useState<"lots" | "movements" | "chargement">(requestedTab === "movements" || requestedTab === "lots" ? requestedTab : "chargement");
   const [procurementView, setProcurementView] = useState<"suppliers" | "purchases" | "customer-purchases">(requestedTab === "customer-purchases" ? "customer-purchases" : requestedTab === "purchases" ? "purchases" : "suppliers");
   const [salesView, setSalesView] = useState<"buyers" | "sales">("buyers");
   const selectTab = (nextTab: TabKey) => {
@@ -1707,7 +1707,7 @@ export default function Commercial() {
     { id: "procurement", label: lang === "ar" ? "المشتريات" : "Achats", icon: ShoppingBasket },
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
-    { id: "stock", label: lang === "ar" ? "المخزون" : "Stock", icon: Boxes },
+    { id: "stock", label: "Chargement", icon: Truck },
     { id: "custody", label: lang === "ar" ? "حفظ أمانات الحرفاء" : "Garde des clients", icon: UserCheck },
     
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
@@ -1930,9 +1930,9 @@ export default function Commercial() {
 
       {tab === "stock" && <div className="space-y-4">
         <div role="tablist" aria-label={lang === "ar" ? "أقسام المخزون" : "Sections du stock"} className="inline-flex flex-wrap gap-2 rounded-xl border bg-muted/40 p-1">
+          <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>Chargement</Button>
           <Button type="button" size="sm" variant={stockView === "lots" ? "default" : "ghost"} role="tab" aria-selected={stockView === "lots"} onClick={() => setStockView("lots")}>{l.lots}</Button>
           <Button type="button" size="sm" variant={stockView === "movements" ? "default" : "ghost"} role="tab" aria-selected={stockView === "movements"} onClick={() => setStockView("movements")}>{l.movements}</Button>
-          <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>Chargement</Button>
         </div>
         {stockView === "lots" && <Card><CardHeader><CardTitle>{l.lots}</CardTitle><CardDescription>{l.owner}: MILL / CUSTOMER</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "أصل الدفعة" : "Origine du lot"}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.currentStock}</TableHead><TableHead>{l.qualityStatus}</TableHead><TableHead>{l.status}</TableHead></TableRow></TableHeader><TableBody>{(lots.data ?? []).map((lot) => { const sourcePurchase = (purchaseRows).find((purchase) => purchase.id === lot.source_purchase_id); const sourceProduction = (productionRuns.data ?? []).find((run) => run.id === lot.source_production_id); const isAnalysisSample = lot.product_kind === "OIL" && lot.lot_purpose === "PREPRODUCTION_SAMPLE"; const originLabel = lot.product_kind === "OLIVE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : isAnalysisSample ? (lang === "ar" ? "عينة تحليلية" : "Échantillon d’analyse") : sourceProduction ? `${lang === "ar" ? "إنتاج" : "Production"} · ${sourceProduction.document_number ?? "—"}` : (lang === "ar" ? "زيت — مصدر غير محدد" : "Huile — origine non précisée"); return <TableRow key={lot.id} className={qrBatchCode && lot.batch_code === qrBatchCode ? "bg-amber-100 ring-2 ring-inset ring-amber-500" : undefined}><TableCell className="font-mono text-xs">{lotCode(lot)}</TableCell><TableCell>{lot.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell><div className="flex flex-col gap-1"><span className={`inline-flex w-fit rounded-md px-2 py-1 text-xs font-semibold ${isAnalysisSample ? "bg-violet-100 text-violet-800" : lot.product_kind === "OLIVE" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{originLabel}</span>{lot.product_kind === "OLIVE" && sourcePurchase?.document_number && <span className="text-xs text-muted-foreground">{sourcePurchase.document_number}</span>}</div></TableCell><TableCell>{currentOwnersForLot(lot)}</TableCell><TableCell>{number(currentStockQuantityForLot(lot))} {lot.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{lot.product_kind === "OIL" ? value(lot.quality_status, l.pending) : "—"}</TableCell><TableCell>{value(lot.status)}</TableCell></TableRow>; })}{(!lots.isLoading && !(lots.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
       </div>}
