@@ -117,7 +117,7 @@ export default function Comptabilite() {
     return {
       serviceRevenue: mills(summary?.pressing_revenue_total),
       salesRevenue: mills(summary?.gs_sales_revenue_total),
-      stockPurchases: mills(summary?.supplier_olive_purchase_total),
+      stockPurchases: addMoney(summary?.supplier_olive_purchase_total, customerOliveTnd(summary?.customer_olive_purchase_total), summary?.customer_oil_purchase_total),
       customerOlivePurchaseTotal: mills(customerOliveTnd(summary?.customer_olive_purchase_total)),
       customerOilPurchaseTotal: mills(summary?.customer_oil_purchase_total),
       serviceCollected: mills(summary?.pressing_collected_total),
@@ -158,7 +158,7 @@ export default function Comptabilite() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="bg-emerald-50 text-emerald-700" />
       <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="bg-blue-50 text-blue-700" />
-      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="bg-amber-50 text-amber-700" />
+      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Total des achats fournisseurs + olives clients + huile clients" icon={Package} tone="bg-amber-50 text-amber-700" />
       <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-orange-50 text-orange-700" />
       <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-yellow-50 text-yellow-700" />
       <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="bg-violet-50 text-violet-700" />
