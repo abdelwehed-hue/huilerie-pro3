@@ -130,7 +130,7 @@ export default function Dashboard() {
         {todayLoads.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center">{t("no_data")}</TableCell></TableRow>}
         {todayLoads.slice(0,5).map(load => <TableRow key={load.id}><TableCell><Link to={`/search?code=${load.code}`}><CodeBadge code={load.code}/></Link></TableCell><TableCell>{load.client_name}</TableCell><TableCell>{fmtNum(load.olive_kg)} kg</TableCell><TableCell>{load.oil_kg == null ? "—" : `${fmtNum(load.oil_kg)} L`}</TableCell><TableCell><StatusPill status={load.status} size="large"/></TableCell></TableRow>)}
       </TableBody></Table></div>
-    </section>
+    </div>
 
     <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}><SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet"><SheetTitle className="mb-2 font-heading text-lg">{t("new_reception")}</SheetTitle><div className="origin-top-left" style={{zoom:0.82}}><IntakePanel stacked/></div></SheetContent></Sheet>
     <QrScanDialog open={scanOpen} onClose={closeScan}/>
