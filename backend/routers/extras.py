@@ -934,6 +934,31 @@ async def delete_client(phone: str, _: dict = Depends(require_admin)):
     )
 
 
+@router.get("/clients/{phone}/all-loads")
+async def client_all_loads_history(phone: str, user: dict = Depends(current_user)):
+    """Return every historical load for a client across all seasons and statuses."""
+    normalized_phone = phone.strip()
+    if not normalized_phone:
+        raise HTTPException(422, "phone_required")
+    docs = await db.loads.find(
+        {"phone": normalized_phone}, {"_id": 0}
+    ).sort("created_at", -1).to_list(10000)
+    if not docs:
+        client = await db.clients.find_one(
+            {"phone": normalized_phone}, {"_id": 0, "phone": 1, "client_name": 1}
+        )
+        if not client:
+            raise HTTPException(404, "client_not_found")
+        return {"phone": normalized_phone, "client_name": client.get("client_name") or normalized_phone, "loads": []}
+    labs = await _labs_for([doc["id"] for doc in docs])
+    loads = [to_load(doc, user, labs.get(doc["id"])) for doc in docs]
+    return {
+        "phone": normalized_phone,
+        "client_name": docs[0].get("client_name") or normalized_phone,
+        "loads": [load.model_dump() for load in loads],
+    }
+
+
 @router.get("/clients/{phone}", response_model=ClientHistory)
 async def client_history(phone: str, user: dict = Depends(current_user)):
     docs = await db.loads.find({"phone": phone.strip(), **(await season_filter())}, {"_id": 0}).sort("created_at", -1).to_list(1000)
