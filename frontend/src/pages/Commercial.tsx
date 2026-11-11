@@ -464,17 +464,25 @@ export default function Commercial() {
     refetchOnMount: "always",
     retry: false,
   });
+  // Keep the complete customer history visible in Charge d’origine.
+  // Eligibility is separate: only a pending, unprocessed, customer-owned load
+  // with no prior custody receipt can be purchased directly.
   const custodySourceLoads = (custodyClientHistory.data?.loads ?? [])
-    .filter((load: AnyRecord) => (load.status == null || load.status === "pending") && load.cancelled !== true && load.pressing !== true && load.ownership_transferred !== true && load.oil_kg == null)
     .map((load: AnyRecord) => {
       const previouslyReceived = (custodyReceipts.data ?? [])
         .filter((receipt: AnyRecord) => receipt.source_load_id === load.id && receipt.status !== "CANCELLED")
         .reduce((sum: number, receipt: AnyRecord) => sum + Number(receipt.quantity_kg || 0), 0);
       const remaining = Math.max(0, Number(load.olive_kg || 0) - previouslyReceived);
-      return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining };
-    })
-    .filter((load: AnyRecord) => load.remaining_kg > 0);
-  const directPurchaseSourceLoads = custodySourceLoads.filter((load: AnyRecord) => Number(load.previously_received_kg || 0) === 0);
+      const directPurchaseEligible =
+        (load.status == null || load.status === "pending") &&
+        load.ownership_transferred !== true &&
+        load.oil_kg == null &&
+        Number(load.available_olive_kg ?? load.olive_kg ?? 0) > 0 &&
+        previouslyReceived === 0 &&
+        remaining > 0;
+      return { ...load, previously_received_kg: previouslyReceived, remaining_kg: remaining, direct_purchase_eligible: directPurchaseEligible };
+    });
+  const directPurchaseSourceLoads = custodySourceLoads.filter((load: AnyRecord) => load.direct_purchase_eligible);
   const custodySelectedTotal = Object.entries(custodySelectedLoads)
     .reduce((sum, [loadId, quantity]) => {
       const load = custodySourceLoads.find((item: AnyRecord) => item.id === loadId);
@@ -1932,7 +1940,7 @@ export default function Commercial() {
               </label>
               <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "الحمولة الأصلية" : "Charge d’origine"}
                 <select required value={directPurchaseLoadId} onChange={(e) => { setDirectPurchaseLoadId(e.target.value); setDirectPurchaseKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal">
-                  <option value="">—</option>{directPurchaseSourceLoads.map((load: AnyRecord) => <option key={load.id} value={load.id}>{load.code} · {number(load.olive_kg)} kg · {load.variety}</option>)}
+                  <option value="">—</option>{custodySourceLoads.map((load: AnyRecord) => <option key={load.id} value={load.id} disabled={!load.direct_purchase_eligible}>{load.code} · {number(load.olive_kg)} kg · {load.variety || "—"} · {load.status === "pending" ? (lang === "ar" ? "قابلة للتحويل" : "Disponible") : (lang === "ar" ? "غير قابلة للتحويل" : "Non disponible")}</option>)}
                 </select>
               </label>
               <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مكان استلام الزيتون" : "Emplacement de réception"}
