@@ -57,7 +57,7 @@ const mills = (value: unknown): bigint => {
 const addMoney = (...values: unknown[]) => values.reduce<bigint>((total, value) => total + mills(value), 0n);
 // Customer olive purchase amounts are stored in millimes by the legacy purchase path,
 // while this accounting view expects decimal TND. Normalize only this category for display.
-const customerOliveTnd = (value: unknown) => (mills(value) / 1000n).toString().replace(/(\\d+)$/, "$1");
+const customerOliveTnd = (value: unknown) => { const scaled = mills(value) / 1000n; return `${scaled / 1000n}.${String(scaled % 1000n).padStart(3, "0")}`; };
 const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.created_at || "").slice(0, 10);
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
