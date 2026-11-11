@@ -455,7 +455,7 @@ export default function Commercial() {
   const selectedCustodyOwner = (custodyOwners.data ?? []).find((owner) => owner.id === pickupCustomerId) ?? null;
   const custodyClientHistory = useQuery({
     queryKey: ["commercial", "custody-client-history", selectedCustodyHistoryPhone],
-    queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone)),
+    queryFn: () => apiGet<AnyRecord>("/clients/" + encodeURIComponent(selectedCustodyHistoryPhone) + "/all-loads"),
     enabled: ready && (tab === "custody" || tab === "customer-purchases") && !!selectedCustodyHistoryPhone,
     // A customer may add a new traditional load while this GS form stays open.
     // Refresh the selected customer's source-load history while direct purchases are active.
