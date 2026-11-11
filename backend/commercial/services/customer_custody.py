@@ -217,8 +217,13 @@ async def receive_customer_olive_custody(
     created_at: datetime,
     session: Any,
     authorization_checked: bool = False,
+    allow_direct_purchase_cancelled_source: bool = False,
 ) -> dict[str, Any]:
-    """Receive customer-owned olives without recording a purchase or mill asset."""
+    """Receive customer-owned olives without recording a purchase or mill asset.
+
+    The cancelled-source exception is reserved for the atomic direct-purchase route;
+    ordinary Garde des clients receipts continue to reject cancelled source loads.
+    """
     if not authorization_checked:
         require_commercial_permission(actor_user, "commercial.manage_custody")
     if not actor_user_id or not all((receipt_id, custody_owner_id, olive_lot_id, stock_movement_id, audit_event_id)):
@@ -244,9 +249,21 @@ async def receive_customer_olive_custody(
     )
     source_load = None
     if draft.source_load_id:
+        source_load_query = {
+            "id": draft.source_load_id,
+            "phone": owner["client_phone"],
+            "pressing": {"$ne": True},
+            "oil_kg": None,
+        }
+        if allow_direct_purchase_cancelled_source:
+            source_load_query.update({
+                "cancelled": True,
+                "cancel_reason": "Vendu a Huilerie",
+            })
+        else:
+            source_load_query["cancelled"] = {"$ne": True}
         source_load = await db["loads"].find_one(
-            {"id": draft.source_load_id, "phone": owner["client_phone"],
-             "cancelled": {"$ne": True}, "pressing": {"$ne": True}, "oil_kg": None},
+            source_load_query,
             {"_id": 0, "id": 1, "code": 1, "variety": 1, "olive_kg": 1},
             session=session,
         )
@@ -277,14 +294,12 @@ async def receive_customer_olive_custody(
         raise ValueError("Unknown or inactive olive receiving location")
 
     if source_load:
-        reserved = await db["loads"].update_one(
-            {
-                "id": source_load["id"],
-                "phone": owner["client_phone"],
-                "cancelled": {"$ne": True},
-                "pressing": {"$ne": True},
-                "oil_kg": None,
-                "$expr": {
+        reservation_query = {
+            "id": source_load["id"],
+            "phone": owner["client_phone"],
+            "pressing": {"$ne": True},
+            "oil_kg": None,
+            "$expr": {
                     "$lte": [
                         {"$add": [
                             {"$ifNull": ["$custody_received_kg", 0]},
@@ -293,7 +308,17 @@ async def receive_customer_olive_custody(
                         "$olive_kg",
                     ]
                 },
-            },
+            }
+        }
+        if allow_direct_purchase_cancelled_source:
+            reservation_query.update({
+                "cancelled": True,
+                "cancel_reason": "Vendu a Huilerie",
+            })
+        else:
+            reservation_query["cancelled"] = {"$ne": True}
+        reserved = await db["loads"].update_one(
+            reservation_query,
             {"$inc": {"custody_received_kg": Decimal128(draft.quantity_kg)}},
             session=session,
         )
