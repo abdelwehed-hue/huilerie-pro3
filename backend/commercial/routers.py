@@ -2306,6 +2306,16 @@ async def purchase_customer_olive_load_directly(
     stable = lambda label: str(uuid.uuid5(uuid.NAMESPACE_URL, f"oro-verde-direct-load-purchase:{draft.idempotency_key}:{label}"))
 
     async def operation(session):
+        idempotency_scope = f"{season_code}:{user['id']}"
+        request_fingerprint = draft.model_dump(mode="json")
+        prior = await db["commercial_direct_load_purchases"].find_one(
+            {"idempotency_scope": idempotency_scope, "idempotency_key": draft.idempotency_key},
+            {"_id": 0}, session=session,
+        )
+        if prior:
+            if prior.get("request_fingerprint") != request_fingerprint:
+                raise ValueError("Direct purchase idempotency key was already used for a different request")
+            return prior["result"]
         source_load = await db.loads.find_one(
             {"id": draft.source_load_id, **(await season_filter()),
              "cancelled": {"$ne": True}, "ownership_transferred": {"$ne": True},
@@ -2401,7 +2411,7 @@ async def purchase_customer_olive_load_directly(
                 "agreed_amount_tnd": Decimal128(draft.agreed_amount),
             },
         }, session=session)
-        return {
+        result = {
             "source_load_id": source_load["id"],
             "source_load_code": source_load.get("code"),
             "gs_lot_id": receipt["olive_lot_id"],
@@ -2416,6 +2426,19 @@ async def purchase_customer_olive_load_directly(
             "source_status": "CANCELLED",
             "source_reason": "Vendu à Huilerie",
         }
+        await db["commercial_direct_load_purchases"].insert_one({
+            "id": stable("direct-purchase-record"),
+            "idempotency_scope": idempotency_scope,
+            "idempotency_key": draft.idempotency_key,
+            "request_fingerprint": request_fingerprint,
+            "source_load_id": source_load["id"],
+            "gs_lot_id": receipt["olive_lot_id"],
+            "purchase_document_id": movement.get("customer_purchase_document_id"),
+            "result": result,
+            "created_by": user["id"],
+            "created_at": now,
+        }, session=session)
+        return result
 
     try:
         result = await run_transaction(operation)
