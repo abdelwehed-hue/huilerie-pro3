@@ -558,6 +558,36 @@ function FullResetPanel() {
   );
 }
 
+function DashboardThemeSettings() {
+  const { lang } = useI18n();
+  const [premium, setPremium] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
+  const change = (value: boolean) => {
+    localStorage.setItem("oroverde-dashboard-theme", value ? "premium" : "classic");
+    setPremium(value);
+    window.dispatchEvent(new Event("oroverde-dashboard-theme-change"));
+  };
+  return (
+    <section data-testid="dashboard-theme-settings" className="mb-6 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-amber-50 p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="grid size-10 place-items-center rounded-xl bg-emerald-700 text-white"><Eye className="size-5" /></span>
+        <div>
+          <h2 className="font-semibold text-emerald-950">{lang === "ar" ? "مظهر الصفحة الرئيسية" : "Thème de la page Accueil"}</h2>
+          <p className="text-sm text-emerald-900/75">{lang === "ar" ? "هذا الاختيار يغيّر صفحة Accueil فقط، ولا يغيّر صفحات العمل أو GS." : "Ce choix modifie uniquement la page Accueil. Les autres pages et GS restent inchangés."}</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant={premium ? "outline" : "default"} data-testid="dashboard-theme-classic" onClick={() => change(false)} className={premium ? "border-emerald-300 bg-white text-emerald-900" : "bg-emerald-800 text-white hover:bg-emerald-900"}>
+          {lang === "ar" ? "المظهر الحالي" : "Thème actuel"}
+        </Button>
+        <Button type="button" variant={premium ? "default" : "outline"} data-testid="dashboard-theme-premium" onClick={() => change(true)} className={premium ? "bg-emerald-800 text-white hover:bg-emerald-900" : "border-emerald-300 bg-white text-emerald-900"}>
+          {lang === "ar" ? "تفعيل المظهر الجديد" : "Activer le thème Premium"}
+        </Button>
+        <span className="text-xs font-semibold text-emerald-900/70">{premium ? (lang === "ar" ? "المظهر الجديد مفعّل" : "Thème Premium activé") : (lang === "ar" ? "المظهر الحالي مفعّل" : "Thème actuel activé")}</span>
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const { t, lang } = useI18n();
   const me = useMe();
@@ -570,7 +600,7 @@ export default function SettingsPage() {
   }
   return (
     <div>
-      <PageHeader title={t("settings")} accent="bg-violet-500" />
+      <PageHeader title={t("settings")} accent="bg-violet-500" />\n      <DashboardThemeSettings />
       <Tabs defaultValue="users">
         <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
