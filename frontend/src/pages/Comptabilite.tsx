@@ -161,14 +161,7 @@ export default function Comptabilite() {
       olivePaid: mills(summary?.customer_olive_paid_total),
       oilPaid: mills(summary?.customer_oil_paid_total),
       supplierPurchases,
-      customerOlivePurchases: customerOlivePurchases.map((row) => ({
-        ...row,
-        // Unit price is already stored as decimal TND/kg (e.g. 1.500 = 1 dinar + 500 millimes).
-        // Only legacy aggregate amounts below are stored in millimes and need normalization.
-        agreed_amount_tnd: customerOliveTnd(row.agreed_amount_tnd),
-        paid_amount_tnd: customerOliveTnd(row.paid_amount_tnd),
-        outstanding_amount_tnd: customerOliveTnd(row.outstanding_amount_tnd),
-      })),
+      customerOlivePurchases,
       customerOilPurchases,
     };
   }, [data]);
