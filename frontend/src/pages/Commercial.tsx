@@ -2369,6 +2369,7 @@ export default function Commercial() {
           <Table data-testid="gs-chargement-table">
             <TableHeader className="bg-stone-50">
               <TableRow>
+                <TableHead className="whitespace-nowrap text-start">Date d’achat</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Code d’achat</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Fournisseur</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Téléphone</TableHead>
@@ -2377,7 +2378,9 @@ export default function Commercial() {
                 <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
+                <TableHead className="whitespace-nowrap text-end">Prix moyen/kg</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Notes</TableHead>
                 <TableHead className="whitespace-nowrap text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -2395,7 +2398,7 @@ export default function Commercial() {
                       || String(supplier?.phone ?? purchase.supplier_phone ?? "").toLocaleLowerCase().includes(normalizedSearch);
                   })
                   .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
-                if (!rows.length) return <EmptyRow colSpan={10} text={l.noRows} />;
+                if (!rows.length) return <EmptyRow colSpan={13} text={l.noRows} />;
                 return rows.map((purchase) => {
                   const supplier = supplierRows.find((item) => item.id === purchase.supplier_id);
                   const purchaseCodes = [...new Set([purchase.batch_code, ...(purchase.batch_codes ?? [])].filter(Boolean).map(String))];
@@ -2418,7 +2421,10 @@ export default function Commercial() {
                     return line.variety_name ?? variety?.name_fr ?? variety?.name_ar ?? line.variety_id;
                   }).filter(Boolean))].join(", ") || value(purchase.variety_name);
                   const purchaseStatus = purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft;
+                  const totalKg = Number(purchase.total_quantity_kg ?? (purchase.lines ?? []).reduce((sum: number, line: AnyRecord) => sum + Number(line.quantity_kg ?? 0), 0));
+                  const averagePricePerKg = totalKg > 0 ? Number(purchase.total_amount_dt ?? 0) / totalKg : 0;
                   return <TableRow key={purchase.id} data-testid={`gs-chargement-row-${purchase.id}`} className="transition-colors hover:bg-emerald-50/40">
+                    <TableCell className="whitespace-nowrap">{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs font-bold text-emerald-800">{purchaseCodes.join(", ") || value(purchase.document_number)}</TableCell>
                     <TableCell className="min-w-36 font-semibold">{supplier?.name ?? purchase.supplier_name ?? "—"}</TableCell>
                     <TableCell dir="ltr" className="whitespace-nowrap text-start">{supplier?.phone ?? purchase.supplier_phone ?? "—"}</TableCell>
@@ -2427,7 +2433,9 @@ export default function Commercial() {
                     <TableCell className="whitespace-nowrap text-end font-semibold text-amber-700">{oilProduced > 0 ? number(oilProduced) : "—"}</TableCell>
                     <TableCell className="min-w-32 text-xs">{labLabel}</TableCell>
                     <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>{purchaseStatus}</span></TableCell>
+                    <TableCell className="whitespace-nowrap text-end">{averagePricePerKg > 0 ? `${number(averagePricePerKg)} TND/kg` : "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold">{money(purchase.total_amount_dt)}</TableCell>
+                    <TableCell className="min-w-40 max-w-64 truncate text-xs text-stone-600" title={String(purchase.notes ?? "")}>{value(purchase.notes, "—")}</TableCell>
                     <TableCell className="text-center"><Button size="sm" variant="outline" onClick={() => { selectTab("purchases"); if (purchase.status === "DRAFT" && canEditRecords) startPurchaseEdit(purchase); else if (purchase.status === "APPROVED") setSelectedPurchaseReceipt(purchase); }}>{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
                   </TableRow>;
                 });
