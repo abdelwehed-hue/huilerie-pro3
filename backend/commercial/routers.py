@@ -2088,6 +2088,18 @@ async def list_quality_assessments(
     docs = await db.commercial_quality_assessments.find(
         query, {"_id": 0}
     ).sort([("created_at", -1), ("id", 1)]).skip(skip).to_list(limit)
+    # Resolve internal user IDs to readable names before returning records to the UI.
+    creator_ids = list({str(doc.get("created_by")) for doc in docs if doc.get("created_by")})
+    users = await db.users.find(
+        {"id": {"$in": creator_ids}},
+        {"_id": 0, "id": 1, "full_name": 1, "username": 1},
+    ).to_list(len(creator_ids)) if creator_ids else []
+    names_by_id = {
+        str(item["id"]): (item.get("full_name") or item.get("username") or "Utilisateur inconnu")
+        for item in users
+    }
+    for doc in docs:
+        doc["created_by_name"] = names_by_id.get(str(doc.get("created_by")), "Utilisateur inconnu")
     return _safe(docs)
 
 
