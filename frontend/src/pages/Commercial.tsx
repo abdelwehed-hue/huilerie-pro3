@@ -95,7 +95,7 @@ function lotCode(lot: AnyRecord | null | undefined, fallback = "—") {
 }
 function number(v: unknown) {
   const n = Number(v);
-  return Number.isFinite(n) ? n.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—";
+  return Number.isFinite(n) ? n.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : "—";
 }
 function money(v: unknown) {
   return fmtMoney(v == null ? null : String(v));
