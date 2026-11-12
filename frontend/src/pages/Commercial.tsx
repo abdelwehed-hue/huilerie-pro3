@@ -2201,7 +2201,7 @@ export default function Commercial() {
             {!selectedOilPurchaseId && <p className="mt-3 text-sm text-muted-foreground">{l.oilPurchaseNoSelection}</p>}
           </CardContent>
         </Card>
-        {selectedOilPurchaseReceipt && <Card className="print-area code-reveal rounded-2xl border-2 border-dashed border-emerald-300 bg-white p-8 text-stone-900 shadow-sm">
+        {selectedOilPurchaseReceipt && <Card className="oil-purchase-receipt-print code-reveal rounded-2xl border-2 border-dashed border-emerald-300 bg-white p-8 text-stone-900 shadow-sm">
           <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4"><CardTitle>{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? (lang === "ar" ? "وصل شراء الزيتون من الحريف" : "Bon d’achat d’olives au client") : (lang === "ar" ? "وصل شراء الزيت من الحريف" : "Bon d’achat d’huile au client")}</CardTitle><div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedOilPurchaseReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le bon"}</Button></div></CardHeader>
           <CardContent className="space-y-4 p-0">
             <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold">Oro Verde</div><div className="text-xs text-stone-500">{selectedOilPurchaseReceipt.product_kind === "OLIVE" ? (lang === "ar" ? "وثيقة شراء زيتون من حريف" : "Achat d’olives auprès d’un client") : (lang === "ar" ? "وثيقة شراء زيت من حريف" : "Achat d’huile auprès d’un client")}</div></div><div className="text-end"><div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">{lang === "ar" ? "رقم وصل الشراء" : "N° du bon d’achat"}</div><div className="font-mono text-lg font-bold text-emerald-900" dir="ltr">{value(selectedOilPurchaseReceipt.document_number)}</div><div className="mt-1 text-xs text-stone-500">{date(selectedOilPurchaseReceipt.purchase_date)}</div></div></div>
@@ -2213,7 +2213,7 @@ export default function Commercial() {
             <div className="grid grid-cols-2 gap-8 pt-8 text-center text-xs text-stone-500"><div className="border-t border-stone-300 pt-2">{lang === "ar" ? "إمضاء الحريف" : "Signature du client"}</div><div className="border-t border-stone-300 pt-2">{lang === "ar" ? "إمضاء المعصرة" : "Signature de la huilerie"}</div></div>
           </CardContent>
         </Card>}
-        {selectedOilPaymentReceipt && <Card className="print-area code-reveal rounded-2xl border-2 border-dashed border-sky-300 bg-white p-8 text-stone-900 shadow-sm">
+        {selectedOilPaymentReceipt && <Card className="oil-purchase-receipt-print code-reveal rounded-2xl border-2 border-dashed border-sky-300 bg-white p-8 text-stone-900 shadow-sm">
           <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4"><CardTitle>{lang === "ar" ? "وصل دفع مستحقات الحريف" : "Reçu de paiement au client"}</CardTitle><div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setSelectedOilPaymentReceipt(null)}>{lang === "ar" ? "إغلاق" : "Fermer"}</Button><Button type="button" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة الوصل" : "Imprimer le reçu"}</Button></div></CardHeader>
           <CardContent className="space-y-4 p-0"><div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4"><div><div className="font-heading text-lg font-bold">Oro Verde</div><div className="text-xs text-stone-500">{lang === "ar" ? "إثبات دفع للحريف" : "Justificatif de paiement au client"}</div></div><div className="text-end"><div className="text-xs font-semibold uppercase tracking-wider text-sky-700">{value(selectedOilPaymentReceipt.document_number)}</div><div className="mt-1 text-xs text-stone-500">{date(selectedOilPaymentReceipt.payment_date)}</div></div></div>
             <div className="space-y-2 text-sm"><div><span className="text-stone-500">{l.oilPurchaseCustomer}: </span><strong>{value(selectedOilPaymentReceipt.customer_name)}</strong></div><div><span className="text-stone-500">{l.oilPurchaseNumber}: </span><strong>{value(selectedOilPurchase?.document_number, selectedOilPaymentReceipt.purchase_document_id)}</strong></div><div><span className="text-stone-500">{l.ownershipPaymentMethod}: </span><strong>{paymentMethodLabel(selectedOilPaymentReceipt.method)}</strong></div><div><span className="text-stone-500">{l.ownershipPaymentReference}: </span><strong>{value(selectedOilPaymentReceipt.reference)}</strong></div></div>
@@ -2975,6 +2975,13 @@ export default function Commercial() {
         .oil-purchase-statement-print tr { break-inside: avoid !important; }
         .oil-purchase-statement-print .rounded-lg { border: 1px solid #d6d3d1 !important; background: #f8fafc !important; }
         @page { size: A4 portrait; margin: 10mm; }
+      body:has(.oil-purchase-receipt-print) * { visibility: hidden !important; }
+      body:has(.oil-purchase-receipt-print) .oil-purchase-receipt-print,
+      body:has(.oil-purchase-receipt-print) .oil-purchase-receipt-print * { visibility: visible !important; }
+      body:has(.oil-purchase-receipt-print) .oil-purchase-receipt-print { position: absolute !important; inset: 0 !important; width: 100% !important; margin: 0 !important; padding: 8mm !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: #fff !important; color: #111 !important; }
+      body:has(.oil-purchase-receipt-print) .oil-purchase-receipt-print .no-print { display: none !important; }
+      body:has(.oil-purchase-receipt-print) .oil-purchase-statement-print,
+      body:has(.oil-purchase-receipt-print) .oil-purchase-statement-print * { visibility: hidden !important; }
       }`}</style>
 
     </div>
