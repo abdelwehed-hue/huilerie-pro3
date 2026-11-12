@@ -165,6 +165,7 @@ export default function Comptabilite() {
       supplierPurchases,
       customerOlivePurchases: customerOlivePurchases.map((row) => ({
         ...row,
+        unit_price_tnd_per_kg: customerOliveTnd(row.unit_price_tnd_per_kg),
         agreed_amount_tnd: customerOliveTnd(row.agreed_amount_tnd),
         paid_amount_tnd: customerOliveTnd(row.paid_amount_tnd),
         outstanding_amount_tnd: customerOliveTnd(row.outstanding_amount_tnd),
