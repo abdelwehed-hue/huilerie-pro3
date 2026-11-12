@@ -66,9 +66,6 @@ const mills = (value: unknown): bigint => {
   return sign * (BigInt(match[2]) * 1000n + BigInt(fraction || "0"));
 };
 const addMoney = (...values: unknown[]) => values.reduce<bigint>((total, value) => total + mills(value), 0n);
-// Customer purchase documents and their accounting aggregates are stored as decimal TND,
-// not integer millimes. Preserve the stored decimal value; scaling it would divide it by 1,000.
-const customerOliveTnd = (value: unknown) => String(value ?? "0").trim().replace(",", ".");
 const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.created_at || "").slice(0, 10);
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
@@ -156,7 +153,8 @@ export default function Comptabilite() {
       serviceRevenue: mills(summary?.pressing_revenue_total),
       salesRevenue: mills(summary?.gs_sales_revenue_total),
       stockPurchases: mills(summary?.supplier_olive_purchase_total),
-      customerOlivePurchaseTotal: mills(customerOliveTnd(summary?.customer_olive_purchase_total)),
+      // All accounting card totals use the same decimal-TND -> integer-millimes conversion.
+      customerOlivePurchaseTotal: mills(summary?.customer_olive_purchase_total),
       customerOilPurchaseTotal: mills(summary?.customer_oil_purchase_total),
       serviceCollected: mills(summary?.pressing_collected_total),
       gsCollected: mills(summary?.gs_sales_collected_total),
