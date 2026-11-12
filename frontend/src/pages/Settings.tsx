@@ -452,6 +452,7 @@ function FullResetPanel() {
   const qc = useQueryClient();
   const [confirmation, setConfirmation] = useState("");
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
   const preview = useQuery({
     queryKey: ["admin", "reset-preview"],
     queryFn: () => apiGet<{ collections: Record<string, number>; total_documents: number; preserved: string[] }>("/admin/reset/preview"),
@@ -508,10 +509,11 @@ function FullResetPanel() {
     onError: (error) => toast.error(errMsg(error)),
   });
   useEffect(() => {
-    if (preview.data && selectedCollections.length === 0) {
+    if (preview.data && !selectionInitialized) {
       setSelectedCollections(Object.keys(preview.data.collections).filter((key) => key !== "commercial_audit_events"));
+      setSelectionInitialized(true);
     }
-  }, [preview.data]);
+  }, [preview.data, selectionInitialized]);
   const toggleCollection = (key: string, checked: boolean) => {
     setSelectedCollections((current) => checked ? [...current.filter((item) => item !== key), key] : current.filter((item) => item !== key));
     setConfirmation("");
