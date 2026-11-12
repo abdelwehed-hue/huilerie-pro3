@@ -396,11 +396,20 @@ function UsersPanel() {
 }
 
 function NumericConventionsPanel() {
-  const { lang } = useI18n();
+  const { lang, errMsg } = useI18n();
   const ar = lang === "ar";
+  const qc = useQueryClient();
   const appSettings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
   const standardSample = "1 234,567";
   const currentSample = appSettings.data?.numeric_format_sample ?? standardSample;
+  const saveStandard = useMutation({
+    mutationFn: () => apiPut<AppSettings>("/settings", { ...appSettings.data!, numeric_format_sample: standardSample }),
+    onSuccess: async () => {
+      toast.success(ar ? "تم اعتماد معيار الدينار والمليم" : "Norme dinar/millime appliquée");
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
   const rows = [
     [ar ? "العملة" : "Devise", "TND", ar ? "الدينار التونسي هو وحدة الحساب." : "Le dinar tunisien est l’unité de compte."],
     [ar ? "قبل الفاصلة" : "Avant la virgule", ar ? "الدينار" : "Dinars", ar ? "كل ما قبل الفاصلة يمثل الدينار." : "Tout ce qui précède la virgule représente les dinars."],
@@ -421,7 +430,7 @@ function NumericConventionsPanel() {
           <span className="text-sm text-stone-600">{ar ? "النموذج المعتمد:" : "Format de référence :"}</span>
           <span dir="ltr" className="rounded-lg bg-emerald-50 px-3 py-2 font-mono text-xl font-bold text-emerald-800">{standardSample}</span>
           {appSettings.isLoading ? <span className="text-xs text-stone-500">{ar ? "جارٍ التحقق من الإعدادات…" : "Vérification des paramètres…"}</span> :
-            currentSample !== standardSample ? <span className="text-xs font-medium text-amber-700">{ar ? "سيُعتمد التنسيق القياسي الثابت في العرض." : "Le format standard fixe est utilisé pour l’affichage."}</span> :
+            currentSample !== standardSample ? <Button type="button" disabled={saveStandard.isPending || !appSettings.data} onClick={() => saveStandard.mutate()} className="bg-emerald-700 hover:bg-emerald-800">{saveStandard.isPending ? (ar ? "جارٍ الحفظ…" : "Enregistrement…") : (ar ? "اعتماد المعيار في التطبيق" : "Appliquer la norme à l’application")}</Button> :
             <span className="text-xs font-medium text-emerald-700">{ar ? "المعيار محفوظ في الإعدادات" : "Norme enregistrée dans les paramètres"}</span>}
         </div>
         <p className="text-sm text-stone-600">{ar ? "أمثلة: 1,500 = دينار واحد و500 مليم · 12,050 = 12 ديناراً و50 مليماً · 1 200,000 = 1 200 دينار." : "Exemples : 1,500 = 1 dinar et 500 millimes · 12,050 = 12 dinars et 50 millimes · 1 200,000 = 1 200 dinars."}</p>
