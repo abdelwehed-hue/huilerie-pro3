@@ -2484,7 +2484,7 @@ export default function Commercial() {
           </form>
         </CardContent></Card>}
         {isAdmin && <Card><CardHeader><CardTitle>{l.receivingLocation}</CardTitle></CardHeader><CardContent><select value={receivingLocationId} onChange={(e) => setReceivingLocationId(e.target.value)} className="h-10 w-full max-w-xl rounded-lg border bg-background px-3"><option value="">—</option>{(locations.data ?? []).map((loc) => <option key={loc.id} value={loc.id}>{loc.code} · {loc.name}</option>)}</select></CardContent></Card>}
-        {selectedPurchaseReceipt && <Card className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 text-stone-900 shadow-sm">
+        {selectedPurchaseReceipt && <Card className="print-area oil-purchase-receipt-print code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 text-stone-900 shadow-sm">
           <CardHeader className="no-print flex-row items-center justify-between p-0 pb-4">
             <CardTitle>{lang === "ar" ? "وصل استلام المزوّد" : "Bon de réception fournisseur"}</CardTitle>
             <div className="flex gap-2">
