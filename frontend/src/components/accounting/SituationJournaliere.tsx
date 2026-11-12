@@ -24,8 +24,11 @@ type DailyReport = {
 };
 
 const localToday = () => {
-  const now = new Date();
-  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Tunis", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 };
 const amount = (value: unknown) => {
   const raw = String(value ?? "0").trim();
