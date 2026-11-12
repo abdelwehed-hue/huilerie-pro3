@@ -2397,8 +2397,8 @@ export default function Commercial() {
                 <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Prix moyen/kg</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Notes</TableHead>
                 <TableHead className="whitespace-nowrap text-center">Action</TableHead>
+                <TableHead className="whitespace-nowrap text-start">Notes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2452,8 +2452,8 @@ export default function Commercial() {
                     <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>{purchaseStatus}</span></TableCell>
                     <TableCell className="whitespace-nowrap text-end">{averagePricePerKg > 0 ? money(averagePricePerKg) : "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold">{money(purchase.total_amount_dt)}</TableCell>
-                    <TableCell className="min-w-40 max-w-64 truncate text-xs text-stone-600" title={String(purchase.notes ?? "")}>{value(purchase.notes, "—")}</TableCell>
                     <TableCell className="text-center"><Button size="sm" variant="outline" onClick={() => { selectTab("purchases"); if (purchase.status === "DRAFT" && canEditRecords) startPurchaseEdit(purchase); else if (purchase.status === "APPROVED") setSelectedPurchaseReceipt(purchase); }}>{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
+                    <TableCell className="min-w-40 max-w-64 truncate text-xs text-stone-600" title={String(purchase.notes ?? "")}>{value(purchase.notes, "—")}</TableCell>
                   </TableRow>;
                 });
               })()}
