@@ -2261,7 +2261,7 @@ export default function Commercial() {
               <TableCell className="font-mono text-xs"><span className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)}</span></TableCell>
               <TableCell>{value(assessment.sample_reference)}</TableCell>
               <TableCell>{value(assessment.laboratory_name)}</TableCell>
-              <TableCell className="font-mono text-xs">{value(assessment.created_by)}</TableCell>
+              <TableCell>{value(assessment.created_by_name)}</TableCell>
               <TableCell>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" ? l.awaitingReview : l.reviewed + " · " + value(assessment.decision)}</TableCell>
               <TableCell>{date(assessment.created_at)}</TableCell><TableCell><div className="flex flex-wrap items-center gap-2"><a href={`/commercial/certificate/${encodeURIComponent(assessment.id)}?from=quality`} className="text-sm font-medium text-emerald-700 underline">{l.viewCertificate}</a></div></TableCell>
             </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
