@@ -213,16 +213,6 @@ class ExpenseInput(BaseModel):
     notes: str = Field(default="", max_length=500)
 
 
-class InvestmentInput(BaseModel):
-    investment_type: Literal["MACHINERY", "EQUIPMENT", "BUILDING", "VEHICLE", "RENOVATION", "IT", "OTHER"]
-    description: str = Field(min_length=2, max_length=180)
-    investment_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    amount_tnd: str = Field(pattern=r"^\d{1,12}(?:\.\d{1,3})?$")
-    payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
-    supplier: str = Field(default="", max_length=160)
-    notes: str = Field(default="", max_length=500)
-
-
 async def _create_accounting_outflow(collection: str, kind_field: str, kind: str, date_field: str, payload: Any, user: dict):
     season = await active_season()
     try:
@@ -282,19 +272,3 @@ async def create_accounting_expense(payload: ExpenseInput, user: dict = Depends(
 @router.delete("/expenses/{record_id}")
 async def delete_accounting_expense(record_id: str, _: dict = Depends(require_admin)):
     return await _delete_accounting_outflow("accounting_expenses", record_id, "Dépense")
-
-
-@router.get("/investments")
-async def list_accounting_investments(_: dict = Depends(require_admin)):
-    return await _list_accounting_outflows("accounting_investments", "investment_date")
-
-
-@router.post("/investments")
-async def create_accounting_investment(payload: InvestmentInput, user: dict = Depends(require_admin)):
-    return await _create_accounting_outflow("accounting_investments", "investment_type", payload.investment_type, "investment_date", payload, user)
-
-
-@router.delete("/investments/{record_id}")
-async def delete_accounting_investment(record_id: str, _: dict = Depends(require_admin)):
-    return await _delete_accounting_outflow("accounting_investments", record_id, "Investissement")
-
