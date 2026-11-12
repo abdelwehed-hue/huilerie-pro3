@@ -150,8 +150,10 @@ export default function Comptabilite() {
     const customerOilPurchases = data?.customer_oil_purchases || [];
     const summary = data?.summary;
     return {
-      serviceRevenue: mills(summary?.pressing_revenue_total),
-      salesRevenue: mills(summary?.gs_sales_revenue_total),
+      // Cash-basis accounting: only amounts actually collected count as service revenue.
+      serviceRevenue: mills(summary?.pressing_collected_total),
+      // Cash-basis accounting: only amounts actually collected count as GS sales revenue.
+      salesRevenue: mills(summary?.gs_sales_collected_total),
       stockPurchases: mills(summary?.supplier_olive_purchase_total),
       // All accounting card totals use the same decimal-TND -> integer-millimes conversion.
       customerOlivePurchaseTotal: mills(summary?.customer_olive_purchase_total),
@@ -187,8 +189,8 @@ export default function Comptabilite() {
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="olive" />
-      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="sky" />
+      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Montants réellement encaissés sur les prestations · saison active" icon={TrendingUp} tone="olive" />
+      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Montants réellement encaissés sur les ventes · saison active" icon={TrendingUp} tone="sky" />
       <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="gold" />
       <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="orange" />
       <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="gold" />
@@ -198,7 +200,7 @@ export default function Comptabilite() {
 
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-emerald-200 bg-emerald-50/40">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-emerald-900"><TrendingUp className="size-5" /> Revenus actifs</CardTitle><CardDescription>Activité réelle de la huilerie</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-emerald-900"><TrendingUp className="size-5" /> Revenus actifs</CardTitle><CardDescription>Encaissements réellement reçus sur les prestations et les ventes GS</CardDescription></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between gap-3"><span>Prestation de trituration</span><strong>{fmt(calculated.serviceRevenue)}</strong></div>
           <div className="flex justify-between gap-3"><span>Vente d’huile — GS</span><strong>{fmt(calculated.salesRevenue)}</strong></div>
@@ -265,7 +267,7 @@ export default function Comptabilite() {
       {label:"Date",render:r=>String(r.payment_date || r.paid_at || r.created_at || r.day || "—").slice(0,10)}, {label:"Référence",render:r=>r.document_number || r.payment_number || r.id || "—"}, {label:"Client",render:r=>r.customer_name || r.client_name || r.customer_id || "—"}, {label:"Achat lié",render:r=>r.purchase_document_number || r.purchase_id || r.document_id || "—"}, {label:"Type",render:r=>r.product_kind === "OLIVE" ? "Olives" : "Huile"}, {label:"Mode",render:r=>paymentLabels[r.payment_method] || r.payment_method || "—"}, {label:"Montant payé",render:r=>fmt(r.amount_tnd || r.amount_dt || r.amount)}
     ]} />
 
-    <DataTable title="Revenus de trituration — Oro Verde" description="Factures de service de la saison active. Garde des clients : seule la prestation est un revenu." rows={serviceRows} empty="Aucune facture de prestation." columns={[
+    <DataTable title="Revenus de trituration — Oro Verde" description="Factures de service de la saison active. Le montant encaissé est distingué du total facturé et du solde à recevoir." rows={serviceRows} empty="Aucune facture de prestation." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.number || "—"}, {label:"Client",render:r=>r.client_name || "—"}, {label:"Total",render:r=>fmt(r.total)}, {label:"Encaissé",render:r=>fmt(r.paid_amount)}, {label:"À recevoir",render:r=>fmt(r.balance)}
     ]} />
 
