@@ -268,12 +268,23 @@ export default function Comptabilite() {
       {label:"Date",render:r=>dateOf(r)}, {label:"Bon d’achat",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.customer_name || "—"}, {label:"Code",render:r=>r.traceability_code || "—"}, {label:"Quantité (L)",render:r=>n(r.quantity_l).toLocaleString("fr-TN")}, {label:"Prix / L",render:r=>fmt(r.unit_price_tnd_per_l)}, {label:"Montant",render:r=>fmt(r.agreed_amount_tnd)}, {label:"Payé",render:r=>fmt(r.paid_amount_tnd)}, {label:"Reste dû",render:r=>fmt(r.outstanding_amount_tnd)}
     ]} />
 
+    <DataTable title="Paiements aux clients" description="Règlements RPA effectués par la huilerie pour les achats d’olives et d’huile. Ces paiements diminuent les dettes d’achat et ne sont pas comptés une seconde fois comme dépenses." rows={[...(data.customer_olive_purchase_payments || []), ...(data.customer_oil_purchase_payments || [])]} empty="Aucun paiement RPA enregistré pour la saison active." columns={[
+      {label:"Date",render:r=>String(r.payment_date || r.paid_at || r.created_at || r.day || "—").slice(0,10)}, {label:"Référence",render:r=>r.document_number || r.payment_number || r.id || "—"}, {label:"Client",render:r=>r.customer_name || r.client_name || r.customer_id || "—"}, {label:"Achat lié",render:r=>r.purchase_document_number || r.purchase_id || r.document_id || "—"}, {label:"Type",render:r=>r.product_kind === "OLIVE" ? "Olives" : "Huile"}, {label:"Mode",render:r=>paymentLabels[r.payment_method] || r.payment_method || "—"}, {label:"Montant payé",render:r=>fmt(r.amount_tnd || r.amount_dt || r.amount)}
+    ]} />
+
     <DataTable title="Revenus de trituration — Oro Verde" description="Factures de service de la saison active. Garde des clients : seule la prestation est un revenu." rows={serviceRows} empty="Aucune facture de prestation." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.number || "—"}, {label:"Client",render:r=>r.client_name || "—"}, {label:"Total",render:r=>fmt(r.total)}, {label:"Encaissé",render:r=>fmt(r.paid_amount)}, {label:"À recevoir",render:r=>fmt(r.balance)}
     ]} />
 
     <DataTable title="Ventes d’huile — GS" description="Factures commerciales validées de la saison active. Le total net intègre déjà les avoirs acceptés; les paiements règlent les créances." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
       {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.document_number || "—"}, {label:"Acheteur",render:r=>r.buyer_name || "—"}, {label:"Total net",render:r=>fmt(r.net_amount_dt)}, {label:"Encaissé",render:r=>fmt(r.paid_amount_dt)}, {label:"À recevoir",render:r=>fmt(r.outstanding_amount_dt)}
+    ]} />
+
+    <DataTable title="Encaissements des clients" description="Règlements reçus sur les factures de trituration et les ventes GS. Les montants encaissés règlent les créances clients; ils ne sont pas ajoutés une seconde fois aux revenus." rows={[
+      ...(serviceRows.filter(r=>n(r.paid_amount)>0).map(r=>({...r,_receipt_kind:"Prestation",_receipt_amount:r.paid_amount,_receipt_document:r.number,_receipt_customer:r.client_name,_receipt_date:r.payment_date || r.day || r.created_at}))),
+      ...(data.commercial_sale_payments || []).map(r=>({...r,_receipt_kind:"Vente GS",_receipt_amount:r.amount_dt || r.amount_tnd || r.amount,_receipt_document:r.invoice_number || r.document_number || r.invoice_id,_receipt_customer:r.buyer_name || r.customer_name || r.buyer_id,_receipt_date:r.payment_date || r.paid_at || r.created_at}))
+    ]} empty="Aucun encaissement client enregistré sur la saison active." columns={[
+      {label:"Date",render:r=>String(r._receipt_date || "—").slice(0,10)}, {label:"Origine",render:r=>r._receipt_kind}, {label:"Facture",render:r=>r._receipt_document || "—"}, {label:"Client",render:r=>r._receipt_customer || "—"}, {label:"Mode",render:r=>paymentLabels[r.payment_method] || r.payment_method || "—"}, {label:"Montant encaissé",render:r=>fmt(r._receipt_amount)}
     ]} />
 
     <DataTable title="Avoirs émis — retours acceptés" description="Avoirs AVO de la saison active. Ils réduisent le revenu net de la facture d’origine; ils ne sont pas soustraits une seconde fois du total." rows={(data.commercial_credit_notes || []).filter(r => r.status === "ISSUED")} empty="Aucun avoir émis." columns={[
