@@ -148,9 +148,19 @@ async def preview_counter_reset(_: dict = Depends(require_admin)):
     ).sort([("season_code", 1), ("document_type", 1)]).to_list(500)
     names = set(await db.list_collection_names())
     counters = []
+    skipped = []
     for doc in docs:
         key = f'{doc.get("season_code", "")}|{doc.get("document_type", "")}'
-        candidate = _counter_candidate_code(doc)
+        try:
+            candidate = _counter_candidate_code(doc)
+        except HTTPException as exc:
+            # A malformed legacy counter must not prevent the remaining counters
+            # from being displayed and managed independently.
+            skipped.append({
+                "key": key,
+                "reason": str(exc.detail),
+            })
+            continue
         conflict = await _counter_code_conflict(candidate, names)
         counters.append({
             "key": key,
@@ -161,7 +171,7 @@ async def preview_counter_reset(_: dict = Depends(require_admin)):
             "conflict": conflict,
             "can_reset": conflict is None,
         })
-    return {"counters": counters, "total": len(counters)}
+    return {"counters": counters, "total": len(counters), "skipped": skipped}
 
 
 @router.post("/admin/reset/counters")
