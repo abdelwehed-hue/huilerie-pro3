@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarDays, Factory, ShoppingBasket, ArrowLeftRight, ShoppingCart, RefreshCw } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import { StatCard } from "@/components/shared";
+import { CodeBadge, StatCard } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -95,7 +95,7 @@ export default function CommercialReports({ lang }: Props) {
       <CardHeader><CardTitle>{ar ? "سجل جميع عمليات GS" : "Journal des opérations GS"}</CardTitle></CardHeader>
       <CardContent className="p-0 sm:p-6">
         <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>{ar ? "التاريخ" : "Date"}</TableHead><TableHead>{ar ? "العملية" : "Opération"}</TableHead><TableHead>{ar ? "المرجع" : "Document / Code"}</TableHead><TableHead>{ar ? "المزوّد / الحريف / الموقع" : "Fournisseur / Client / Emplacement"}</TableHead><TableHead className="text-end">{ar ? "الكمية" : "Quantité"}</TableHead><TableHead>{ar ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader><TableBody>
-          {filtered.map((x, i) => <TableRow key={String(x.code ?? i) + x.kind}><TableCell className="whitespace-nowrap">{labelDate(x.date)}</TableCell><TableCell className="font-semibold">{ar ? x.kindAr : x.kind}</TableCell><TableCell className="font-mono text-xs">{String(x.code ?? "—")}</TableCell><TableCell>{String(x.party ?? "—")}</TableCell><TableCell className="text-end tabular-nums">{fmt(x.qty, 3)} {x.unit}</TableCell><TableCell>{String(x.status ?? "—")}</TableCell></TableRow>)}
+          {filtered.map((x, i) => <TableRow key={String(x.code ?? i) + x.kind}><TableCell className="whitespace-nowrap">{labelDate(x.date)}</TableCell><TableCell className="font-semibold">{ar ? x.kindAr : x.kind}</TableCell><TableCell className="font-mono text-xs">{x.code ? <CodeBadge code={String(x.code)} /> : "—"}</TableCell><TableCell>{String(x.party ?? "—")}</TableCell><TableCell className="text-end tabular-nums">{fmt(x.qty, 3)} {x.unit}</TableCell><TableCell>{String(x.status ?? "—")}</TableCell></TableRow>)}
           {!filtered.length && <TableRow><TableCell colSpan={6} className="py-10 text-center text-stone-500">{loading ? (ar ? "جار تحميل البيانات…" : "Chargement…") : (ar ? "لا توجد عمليات مسجلة" : "Aucune opération enregistrée")}</TableCell></TableRow>}
         </TableBody></Table></div>
       </CardContent>
