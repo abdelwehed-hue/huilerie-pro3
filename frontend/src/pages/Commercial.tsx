@@ -1710,7 +1710,6 @@ export default function Commercial() {
     { id: "quality", label: l.quality, icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: "Chargement", icon: Truck },
-    { id: "custody", label: lang === "ar" ? "حفظ أمانات الحرفاء" : "Garde des clients", icon: UserCheck },
     
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "reports", label: "Rapport", icon: FileText },
