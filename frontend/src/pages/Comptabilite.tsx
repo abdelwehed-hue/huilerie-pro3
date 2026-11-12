@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import SituationJournaliere from "@/components/accounting/SituationJournaliere";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { fmtMoney } from "@/lib/i18n";
@@ -114,6 +115,7 @@ export default function Comptabilite() {
     staleTime: 30_000,
   });
   const data = query.data;
+  const [activeTab, setActiveTab] = useState<"overview" | "daily">("overview");
   const queryClient = useQueryClient();
   const passiveQuery = useQuery({
     queryKey: ["accounting-passive-incomes"],
@@ -188,6 +190,12 @@ export default function Comptabilite() {
       <button onClick={() => void query.refetch()} className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"><RefreshCw className="size-4" /> Actualiser</button>
     </div>
 
+    <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3 no-print">
+      <button type="button" onClick={() => setActiveTab("overview")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "overview" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>Vue générale</button>
+      <button type="button" onClick={() => setActiveTab("daily")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "daily" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>Situation journalière</button>
+    </div>
+
+    {activeTab === "overview" && <>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Montants réellement encaissés sur les prestations · saison active" icon={TrendingUp} tone="olive" />
       <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Montants réellement encaissés sur les ventes · saison active" icon={TrendingUp} tone="sky" />
@@ -294,5 +302,7 @@ export default function Comptabilite() {
         </div>
       </CardContent>
     </Card>
+    </>}
+    {activeTab === "daily" && <SituationJournaliere />}
   </div>;
 }

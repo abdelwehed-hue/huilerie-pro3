@@ -37,3 +37,37 @@ def test_accounting_sum_applies_source_document_filters_before_grouping():
     assert pipeline[1]["$group"]["total"]["$sum"]["$convert"]["input"] == (
         "$consideration.agreed_amount"
     )
+
+
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from routers.accounting import _accounting_day, _accounting_decimal, _daily_event
+
+
+def test_accounting_day_uses_tunis_business_timezone_for_timestamps():
+    timestamp = datetime(2026, 11, 12, 23, 30, tzinfo=timezone.utc)
+    assert _accounting_day(timestamp) == "2026-11-13"
+
+
+def test_accounting_day_preserves_explicit_business_date():
+    assert _accounting_day("2026-11-12") == "2026-11-12"
+
+
+def test_daily_event_keeps_millime_precision_without_float_rounding():
+    events = []
+    _daily_event(
+        events, day="2026-11-12", category="Prestation",
+        label="Facture", reference="FAC-1", amount="1999.800",
+        kind="revenue",
+    )
+    assert events == [{
+        "date": "2026-11-12", "category": "Prestation",
+        "label": "Facture", "reference": "FAC-1",
+        "amount": "1999.800", "kind": "revenue", "detail": "",
+    }]
+
+
+def test_accounting_decimal_handles_decimal_and_invalid_values():
+    assert _accounting_decimal("1.250") == Decimal("1.250")
+    assert _accounting_decimal("not-a-number") == Decimal("0.000")
