@@ -451,24 +451,11 @@ function FullResetPanel() {
   const ar = lang === "ar";
   const qc = useQueryClient();
   const [confirmation, setConfirmation] = useState("");
-  const [clearAudit, setClearAudit] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const preview = useQuery({
     queryKey: ["admin", "reset-preview"],
     queryFn: () => apiGet<{ collections: Record<string, number>; total_documents: number; preserved: string[] }>("/admin/reset/preview"),
   });
-  const reset = useMutation({
-    mutationFn: () => apiPost<{ ok: boolean; deleted: Record<string, number> }>("/admin/reset", {
-      confirmation, clear_audit: clearAudit,
-    }),
-    onSuccess: async () => {
-      toast.success(ar ? "تم تصفير بيانات التشغيل بنجاح. الإعدادات والعدادات محفوظة." : "Les données opérationnelles ont été réinitialisées. Paramètres et compteurs conservés.");
-      setConfirmation("");
-      await qc.invalidateQueries();
-      await preview.refetch();
-    },
-    onError: (error) => toast.error(errMsg(error)),
-  });
-  const total = preview.data?.total_documents ?? 0;
   const names: Record<string, string> = {
     loads: ar ? "الحمولات" : "Chargements",
     lab: ar ? "تحاليل المخبر" : "Analyses laboratoire",
@@ -504,56 +491,84 @@ function FullResetPanel() {
     commercial_pump_runtime: ar ? "حالة المضخات المؤقتة" : "État temporaire des pompes",
     commercial_audit_events: ar ? "سجل التدقيق GS" : "Journal d’audit GS",
   };
+  const collections = Object.keys(preview.data?.collections ?? {});
+  const selectedCount = selectedCollections.length;
+  const allSelected = collections.length > 0 && collections.every((key) => selectedCollections.includes(key));
+  const selectedTotal = selectedCollections.reduce((sum, key) => sum + (preview.data?.collections?.[key] ?? 0), 0);
+  const reset = useMutation({
+    mutationFn: () => apiPost<{ ok: boolean; deleted: Record<string, number> }>("/admin/reset", {
+      confirmation, selected_collections: selectedCollections,
+    }),
+    onSuccess: async () => {
+      toast.success(ar ? "تم حذف العناصر المحددة بنجاح. بقية البيانات والإعدادات محفوظة." : "Les éléments sélectionnés ont été supprimés. Les autres données et paramètres sont conservés.");
+      setConfirmation("");
+      await qc.invalidateQueries();
+      await preview.refetch();
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+  useEffect(() => {
+    if (preview.data && selectedCollections.length === 0) {
+      setSelectedCollections(Object.keys(preview.data.collections).filter((key) => key !== "commercial_audit_events"));
+    }
+  }, [preview.data]);
+  const toggleCollection = (key: string, checked: boolean) => {
+    setSelectedCollections((current) => checked ? [...current.filter((item) => item !== key), key] : current.filter((item) => item !== key));
+    setConfirmation("");
+  };
   return (
     <section className="space-y-5 rounded-2xl border border-red-200 bg-white p-5 shadow-sm" data-testid="full-reset-panel">
       <div className="flex items-start gap-3">
         <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700"><Trash2 className="size-5" /></div>
         <div>
-          <h2 className="text-lg font-bold text-red-900">{ar ? "إرجاع التطبيقين إلى حالة البداية" : "Réinitialiser Oro Verde et Gestion commerciale"}</h2>
-          <p className="mt-1 text-sm text-stone-600">{ar ? "يمسح جميع بيانات التجارب والمعاملات في التطبيق العادي وGS حتى تبدأ إدخال البيانات الحقيقية من الصفر." : "Supprime les données de test et les opérations des deux modules afin de recommencer la saisie réelle à zéro."}</p>
+          <h2 className="text-lg font-bold text-red-900">{ar ? "اختيار البيانات المراد حذفها" : "Sélectionner les données à supprimer"}</h2>
+          <p className="mt-1 text-sm text-stone-600">{ar ? "اختر كل عنصر تريد مسحه بشكل مستقل. العناصر غير المحددة ستبقى كما هي." : "Cochez individuellement les éléments à effacer. Tout élément non sélectionné sera conservé."}</p>
         </div>
       </div>
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        <p className="font-semibold">{ar ? "ما سيبقى محفوظاً" : "Éléments conservés"}</p>
-        <p className="mt-1">{ar ? "الإعدادات، المستخدمون وصلاحياتهم، الموسم، الخزانات، المواقع، الأصناف، إعدادات المضخات، ملفات شاشة TV، وعدادات counters وcommercial_counters. لن يعاد استخدام أرقام الأكواد والفواتير." : "Paramètres, utilisateurs et droits, campagne, cuves, emplacements, variétés, configuration des pompes, médias TV et compteurs counters / commercial_counters. Les numéros de codes et factures ne seront pas réutilisés."}</p>
+        <p className="font-semibold">{ar ? "تبقى محفوظة دائماً" : "Toujours conservés"}</p>
+        <p className="mt-1">{ar ? "الإعدادات، المستخدمون وصلاحياتهم، الموسم، الخزانات، المواقع، الأصناف، إعدادات المضخات، ملفات شاشة TV، وعدادات الأكواد والفواتير. لا يتم حذفها بهذا القسم." : "Paramètres, utilisateurs et droits, campagne, cuves, emplacements, variétés, configuration des pompes, médias TV et compteurs de codes/factures ne sont jamais supprimés par cette fonction."}</p>
       </div>
       <div className="rounded-xl border border-stone-200 p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="font-semibold">{ar ? "معاينة البيانات التي ستحذف" : "Aperçu des données à supprimer"}</h3>
-          <Button type="button" variant="outline" size="sm" onClick={() => preview.refetch()} disabled={preview.isFetching}>{ar ? "تحديث المعاينة" : "Actualiser"}</Button>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold">{ar ? "حدد العناصر" : "Éléments à supprimer"}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={!collections.length} onClick={() => { setSelectedCollections(allSelected ? [] : collections); setConfirmation(""); }} data-testid="reset-select-all">
+              {allSelected ? (ar ? "إلغاء تحديد الكل" : "Tout désélectionner") : (ar ? "تحديد الكل" : "Tout sélectionner")}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => preview.refetch()} disabled={preview.isFetching}>{ar ? "تحديث المعاينة" : "Actualiser"}</Button>
+          </div>
         </div>
         {preview.isLoading ? <p className="text-sm text-stone-500">{ar ? "جارٍ حساب السجلات..." : "Calcul des documents…"}</p> :
           preview.isError ? <p className="text-sm text-red-700">{ar ? "تعذر تحميل المعاينة." : "Impossible de charger l’aperçu."}</p> :
           <div className="grid gap-2 sm:grid-cols-2">
-            {Object.entries(preview.data?.collections ?? {}).filter(([key]) => key !== "commercial_audit_events" || clearAudit).map(([key, count]) => (
-              <div key={key} className="flex items-center justify-between gap-3 rounded-lg bg-stone-50 px-3 py-2 text-sm">
-                <span>{names[key] ?? key}</span><strong className="font-mono tabular-nums">{count.toLocaleString()}</strong>
-              </div>
-            ))}
-            <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-900 sm:col-span-2">
-              <span>{ar ? "مجموع السجلات المحددة" : "Total des documents sélectionnés"}</span>
-              <span className="font-mono tabular-nums">{(total + (clearAudit ? 0 : -(preview.data?.collections?.commercial_audit_events ?? 0))).toLocaleString()}</span>
+            {collections.map((key) => {
+              const checked = selectedCollections.includes(key);
+              const count = preview.data?.collections[key] ?? 0;
+              return <label key={key} className={cn("flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors", checked ? "border-red-200 bg-red-50" : "border-stone-200 bg-stone-50")}>
+                <span className="flex min-w-0 items-center gap-3"><input type="checkbox" checked={checked} onChange={(e) => toggleCollection(key, e.target.checked)} className="size-4 shrink-0 accent-red-700" /><span>{names[key] ?? key}</span></span>
+                <strong className="font-mono tabular-nums">{count.toLocaleString()}</strong>
+              </label>;
+            })}
+            <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-900 sm:col-span-2">
+              <span>{ar ? `العناصر المحددة: ${selectedCount}` : `Éléments sélectionnés : ${selectedCount}`}</span>
+              <span className="font-mono tabular-nums">{selectedTotal.toLocaleString()} {ar ? "سجل" : "documents"}</span>
             </div>
           </div>}
       </div>
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200 p-3 text-sm">
-        <input type="checkbox" checked={clearAudit} onChange={(e) => setClearAudit(e.target.checked)} className="mt-0.5 size-4 accent-red-700" />
-        <span><strong>{ar ? "مسح سجل التدقيق القديم أيضاً" : "Effacer également l’ancien journal d’audit"}</strong><span className="mt-1 block text-stone-500">{ar ? "إذا لم تحدد هذا الخيار، يبقى سجل التدقيق القديم. وفي الحالتين يُسجل تنفيذ عملية التصفير في سجل إداري مستقل." : "Sinon, l’historique d’audit est conservé. Dans les deux cas, l’opération de réinitialisation est inscrite dans un journal administratif séparé."}</span></span>
-      </label>
       <div className="space-y-2">
         <Label htmlFor="full-reset-confirm">{ar ? "للتأكيد، اكتب RESET" : "Pour confirmer, saisissez RESET"}</Label>
         <Input id="full-reset-confirm" data-testid="full-reset-confirm-input" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" className="max-w-sm font-mono" placeholder="RESET" />
       </div>
-      <Button type="button" data-testid="full-reset-submit" disabled={confirmation !== "RESET" || reset.isPending || preview.isLoading || preview.isError} onClick={() => {
-        if (window.confirm(ar ? "تحذير نهائي: سيتم حذف جميع بيانات التشغيل والتجارب في التطبيقين. هل تريد المتابعة؟" : "Dernier avertissement : toutes les données opérationnelles et de test des deux modules seront supprimées. Continuer ?")) reset.mutate();
+      <Button type="button" data-testid="full-reset-submit" disabled={confirmation !== "RESET" || selectedCollections.length === 0 || reset.isPending || preview.isLoading || preview.isError} onClick={() => {
+        if (window.confirm(ar ? `تأكيد نهائي: سيتم حذف ${selectedCount} عنصر/عناصر محددة فقط، بإجمالي ${selectedTotal} سجل. هل تريد المتابعة؟` : `Confirmation finale : seuls les ${selectedCount} éléments sélectionnés (${selectedTotal} documents) seront supprimés. Continuer ?`)) reset.mutate();
       }} className="bg-red-700 text-white hover:bg-red-800">
-        <Trash2 className="me-2 size-4" />{reset.isPending ? (ar ? "جارٍ التصفير..." : "Réinitialisation…") : (ar ? "تصفير التطبيقين" : "Réinitialiser les deux modules")}
+        <Trash2 className="me-2 size-4" />{reset.isPending ? (ar ? "جارٍ الحذف..." : "Suppression…") : (ar ? "حذف العناصر المحددة" : "Supprimer les éléments sélectionnés")}
       </Button>
-      <p className="text-xs text-stone-500">{ar ? "هذا الإجراء نهائي ولا يمكن التراجع عنه. لا ينفذ أي حذف بمجرد فتح الصفحة أو نشر التعديل." : "Cette action est définitive. Aucun effacement n’est déclenché à l’ouverture de la page ni lors du déploiement."}</p>
+      <p className="text-xs text-stone-500">{ar ? "الحذف نهائي. لن يتم حذف أي عنصر غير محدد، ولا يحدث أي حذف بمجرد فتح الصفحة أو نشر التعديل." : "La suppression est définitive. Aucun élément non coché ne sera supprimé. Aucun effacement ne se produit à l’ouverture de la page ou au déploiement."}</p>
     </section>
   );
 }
-
 function DashboardThemeSettings() {
   const { lang } = useI18n();
   const [premium, setPremium] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
