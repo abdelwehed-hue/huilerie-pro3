@@ -11,11 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatCard } from "@/components/shared";
+import { CodeBadge, StatCard } from "@/components/shared";
 
 type Row = Record<string, any>;
 type Mode = "invoices" | "statement" | "global";
 const money = (v: unknown) => fmtMoney(v == null ? null : String(v));
+const purchaseCodeDisplay = (value: unknown) => {
+  const text = String(value ?? "—");
+  return text.split(/(\\s*,\\s*)/).map((part, index) => {
+    const code = part.trim();
+    return /^2627A/i.test(code) ? <CodeBadge key={index} code={code} /> : part;
+  });
+};
 const dateText = (v: unknown) => {
   if (!v) return "—";
   const d = new Date(String(v));
@@ -304,7 +311,7 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><span className="text-muted-foreground">{labels.buyer}</span><p className="font-semibold">{buyers.find(b=>b.id===selectedInvoice.buyer_id)?.name ?? "—"}</p></div>
           <div><span className="text-muted-foreground">{labels.date}</span><p className="font-semibold">{dateText(selectedInvoice.sale_date ?? selectedInvoice.created_at)}</p></div>
-          <div><span className="text-muted-foreground">{labels.code}</span><p className="font-mono font-semibold">{selectedInvoice.batch_code ?? "—"}</p></div>
+          <div><span className="text-muted-foreground">{labels.code}</span><p className="font-mono font-semibold">{purchaseCodeDisplay(selectedInvoice.batch_code)}</p></div>
           <div><span className="text-muted-foreground">{labels.status}</span><p className="font-semibold">{statusText(selectedInvoice)}</p></div>
           <div><span className="text-muted-foreground">{labels.quantity}</span><p className="font-semibold">{quantityNumber(selectedInvoice.quantity_kg, ar)}</p></div>
           <div><span className="text-muted-foreground">{labels.unit}</span><p className="font-semibold">{money(selectedInvoice.unit_price_dt)}</p></div>
@@ -396,7 +403,7 @@ export default function CommercialFactures({ initialInvoiceId = "" }: { initialI
             {filtered.map(x=><tr key={x.id} className="gs-print-row">
               <td className="border-b border-stone-200 p-2">{dateText(x.sale_date ?? x.created_at)}</td>
               <td className="border-b border-stone-200 p-2 font-semibold">{x.document_number}</td>
-              <td className="border-b border-stone-200 p-2 font-mono">{x.batch_code ?? "—"}</td>
+              <td className="border-b border-stone-200 p-2 font-mono">{purchaseCodeDisplay(x.batch_code)}</td>
               <td className="border-b border-stone-200 p-2">{quantityNumber(x.quantity_kg, ar)} L</td>
               <td className="border-b border-stone-200 p-2">{money(x.total_amount_dt)}</td>
               <td className="border-b border-stone-200 p-2">{money(x.paid_amount_dt)}</td>
