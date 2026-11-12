@@ -370,6 +370,7 @@ export default function Commercial() {
   const oilPurchases = useQuery({ queryKey: ["commercial", "oil-purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/oil-purchases", 500), enabled: ready && tab === "transfers" });
   const oilPurchasePayments = useQuery({ queryKey: ["commercial", "oil-purchase-payments", selectedOilPurchaseId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/oil-purchases/${encodeURIComponent(selectedOilPurchaseId)}/payments`, 500), enabled: ready && tab === "transfers" && !!selectedOilPurchaseId });
   const oilPurchaseStatement = useQuery({ queryKey: ["commercial", "oil-purchase-statement", oilPurchaseStatementCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/oil-purchases/customers/" + encodeURIComponent(oilPurchaseStatementCustomerId) + "/statement"), enabled: ready && tab === "transfers" && !!oilPurchaseStatementCustomerId });
+  const oilPurchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "transfers" && !!oilPurchaseStatementCustomerId });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "quality" || (tab === "stock" && stockView === "chargement")) });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
   const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "procurement" });
@@ -2151,14 +2152,29 @@ export default function Commercial() {
               </Table>
             </div>
           <div className="mt-5 rounded-xl border p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="oil-purchase-statement-no-print flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-semibold">{lang === "ar" ? "كشف حساب مستحقات الحريف" : "Relevé des dettes envers le client"}</h3>
-              <select value={oilPurchaseStatementCustomerId} onChange={(e) => setOilPurchaseStatementCustomerId(e.target.value)} className="h-10 min-w-64 rounded-lg border bg-background px-3">
-                <option value="">{lang === "ar" ? "اختر الحريف" : "Choisir un client"}</option>
-                {Array.from(new Map((oilPurchases.data ?? []).map((p) => [p.customer_id, p.customer_name])).entries()).map(([id, name]) => <option key={id} value={String(id)}>{value(name, String(id))}</option>)}
-              </select>
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={oilPurchaseStatementCustomerId} onChange={(e) => setOilPurchaseStatementCustomerId(e.target.value)} className="h-10 min-w-64 rounded-lg border bg-background px-3">
+                  <option value="">{lang === "ar" ? "اختر الحريف" : "Choisir un client"}</option>
+                  {Array.from(new Map((oilPurchases.data ?? []).map((p) => [p.customer_id, p.customer_name])).entries()).map(([id, name]) => <option key={id} value={String(id)}>{value(name, String(id))}</option>)}
+                </select>
+                {oilPurchaseStatementCustomerId && oilPurchaseStatement.data && <Button type="button" size="sm" onClick={() => window.print()}><Printer className="mr-2 size-4" />{lang === "ar" ? "طباعة / PDF" : "Imprimer / PDF"}</Button>}
+              </div>
             </div>
-            {oilPurchaseStatementCustomerId && oilPurchaseStatement.data && <div className="space-y-3">
+            {oilPurchaseStatementCustomerId && oilPurchaseStatement.data && <div className="oil-purchase-statement-print space-y-3" dir={lang === "ar" ? "rtl" : "ltr"}>
+              <header className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4 text-stone-900">
+                <div className="flex min-w-0 items-start gap-3">
+                  {oilPurchaseMill.data?.mill_logo && <img src={oilPurchaseMill.data.mill_logo} alt="Logo" className="max-h-16 max-w-24 object-contain" />}
+                  <div><h2 className="text-xl font-bold">{oilPurchaseMill.data?.mill_name || "Oro Verde"}</h2><p className="text-sm text-stone-500">{oilPurchaseMill.data?.mill_address}</p><p className="text-sm text-stone-500">{oilPurchaseMill.data?.mill_phone}</p></div>
+                </div>
+                <div className="shrink-0 text-right text-sm">
+                  <h3 className="text-lg font-bold">{lang === "ar" ? "كشف حساب مستحقات الحريف" : "Relevé des dettes envers le client"}</h3>
+                  <p className="font-semibold">{value(oilPurchaseStatement.data.customer_name)}</p>
+                  <p className="text-xs text-stone-500" dir="ltr">{value(oilPurchaseStatement.data.customer_phone)}</p>
+                  <p className="text-xs text-stone-500">{lang === "ar" ? "تاريخ الكشف" : "Date du relevé"}: {new Date().toLocaleDateString(lang === "ar" ? "ar-TN" : "fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" })}</p>
+                </div>
+              </header>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-lg bg-muted/40 p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المشتريات" : "Total des achats"}</div><div className="text-lg font-semibold">{money(oilPurchaseStatement.data.total_purchases_tnd)} TND</div></div>
                 <div className="rounded-lg bg-muted/40 p-3"><div className="text-xs text-muted-foreground">{lang === "ar" ? "إجمالي المدفوع" : "Total payé"}</div><div className="text-lg font-semibold">{money(oilPurchaseStatement.data.total_paid_tnd)} TND</div></div>
@@ -2949,6 +2965,17 @@ export default function Commercial() {
       </div>}
 
       {tab === "quality" && <QrScanDialog open={qualityQrScanOpen} onClose={() => setQualityQrScanOpen(false)} onScan={handleQualityQrScan} />}
+      <style>{`@media print {
+        body * { visibility: hidden !important; }
+        .oil-purchase-statement-print, .oil-purchase-statement-print * { visibility: visible !important; }
+        .oil-purchase-statement-print { position: absolute !important; inset: 0 !important; width: 100% !important; margin: 0 !important; padding: 8mm !important; background: #fff !important; color: #111 !important; }
+        .oil-purchase-statement-no-print { display: none !important; }
+        .oil-purchase-statement-print table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8pt !important; border-collapse: collapse !important; }
+        .oil-purchase-statement-print th, .oil-purchase-statement-print td { padding: 5px !important; border: 1px solid #d6d3d1 !important; color: #111 !important; }
+        .oil-purchase-statement-print tr { break-inside: avoid !important; }
+        .oil-purchase-statement-print .rounded-lg { border: 1px solid #d6d3d1 !important; background: #f8fafc !important; }
+        @page { size: A4 portrait; margin: 10mm; }
+      }`}</style>
 
     </div>
   );
