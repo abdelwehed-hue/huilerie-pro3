@@ -56,7 +56,12 @@ def test_rejects_invalid_numbering_components(season, document_type):
         validate_numbering_components(season, document_type)
 
 
-@pytest.mark.parametrize("sequence", [0, -1, True, 1.5, "1"])
+def test_zero_is_a_valid_first_sequence():
+    assert format_document_number("2627", "LOT", 0) == "2627LOT0000"
+    assert format_document_number("2627", "FAC", 0) == "2627F0000"
+
+
+@pytest.mark.parametrize("sequence", [-1, True, 1.5, "1"])
 def test_rejects_invalid_sequences(sequence):
     with pytest.raises(ValueError):
         format_document_number("2627", "LOT", sequence)
