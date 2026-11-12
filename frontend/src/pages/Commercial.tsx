@@ -95,7 +95,7 @@ function lotCode(lot: AnyRecord | null | undefined, fallback = "—") {
 }
 function number(v: unknown) {
   const n = Number(v);
-  return Number.isFinite(n) ? n.toLocaleString("fr-FR", { maximumFractionDigits: 3 }) : "—";
+  return Number.isFinite(n) ? n.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—";
 }
 function money(v: unknown) {
   return fmtMoney(v == null ? null : String(v));
@@ -2433,7 +2433,7 @@ export default function Commercial() {
                     <TableCell className="whitespace-nowrap text-end font-semibold text-amber-700">{oilProduced > 0 ? number(oilProduced) : "—"}</TableCell>
                     <TableCell className="min-w-32 text-xs">{labLabel}</TableCell>
                     <TableCell className="whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${purchase.status === "APPROVED" ? "bg-emerald-100 text-emerald-800" : purchase.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>{purchaseStatus}</span></TableCell>
-                    <TableCell className="whitespace-nowrap text-end">{averagePricePerKg > 0 ? `${number(averagePricePerKg)} TND/kg` : "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-end">{averagePricePerKg > 0 ? money(averagePricePerKg) : "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-end font-semibold">{money(purchase.total_amount_dt)}</TableCell>
                     <TableCell className="min-w-40 max-w-64 truncate text-xs text-stone-600" title={String(purchase.notes ?? "")}>{value(purchase.notes, "—")}</TableCell>
                     <TableCell className="text-center"><Button size="sm" variant="outline" onClick={() => { selectTab("purchases"); if (purchase.status === "DRAFT" && canEditRecords) startPurchaseEdit(purchase); else if (purchase.status === "APPROVED") setSelectedPurchaseReceipt(purchase); }}>{lang === "ar" ? "فتح" : "Ouvrir"}</Button></TableCell>
