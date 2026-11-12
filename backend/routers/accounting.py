@@ -202,3 +202,98 @@ async def delete_passive_income(income_id: str, _: dict = Depends(require_admin)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Revenu passif introuvable pour la saison active.")
     return {"ok": True}
+
+class ExpenseInput(BaseModel):
+    expense_type: Literal["ELECTRICITY", "WAGES", "MAINTENANCE", "FUEL", "TRANSPORT", "SUPPLIES", "RENT", "INSURANCE", "TAXES", "OTHER"]
+    description: str = Field(min_length=2, max_length=180)
+    expense_date: str = Field(pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    amount_tnd: str = Field(pattern=r"^\\d{1,12}(?:\\.\\d{1,3})?$")
+    payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
+    beneficiary: str = Field(default="", max_length=160)
+    notes: str = Field(default="", max_length=500)
+
+
+class InvestmentInput(BaseModel):
+    investment_type: Literal["MACHINERY", "EQUIPMENT", "BUILDING", "VEHICLE", "RENOVATION", "IT", "OTHER"]
+    description: str = Field(min_length=2, max_length=180)
+    investment_date: str = Field(pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    amount_tnd: str = Field(pattern=r"^\\d{1,12}(?:\\.\\d{1,3})?$")
+    payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
+    supplier: str = Field(default="", max_length=160)
+    notes: str = Field(default="", max_length=500)
+
+
+async def _create_accounting_outflow(collection: str, kind_field: str, kind: str, date_field: str, payload: Any, user: dict):
+    season = await active_season()
+    try:
+        datetime.strptime(getattr(payload, date_field), "%Y-%m-%d")
+        amount = Decimal(payload.amount_tnd)
+    except (ValueError, InvalidOperation):
+        raise HTTPException(status_code=422, detail="Date ou montant invalide.")
+    if not amount.is_finite() or amount <= 0:
+        raise HTTPException(status_code=422, detail="Le montant doit être supérieur à zéro.")
+    record = {
+        "id": str(uuid4()),
+        "season": season,
+        kind_field: kind,
+        "description": payload.description.strip(),
+        date_field: getattr(payload, date_field),
+        "amount_tnd": format(amount.quantize(Decimal("0.001")), "f"),
+        "payment_method": payload.payment_method,
+        "notes": payload.notes.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id") or user.get("username") or "admin",
+    }
+    if kind_field == "expense_type":
+        record["beneficiary"] = payload.beneficiary.strip()
+    else:
+        record["supplier"] = payload.supplier.strip()
+    await db[collection].insert_one(record)
+    return record
+
+
+async def _list_accounting_outflows(collection: str, date_field: str):
+    season = await active_season()
+    rows = await db[collection].find({"season": season}, {"_id": 0}).sort(
+        [(date_field, -1), ("created_at", -1)]
+    ).to_list(1000)
+    return _safe(rows)
+
+
+async def _delete_accounting_outflow(collection: str, record_id: str, kind_label: str):
+    season = await active_season()
+    result = await db[collection].delete_one({"id": record_id, "season": season})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"{kind_label} introuvable pour la saison active.")
+    return {"ok": True}
+
+
+@router.get("/expenses")
+async def list_accounting_expenses(_: dict = Depends(require_admin)):
+    return await _list_accounting_outflows("accounting_expenses", "expense_date")
+
+
+@router.post("/expenses")
+async def create_accounting_expense(payload: ExpenseInput, user: dict = Depends(require_admin)):
+    return await _create_accounting_outflow("accounting_expenses", "expense_type", payload.expense_type, "expense_date", payload, user)
+
+
+@router.delete("/expenses/{record_id}")
+async def delete_accounting_expense(record_id: str, _: dict = Depends(require_admin)):
+    return await _delete_accounting_outflow("accounting_expenses", record_id, "Dépense")
+
+
+@router.get("/investments")
+async def list_accounting_investments(_: dict = Depends(require_admin)):
+    return await _list_accounting_outflows("accounting_investments", "investment_date")
+
+
+@router.post("/investments")
+async def create_accounting_investment(payload: InvestmentInput, user: dict = Depends(require_admin)):
+    return await _create_accounting_outflow("accounting_investments", "investment_type", payload.investment_type, "investment_date", payload, user)
+
+
+@router.delete("/investments/{record_id}")
+async def delete_accounting_investment(record_id: str, _: dict = Depends(require_admin)):
+    return await _delete_accounting_outflow("accounting_investments", record_id, "Investissement")
+
