@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { fmtMoney } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard, type Tone } from "@/components/shared";
 import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, Plus, Trash2, type LucideIcon } from "lucide-react";
 
 type Row = Record<string, any>;
@@ -70,22 +71,16 @@ const customerOliveTnd = (value: unknown) => String(value ?? "0").trim().replace
 const dateOf = (r: Row) => String(r.purchase_date || r.sale_date || r.day || r.created_at || "").slice(0, 10);
 const sum = (rows: Row[], field: string) => rows.reduce((total, row) => total + n(row[field]), 0);
 
-function Metric({ title, value, detail, icon: Icon, tone, cardColor, cardBackgroundClass }: {
-  title: string; value: string; detail: string; icon: LucideIcon; tone: string; cardColor: string; cardBackgroundClass: string;
+function Metric({ title, value, detail, icon: Icon, tone }: {
+  title: string; value: string; detail: string; icon: LucideIcon; tone: Tone;
 }) {
-  return <Card
-    style={{ background: cardColor, backgroundColor: cardColor, border: "1px solid rgba(71, 85, 105, 0.20)" }}
-    className={`${cardBackgroundClass} shadow-sm transition-shadow hover:shadow-md`}
-  >
-    <CardContent className="flex items-start gap-3 p-4">
-      <div className={`rounded-xl p-2.5 ${tone}`}><Icon className="size-5" /></div>
-      <div className="min-w-0">
-        <p className="text-sm text-stone-500">{title}</p>
-        <p className="mt-1 text-xl font-bold tabular-nums text-stone-900">{value}</p>
-        <p className="mt-1 text-xs text-stone-500">{detail}</p>
-      </div>
-    </CardContent>
-  </Card>;
+  return <StatCard
+    label={title}
+    value={value}
+    sub={detail}
+    tone={tone}
+    icon={<Icon />}
+  />;
 }
 
 function DataTable({ title, description, rows, columns, empty }: {
@@ -200,13 +195,13 @@ export default function Comptabilite() {
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="bg-emerald-100 text-emerald-800" cardColor="#a7f3d0" cardBackgroundClass="!bg-emerald-200" />
-      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="bg-blue-100 text-blue-800" cardColor="#bfdbfe" cardBackgroundClass="!bg-blue-200" />
-      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="bg-amber-100 text-amber-800" cardColor="#fde68a" cardBackgroundClass="!bg-amber-200" />
-      <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-orange-100 text-orange-800" cardColor="#fed7aa" cardBackgroundClass="!bg-orange-200" />
-      <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-yellow-100 text-yellow-800" cardColor="#fef08a" cardBackgroundClass="!bg-yellow-200" />
-      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="bg-violet-100 text-violet-800" cardColor="#ddd6fe" cardBackgroundClass="!bg-violet-200" />
-      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · saison active" icon={Wallet} tone="bg-rose-100 text-rose-800" cardColor="#fecdd3" cardBackgroundClass="!bg-rose-200" />
+      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="olive" />
+      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="sky" />
+      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="gold" />
+      <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="orange" />
+      <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="gold" />
+      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="violet" />
+      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · saison active" icon={Wallet} tone="rose" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
