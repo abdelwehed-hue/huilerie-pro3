@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { History, Printer, Plus, Sprout, UserPlus, Truck, UserRound } from "lucide-react";
@@ -14,6 +15,56 @@ import type { ClientCreate, ClientHistory, ClientSummary, Load, LoadCreate, Mill
 import { fmtNum, useI18n } from "@/lib/i18n";
 import { StatusPill } from "@/components/shared";
 import ReceptionTicket from "@/components/ReceptionTicket";
+
+type SupplierReceptionDocumentProps = {
+  receipt: any;
+  fallbackDate: string;
+  millInfo?: MillInfo;
+  testId?: string;
+  qrTestId?: string;
+};
+
+/** Shared supplier receipt markup for the on-screen preview and isolated print sheet. */
+function SupplierReceptionDocument({ receipt, fallbackDate, millInfo, testId, qrTestId }: SupplierReceptionDocumentProps) {
+  const purchase = receipt.purchase ?? {};
+  const supplier = receipt.supplier ?? {};
+  const batchCode = receipt.batch_code || purchase.batch_code || "—";
+  return (
+    <div className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm" data-testid={testId}>
+      <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+        <div>
+          <div className="font-heading text-lg font-bold text-stone-900">{millInfo?.mill_name || "Oro Verde"}</div>
+          {millInfo?.mill_address && <div className="text-xs text-stone-500">{millInfo.mill_address}</div>}
+          {millInfo?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{millInfo.mill_phone}</div>}
+        </div>
+        <div className="text-end">
+          <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">Bon de réception fournisseur</div>
+          <div className="mt-1 text-xs text-stone-500" dir="ltr">{purchase.purchase_date || fallbackDate}</div>
+        </div>
+      </div>
+      <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
+        <div>
+          <div className="mb-2 text-xs text-stone-500">Code unique de traçabilité</div>
+          <div className="inline-flex rounded-lg bg-amber-50 px-4 py-2 font-mono text-2xl font-bold text-amber-900" dir="ltr">{batchCode}</div>
+          <div className="mt-3 text-sm text-stone-500">Code GS à conserver pour le suivi du lot</div>
+        </div>
+        <div data-testid={qrTestId} className="flex flex-col items-center gap-1">
+          <QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(purchase.id ?? "") + "&batch=" + encodeURIComponent(batchCode === "—" ? "" : batchCode)} size={112} level="M" marginSize={1} />
+          <span className="text-[10px] text-stone-500">Scanner pour ouvrir le lot dans GS</span>
+        </div>
+      </div>
+      <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
+        <div><dt className="text-stone-500">Fournisseur</dt><dd className="font-semibold text-stone-900">{supplier.name || "—"}</dd></div>
+        <div><dt className="text-stone-500">Téléphone</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplier.phone || "—"}</dd></div>
+        <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{purchase.batch_code || batchCode}</dd></div>
+        <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{purchase.purchase_date || fallbackDate}</dd></div>
+        <div><dt className="text-stone-500">Quantité d’olives</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(purchase.total_quantity_kg ?? 0))} kg</dd></div>
+        <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{Number(purchase.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</dd></div>
+        <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">Réception enregistrée</dd></div>
+      </dl>
+    </div>
+  );
+}
 
 function NewClientDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (c: ClientSummary) => void }) {
   const { t, errMsg } = useI18n();
@@ -425,43 +476,21 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           </div>
         )}
         {supplierReceipt && receptionType === "supplier" && (
-          <div className="print-area code-reveal rounded-2xl border-2 border-dashed border-amber-300 bg-white p-8 shadow-sm" data-testid="supplier-reception-ticket">
-            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
-              <div>
-                <div className="font-heading text-lg font-bold text-stone-900">{millInfo?.mill_name || "Oro Verde"}</div>
-                {millInfo?.mill_address && <div className="text-xs text-stone-500">{millInfo.mill_address}</div>}
-                {millInfo?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{millInfo.mill_phone}</div>}
-              </div>
-              <div className="text-end">
-                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">Bon de réception fournisseur</div>
-                <div className="mt-1 text-xs text-stone-500" dir="ltr">{supplierReceipt.purchase?.purchase_date || supplierDate}</div>
+          <>
+            <div className="no-print space-y-4">
+              <SupplierReceptionDocument receipt={supplierReceipt} fallbackDate={supplierDate} millInfo={millInfo} testId="supplier-reception-ticket" qrTestId="supplier-ticket-qr" />
+              <div className="flex flex-wrap gap-3 border-t border-stone-200 pt-4">
+                <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button>
+                <Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button>
               </div>
             </div>
-            <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
-              <div>
-                <div className="mb-2 text-xs text-stone-500">Code unique de traçabilité</div>
-                <div className="inline-flex rounded-lg bg-amber-50 px-4 py-2 font-mono text-2xl font-bold text-amber-900" dir="ltr">{supplierReceipt.batch_code}</div>
-                <div className="mt-3 text-sm text-stone-500">Code GS à conserver pour le suivi du lot</div>
-              </div>
-              <div data-testid="supplier-ticket-qr" className="flex flex-col items-center gap-1">
-                <QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(supplierReceipt.purchase?.id ?? "") + "&batch=" + encodeURIComponent(supplierReceipt.batch_code ?? "")} size={112} level="M" marginSize={1} />
-                <span className="text-[10px] text-stone-500">Scanner pour ouvrir le lot dans GS</span>
-              </div>
-            </div>
-            <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
-              <div><dt className="text-stone-500">Fournisseur</dt><dd className="font-semibold text-stone-900">{supplierReceipt.supplier?.name || "—"}</dd></div>
-              <div><dt className="text-stone-500">Téléphone</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierReceipt.supplier?.phone || "—"}</dd></div>
-              <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{supplierReceipt.purchase?.batch_code || supplierReceipt.batch_code || "—"}</dd></div>
-              <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
-              <div><dt className="text-stone-500">Quantité d’olives</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
-              <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{Number(supplierReceipt.purchase?.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</dd></div>
-              <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">Réception enregistrée</dd></div>
-            </dl>
-            <div className="no-print mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-4">
-              <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button>
-              <Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button>
-            </div>
-          </div>
+            {createPortal(
+              <div className="print-sheet">
+                <SupplierReceptionDocument receipt={supplierReceipt} fallbackDate={supplierDate} millInfo={millInfo} />
+              </div>,
+              document.body,
+            )}
+          </>
         )}
         {created && receptionType === "client" && (
           <ReceptionTicket load={created}>
