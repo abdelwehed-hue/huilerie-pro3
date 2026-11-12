@@ -571,6 +571,123 @@ function FullResetPanel() {
     </section>
   );
 }
+
+function CounterResetPanel() {
+  const { lang, errMsg } = useI18n();
+  const ar = lang === "ar";
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
+  const preview = useQuery({
+    queryKey: ["admin", "reset-counter-preview"],
+    queryFn: () => apiGet<{ counters: Array<{
+      key: string; season_code: string; document_type: string;
+      current_sequence: number; first_code: string;
+      conflict: { collection: string; record_id?: string } | null;
+      can_reset: boolean;
+    }> }>("/admin/reset/counters/preview"),
+  });
+  const counters = preview.data?.counters ?? [];
+  const selectable = counters.filter((item) => item.can_reset).map((item) => item.key);
+  const allSelected = selectable.length > 0 && selectable.every((key) => selected.includes(key));
+  useEffect(() => {
+    if (preview.data && !initialized) {
+      setSelected(preview.data.counters.filter((item) => item.can_reset).map((item) => item.key));
+      setInitialized(true);
+    }
+  }, [preview.data, initialized]);
+  const reset = useMutation({
+    mutationFn: () => apiPost<{ ok: boolean; reset: Array<{ season_code: string; document_type: string; next_code: string }> }>(
+      "/admin/reset/counters", { selected_counters: selected },
+    ),
+    onSuccess: async (result) => {
+      toast.success(ar
+        ? `تمت إعادة تعيين ${result.reset.length} عداداً. الأكواد التالية تبدأ من 0000.`
+        : `${result.reset.length} compteur(s) réinitialisé(s). La prochaine séquence commence à 0000.`);
+      setSelected([]);
+      setInitialized(false);
+      await qc.invalidateQueries();
+      await preview.refetch();
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+  const toggle = (key: string, checked: boolean) => {
+    setSelected((current) => checked ? [...current.filter((item) => item !== key), key] : current.filter((item) => item !== key));
+  };
+  const labels: Record<string, string> = {
+    BATCH: ar ? "كود تتبع الدفعات (A)" : "Traçabilité des lots (A)",
+    FAC: ar ? "فواتير GS (F)" : "Factures GS (F)",
+    ACH: ar ? "المشتريات" : "Achats",
+    MVT: ar ? "الحركات" : "Mouvements",
+    PROD: ar ? "الإنتاج" : "Production",
+    VTE: ar ? "المبيعات" : "Ventes",
+    PAY: ar ? "الدفعات المالية" : "Paiements",
+    INT: ar ? "التحويلات الداخلية" : "Transferts internes",
+    RET: ar ? "المرتجعات" : "Retours",
+  };
+  return (
+    <section className="space-y-5 rounded-2xl border border-amber-200 bg-white p-5 shadow-sm" data-testid="counter-reset-panel">
+      <div className="flex items-start gap-3">
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800"><CalendarRange className="size-5" /></div>
+        <div>
+          <h2 className="text-lg font-bold text-amber-950">{ar ? "إعادة تعيين عدادات الأكواد" : "Réinitialisation des compteurs"}</h2>
+          <p className="mt-1 text-sm text-stone-600">{ar ? "اختر كل عداد على حدة. لا يتم حذف أي سجل أو تعديل أي كود قديم." : "Sélectionnez chaque compteur indépendamment. Aucun dossier n’est supprimé et aucun ancien code n’est modifié."}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">{ar ? "تنبيه مهم" : "Attention — fonctionnement"}</p>
+        <p className="mt-1">{ar
+          ? "بعد التصفير سيحاول النظام إصدار كود يبدأ بـ 0000. إذا كان هذا الكود موجوداً في أي سجل، يمنع النظام إعادة تعيين ذلك العداد. معرفات الحرفاء والمزودين حالياً UUID وليست عدادات رقمية؛ لن تتغير."
+          : "Après remise à zéro, le prochain code visé se termine par 0000. Si ce code existe déjà dans un dossier, le compteur concerné sera bloqué. Les identifiants des clients et fournisseurs sont actuellement des UUID, pas des séquences numériques : ils ne seront pas modifiés."}</p>
+      </div>
+      <div className="rounded-xl border border-stone-200 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold">{ar ? "العدادات المتاحة" : "Compteurs disponibles"}</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={!selectable.length} onClick={() => setSelected(allSelected ? [] : selectable)}>
+              {allSelected ? (ar ? "إلغاء تحديد الكل" : "Tout désélectionner") : (ar ? "تحديد الكل" : "Tout sélectionner")}
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={preview.isFetching} onClick={() => preview.refetch()}>
+              {ar ? "تحديث" : "Actualiser"}
+            </Button>
+          </div>
+        </div>
+        {preview.isLoading ? <p className="text-sm text-stone-500">{ar ? "جارٍ تحميل العدادات..." : "Chargement des compteurs…"}</p> :
+          preview.isError ? <p className="text-sm text-red-700">{ar ? "تعذر تحميل العدادات." : "Impossible de charger les compteurs."}</p> :
+          counters.length === 0 ? <p className="text-sm text-stone-500">{ar ? "لا توجد عدادات تجارية مهيأة." : "Aucun compteur commercial initialisé."}</p> :
+          <div className="grid gap-2 sm:grid-cols-2">
+            {counters.map((item) => {
+              const checked = selected.includes(item.key);
+              return <label key={item.key} className={cn("flex items-start justify-between gap-3 rounded-lg border px-3 py-3 text-sm", item.can_reset ? checked ? "cursor-pointer border-amber-300 bg-amber-50" : "cursor-pointer border-stone-200 bg-stone-50" : "cursor-not-allowed border-red-200 bg-red-50 opacity-90")}>
+                <span className="flex min-w-0 items-start gap-3">
+                  <input type="checkbox" checked={checked} disabled={!item.can_reset} onChange={(e) => toggle(item.key, e.target.checked)} className="mt-1 size-4 shrink-0 accent-amber-700" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-stone-800">{labels[item.document_type] ?? item.document_type} · {item.season_code}</span>
+                    <span className="mt-1 block font-mono text-xs text-amber-900">{item.first_code}</span>
+                    {!item.can_reset && <span className="mt-1 block text-xs text-red-700">{ar ? `الكود موجود مسبقاً في ${item.conflict?.collection}` : `Code déjà utilisé dans ${item.conflict?.collection}`}</span>}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right text-xs text-stone-500">
+                  <span className="block">{ar ? "القيمة الحالية" : "Valeur actuelle"}</span>
+                  <strong className="font-mono text-sm text-stone-800">{item.current_sequence}</strong>
+                </span>
+              </label>;
+            })}
+          </div>}
+        <p className="mt-3 text-xs text-stone-500">{ar ? `العدادات المحددة: ${selected.length} / ${selectable.length} قابلة لإعادة التعيين` : `Compteurs sélectionnés : ${selected.length} / ${selectable.length} réinitialisables`}</p>
+      </div>
+      <Button type="button" disabled={!selected.length || reset.isPending || preview.isLoading || preview.isError} onClick={() => {
+        const message = ar
+          ? `تأكيد إعادة تعيين ${selected.length} عداداً؟ الأكواد القديمة ستبقى كما هي، وأول كود جديد لكل عداد سيكون 0000.`
+          : `Confirmer la remise à zéro de ${selected.length} compteur(s) ? Les anciens codes resteront inchangés et le premier nouveau code sera 0000.`;
+        if (window.confirm(message)) reset.mutate();
+      }} className="bg-amber-700 text-white hover:bg-amber-800">
+        {reset.isPending ? (ar ? "جارٍ التصفير..." : "Réinitialisation…") : (ar ? "إعادة تعيين العدادات المحددة" : "Réinitialiser les compteurs sélectionnés")}
+      </Button>
+    </section>
+  );
+}
+
 function DashboardThemeSettings() {
   const { lang } = useI18n();
   const [premium, setPremium] = useState(() => localStorage.getItem("oroverde-dashboard-theme") === "premium");
@@ -665,7 +782,7 @@ export default function SettingsPage() {
         <TabsContent value="employee-permissions"><EmployeePermissionsPanel /></TabsContent>
         <TabsContent value="audit"><Audit /></TabsContent>
         <TabsContent value="login-image"><LoginImageSettings /></TabsContent>
-        <TabsContent value="full-reset"><FullResetPanel /></TabsContent>
+        <TabsContent value="full-reset"><div className="space-y-6"><FullResetPanel /><CounterResetPanel /></div></TabsContent>
       </Tabs>
     </div>
   );
