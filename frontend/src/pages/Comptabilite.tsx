@@ -184,7 +184,7 @@ export default function Comptabilite() {
     </div>
 
     <DataTable title="Achats d’olives auprès des fournisseurs" description="Achats de stock GS de la saison active — affichage des opérations récentes. Les règlements fournisseurs ne sont pas consolidés." rows={calculated.supplierPurchases} empty="Aucun achat fournisseur approuvé." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || r.supplier_id || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant",render:r=>fmt(r.total_amount_dt)}
+      {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant",render:r=>fmt(r.total_amount_dt)}
     ]} />
 
     <DataTable title="Achats d’olives aux clients" description="Bons BAH de transfert de propriété de la saison active. La garde client est exclue." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
@@ -200,11 +200,11 @@ export default function Comptabilite() {
     ]} />
 
     <DataTable title="Ventes d’huile — GS" description="Factures commerciales validées de la saison active. Le total net intègre déjà les avoirs acceptés; les paiements règlent les créances." rows={saleRows} empty="Aucune vente commerciale facturée." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.document_number || "—"}, {label:"Acheteur",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Total net",render:r=>fmt(r.net_amount_dt)}, {label:"Encaissé",render:r=>fmt(r.paid_amount_dt)}, {label:"À recevoir",render:r=>fmt(r.outstanding_amount_dt)}
+      {label:"Date",render:r=>dateOf(r)}, {label:"Facture",render:r=>r.document_number || "—"}, {label:"Acheteur",render:r=>r.buyer_name || "—"}, {label:"Total net",render:r=>fmt(r.net_amount_dt)}, {label:"Encaissé",render:r=>fmt(r.paid_amount_dt)}, {label:"À recevoir",render:r=>fmt(r.outstanding_amount_dt)}
     ]} />
 
     <DataTable title="Avoirs émis — retours acceptés" description="Avoirs AVO de la saison active. Ils réduisent le revenu net de la facture d’origine; ils ne sont pas soustraits une seconde fois du total." rows={(data.commercial_credit_notes || []).filter(r => r.status === "ISSUED")} empty="Aucun avoir émis." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Avoir",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Facture source",render:r=>r.invoice_number || r.invoice_id || "—"}, {label:"Montant",render:r=>fmt(r.amount_dt)}
+      {label:"Date",render:r=>dateOf(r)}, {label:"Avoir",render:r=>r.document_number || "—"}, {label:"Client",render:r=>r.buyer_name || r.buyer_id || "—"}, {label:"Facture source",render:r=>r.invoice_number || "—"}, {label:"Montant",render:r=>fmt(r.amount_dt)}
     ]} />
 
     <Card className="border-amber-200 bg-amber-50/50">
