@@ -144,7 +144,7 @@ export default function Comptabilite() {
   const [expenseForm,setExpenseForm]=useState<ExpenseForm>({expense_type:"ELECTRICITY",description:"",expense_date:new Date().toISOString().slice(0,10),amount_tnd:"",payment_method:"CASH",beneficiary:"",notes:""});
   const createExpense=useMutation({mutationFn:(payload:ExpenseForm)=>apiPost<AccountingExpense>("/accounting/expenses",payload),onSuccess:()=>{void queryClient.invalidateQueries({queryKey:["accounting-expenses"]});setExpenseForm({expense_type:"ELECTRICITY",description:"",expense_date:new Date().toISOString().slice(0,10),amount_tnd:"",payment_method:"CASH",beneficiary:"",notes:""});}});
   const deleteExpense=useMutation({mutationFn:(id:string)=>apiDelete("/accounting/expenses/"+encodeURIComponent(id)),onSuccess:()=>void queryClient.invalidateQueries({queryKey:["accounting-expenses"]})});
-  const expenses=expenseQuery.data??[]; const investments=investmentQuery.data??[];
+  const expenses=expenseQuery.data??[];
   const expenseTotal=expenses.reduce((t,x)=>t+mills(x.amount_tnd),0n);
  
   const calculated = useMemo(() => {
