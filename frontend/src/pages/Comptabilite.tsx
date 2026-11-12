@@ -48,7 +48,8 @@ const n = (v: unknown) => {
   return Number.isFinite(value) ? value : 0;
 };
 const money = (v: unknown) => {
-  const amount = mills(v);
+  // Values already converted to integer millimes (BigInt) must not be scaled a second time.
+  const amount = typeof v === "bigint" ? v : mills(v);
   const negative = amount < 0n;
   const absolute = negative ? -amount : amount;
   const whole = absolute / 1000n;
