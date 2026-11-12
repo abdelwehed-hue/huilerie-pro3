@@ -2336,7 +2336,7 @@ export default function Commercial() {
               <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل عمليات المزوّد" : "Historique des opérations"}</div>
                 <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
-                  <TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-start">{l.purchaseReference}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{l.variety}</TableHead><TableHead className="text-end">{l.totalQuantity}</TableHead><TableHead className="text-end">{l.totalAmount}</TableHead><TableHead className="text-start">{l.status}</TableHead>
+                  <TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-start">{l.purchaseReference}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{l.variety}</TableHead><TableHead className="text-end">{l.totalQuantity}</TableHead><TableHead className="text-end">{l.totalAmount}</TableHead><TableHead className="text-start">{l.status}</TableHead><TableHead className="text-center">Bon de réception</TableHead>
                 </TableRow></TableHeader><TableBody>
                   {selectedSupplierPurchases.map((purchase) => <TableRow key={purchase.id}>
                     <TableCell className="font-mono text-xs font-semibold">{value(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
@@ -2344,8 +2344,9 @@ export default function Commercial() {
                     <TableCell className="text-end">{value(purchase.lines?.map((line: AnyRecord) => line.variety_name ?? line.variety_fr ?? line.variety_ar ?? (varieties.data ?? []).find((variety) => variety.id === line.variety_id)?.[lang === "ar" ? "name_ar" : "name_fr"] ?? (varieties.data ?? []).find((variety) => variety.id === line.variety_id)?.name_fr).filter(Boolean).join(", "), "—")}</TableCell>
                     <TableCell className="text-end font-semibold text-lime-800">{number(purchase.total_quantity_kg)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(purchase.total_amount_dt)}</TableCell>
                     <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
+                    <TableCell className="text-center">{purchase.status === "APPROVED" ? <Button type="button" size="sm" variant="outline" onClick={() => { setSelectedPurchaseReceipt(purchase); selectTab("purchases"); }}><Printer className="mr-1 size-4" />{lang === "ar" ? "عرض الوصل" : "Voir le bon"}</Button> : "—"}</TableCell>
                   </TableRow>)}
-                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={7} text={l.noRows}/>}
+                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={8} text={l.noRows}/>}
                 </TableBody></Table></div>
               </div>
             </div>}
