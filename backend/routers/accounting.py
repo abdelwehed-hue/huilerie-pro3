@@ -206,8 +206,8 @@ async def delete_passive_income(income_id: str, _: dict = Depends(require_admin)
 class ExpenseInput(BaseModel):
     expense_type: Literal["ELECTRICITY", "WAGES", "MAINTENANCE", "FUEL", "TRANSPORT", "SUPPLIES", "RENT", "INSURANCE", "TAXES", "OTHER"]
     description: str = Field(min_length=2, max_length=180)
-    expense_date: str = Field(pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
-    amount_tnd: str = Field(pattern=r"^\\d{1,12}(?:\\.\\d{1,3})?$")
+    expense_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    amount_tnd: str = Field(pattern=r"^\d{1,12}(?:\.\d{1,3})?$")
     payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
     beneficiary: str = Field(default="", max_length=160)
     notes: str = Field(default="", max_length=500)
@@ -249,6 +249,7 @@ async def _create_accounting_outflow(collection: str, kind_field: str, kind: str
     else:
         record["supplier"] = payload.supplier.strip()
     await db[collection].insert_one(record)
+    record.pop("_id", None)
     return record
 
 
