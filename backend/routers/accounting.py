@@ -216,8 +216,8 @@ class ExpenseInput(BaseModel):
 class InvestmentInput(BaseModel):
     investment_type: Literal["MACHINERY", "EQUIPMENT", "BUILDING", "VEHICLE", "RENOVATION", "IT", "OTHER"]
     description: str = Field(min_length=2, max_length=180)
-    investment_date: str = Field(pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
-    amount_tnd: str = Field(pattern=r"^\\d{1,12}(?:\\.\\d{1,3})?$")
+    investment_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    amount_tnd: str = Field(pattern=r"^\d{1,12}(?:\.\d{1,3})?$")
     payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
     supplier: str = Field(default="", max_length=160)
     notes: str = Field(default="", max_length=500)
