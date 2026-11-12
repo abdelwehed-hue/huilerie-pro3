@@ -6,10 +6,15 @@ season only. Recent-document lists are bounded for display and never drive total
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+import re
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+from typing import Any, Literal
+from uuid import uuid4
 
 from bson.decimal128 import Decimal128
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from lib.auth import require_admin
 from lib.db import db
@@ -143,3 +148,57 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         "recent_limit": RECENT_LIMIT,
         "accounting_basis": "ACTIVE_SEASON_SOURCE_DOCUMENTS_READ_ONLY",
     }
+
+
+class PassiveIncomeInput(BaseModel):
+    income_type: Literal["RENT", "EQUIPMENT_RENTAL", "INTEREST", "INVESTMENT", "OTHER"]
+    description: str = Field(min_length=2, max_length=180)
+    income_date: str = Field(pattern=r"^\\d{4}-\\d{2}-\\d{2}$")
+    amount_tnd: str = Field(pattern=r"^\\d{1,12}(?:\\.\\d{1,3})?$")
+    payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
+    notes: str = Field(default="", max_length=500)
+
+
+@router.get("/passive-incomes")
+async def list_passive_incomes(_: dict = Depends(require_admin)):
+    season = await active_season()
+    rows = await db.accounting_passive_incomes.find(
+        {"season": season}, {"_id": 0}
+    ).sort([("income_date", -1), ("created_at", -1)]).to_list(1000)
+    return _safe(rows)
+
+
+@router.post("/passive-incomes")
+async def create_passive_income(payload: PassiveIncomeInput, user: dict = Depends(require_admin)):
+    season = await active_season()
+    try:
+        datetime.strptime(payload.income_date, "%Y-%m-%d")
+        amount = Decimal(payload.amount_tnd)
+    except (ValueError, InvalidOperation):
+        raise HTTPException(status_code=422, detail="Date ou montant invalide.")
+    if not amount.is_finite() or amount <= 0:
+        raise HTTPException(status_code=422, detail="Le montant doit être supérieur à zéro.")
+    record = {
+        "id": str(uuid4()),
+        "season": season,
+        "income_type": payload.income_type,
+        "description": payload.description.strip(),
+        "income_date": payload.income_date,
+        "amount_tnd": format(amount.quantize(Decimal("0.001")), "f"),
+        "payment_method": payload.payment_method,
+        "notes": payload.notes.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("id") or user.get("username") or "admin",
+    }
+    await db.accounting_passive_incomes.insert_one(record)
+    record.pop("_id", None)
+    return record
+
+
+@router.delete("/passive-incomes/{income_id}")
+async def delete_passive_income(income_id: str, _: dict = Depends(require_admin)):
+    season = await active_season()
+    result = await db.accounting_passive_incomes.delete_one({"id": income_id, "season": season})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Revenu passif introuvable pour la saison active.")
+    return {"ok": True}
