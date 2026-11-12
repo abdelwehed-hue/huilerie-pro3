@@ -9,7 +9,7 @@ from fastapi.responses import Response
 
 from lib.auth import hash_password, require_admin
 from lib.security_config import has_known_demo_password
-from lib.db import db
+from lib.db import db, run_transaction
 from lib.money import money_db, money_float
 from models.schemas import AppSettings, User, UserCreate, UserUpdate
 
@@ -107,6 +107,124 @@ async def reset_operational_data(body: dict, admin: dict = Depends(require_admin
         "created_at": datetime.now(timezone.utc),
     })
     return {"ok": True, "deleted": deleted, "preserved_counters": True}
+
+
+_COUNTER_CODE_FIELDS = (
+    "code", "batch_code", "lot_code", "traceability_code",
+    "document_number", "invoice_number", "payment_number", "reference",
+)
+
+
+def _counter_candidate_code(counter: dict) -> str:
+    season = str(counter.get("season_code") or "")
+    document_type = str(counter.get("document_type") or "")
+    if len(season) != 4 or not season.isdigit():
+        raise HTTPException(400, "invalid_counter_season")
+    sequence = 0
+    if document_type == "BATCH":
+        return f"{season}A{sequence:04d}"
+    public_type = "F" if document_type == "FAC" else document_type
+    if not public_type.isalpha() or not (2 <= len(public_type) <= 8):
+        raise HTTPException(400, "invalid_counter_document_type")
+    return f"{season}{public_type}{sequence:04d}"
+
+
+async def _counter_code_conflict(code: str, collection_names: set[str], session=None):
+    query = {"$or": [{field: code} for field in _COUNTER_CODE_FIELDS]}
+    excluded = {"commercial_counters", "counters", "admin_reset_audit"}
+    for name in sorted(collection_names - excluded):
+        options = {"session": session} if session is not None else {}
+        found = await db[name].find_one(query, {"_id": 0, "id": 1}, **options)
+        if found:
+            return {"collection": name, "record_id": found.get("id")}
+    return None
+
+
+@router.get("/admin/reset/counters/preview")
+async def preview_counter_reset(_: dict = Depends(require_admin)):
+    """Show the zero-code candidate for every existing commercial sequence."""
+    docs = await db["commercial_counters"].find(
+        {}, {"_id": 0, "season_code": 1, "document_type": 1, "last_sequence": 1}
+    ).sort([("season_code", 1), ("document_type", 1)]).to_list(500)
+    names = set(await db.list_collection_names())
+    counters = []
+    for doc in docs:
+        key = f'{doc.get("season_code", "")}|{doc.get("document_type", "")}'
+        candidate = _counter_candidate_code(doc)
+        conflict = await _counter_code_conflict(candidate, names)
+        counters.append({
+            "key": key,
+            "season_code": doc.get("season_code"),
+            "document_type": doc.get("document_type"),
+            "current_sequence": doc.get("last_sequence", 0),
+            "first_code": candidate,
+            "conflict": conflict,
+            "can_reset": conflict is None,
+        })
+    return {"counters": counters, "total": len(counters)}
+
+
+@router.post("/admin/reset/counters")
+async def reset_commercial_counters(body: dict, admin: dict = Depends(require_admin)):
+    """Reset selected commercial sequences to -1 so their next issued code is 0000."""
+    requested = body.get("selected_counters")
+    if not isinstance(requested, list) or not requested:
+        raise HTTPException(400, "counter_selection_required")
+    if any(not isinstance(key, str) for key in requested) or len(requested) != len(set(requested)):
+        raise HTTPException(400, "invalid_counter_selection")
+    names = set(await db.list_collection_names())
+    now = datetime.now(timezone.utc)
+
+    async def perform(session):
+        changed = []
+        for key in requested:
+            if "|" not in key:
+                raise HTTPException(400, "invalid_counter_selection")
+            season_code, document_type = key.split("|", 1)
+            counter = await db["commercial_counters"].find_one(
+                {"season_code": season_code, "document_type": document_type},
+                {"_id": 0}, session=session,
+            )
+            if not counter:
+                raise HTTPException(404, "counter_not_found")
+            candidate = _counter_candidate_code(counter)
+            conflict = await _counter_code_conflict(candidate, names, session=session)
+            if conflict:
+                raise HTTPException(409, {
+                    "code": "counter_zero_code_already_exists",
+                    "candidate": candidate,
+                    "collection": conflict["collection"],
+                })
+            result = await db["commercial_counters"].update_one(
+                {"season_code": season_code, "document_type": document_type},
+                {"$set": {"last_sequence": -1, "updated_at": now}},
+                session=session,
+            )
+            if result.matched_count != 1:
+                raise HTTPException(409, "counter_changed_retry")
+            changed.append({
+                "season_code": season_code,
+                "document_type": document_type,
+                "previous_sequence": counter.get("last_sequence", 0),
+                "next_code": candidate,
+            })
+        await db["commercial_audit_events"].insert_one({
+            "id": str(uuid.uuid4()), "entity_type": "commercial_counters",
+            "entity_id": "selected", "action": "COMMERCIAL_COUNTERS_RESET_TO_ZERO",
+            "actor_user_id": admin.get("id"), "created_at": now,
+            "details": {"counters": changed},
+        }, session=session)
+        return changed
+
+    changed = await run_transaction(perform)
+    await db["admin_reset_audit"].insert_one({
+        "event": "COMMERCIAL_COUNTERS_RESET_TO_ZERO",
+        "admin_id": admin.get("id"),
+        "admin_username": admin.get("username"),
+        "counters": changed,
+        "created_at": now,
+    })
+    return {"ok": True, "reset": changed}
 
 
 @router.get("/admin/export.zip")
