@@ -68,8 +68,14 @@ async def preview_full_reset(_: dict = Depends(require_admin)):
 async def reset_operational_data(body: dict, admin: dict = Depends(require_admin)):
     if body.get("confirmation") != "RESET":
         raise HTTPException(400, "reset_confirmation_required")
-    clear_audit = body.get("clear_audit") is True
-    collections = RESET_DATA_COLLECTIONS + (RESET_AUDIT_COLLECTIONS if clear_audit else ())
+    requested = body.get("selected_collections")
+    if not isinstance(requested, list) or not requested:
+        raise HTTPException(400, "reset_selection_required")
+    allowed = set(RESET_DATA_COLLECTIONS + RESET_AUDIT_COLLECTIONS)
+    if any(not isinstance(name, str) for name in requested) or len(requested) != len(set(requested)) or not set(requested).issubset(allowed):
+        raise HTTPException(400, "invalid_reset_selection")
+    collections = tuple(requested)
+    clear_audit = "commercial_audit_events" in collections
     existing = set(await db.list_collection_names())
     before = {
         name: await db[name].count_documents({}) if name in existing else 0
@@ -92,10 +98,11 @@ async def reset_operational_data(body: dict, admin: dict = Depends(require_admin
     # This immutable operational record is deliberately outside the cleared audit
     # collection so the reset remains traceable even when historical audit is cleared.
     await db["admin_reset_audit"].insert_one({
-        "event": "FULL_OPERATIONAL_RESET",
+        "event": "SELECTIVE_OPERATIONAL_RESET",
         "admin_id": admin.get("id"),
         "admin_username": admin.get("username"),
         "clear_audit": clear_audit,
+        "selected_collections": list(collections),
         "deleted": deleted,
         "created_at": datetime.now(timezone.utc),
     })
