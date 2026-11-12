@@ -154,7 +154,7 @@ class PassiveIncomeInput(BaseModel):
     income_type: Literal["RENT", "EQUIPMENT_RENTAL", "INTEREST", "INVESTMENT", "OTHER"]
     description: str = Field(min_length=2, max_length=180)
     income_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    amount_tnd: str = Field(pattern=r"^\d{1,12}(?:\\.\d{1,3})?$")
+    amount_tnd: str = Field(pattern=r"^\d{1,12}(?:\.\d{1,3})?$")
     payment_method: Literal["CASH", "BANK_TRANSFER", "CHEQUE", "OTHER"] = "CASH"
     notes: str = Field(default="", max_length=500)
 
