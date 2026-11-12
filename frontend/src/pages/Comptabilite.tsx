@@ -1,10 +1,14 @@
-import { useMemo, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/lib/api";
+import { useMemo, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, type LucideIcon } from "lucide-react";
+import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, Plus, Trash2, type LucideIcon } from "lucide-react";
 
 type Row = Record<string, any>;
+type PassiveIncome = { id: string; income_type: string; description: string; income_date: string; amount_tnd: string; payment_method: string; notes?: string };
+type PassiveIncomeForm = Omit<PassiveIncome, "id" | "notes"> & { notes: string };
+const passiveTypeLabels: Record<string, string> = { RENT: "Location de local / entrepôt", EQUIPMENT_RENTAL: "Location de matériel", INTEREST: "Intérêts", INVESTMENT: "Investissement", OTHER: "Autre revenu" };
+const paymentLabels: Record<string, string> = { CASH: "Espèces", BANK_TRANSFER: "Virement bancaire", CHEQUE: "Chèque", OTHER: "Autre" };
 type Overview = {
   active_season: string;
   season_code: string;
@@ -109,6 +113,29 @@ export default function Comptabilite() {
     staleTime: 30_000,
   });
   const data = query.data;
+  const queryClient = useQueryClient();
+  const passiveQuery = useQuery({
+    queryKey: ["accounting-passive-incomes"],
+    queryFn: () => apiGet<PassiveIncome[]>("/accounting/passive-incomes"),
+    staleTime: 30_000,
+  });
+  const [passiveForm, setPassiveForm] = useState<PassiveIncomeForm>({
+    income_type: "RENT", description: "", income_date: new Date().toISOString().slice(0, 10),
+    amount_tnd: "", payment_method: "CASH", notes: "",
+  });
+  const createPassiveIncome = useMutation({
+    mutationFn: (payload: PassiveIncomeForm) => apiPost<PassiveIncome>("/accounting/passive-incomes", payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["accounting-passive-incomes"] });
+      setPassiveForm({ income_type: "RENT", description: "", income_date: new Date().toISOString().slice(0, 10), amount_tnd: "", payment_method: "CASH", notes: "" });
+    },
+  });
+  const deletePassiveIncome = useMutation({
+    mutationFn: (id: string) => apiDelete("/accounting/passive-incomes/" + encodeURIComponent(id)),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["accounting-passive-incomes"] }),
+  });
+  const passiveIncomes = passiveQuery.data ?? [];
+  const passiveIncomeTotal = passiveIncomes.reduce((total, item) => total + mills(item.amount_tnd), 0n);
   const calculated = useMemo(() => {
     const supplierPurchases = (data?.supplier_olive_purchases || []).filter(r => r.status === "APPROVED");
     const customerOlivePurchases = data?.customer_olive_purchases || [];
