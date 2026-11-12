@@ -605,7 +605,6 @@ function CounterResetPanel() {
         ? `تمت إعادة تعيين ${result.reset.length} عداداً. الأكواد التالية تبدأ من 0000.`
         : `${result.reset.length} compteur(s) réinitialisé(s). La prochaine séquence commence à 0000.`);
       setSelected([]);
-      setInitialized(false);
       await qc.invalidateQueries();
       await preview.refetch();
     },
