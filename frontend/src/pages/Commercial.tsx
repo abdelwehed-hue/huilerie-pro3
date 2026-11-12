@@ -2077,7 +2077,7 @@ export default function Commercial() {
                     <option value="SALE" disabled={selectedInternalBalance?.owner?.kind !== "CUSTOMER" || internalDestinationOwnerKey !== "MILL"}>{l.ownershipSale}</option><option value="GIFT">{l.ownershipGift}</option>
                   </select>
                 </label>
-                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount} · {internalProductKind === "OIL" ? "TND/L" : "TND/kg"}
+                {ownershipConsiderationType === "SALE" && <label className="grid max-w-2xl gap-1 text-sm font-medium">{l.ownershipAgreedAmount} ({internalProductKind === "OIL" ? "TND/L" : "TND/kg"})
                   <input required type="text" inputMode="decimal" placeholder="0,000" value={ownershipAgreedAmount} onChange={(e) => { setOwnershipAgreedAmount(e.target.value); setInternalMovementKey(crypto.randomUUID()); }} className="h-10 rounded-lg border bg-background px-3 font-normal" />
                   <span className="text-sm font-semibold text-emerald-700">{lang === "ar" ? "المبلغ الجملي:" : "Total calculé:"} {parseTndInputToMillimes(ownershipAgreedAmount) > 0 && Number(internalMovementQuantity) > 0 ? money(unitPriceTndToTotalDinars(ownershipAgreedAmount, internalMovementQuantity)) : "—"} TND</span>
                   <span className="text-xs text-muted-foreground">{l.ownershipSaleAccountingNote}</span>
@@ -2112,7 +2112,7 @@ export default function Commercial() {
         </Card>
         <Card>
           <CardHeader><CardTitle>{l.internalMovementHistory}</CardTitle></CardHeader>
-          <CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.ownershipEvidenceHistory}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
+          <CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{lang === "ar" ? "الكمية (كغ / لتر)" : "Quantité (kg / L)"}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.owner}</TableHead><TableHead>{l.ownershipEvidenceHistory}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader>
             <TableBody>{(internalMovementDocuments.data ?? []).map((movement) => {
               const evidence = movement.consent_evidence;
               const consideration = movement.consideration;
@@ -2120,7 +2120,7 @@ export default function Commercial() {
                 <TableCell className="font-mono text-xs">{lotCode((lots.data ?? []).find((lot) => lot.id === movement.lot_id), movement.document_number)}</TableCell>
                 <TableCell>{value(movement.movement_kind)}</TableCell>
                 <TableCell>{movement.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell>
-                <TableCell>{number(movement.quantity_kg)} {movement.product_kind === "OIL" ? "L" : "kg"}</TableCell>
+                <TableCell>{number(movement.quantity_kg)}</TableCell>
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.source_location_id)?.code ?? movement.source_location_id)}</TableCell>
                 <TableCell>{value((movement.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === movement.destination_location_id)?.code ?? movement.destination_location_id)}</TableCell>
                 <TableCell>{(() => { const movementLot = (lots.data ?? []).find((lot) => lot.id === movement.lot_id); const linkedOilPurchase = (oilPurchases.data ?? []).find((purchase) => purchase.traceability_code === movementLot?.batch_code); const labelOwner = (owner: AnyRecord | undefined) => owner?.kind === "CUSTOMER" ? (linkedOilPurchase?.document_number ? `${l.oilPurchaseNumber}: ${linkedOilPurchase.document_number}` : l.customer) : displayOwnerLabel(owner); return <>{labelOwner(movement.source_owner)} → {labelOwner(movement.destination_owner)}</>; })()}</TableCell>
@@ -2134,14 +2134,14 @@ export default function Commercial() {
           <CardHeader><CardTitle>{l.oilPurchasesTitle}</CardTitle><CardDescription>{lang === "ar" ? "كل وصل شراء للزيت أو الزيتون مرتبط بتحويل الملكية إلى المعصرة، مع الحفاظ على كود التتبع الأصلي." : "Chaque bon d’achat d’huile ou d’olives est lié au transfert de propriété vers la huilerie et conserve le code de traçabilité d’origine."}</CardDescription></CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.oilPurchaseUnitPrice}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+              <Table><TableHeader><TableRow><TableHead>{l.oilPurchaseNumber}</TableHead><TableHead>{l.oilPurchaseCustomer}</TableHead><TableHead>{l.oilPurchaseTraceability}</TableHead><TableHead>{l.oilPurchaseOilType}</TableHead><TableHead>{lang === "ar" ? "الكمية (كغ / لتر)" : "Quantité (kg / L)"}</TableHead><TableHead>{lang === "ar" ? "سعر الوحدة (د.ت/كغ أو د.ت/لتر)" : "Prix unitaire (TND/kg ou TND/L)"}</TableHead><TableHead>{l.oilPurchaseAgreed}</TableHead><TableHead>{l.oilPurchasePaid}</TableHead><TableHead>{l.oilPurchaseOutstanding}</TableHead><TableHead>{l.oilPurchaseStatus}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader>
                 <TableBody>{(oilPurchases.data ?? []).map((purchase) => <TableRow key={purchase.id} className={purchase.payment_status === "PARTIALLY_PAID" ? "bg-amber-300 text-amber-950 hover:bg-amber-400 dark:bg-amber-900 dark:text-amber-100 dark:hover:bg-amber-800" : selectedOilPurchaseId === purchase.id ? "bg-muted/50" : ""}>
                   <TableCell><button type="button" className="font-mono text-xs font-semibold text-primary underline underline-offset-4" onClick={() => { setSelectedOilPurchaseId(purchase.id); setOilPurchasePaymentAmount(""); setOilPurchasePaymentReference(""); setOilPurchasePaymentDate(new Date().toISOString().slice(0, 10)); setOilPurchasePaymentKey(crypto.randomUUID()); }}>{value(purchase.document_number)}</button></TableCell>
                   <TableCell>{value(purchase.customer_name)}</TableCell>
                   <TableCell className="font-mono text-xs">{value(purchase.traceability_code)}</TableCell>
                   <TableCell>{purchase.product_kind === "OLIVE" ? l.olive : l.oil}{purchase.product_kind === "OIL" ? ` · ${value(purchase.oil_type, value(purchase.quality_classification))}` : ""}</TableCell>
-                  <TableCell>{purchase.product_kind === "OLIVE" ? `${number(purchase.quantity_kg)} kg` : `${number(purchase.quantity_l)} L`}</TableCell>
-                  <TableCell>{money(purchase.product_kind === "OLIVE" ? purchase.unit_price_tnd_per_kg : purchase.unit_price_tnd_per_l)} TND / {purchase.product_kind === "OLIVE" ? "kg" : "L"}</TableCell>
+                  <TableCell>{number(purchase.product_kind === "OLIVE" ? purchase.quantity_kg : purchase.quantity_l)}</TableCell>
+                  <TableCell>{money(purchase.product_kind === "OLIVE" ? purchase.unit_price_tnd_per_kg : purchase.unit_price_tnd_per_l)}</TableCell>
                   <TableCell>{money(purchase.agreed_amount_tnd)}</TableCell>
                   <TableCell>{money(purchase.paid_amount_tnd)}</TableCell>
                   <TableCell className="font-semibold">{money(purchase.outstanding_amount_tnd)}</TableCell>
