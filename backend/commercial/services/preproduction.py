@@ -313,11 +313,36 @@ async def auto_complete_preproduction_sample_for_purchase(
     if len(owners) != 1:
         raise ValueError("Olive lots under this code have different owners; automatic sample cannot combine them")
     owner = _owner_document(source_lots[0].get("owner") or {})
+    if source_document_type == "CUSTOMER_CUSTODY" and (
+        owner.get("kind") != "CUSTOMER" or owner.get("customer_id") != custody_receipt.get("customer_id")
+    ):
+        # A customer-custody receipt can remain in RECEIVED status when the
+        # customer later sells the complete lot to the mill through the
+        # approved ownership-transfer workflow. In that case the lot's
+        # current owner is MILL and the approved sale transfer is the proof
+        # that this is now a mill purchase, not active customer custody.
+        transfer_query = {
+            "lot_id": custody_receipt["olive_lot_id"],
+            "movement_kind": "OWNERSHIP_TRANSFER",
+            "product_kind": "OLIVE",
+            "status": "APPROVED",
+            "destination_owner.kind": "MILL",
+            "consideration.type": "SALE",
+        }
+        if custody_receipt.get("ownership_transfer_id"):
+            transfer_query["id"] = custody_receipt["ownership_transfer_id"]
+        ownership_transfer = await db["commercial_internal_movements"].find_one(
+            transfer_query, {"_id": 0, "id": 1}, session=session,
+        )
+        if owner.get("kind") == "MILL" and ownership_transfer:
+            direct_receipt = custody_receipt
+            custody_receipt = None
+            source_document_type = "DIRECT_PURCHASE"
+        else:
+            raise ValueError("Customer-custody lot owner does not match its receipt")
+
     if source_document_type in {"PURCHASE", "DIRECT_PURCHASE"} and owner.get("kind") != "MILL":
         raise ValueError("An approved mill purchase must be mill-owned")
-    if source_document_type == "CUSTOMER_CUSTODY":
-        if owner.get("kind") != "CUSTOMER" or owner.get("customer_id") != custody_receipt.get("customer_id"):
-            raise ValueError("Customer-custody lot owner does not match its receipt")
 
     # Preserve the original deterministic IDs for existing mill-purchase samples.
     sample_identity = (
