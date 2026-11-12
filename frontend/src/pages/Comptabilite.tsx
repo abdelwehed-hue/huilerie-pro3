@@ -194,13 +194,13 @@ export default function Comptabilite() {
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="bg-emerald-100 text-emerald-800" cardTone="border-emerald-300 bg-emerald-100" />
-      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="bg-blue-100 text-blue-800" cardTone="border-blue-300 bg-blue-100" />
-      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="bg-amber-100 text-amber-800" cardTone="border-amber-300 bg-amber-100" />
-      <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-orange-100 text-orange-800" cardTone="border-orange-300 bg-orange-100" />
-      <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-yellow-100 text-yellow-800" cardTone="border-yellow-300 bg-yellow-100" />
-      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="bg-violet-100 text-violet-800" cardTone="border-violet-300 bg-violet-100" />
-      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · saison active" icon={Wallet} tone="bg-rose-100 text-rose-800" cardTone="border-rose-300 bg-rose-100" />
+      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Factures de trituration Oro Verde · saison active" icon={TrendingUp} tone="bg-emerald-100 text-emerald-800" cardTone="!border-emerald-400 !bg-emerald-200" />
+      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Factures commerciales validées · saison active" icon={TrendingUp} tone="bg-blue-100 text-blue-800" cardTone="!border-blue-400 !bg-blue-200" />
+      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="bg-amber-100 text-amber-800" cardTone="!border-amber-400 !bg-amber-200" />
+      <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-orange-100 text-orange-800" cardTone="!border-orange-400 !bg-orange-200" />
+      <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="bg-yellow-100 text-yellow-800" cardTone="!border-yellow-400 !bg-yellow-200" />
+      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="bg-violet-100 text-violet-800" cardTone="!border-violet-400 !bg-violet-200" />
+      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · saison active" icon={Wallet} tone="bg-rose-100 text-rose-800" cardTone="!border-rose-400 !bg-rose-200" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
