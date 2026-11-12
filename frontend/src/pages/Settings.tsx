@@ -396,56 +396,43 @@ function UsersPanel() {
 }
 
 function NumericConventionsPanel() {
-  const { lang, errMsg } = useI18n();
+  const { lang } = useI18n();
   const ar = lang === "ar";
-  const qc = useQueryClient();
   const appSettings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
-  const [sample, setSample] = useState<string | null>(null);
-  const currentSample = sample ?? appSettings.data?.numeric_format_sample ?? "1 234,567";
-  const validSample = /^\d{1,3}(?: \d{3})*,\d{3}$/.test(currentSample);
-  const save = useMutation({
-    mutationFn: (numeric_format_sample: string) => apiPut<AppSettings>("/settings", { ...appSettings.data!, numeric_format_sample }),
-    onSuccess: async () => {
-      toast.success(ar ? "تم حفظ نموذج الأرقام" : "Modèle numérique enregistré");
-      setSample(null);
-      await qc.invalidateQueries({ queryKey: ["settings"] });
-    },
-    onError: (error) => toast.error(errMsg(error)),
-  });
+  const standardSample = "1 234,567";
+  const currentSample = appSettings.data?.numeric_format_sample ?? standardSample;
   const rows = [
-    [ar ? "العملة" : "Devise", "TND", ar ? "الدينار التونسي هو وحدة الحساب الوحيدة." : "Le dinar tunisien est l’unité de compte unique."],
-    [ar ? "الدقة" : "Précision", "3 décimales", ar ? "ثلاث خانات بعد الفاصلة لتمثيل المليم." : "Trois chiffres après la virgule pour représenter les millimes."],
-    [ar ? "فاصل الآلاف" : "Séparateur des milliers", "Espace", ar ? "مثال: 6 499,300" : "Exemple : 6 499,300"],
+    [ar ? "العملة" : "Devise", "TND", ar ? "الدينار التونسي هو وحدة الحساب." : "Le dinar tunisien est l’unité de compte."],
+    [ar ? "قبل الفاصلة" : "Avant la virgule", ar ? "الدينار" : "Dinars", ar ? "كل ما قبل الفاصلة يمثل الدينار." : "Tout ce qui précède la virgule représente les dinars."],
+    [ar ? "بعد الفاصلة" : "Après la virgule", "000", ar ? "ثلاث خانات تمثل المليم." : "Trois chiffres représentent les millimes."],
+    [ar ? "فاصل الآلاف" : "Séparateur des milliers", "Espace", ar ? "مثال: 1 234,567" : "Exemple : 1 234,567"],
     [ar ? "الفاصل العشري" : "Séparateur décimal", ",", ar ? "الفاصلة تفصل الدينار عن المليم." : "La virgule sépare les dinars des millimes."],
-    [ar ? "قاعدة التحويل" : "Conversion", "1 TND = 1 000 millimes", ar ? "لا يُعامل المليم كأنه دينار." : "Les millimes ne doivent jamais être interprétés comme des dinars."],
-    [ar ? "التخزين في قاعدة البيانات" : "Stockage en base", "TND numérique · 0,001", ar ? "قيمة رقمية معيارية، ويفضّل Decimal128؛ لا تُخزّن كنص منسّق." : "Valeur numérique canonique, Decimal128 privilégié ; jamais une chaîne déjà formatée."],
-    [ar ? "الحساب" : "Calculs", ar ? "بالقيمة الرقمية" : "Valeur numérique", ar ? "تُجرى العمليات قبل التنسيق." : "Les calculs précèdent le formatage."],
+    [ar ? "التحويل" : "Conversion", "1 TND = 1 000 millimes", ar ? "لا يُعامل المليم كأنه دينار." : "Les millimes ne sont jamais interprétés comme des dinars."],
+    [ar ? "الحساب والتخزين" : "Calcul et stockage", ar ? "قيمة رقمية" : "Valeur numérique", ar ? "تُجرى الحسابات بالقيم الرقمية، ثم يتم تنسيقها عند العرض فقط." : "Les calculs utilisent les valeurs numériques ; le formatage intervient uniquement à l’affichage."],
   ];
   return (
     <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm" data-testid="numeric-conventions-panel">
       <div className="border-b border-emerald-100 bg-emerald-50 px-5 py-4">
-        <h2 className="text-lg font-bold text-emerald-950">{ar ? "معايير الأرقام والمبالغ" : "Normes numériques et monétaires"}</h2>
-        <p className="mt-1 text-sm text-emerald-800">{ar ? "معيار موحّد للتطبيق العادي وGestion commerciale وقاعدة البيانات." : "Une norme commune à l’application principale, à la Gestion commerciale et à la base de données."}</p>
+        <h2 className="text-lg font-bold text-emerald-950">{ar ? "قاعدة العملة والأرقام المعتمدة" : "Règle monétaire et numérique de l’application"}</h2>
+        <p className="mt-1 text-sm text-emerald-800">{ar ? "هذه قاعدة موحّدة وثابتة للتطبيق العادي وGestion commerciale والفواتير والتقارير." : "Cette règle unique s’applique à l’application principale, à la Gestion commerciale, aux factures et aux rapports."}</p>
       </div>
       <div className="space-y-3 border-b border-stone-100 p-5">
-        <label className="grid max-w-xl gap-2 text-sm font-semibold">
-          {ar ? "نموذج الأرقام المعتمد" : "Modèle numérique à appliquer"}
-          <Input dir="ltr" inputMode="decimal" value={currentSample} onChange={(e) => setSample(e.target.value)} placeholder="1 234,567" data-testid="numeric-format-sample" className="font-mono text-lg" />
-        </label>
-        <p className="text-sm text-stone-600">{ar ? "اكتب نموذجاً بالشكل: مسافة للآلاف، فاصلة عشرية، وثلاث خانات عشرية." : "Format attendu : espace pour les milliers, virgule décimale et exactement trois décimales."}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-stone-600">{ar ? "المعاينة:" : "Aperçu :"}</span>
-          <span dir="ltr" className="rounded-lg bg-emerald-50 px-3 py-2 font-mono text-lg font-bold text-emerald-800">{validSample ? currentSample : (ar ? "نموذج غير صالح" : "Modèle invalide")}</span>
-          <Button type="button" disabled={!validSample || save.isPending || !appSettings.data || currentSample === appSettings.data.numeric_format_sample} onClick={() => save.mutate(currentSample)} data-testid="numeric-format-save" className="bg-emerald-700 hover:bg-emerald-800">{ar ? "حفظ واعتماد" : "Enregistrer et appliquer"}</Button>
+          <span className="text-sm text-stone-600">{ar ? "النموذج المعتمد:" : "Format de référence :"}</span>
+          <span dir="ltr" className="rounded-lg bg-emerald-50 px-3 py-2 font-mono text-xl font-bold text-emerald-800">{standardSample}</span>
+          {appSettings.isLoading ? <span className="text-xs text-stone-500">{ar ? "جارٍ التحقق من الإعدادات…" : "Vérification des paramètres…"}</span> :
+            currentSample !== standardSample ? <span className="text-xs font-medium text-amber-700">{ar ? "سيُعتمد التنسيق القياسي الثابت في العرض." : "Le format standard fixe est utilisé pour l’affichage."}</span> :
+            <span className="text-xs font-medium text-emerald-700">{ar ? "المعيار محفوظ في الإعدادات" : "Norme enregistrée dans les paramètres"}</span>}
         </div>
+        <p className="text-sm text-stone-600">{ar ? "أمثلة: 1,500 = دينار واحد و500 مليم · 12,050 = 12 ديناراً و50 مليماً · 1 200,000 = 1 200 دينار." : "Exemples : 1,500 = 1 dinar et 500 millimes · 12,050 = 12 dinars et 50 millimes · 1 200,000 = 1 200 dinars."}</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
-          <thead className="bg-stone-50 text-start text-stone-600"><tr><th className="px-4 py-3 font-semibold">{ar ? "البند" : "Règle"}</th><th className="px-4 py-3 font-semibold">{ar ? "المعيار المعتمد" : "Norme retenue"}</th><th className="px-4 py-3 font-semibold">{ar ? "التوضيح" : "Précision"}</th></tr></thead>
+          <thead className="bg-stone-50 text-start text-stone-600"><tr><th className="px-4 py-3 font-semibold">{ar ? "البند" : "Règle"}</th><th className="px-4 py-3 font-semibold">{ar ? "المعيار" : "Norme"}</th><th className="px-4 py-3 font-semibold">{ar ? "التوضيح" : "Précision"}</th></tr></thead>
           <tbody>{rows.map(([name, value, detail]) => <tr key={name} className="border-t border-stone-100 align-top"><td className="px-4 py-3 font-semibold text-stone-800">{name}</td><td className="px-4 py-3 font-mono font-semibold text-emerald-800" dir="ltr">{value}</td><td className="px-4 py-3 text-stone-600">{detail}</td></tr>)}</tbody>
         </table>
       </div>
-      <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-sm text-amber-900">{ar ? "هذا النموذج يحدد نمط العرض فقط؛ لا يغيّر القيم المحاسبية أو البيانات التاريخية." : "Ce modèle concerne le format d’affichage uniquement ; il ne modifie ni les valeurs comptables ni les données historiques."}</div>
+      <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-sm text-amber-900">{ar ? "هذا معيار عرض موحّد. لا يغيّر الأرصدة أو العمليات أو البيانات التاريخية." : "Cette norme harmonise l’affichage sans modifier les soldes, les opérations ni les données historiques."}</div>
     </section>
   );
 }
