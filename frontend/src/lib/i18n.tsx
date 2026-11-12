@@ -763,8 +763,8 @@ export function useI18n(): I18nCtx {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const fmtNum = (n: number | null | undefined, digits = 1) =>
-  n == null ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: digits });
+export const fmtNum = (n: number | null | undefined, digits = 3) =>
+  n == null ? "—" : n.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 // Canonical TND display shared by the main app and Gestion commerciale.
 // Accepts numeric dinars (or a decimal string), rounds once to the nearest millime,
