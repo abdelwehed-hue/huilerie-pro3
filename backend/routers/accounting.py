@@ -65,6 +65,22 @@ async def _sum(collection: str, field: str, match: dict | None = None) -> str:
     return rows[0]["total"] if rows else "0.000"
 
 
+async def _supplier_outstanding_total(match: dict) -> str:
+    """Include legacy approved purchases that predate the explicit outstanding snapshot."""
+    amount = {"$convert": {"input": {"$ifNull": ["$total_amount_dt", 0]}, "to": "decimal", "onError": 0, "onNull": 0}}
+    paid = {"$convert": {"input": {"$ifNull": ["$paid_amount_dt", 0]}, "to": "decimal", "onError": 0, "onNull": 0}}
+    outstanding = {"$convert": {
+        "input": {"$ifNull": ["$outstanding_amount_dt", {"$subtract": [amount, paid]}]},
+        "to": "decimal", "onError": 0, "onNull": 0,
+    }}
+    rows = await db.commercial_olive_purchases.aggregate([
+        {"$match": match},
+        {"$group": {"_id": None, "total": {"$sum": {"$max": [outstanding, 0]}}}},
+        {"$project": {"_id": 0, "total": {"$toString": "$total"}}},
+    ]).to_list(1)
+    return rows[0]["total"] if rows else "0.000"
+
+
 @router.get("/overview")
 async def accounting_overview(_: dict = Depends(require_admin)):
     """Read-only totals and recent source documents for the active season only."""
@@ -101,7 +117,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         _sum("commercial_sales_invoices", "paid_amount_dt", commercial_match),
         _sum("commercial_olive_purchases", "total_amount_dt", {**commercial_match, "status": "APPROVED"}),
         _sum("commercial_supplier_olive_purchase_payments", "amount_tnd", commercial_match),
-        _sum("commercial_olive_purchases", "outstanding_amount_dt", {**commercial_match, "status": "APPROVED"}),
+        _supplier_outstanding_total({**commercial_match, "status": "APPROVED"}),
         _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {
             **commercial_match, "product_kind": "OLIVE",
         }),
@@ -392,7 +408,10 @@ async def accounting_daily_situation(
                      reference=purchase.get("document_number", ""), amount=amount, kind="expense",
                      detail=purchase.get("supplier_name", ""))
         current_payables += max(
-            Decimal("0"), _accounting_decimal(purchase.get("outstanding_amount_dt", amount))
+            Decimal("0"),
+            _accounting_decimal(purchase.get("outstanding_amount_dt"))
+            if purchase.get("outstanding_amount_dt") is not None
+            else amount - _accounting_decimal(purchase.get("paid_amount_dt")),
         )
 
     for payment in supplier_payments:
