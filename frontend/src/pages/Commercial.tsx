@@ -216,6 +216,12 @@ export default function Commercial() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
   const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [supplierPaymentPurchase, setSupplierPaymentPurchase] = useState<AnyRecord | null>(null);
+  const [supplierPaymentAmount, setSupplierPaymentAmount] = useState("");
+  const [supplierPaymentDate, setSupplierPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [supplierPaymentMethod, setSupplierPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE">("CASH");
+  const [supplierPaymentReference, setSupplierPaymentReference] = useState("");
+  const [supplierPaymentNotes, setSupplierPaymentNotes] = useState("");
   const [selectedBuyerId, setSelectedBuyerId] = useState("");
   const [buyerInvoiceToOpen, setBuyerInvoiceToOpen] = useState("");
   const [buyerSearch, setBuyerSearch] = useState("");
@@ -388,6 +394,11 @@ export default function Commercial() {
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
   const suppliers = useQuery({ queryKey: ["commercial", "suppliers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/suppliers", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
+  const supplierStatement = useQuery({
+    queryKey: ["commercial", "supplier-statement", selectedSupplierId],
+    queryFn: () => apiGet<AnyRecord>(`/commercial/v1/suppliers/${encodeURIComponent(selectedSupplierId)}/statement`),
+    enabled: ready && tab === "procurement" && procurementView === "suppliers" && !!selectedSupplierId,
+  });
   const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers" || (tab === "stock" && stockView === "movements")) });
   const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "quality" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
   const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "quality" || tab === "stock" || tab === "sales") });
@@ -563,6 +574,32 @@ export default function Commercial() {
       setEditingSupplier(null);
       setSupplierName(""); setSupplierPhone(""); setSupplierTaxId(""); setSupplierNotes("");
       await queryClient.invalidateQueries({ queryKey: ["commercial", "suppliers"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
+  });
+  const recordSupplierPayment = useMutation({
+    mutationFn: () => {
+      if (!supplierPaymentPurchase) throw new Error("Achat fournisseur non sélectionné");
+      return apiPost<AnyRecord>(`/commercial/v1/olive-purchases/${encodeURIComponent(supplierPaymentPurchase.id)}/supplier-payments`, {
+        payment_date: supplierPaymentDate,
+        amount_tnd: tndInputToDinars(supplierPaymentAmount),
+        method: supplierPaymentMethod,
+        reference: supplierPaymentReference.trim() || null,
+        notes: supplierPaymentNotes.trim() || null,
+        expected_purchase_version: supplierPaymentPurchase.version ?? 1,
+        idempotency_key: crypto.randomUUID(),
+      });
+    },
+    onSuccess: async () => {
+      toast.success(lang === "ar" ? "تم تسجيل خلاص المزوّد وإنشاء وصل" : "Paiement fournisseur enregistré et reçu créé");
+      setSupplierPaymentPurchase(null);
+      setSupplierPaymentAmount("");
+      setSupplierPaymentReference("");
+      setSupplierPaymentNotes("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commercial", "purchases"] }),
+        queryClient.invalidateQueries({ queryKey: ["commercial", "supplier-statement", selectedSupplierId] }),
+      ]);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : l.warning),
   });
