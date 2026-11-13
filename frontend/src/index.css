@@ -222,8 +222,9 @@ html.dark .hover\:bg-stone-50:hover { background-color: #34302e !important; }
 .commercial-workspace table tbody tr:hover {
   background: #f4f8f2;
 }
-.commercial-workspace table tbody td:first-child.font-mono,
-.commercial-workspace table tbody td:first-child .font-mono {
+/* Keep plain first-column references styled in blue, but do not override
+   CodeBadge: it must retain the same amber appearance used by Oroverde codes. */
+.commercial-workspace table tbody td:first-child.font-mono {
   display: inline-block;
   color: #1e4d83;
   background: #edf4fc;
