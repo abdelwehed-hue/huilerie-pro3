@@ -147,7 +147,7 @@ export default function Reports() {
         </div>
         <div className="flex flex-wrap items-stretch gap-2" data-testid="report-invoice-totals-next-to-period">
           <div className="flex min-w-[132px] flex-col justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Total des factures</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">{ar ? "إجمالي الفواتير" : "Total des factures"}</span>
             <span className="whitespace-nowrap text-sm font-bold tabular-nums text-emerald-800">{fmtMoney(invoiceTotals.total)} {t("dt")}</span>
           </div>
           <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
