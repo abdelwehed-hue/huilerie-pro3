@@ -1996,7 +1996,7 @@ export default function Commercial() {
 
       {tab === "stock" && <div className="space-y-4">
         <div role="tablist" aria-label={lang === "ar" ? "أقسام المخزون" : "Sections du stock"} className="inline-flex flex-wrap gap-2 rounded-xl border bg-muted/40 p-1">
-          <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>Chargement</Button>
+          <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>{lang === "ar" ? "الاستلام" : "Chargement"}</Button>
           <Button type="button" size="sm" variant={stockView === "lots" ? "default" : "ghost"} role="tab" aria-selected={stockView === "lots"} onClick={() => setStockView("lots")}>{l.lots}</Button>
           <Button type="button" size="sm" variant={stockView === "movements" ? "default" : "ghost"} role="tab" aria-selected={stockView === "movements"} onClick={() => setStockView("movements")}>{l.movements}</Button>
         </div>
@@ -2500,19 +2500,19 @@ export default function Commercial() {
           <Table data-testid="gs-chargement-table">
             <TableHeader className="bg-stone-50">
               <TableRow>
-                <TableHead className="whitespace-nowrap text-start">Date d’achat</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Code d’achat</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Fournisseur</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "رمز الشراء" : "Code d’achat"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "المزوّد" : "Fournisseur"}</TableHead>
                 <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "الهاتف" : "Téléphone"}</TableHead>
                 <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "الصنف" : "Variété"}</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Olive kg</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Statut</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Prix moyen/kg</TableHead>
-                <TableHead className="whitespace-nowrap text-end">Montant</TableHead>
-                <TableHead className="whitespace-nowrap text-center">Action</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Notes</TableHead>
+                <TableHead className="whitespace-nowrap text-end">{lang === "ar" ? "الزيتون كغ" : "Olive kg"}</TableHead>
+                <TableHead className="whitespace-nowrap text-end">{lang === "ar" ? "الزيت لتر" : "Huile L"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "المخبر" : "Laboratoire"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "الحالة" : "Statut"}</TableHead>
+                <TableHead className="whitespace-nowrap text-end">{lang === "ar" ? "متوسط السعر / كغ" : "Prix moyen/kg"}</TableHead>
+                <TableHead className="whitespace-nowrap text-end">{lang === "ar" ? "المبلغ" : "Montant"}</TableHead>
+                <TableHead className="whitespace-nowrap text-center">{lang === "ar" ? "إجراء" : "Action"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "ملاحظات" : "Notes"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
