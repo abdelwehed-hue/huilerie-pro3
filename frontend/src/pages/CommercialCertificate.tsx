@@ -92,13 +92,13 @@ export default function CommercialCertificate() {
               {t("cert_statement")}
             </p>
             <dl className="mt-8 grid grid-cols-2 gap-4 rounded-xl bg-stone-50 p-5 text-sm md:grid-cols-4">
-              <div><dt className="text-stone-500">Lot d'huile</dt><dd className="font-semibold font-mono"><CodeBadge code={String(lot.batch_code || assessment.batch_code || lot.document_number || "—")} /></dd></div>
+              <div><dt className="text-stone-500">{ar ? "دفعة الزيت" : "Lot d’huile"}</dt><dd className="font-semibold font-mono"><CodeBadge code={String(lot.batch_code || assessment.batch_code || lot.document_number || "—")} /></dd></div>
               <div><dt className="text-stone-500">{ar ? "تاريخ أخذ العينة" : "Date de prélèvement"}</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.sample_date)}</dd></div>
               <div><dt className="text-stone-500"> {ar ? "تاريخ التحليل" : "Date d’analyse"}</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.tested_date)}</dd></div>
-              <div><dt className="text-stone-500">Laboratoire</dt><dd className="font-semibold">{assessment.laboratory_name || "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "المخبر" : "Laboratoire"}</dt><dd className="font-semibold">{assessment.laboratory_name || "—"}</dd></div>
               <div><dt className="text-stone-500">{ar ? "مرجع العينة" : "Référence échantillon"}</dt><dd className="font-semibold">{assessment.sample_reference ? <CodeBadge code={String(assessment.sample_reference)} /> : "—"}</dd></div>
               <div><dt className="text-stone-500">{ar ? "مرجع المواصفة" : "Référence norme"}</dt><dd className="font-semibold">{assessment.specification_reference || "—"}</dd></div>
-              <div><dt className="text-stone-500">Type d'huile</dt><dd className="font-semibold">{assessment.oil_type || "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "نوع الزيت" : "Type d’huile"}</dt><dd className="font-semibold">{assessment.oil_type || "—"}</dd></div>
             </dl>
             <table className="mt-6 w-full text-sm">
               <thead><tr className="border-b-2 border-stone-200 text-stone-500">
