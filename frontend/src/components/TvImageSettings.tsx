@@ -119,7 +119,7 @@ export default function TvImageSettings() {
       <div className="space-y-4">
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-red-200 bg-white p-4 space-y-3">
-          <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> Vidéo sur l’écran TV</div>
+          <div className="flex items-center gap-2 font-semibold text-stone-800"><Youtube className="size-5 text-red-600" /> {ar ? "فيديو شاشة التلفاز" : "Vidéo sur l’écran TV"}</div>
           <Label htmlFor="tv-youtube-url">{ar ? "رابط الفيديو (اتركه فارغاً حالياً)" : "Lien de la vidéo (laisser vide pour le moment)"}</Label>
           <input id="tv-youtube-url" type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder={videoSource === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://exemple.com/video.mp4"} className="w-full rounded-lg border px-3 py-2 text-sm" />
           <div className="grid gap-3 sm:grid-cols-2">
@@ -150,7 +150,7 @@ export default function TvImageSettings() {
           <p className="text-xs text-stone-500">{ar ? "اترك الرابط فارغاً إلى حين إدخاله. يمكن استعمال YouTube أو رابط مباشر لملف MP4/WebM مستضاف على خدمة أخرى. لا يتم رفع ملف الفيديو أو تخزينه في MongoDB." : "Le lien reste vide tant que vous ne l’avez pas renseigné. YouTube ou une URL directe MP4/WebM hébergée sur un autre service sont acceptés. Aucun fichier vidéo n’est envoyé ni stocké dans MongoDB."}</p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-white p-4 space-y-4" data-testid="tv-music-settings">
-          <div className="flex items-center gap-2 font-semibold text-stone-800"><Music2 className="size-5 text-emerald-700" /> Musique de fond sur l’écran TV</div>
+          <div className="flex items-center gap-2 font-semibold text-stone-800"><Music2 className="size-5 text-emerald-700" /> {ar ? "الموسيقى الخلفية على شاشة التلفاز" : "Musique de fond sur l’écran TV"}</div>
           <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /> {ar ? "تفعيل الموسيقى الخلفية" : "Activer la musique de fond"}</label>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3"><Label htmlFor="tv-music-volume">{ar ? "مستوى الصوت" : "Niveau sonore"}</Label><span className="text-sm font-semibold tabular-nums">{musicVolume}%</span></div>
