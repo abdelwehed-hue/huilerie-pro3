@@ -93,12 +93,12 @@ export default function SituationJournaliere() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <SummaryCard title="Total des revenus" value={data.summary.total_revenue} caption="Factures de prestation, ventes GS et revenus passifs" icon={TrendingUp} tone="border-emerald-200 bg-emerald-50/60" />
-        <SummaryCard title="Total des dépenses" value={data.summary.total_expenses} caption="Achats approuvés et dépenses enregistrées" icon={TrendingDown} tone="border-rose-200 bg-rose-50/60" />
+        <SummaryCard title="Total des dépenses" value={data.summary.total_expenses} caption="Achats fournisseurs et achats clients, plus dépenses enregistrées" icon={TrendingDown} tone="border-rose-200 bg-rose-50/60" />
         <SummaryCard title="Résultat net" value={data.summary.net_result} caption="Revenus moins dépenses" icon={Wallet} tone="border-sky-200 bg-sky-50/60" />
         <SummaryCard title="Encaissements" value={data.summary.encaissements} caption="Argent réellement reçu ce jour" icon={Wallet} tone="border-violet-200 bg-violet-50/60" />
         <SummaryCard title="Décaissements" value={data.summary.decaissements} caption="Paiements réellement enregistrés ce jour" icon={Wallet} tone="border-orange-200 bg-orange-50/60" />
         <SummaryCard title="Créances clients — solde actuel" value={data.summary.current_receivables} caption="Soldes encore à recevoir sur les factures" icon={TrendingUp} tone="border-amber-200 bg-amber-50/60" />
-        <SummaryCard title="Dettes — solde actuel" value={data.summary.current_payables} caption="Achats clients impayés et achats fournisseurs" icon={TrendingDown} tone="border-fuchsia-200 bg-fuchsia-50/60" />
+        <SummaryCard title="Dettes — solde actuel" value={data.summary.current_payables} caption="Soldes encore dus aux fournisseurs et aux clients" icon={TrendingDown} tone="border-fuchsia-200 bg-fuchsia-50/60" />
       </div>
 
       {Number(data.summary.unallocated_legacy_receipts) > 0 && <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
@@ -107,7 +107,7 @@ export default function SituationJournaliere() {
       </div>}
       {!data.supplier_payments_available && <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <p>Le registre des règlements aux fournisseurs n’existe pas encore dans l’application. Les achats fournisseurs augmentent les dettes, mais aucun décaissement fournisseur n’est inventé.</p>
+        <p>Les règlements fournisseurs sont désormais intégrés. Chaque paiement enregistré dans GS apparaît comme un décaissement à sa date réelle.</p>
       </div>}
 
       <Card>
