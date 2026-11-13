@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Droplet, EyeOff, Wifi, WifiOff } from "lucide-react";
 import { API_ORIGIN, apiGet } from "@/lib/api";
 import type { TvBoard, TvDisplaySettings } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 
 type YouTubePlayer = { mute(): void; unMute(): void; playVideo(): void; destroy(): void };
 type YouTubeApi = {
@@ -85,6 +86,8 @@ function useLiveBoard() {
 }
 
 export default function TvScreen() {
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   const { board, live } = useLiveBoard();
   const settingsQuery = useQuery({ queryKey: ["tv-mill-settings"], queryFn: () => apiGet<TvDisplaySettings>("/tv/display-settings") });
   const mill = settingsQuery.data;
@@ -304,7 +307,7 @@ export default function TvScreen() {
       {musicEnabled && musicNeedsGesture ? <button type="button" onClick={enableBackgroundMusic} className="fixed right-5 top-5 z-30 rounded-lg border border-emerald-300/50 bg-emerald-900/90 px-4 py-2 text-sm font-semibold text-white shadow-lg" data-testid="tv-music-unlock">🎵 Activer la musique</button> : null}
       {mill?.tv_video_enabled !== false && (videoId || directVideoUrl) ? (
         <div
-          title="Vidéo de la page TV"
+          title={ar ? "فيديو شاشة التلفاز" : "Vidéo de la page TV"}
           className={
             "pointer-events-none fixed z-0 overflow-hidden " +
             (displayMode === "split"
@@ -324,7 +327,7 @@ export default function TvScreen() {
       {arrivalNotice ? (
         <div key={arrivalNotice.id} className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-black/35 px-4" data-testid="tv-new-arrival-notice">
           <div className="rounded-[2rem] border-4 border-amber-300 bg-[#142A1B]/95 px-12 py-10 text-center shadow-2xl">
-            <div className="mb-4 text-[clamp(1.5rem,3vw,3rem)] font-bold text-white">Nouveau reçu · وصل جديد</div>
+            <div className="mb-4 text-[clamp(1.5rem,3vw,3rem)] font-bold text-white">{ar ? "وصل جديد" : "Nouveau reçu"}</div>
             <div dir="ltr" className="font-mono text-[clamp(4rem,12vw,11rem)] font-black leading-none tracking-widest text-amber-300">{arrivalNotice.code}</div>
           </div>
         </div>
@@ -345,7 +348,7 @@ export default function TvScreen() {
         <div className="flex items-center justify-center gap-3 text-center md:justify-self-center">
           <div className="grid size-[5vh] min-h-10 min-w-10 place-items-center rounded-xl bg-amber-400 text-[#1B2A1C]"><Droplet className="size-[55%]" /></div>
           <div>
-            <div className="font-heading text-[clamp(1.35rem,2.4vw,2.5rem)] font-bold leading-tight">Huile prête</div>
+            <div className="font-heading text-[clamp(1.35rem,2.4vw,2.5rem)] font-bold leading-tight">{ar ? "الزيت جاهز" : "Huile prête"}</div>
             <div dir="rtl" className="text-[clamp(1.05rem,1.8vw,1.8rem)] font-bold leading-tight text-amber-300">الزيت جاهز</div>
           </div>
         </div>
@@ -376,7 +379,7 @@ export default function TvScreen() {
         {items.length === 0 ? (
           <div className="grid h-[65vh] place-items-center text-center" data-testid="tv-empty">
             <div>
-              <div className="text-[clamp(1.5rem,3vw,3rem)] font-semibold text-white/50">Aucun reçu terminé pour le moment</div>
+              <div className="text-[clamp(1.5rem,3vw,3rem)] font-semibold text-white/50">{ar ? "لا توجد وصولات منتهية حالياً" : "Aucun reçu terminé pour le moment"}</div>
               <div dir="rtl" className="mt-3 text-[clamp(1.3rem,2.5vw,2.6rem)] text-white/40">لا توجد وصولات منتهية حالياً</div>
             </div>
           </div>
@@ -399,7 +402,7 @@ export default function TvScreen() {
                   </div>
                 )}
                 <div className="mt-[1.5vh] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[clamp(1rem,1.6vw,1.8rem)] text-white/70">
-                  <span className="whitespace-nowrap">Terminé · <span dir="rtl">منتهية</span></span>
+                  <span className="whitespace-nowrap">{ar ? "منتهية" : "Terminé"}</span>
                   <span dir="ltr" className="whitespace-nowrap" data-testid="tv-item-time"><span className="font-mono text-[1.3em] font-bold text-white">{hhmm(i.finished_at)}</span> · {ddmmyyyy(i.finished_at)}</span>
                 </div>
               </div>
