@@ -16,7 +16,8 @@ import { StatusPill } from "@/components/shared";
 import ReceptionTicket from "@/components/ReceptionTicket";
 
 function NewClientDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (c: ClientSummary) => void }) {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -121,7 +122,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
       setNewSupplier(false); setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId("");
       setSupplierId(result.supplier?.id ?? "");
       setSupplierRequestKey("");
-      toast.success("Réception fournisseur enregistrée et achat créé dans GS");
+      toast.success((ar ? "تم تسجيل استلام المزوّد وإنشاء عملية الشراء في GS" : "Réception fournisseur enregistrée et achat créé dans GS"));
       qc.invalidateQueries({ queryKey: ["commercial"] });
       qc.invalidateQueries({ queryKey: ["commercial", "supplier-history", result.supplier?.id ?? supplierId] });
     },
@@ -213,7 +214,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                 <div className="absolute inset-x-0 top-full z-50 mt-1 flex flex-col gap-1">
                   <div role="listbox" aria-label={t("client")} className="max-h-72 overflow-y-auto rounded-xl border border-lime-200 bg-white p-1 shadow-xl shadow-lime-900/10">
                     <div className="sticky top-0 z-10 border-b border-lime-100 bg-white p-2">
-                      <Input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par nom ou téléphone..." aria-label="Rechercher un client par nom ou téléphone" data-testid="intake-client-search-input" className="h-10 rounded-lg" />
+                      <Input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder={ar ? "ابحث بالاسم أو الهاتف..." : "Rechercher par nom ou téléphone..."} aria-label={ar ? "البحث عن حريف بالاسم أو الهاتف" : "Rechercher un client par nom ou téléphone"} data-testid="intake-client-search-input" className="h-10 rounded-lg" />
                     </div>
                     {filteredClients.length > 0 ? filteredClients.map((c) => (
                       <button
@@ -234,7 +235,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                         <span className="shrink-0 text-xs text-stone-400" dir="ltr">{c.phone}</span>
                       </button>
                     )) : (
-                      <p className="px-3 py-4 text-center text-sm text-stone-500">Aucun client trouvé</p>
+                      <p className="px-3 py-4 text-center text-sm text-stone-500">{ar ? "لم يتم العثور على حريف" : "Aucun client trouvé"}</p>
                     )}
                   </div>
                 </div>
@@ -317,7 +318,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           idempotency_key: requestKey,
         });
       }} className="space-y-5 rounded-2xl border border-blue-200 bg-[#F0F6FC] p-6 shadow-sm" data-testid="supplier-intake-form">
-        <div className="flex items-center gap-3 text-blue-950"><div className="grid size-10 place-items-center rounded-xl bg-blue-700 text-white"><Truck className="size-5" /></div><div><h2 className="font-heading text-xl font-bold">Réception fournisseur</h2><p className="text-xs text-blue-800">Création automatique de l’achat et entrée en stock GS</p></div></div>
+        <div className="flex items-center gap-3 text-blue-950"><div className="grid size-10 place-items-center rounded-xl bg-blue-700 text-white"><Truck className="size-5" /></div><div><h2 className="font-heading text-xl font-bold">{ar ? "استلام من المزوّد" : "Réception fournisseur"}</h2><p className="text-xs text-blue-800">{ar ? "إنشاء عملية الشراء وإدخال المخزون في GS آلياً" : "Création automatique de l’achat et entrée en stock GS"}</p></div></div>
         <div className="space-y-2">
           <Label>Fournisseur</Label>
           <div className="flex gap-2">
@@ -333,7 +334,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               {supplierDropdownOpen && <div className="absolute inset-x-0 top-full z-50 mt-1">
                 <div role="listbox" aria-label="Fournisseurs" className="max-h-72 overflow-y-auto rounded-xl border border-blue-200 bg-white p-1 shadow-xl shadow-blue-900/10">
                   <div className="sticky top-0 z-10 border-b border-blue-100 bg-white p-2">
-                    <Input autoFocus value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Rechercher par nom, téléphone ou identifiant..." aria-label="Rechercher un fournisseur" data-testid="intake-supplier-search-input" className="h-10 rounded-lg" />
+                    <Input autoFocus value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder={ar ? "ابحث بالاسم أو الهاتف أو المعرّف..." : "Rechercher par nom, téléphone ou identifiant..."} aria-label={ar ? "البحث عن مزوّد" : "Rechercher un fournisseur"} data-testid="intake-supplier-search-input" className="h-10 rounded-lg" />
                   </div>
                   {filteredSuppliers.length ? filteredSuppliers.map((supplier) => <button type="button" role="option" aria-selected={supplierId === supplier.id} key={supplier.id}
                     onPointerDown={(e) => { e.preventDefault(); setSupplierId(supplier.id); setSupplierDropdownOpen(false); setSupplierSearch(""); }}
@@ -341,32 +342,32 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                     data-testid={`intake-supplier-option-${supplier.id}`}
                     className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none">
                     <span className="min-w-0 truncate font-medium text-stone-900">{supplier.name}</span><span className="shrink-0 text-xs text-stone-400" dir="ltr">{supplier.phone || supplier.tax_id || ""}</span>
-                  </button>) : <p className="px-3 py-4 text-center text-sm text-stone-500">Aucun fournisseur trouvé</p>}
+                  </button>) : <p className="px-3 py-4 text-center text-sm text-stone-500">{ar ? "لم يتم العثور على مزوّد" : "Aucun fournisseur trouvé"}</p>}
                 </div>
               </div>}
-            </div> : <div className="flex h-11 min-w-0 flex-1 items-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-900">Nouveau fournisseur</div>}
+            </div> : <div className="flex h-11 min-w-0 flex-1 items-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-900">{ar ? "مزوّد جديد" : "Nouveau fournisseur"}</div>}
             <Button type="button" onClick={() => { setNewSupplier((value) => !value); setSupplierDropdownOpen(false); if (newSupplier) { setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId(""); } else setSupplierId(""); }}
               data-testid="intake-new-supplier-button" className="h-11 shrink-0 rounded-xl bg-teal-600 hover:bg-teal-700">
               <UserPlus className="size-4"/> {newSupplier ? "Choisir un fournisseur" : "Nouveau fournisseur"}
             </Button>
           </div>
           {newSupplier && <div className="grid gap-3 rounded-xl border border-blue-200 bg-white p-3 md:grid-cols-2">
-            <div className="space-y-1"><Label>Nom du fournisseur *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-            <div className="space-y-1"><Label>Téléphone</Label><Input dir="ltr" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+            <div className="space-y-1"><Label>{ar ? "اسم المزوّد *" : "Nom du fournisseur *"}</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+            <div className="space-y-1"><Label>{ar ? "الهاتف" : "Téléphone"}</Label><Input dir="ltr" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
             <div className="space-y-1 md:col-span-2"><Label>Identifiant fiscal</Label><Input value={newSupplierTaxId} onChange={(e) => setNewSupplierTaxId(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
           </div>}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1"><Label>Date d’achat / réception *</Label><Input type="date" value={supplierDate} onChange={(e) => setSupplierDate(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="space-y-1"><Label>Emplacement de réception *</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
-          <div className="space-y-1"><Label>Variété *</Label><Select value={supplierVariety || varietyList[0] || null} onValueChange={(v) => setSupplierVariety(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? String(v) : <span className="text-stone-400">Choisir la variété</span>}</SelectValue></SelectTrigger><SelectContent>{varietyList.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>
-          <div className="space-y-1"><Label>Quantité d’olives (kg) *</Label><Input inputMode="decimal" value={supplierKg} onChange={(e) => setSupplierKg(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1"><Label>{ar ? "تاريخ الشراء / الاستلام *" : "Date d’achat / réception *"}</Label><Input type="date" value={supplierDate} onChange={(e) => setSupplierDate(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
+          <div className="space-y-1"><Label>{ar ? "مكان الاستلام *" : "Emplacement de réception *"}</Label><Select value={chosenLocationId || null} onValueChange={(v) => setSupplierLocationId(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? (oliveLocations.find((x) => x.id === v)?.name ?? "Emplacement sélectionné") : <span className="text-stone-400">Choisir l’emplacement</span>}</SelectValue></SelectTrigger><SelectContent>{oliveLocations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name} · {location.code}</SelectItem>)}</SelectContent></Select>{oliveLocations.length === 0 && <p className="text-xs text-red-700">Aucun emplacement actif. Configurez un emplacement de réception dans GS &gt; Paramètres &gt; Cuves.</p>}</div>
+          <div className="space-y-1"><Label>{ar ? "الصنف *" : "Variété *"}</Label><Select value={supplierVariety || varietyList[0] || null} onValueChange={(v) => setSupplierVariety(String(v ?? ""))}><SelectTrigger className="h-11 rounded-xl bg-white"><SelectValue>{(v) => v ? String(v) : <span className="text-stone-400">{ar ? "اختر الصنف" : "Choisir la variété"}</span>}</SelectValue></SelectTrigger><SelectContent>{varietyList.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-1"><Label>{ar ? "كمية الزيتون (كغ) *" : "Quantité d’olives (kg) *"}</Label><Input inputMode="decimal" value={supplierKg} onChange={(e) => setSupplierKg(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
           <div className="space-y-1"><Label>Prix d’achat / kg (millimes) *</Label><Input type="number" min="0" step="1" inputMode="numeric" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} className="h-11 rounded-xl bg-white" /></div>
-          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">Montant total calculé (TND)</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
+          <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">{ar ? "المبلغ الإجمالي المحسوب" : "Montant total calculé (TND)"}</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
         </div>
         <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
         <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
-        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !supplierPriceValid || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> Valider la réception et créer l’achat</Button>
+        <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !supplierPriceValid || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> {ar ? "تأكيد الاستلام وإنشاء الشراء" : "Valider la réception et créer l’achat"} </Button>
       </form>}
       </div>
       <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} onCreated={(c) => pick(c)} />
@@ -407,12 +408,12 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           <div className="rounded-xl border border-blue-200 bg-white p-4" data-testid="intake-supplier-history">
             <div className="mb-3 flex items-center gap-2 font-semibold text-blue-950"><History className="size-4 text-blue-700" /> Historique du fournisseur</div>
             <div className="mb-3 grid grid-cols-2 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-blue-50 p-2"><div className="text-stone-500">Achats enregistrés</div><div className="text-base font-bold text-blue-900">{supplierPurchases.length}</div></div>
-              <div className="rounded-lg bg-sky-50 p-2"><div className="text-stone-500">Quantité totale</div><div className="text-base font-bold text-sky-900">{fmtNum(supplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0))} kg</div></div>
+              <div className="rounded-lg bg-blue-50 p-2"><div className="text-stone-500">{ar ? "المشتريات المسجلة" : "Achats enregistrés"}</div><div className="text-base font-bold text-blue-900">{supplierPurchases.length}</div></div>
+              <div className="rounded-lg bg-sky-50 p-2"><div className="text-stone-500">{ar ? "الكمية الإجمالية" : "Quantité totale"}</div><div className="text-base font-bold text-sky-900">{fmtNum(supplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0))} kg</div></div>
             </div>
-            <div className="mb-1 text-xs font-semibold text-stone-500">Achats précédents</div>
+            <div className="mb-1 text-xs font-semibold text-stone-500">{ar ? "المشتريات السابقة" : "Achats précédents"}</div>
             {supplierPurchasesQuery.isLoading ? <p className="text-sm text-stone-500">Chargement de l’historique…</p> :
-              supplierPurchases.length === 0 ? <p className="text-sm text-stone-500">Aucun achat précédent pour ce fournisseur.</p> :
+              supplierPurchases.length === 0 ? <p className="text-sm text-stone-500">{ar ? "لا توجد مشتريات سابقة لهذا المزوّد." : "Aucun achat précédent pour ce fournisseur."}</p> :
               <ul className="max-h-56 divide-y divide-stone-100 overflow-auto text-sm">
                 {supplierPurchases.slice(0, 10).map((purchase) => <li key={purchase.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid={`intake-supplier-history-${purchase.id}`}>
                   <span className="min-w-0"><span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-stone-400">Code d’achat</span><span className="font-mono text-xs font-semibold text-blue-900" dir="ltr">{purchase.batch_code ?? purchase.batch_codes?.[0] ?? "—"}</span></span>
@@ -433,15 +434,15 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
                 {millInfo?.mill_phone && <div className="text-xs text-stone-500" dir="ltr">{millInfo.mill_phone}</div>}
               </div>
               <div className="text-end">
-                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">Bon de réception fournisseur</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">{ar ? "سند استلام المزوّد" : "Bon de réception fournisseur"}</div>
                 <div className="mt-1 text-xs text-stone-500" dir="ltr">{supplierReceipt.purchase?.purchase_date || supplierDate}</div>
               </div>
             </div>
             <div className="my-6 flex flex-wrap items-center justify-center gap-8 text-center">
               <div>
-                <div className="mb-2 text-xs text-stone-500">Code unique de traçabilité</div>
+                <div className="mb-2 text-xs text-stone-500">{ar ? "رمز التتبع الموحد" : "Code unique de traçabilité"}</div>
                 <div className="inline-flex rounded-lg bg-amber-50 px-4 py-2 font-mono text-2xl font-bold text-amber-900" dir="ltr">{supplierReceipt.batch_code}</div>
-                <div className="mt-3 text-sm text-stone-500">Code GS à conserver pour le suivi du lot</div>
+                <div className="mt-3 text-sm text-stone-500">{ar ? "رمز GS المعتمد لتتبع الدفعة" : "Code GS à conserver pour le suivi du lot"}</div>
               </div>
               <div data-testid="supplier-ticket-qr" className="flex flex-col items-center gap-1">
                 <QRCodeSVG value={window.location.origin + "/commercial?purchase=" + encodeURIComponent(supplierReceipt.purchase?.id ?? "") + "&batch=" + encodeURIComponent(supplierReceipt.batch_code ?? "")} size={112} level="M" marginSize={1} />
@@ -453,13 +454,13 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               <div><dt className="text-stone-500">Téléphone</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierReceipt.supplier?.phone || "—"}</dd></div>
               <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{supplierReceipt.purchase?.batch_code || supplierReceipt.batch_code || "—"}</dd></div>
               <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
-              <div><dt className="text-stone-500">Quantité d’olives</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
+              <div><dt className="text-stone-500">{ar ? "كمية الزيتون" : "Quantité d’olives"}</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
               <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{Number(supplierReceipt.purchase?.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</dd></div>
-              <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">Réception enregistrée</dd></div>
+              <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">{ar ? "تم تسجيل الاستلام" : "Réception enregistrée"}</dd></div>
             </dl>
             <div className="no-print mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-4">
-              <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> Imprimer le reçu</Button>
-              <Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">Nouvelle réception</Button>
+              <Button onClick={() => window.print()} variant="outline" className="rounded-xl"><Printer className="size-4"/> {ar ? "طباعة الوصل" : "Imprimer le reçu"} </Button>
+              <Button onClick={() => setSupplierReceipt(null)} variant="ghost" className="rounded-xl">{ar ? "استلام جديد" : "Nouvelle réception"}</Button>
             </div>
           </div>
         )}
