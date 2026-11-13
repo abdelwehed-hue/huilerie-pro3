@@ -2395,14 +2395,14 @@ export default function Commercial() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <StatCard tone="emerald" label={lang === "ar" ? "إجمالي المشتريات المعتمدة" : "Achats approuvés"} value={money(supplierStatement.data?.total_purchases_tnd ?? 0)} icon={<ShoppingCart />} />
                 <StatCard tone="sky" label={lang === "ar" ? "إجمالي المدفوع" : "Total payé"} value={money(supplierStatement.data?.total_paid_tnd ?? 0)} icon={<Wallet />} />
-                <StatCard tone="rose" label={lang === "ar" ? "الدين المتبقي للمزوّد" : "Dette restante"} value={money(supplierStatement.data?.outstanding_tnd ?? 0)} icon={<ReceiptText />} />
+                <StatCard tone="rose" label={lang === "ar" ? "الدين المتبقي للمزوّد" : "Dette restante"} value={money(supplierStatement.data?.outstanding_tnd ?? 0)} icon={<FileText />} />
               </div>
               <div className="no-print flex justify-end">
                 <Button type="button" variant="outline" onClick={() => window.print()} disabled={!supplierStatement.data}>
                   <Printer className="mr-2 size-4"/>{lang === "ar" ? "طباعة كشف حساب المزوّد PDF" : "Imprimer le relevé fournisseur PDF"}
                 </Button>
               </div>
-              <div className="print-area hidden rounded-2xl border border-stone-200 bg-white p-8 text-stone-900">
+              <div className="print-sheet print-area rounded-2xl border border-stone-200 bg-white p-8 text-stone-900">
                 <div className="mb-5 flex items-start justify-between border-b pb-4">
                   <div><div className="text-2xl font-bold">Oro Verde</div><div className="text-sm text-stone-500">{lang === "ar" ? "كشف حساب المزوّد" : "Relevé de compte fournisseur"}</div></div>
                   <div className="text-end"><div className="text-lg font-bold">{value(selectedSupplier.name)}</div><div className="text-sm">{value(selectedSupplier.phone)}</div><div className="text-xs text-stone-500">{new Date().toLocaleDateString(lang === "ar" ? "ar-TN" : "fr-FR")}</div></div>
@@ -2446,7 +2446,7 @@ export default function Commercial() {
                     <TableCell className="text-center">{purchase.status === "APPROVED" ? <Button type="button" size="sm" variant="outline" onClick={() => { setSelectedPurchaseReceipt(purchase); selectTab("purchases"); }}><Printer className="mr-1 size-4" />{lang === "ar" ? "عرض الوصل" : "Voir le bon"}</Button> : "—"}</TableCell>
                     <TableCell className="text-center">{purchase.status === "APPROVED" && Number(supplierStatement.data?.purchase_balances?.find((balance: AnyRecord) => balance.purchase_id === purchase.id)?.outstanding_tnd ?? purchase.total_amount_dt) > 0 ? <Button type="button" size="sm" onClick={() => { setSupplierPaymentPurchase(purchase); setSupplierPaymentAmount(""); setSupplierPaymentDate(new Date().toISOString().slice(0,10)); setSupplierPaymentMethod("CASH"); setSupplierPaymentReference(""); setSupplierPaymentNotes(""); }}>{lang === "ar" ? "تسجيل خلاص" : "Payer"}</Button> : purchase.status === "APPROVED" ? <span className="text-xs font-semibold text-emerald-700">{lang === "ar" ? "مدفوع" : "Payé"}</span> : "—"}</TableCell>
                   </TableRow>)}
-                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={10} text={l.noRows}/>}
+                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={11} text={l.noRows}/>}
                 </TableBody></Table></div>
               </div>
             </div>}
