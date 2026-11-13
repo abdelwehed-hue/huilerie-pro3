@@ -348,7 +348,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             </div> : <div className="flex h-11 min-w-0 flex-1 items-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-900">{ar ? "مزوّد جديد" : "Nouveau fournisseur"}</div>}
             <Button type="button" onClick={() => { setNewSupplier((value) => !value); setSupplierDropdownOpen(false); if (newSupplier) { setNewSupplierName(""); setNewSupplierPhone(""); setNewSupplierTaxId(""); } else setSupplierId(""); }}
               data-testid="intake-new-supplier-button" className="h-11 shrink-0 rounded-xl bg-teal-600 hover:bg-teal-700">
-              <UserPlus className="size-4"/> {newSupplier ? "Choisir un fournisseur" : "Nouveau fournisseur"}
+              <UserPlus className="size-4"/> {newSupplier ? (ar ? "اختيار مزوّد" : "Choisir un fournisseur") : (ar ? "مزوّد جديد" : "Nouveau fournisseur")}
             </Button>
           </div>
           {newSupplier && <div className="grid gap-3 rounded-xl border border-blue-200 bg-white p-3 md:grid-cols-2">
@@ -366,7 +366,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
           <div className="rounded-xl border border-blue-200 bg-white p-3"><div className="text-xs text-stone-500">{ar ? "المبلغ الإجمالي المحسوب" : "Montant total calculé (TND)"}</div><div className="text-xl font-bold text-blue-900">{Number.isFinite(supplierTotal) ? supplierTotal.toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—"}</div></div>
         </div>
         <div className="space-y-1"><Label>Observations</Label><Textarea value={supplierNotes} onChange={(e) => setSupplierNotes(e.target.value)} maxLength={1000} className="min-h-20 rounded-xl bg-white" /></div>
-        <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément.</div>
+        <div className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-blue-950">{ar ? "ينشئ التأكيد ضمن عملية واحدة: المزوّد (إن كان جديداً)، والشراء، ورمز التتبع الموحد، والدفعة، وحركة إدخال المخزون. ويمكن تسجيل الدفع بشكل منفصل." : "La validation crée dans une seule transaction : le fournisseur (si nouveau), l’achat, le code de traçabilité unique, le lot et le mouvement d’entrée en stock. Le paiement pourra être enregistré séparément."}</div>
         <Button type="submit" disabled={supplierMutation.isPending || !chosenLocationId || !(supplierKgValue > 0) || !supplierPriceValid || (!newSupplier && !supplierId) || (newSupplier && newSupplierName.trim().length < 2)} className="h-12 w-full rounded-xl bg-blue-700 text-base hover:bg-blue-800"><Plus className="size-5"/> {ar ? "تأكيد الاستلام وإنشاء الشراء" : "Valider la réception et créer l’achat"} </Button>
       </form>}
       </div>
@@ -412,7 +412,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
               <div className="rounded-lg bg-sky-50 p-2"><div className="text-stone-500">{ar ? "الكمية الإجمالية" : "Quantité totale"}</div><div className="text-base font-bold text-sky-900">{fmtNum(supplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0))} kg</div></div>
             </div>
             <div className="mb-1 text-xs font-semibold text-stone-500">{ar ? "المشتريات السابقة" : "Achats précédents"}</div>
-            {supplierPurchasesQuery.isLoading ? <p className="text-sm text-stone-500">Chargement de l’historique…</p> :
+            {supplierPurchasesQuery.isLoading ? <p className="text-sm text-stone-500">{ar ? "جارٍ تحميل السجل…" : "Chargement de l’historique…"}</p> :
               supplierPurchases.length === 0 ? <p className="text-sm text-stone-500">{ar ? "لا توجد مشتريات سابقة لهذا المزوّد." : "Aucun achat précédent pour ce fournisseur."}</p> :
               <ul className="max-h-56 divide-y divide-stone-100 overflow-auto text-sm">
                 {supplierPurchases.slice(0, 10).map((purchase) => <li key={purchase.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid={`intake-supplier-history-${purchase.id}`}>
@@ -451,9 +451,9 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
             </div>
             <dl className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-6 text-sm">
               <div><dt className="text-stone-500">Fournisseur</dt><dd className="font-semibold text-stone-900">{supplierReceipt.supplier?.name || "—"}</dd></div>
-              <div><dt className="text-stone-500">Téléphone</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierReceipt.supplier?.phone || "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "الهاتف" : "Téléphone"}</dt><dd className="font-semibold text-stone-900" dir="ltr">{supplierReceipt.supplier?.phone || "—"}</dd></div>
               <div><dt className="text-stone-500">Code d’achat</dt><dd className="font-mono font-semibold text-stone-900" dir="ltr">{supplierReceipt.purchase?.batch_code || supplierReceipt.batch_code || "—"}</dd></div>
-              <div><dt className="text-stone-500">Date d’achat</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "تاريخ الشراء" : "Date d’achat"}</dt><dd className="font-semibold text-stone-900">{supplierReceipt.purchase?.purchase_date || supplierDate}</dd></div>
               <div><dt className="text-stone-500">{ar ? "كمية الزيتون" : "Quantité d’olives"}</dt><dd className="font-heading text-2xl font-bold text-lime-800">{fmtNum(Number(supplierReceipt.purchase?.total_quantity_kg))} kg</dd></div>
               <div><dt className="text-stone-500">Montant total</dt><dd className="font-heading text-xl font-bold text-stone-900">{Number(supplierReceipt.purchase?.total_amount_dt ?? 0).toLocaleString("fr-TN", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</dd></div>
               <div><dt className="text-stone-500">Statut</dt><dd className="font-semibold text-stone-900">{ar ? "تم تسجيل الاستلام" : "Réception enregistrée"}</dd></div>
