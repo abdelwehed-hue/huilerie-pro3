@@ -343,6 +343,8 @@ def _daily_event(events: list[dict], *, day: str | None, category: str,
 @router.get("/daily-situation")
 async def accounting_daily_situation(
     report_date: str,
+    comparison_start_date: str | None = None,
+    comparison_end_date: str | None = None,
     _: dict = Depends(require_admin),
 ):
     """Daily accrual/cash report from source records; does not mutate accounting data."""
@@ -491,15 +493,27 @@ async def accounting_daily_situation(
     receipts = total_for(day_events, "receipt") + total_for(day_events, "receipt_adjustment")
     disbursements = total_for(day_events, "disbursement")
     selected = date.fromisoformat(selected_day)
+    try:
+        comparison_start = date.fromisoformat(comparison_start_date) if comparison_start_date else selected - timedelta(days=6)
+        comparison_end = date.fromisoformat(comparison_end_date) if comparison_end_date else selected
+    except ValueError:
+        raise HTTPException(422, "invalid_comparison_date")
+    if comparison_start > comparison_end:
+        raise HTTPException(422, "comparison_start_after_end")
+    if (comparison_end - comparison_start).days > 3650:
+        raise HTTPException(422, "comparison_period_too_long")
+
     comparison = []
-    for offset in range(6, -1, -1):
-        day = (selected - timedelta(days=offset)).isoformat()
+    current_day = comparison_start
+    while current_day <= comparison_end:
+        day = current_day.isoformat()
         rows = [item for item in events if item["date"] == day]
         day_revenue, day_expense = total_for(rows, "revenue"), total_for(rows, "expense")
         comparison.append({
             "date": day, "revenue": format(day_revenue, "f"),
             "expense": format(day_expense, "f"), "net": format(day_revenue - day_expense, "f"),
         })
+        current_day += timedelta(days=1)
 
     return {
         "date": selected_day, "season": season,
