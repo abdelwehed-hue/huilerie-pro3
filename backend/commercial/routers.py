@@ -44,7 +44,7 @@ from commercial.schemas.buyers import (
     CommercialBuyerDraft, CommercialBuyerUpdate, CommercialBuyerStatusCommand,
 )
 from commercial.schemas.sales import WholesaleSaleDraft, ApproveWholesaleSaleCommand, SalePaymentDraft, CancelWholesaleSaleCommand
-from commercial.schemas.oil_purchases import OilPurchasePaymentDraft
+from commercial.schemas.oil_purchases import OilPurchasePaymentDraft, SupplierPaymentDraft
 from commercial.schemas.returns import SaleReturnDraft
 from commercial.schemas.return_acceptance import AcceptSaleReturnCommand
 from commercial.schemas.return_rejection import RejectSaleReturnCommand
@@ -75,7 +75,7 @@ from commercial.services.quality import (
 from commercial.services.stock_ledger import post_stock_movement
 from commercial.services.lot_adjustments import adjust_olive_lot_balance
 from commercial.services.internal_movements import create_internal_movement
-from commercial.services.oil_purchases import record_oil_purchase_payment
+from commercial.services.oil_purchases import record_oil_purchase_payment, record_supplier_olive_purchase_payment
 from commercial.services.tank_roles import set_tank_role
 from commercial.services.sale_returns import receive_wholesale_sale_return
 from commercial.services.return_acceptance import accept_sale_return_and_issue_credit_note
@@ -737,6 +737,122 @@ async def list_commercial_suppliers(
         {"active": True}, {"_id": 0}
     ).sort([("name", 1), ("id", 1)]).skip(skip).to_list(limit)
     return _safe(docs)
+
+
+
+@router.get("/suppliers/{supplier_id}/statement")
+async def get_supplier_payable_statement(
+    supplier_id: str,
+    user: dict = Depends(current_user),
+):
+    """Consolidated supplier statement: approved purchases less immutable payments."""
+    _authorize(user, "commercial.read")
+    supplier = await db.commercial_suppliers.find_one(
+        {"id": supplier_id}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "tax_identifier": 1}
+    )
+    if not supplier:
+        raise HTTPException(404, "commercial_supplier_not_found")
+    purchases = await db.commercial_olive_purchases.find(
+        {"supplier_id": supplier_id, "status": "APPROVED"}, {"_id": 0}
+    ).sort([("purchase_date", 1), ("document_number", 1)]).to_list(10000)
+    purchase_ids = [item["id"] for item in purchases]
+    payments = await db.commercial_supplier_olive_purchase_payments.find(
+        {"supplier_id": supplier_id, "purchase_id": {"$in": purchase_ids}}, {"_id": 0}
+    ).sort([("payment_date", 1), ("document_number", 1)]).to_list(10000)
+
+    def amount(value: Any) -> Decimal:
+        if isinstance(value, Decimal128):
+            return value.to_decimal()
+        return Decimal(str(value or "0"))
+
+    entries = []
+    for purchase in purchases:
+        entries.append({
+            "date": purchase.get("purchase_date") or "",
+            "entry_type": "PURCHASE",
+            "document_number": purchase.get("document_number"),
+            "traceability_code": purchase.get("batch_code"),
+            "quantity_kg": purchase.get("total_quantity_kg"),
+            "amount_tnd": purchase.get("total_amount_dt", Decimal128("0.000")),
+            "purchase_id": purchase.get("id"),
+            "method": None,
+            "reference": None,
+            "_sort": 0,
+        })
+    for payment in payments:
+        entries.append({
+            "date": payment.get("payment_date") or "",
+            "entry_type": "PAYMENT",
+            "document_number": payment.get("document_number"),
+            "traceability_code": next(
+                (item.get("batch_code") for item in purchases if item.get("id") == payment.get("purchase_id")), None
+            ),
+            "quantity_kg": None,
+            "amount_tnd": -amount(payment.get("amount_tnd")),
+            "purchase_id": payment.get("purchase_id"),
+            "method": payment.get("method"),
+            "reference": payment.get("reference"),
+            "_sort": 1,
+        })
+    entries.sort(key=lambda item: (item["date"], item["_sort"], item.get("document_number") or ""))
+    balance = Decimal("0.000")
+    for entry in entries:
+        balance += amount(entry["amount_tnd"])
+        entry["balance_tnd"] = balance
+        entry.pop("_sort", None)
+    total_purchases = sum((amount(item.get("total_amount_dt")) for item in purchases), Decimal("0.000"))
+    total_paid = sum((amount(item.get("amount_tnd")) for item in payments), Decimal("0.000"))
+    return _safe({
+        "supplier": supplier,
+        "purchase_count": len(purchases),
+        "payment_count": len(payments),
+        "total_purchases_tnd": total_purchases,
+        "total_paid_tnd": total_paid,
+        "outstanding_tnd": total_purchases - total_paid,
+        "entries": entries,
+    })
+
+
+@router.get("/olive-purchases/{purchase_id}/supplier-payments")
+async def list_supplier_olive_purchase_payments(
+    purchase_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    skip: int = Query(default=0, ge=0),
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.read")
+    docs = await db.commercial_supplier_olive_purchase_payments.find(
+        {"purchase_id": purchase_id}, {"_id": 0}
+    ).sort([("created_at", -1), ("id", -1)]).skip(skip).to_list(limit)
+    return _safe(docs)
+
+
+@router.post("/olive-purchases/{purchase_id}/supplier-payments", status_code=201)
+async def create_supplier_olive_purchase_payment(
+    purchase_id: str,
+    draft: SupplierPaymentDraft,
+    user: dict = Depends(current_user),
+):
+    _authorize(user, "commercial.manage_purchases")
+    _, season_code = await _require_commercial_ready()
+    payment_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    async def operation(session):
+        await db["commercial_counters"].update_one(
+            {"season_code": season_code, "document_type": "RFS"},
+            {"$setOnInsert": {"season_code": season_code, "document_type": "RFS", "last_sequence": 0}},
+            upsert=True, session=session,
+        )
+        return await record_supplier_olive_purchase_payment(
+            db, purchase_id, draft, season_code=season_code,
+            actor_user=user, actor_user_id=user["id"],
+            payment_id=payment_id, audit_event_id=audit_id,
+            created_at=now, session=session,
+        )
+    try:
+        return _safe(await run_transaction(operation))
+    except Exception as exc:
+        _raise_domain_error(exc)
 
 
 @router.get("/varieties")
