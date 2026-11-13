@@ -582,7 +582,7 @@ export default function Lab() {
                     <TableCell>{fmtDate(sample.trial_date)}</TableCell>
                     <TableCell>{fmtNum(sample.input_olive_quantity_kg, 3)}</TableCell>
                     <TableCell>{fmtNum(sample.sample_oil_quantity_kg, 3)}</TableCell>
-                    <TableCell><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${sample.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : sample.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-stone-100 text-stone-700"}`}>{sample.status === "COMPLETED" ? "Terminée" : sample.status === "CANCELLED" ? "Annulée" : String(sample.status || "—")}</span></TableCell>
+                    <TableCell><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${sample.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : sample.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-stone-100 text-stone-700"}`}>{sample.status === "COMPLETED" ? (ar ? "منتهية" : "Terminée") : sample.status === "CANCELLED" ? (ar ? "ملغاة" : "Annulée") : String(sample.status || "—")}</span></TableCell>
                     <TableCell className="max-w-xs whitespace-normal text-xs">{sample.notes || "—"}</TableCell>
                   </TableRow>;
                 })}
