@@ -59,7 +59,7 @@ async def next_load_code(season: str) -> str:
         # Legacy counters keep their historical base of 99 (first code 100).
         # A deliberately reset counter stores base=0, so its first new code is 1.
         base = int(c.get("base", CODE_SEQ_START - 1))
-        code = f"{prefix}{base + c['seq']}"
+        code = f"{prefix}{base + c['seq']:03d}"
         if not await db.loads.find_one({"code": code}, {"_id": 1}):
             return code
 
