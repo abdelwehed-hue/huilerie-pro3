@@ -98,7 +98,7 @@ export default function Loads() {
               <TableHead className="text-end">{t("yield")}</TableHead>
               <TableHead className="text-start">{t("lab")}</TableHead>
               <TableHead className="text-start">{t("status")}</TableHead>
-              <TableHead className="text-start">Facture</TableHead>
+              <TableHead className="text-start">{ar ? "الفاتورة" : "Facture"}</TableHead>
               {isAdmin && <TableHead className="text-end">{t("amount")}</TableHead>}
               <TableHead className="text-end">{t("actions")}</TableHead>
             </TableRow>
