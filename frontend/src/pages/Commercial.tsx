@@ -2418,7 +2418,7 @@ export default function Commercial() {
                 </table>
               </div>
               {supplierPaymentPurchase && <Card className="no-print border-2 border-emerald-200 bg-emerald-50/50">
-                <CardHeader><CardTitle>{lang === "ar" ? "تسجيل خلاص للمزوّد" : "Enregistrer un paiement fournisseur"}</CardTitle><CardDescription>{value(supplierPaymentPurchase.document_number)} · {money(supplierPaymentPurchase.total_amount_dt)}</CardDescription></CardHeader>
+                <CardHeader><CardTitle>{lang === "ar" ? "تسجيل خلاص للمزوّد" : "Enregistrer un paiement fournisseur"}</CardTitle><CardDescription>{value(supplierPaymentPurchase.document_number)} · {lang === "ar" ? "المتبقي" : "Reste dû"}: {money(supplierStatement.data?.purchase_balances?.find((balance: AnyRecord) => balance.purchase_id === supplierPaymentPurchase.id)?.outstanding_tnd ?? supplierPaymentPurchase.total_amount_dt)}</CardDescription></CardHeader>
                 <CardContent>
                   <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (parseTndInputToMillimes(supplierPaymentAmount) > 0) recordSupplierPayment.mutate(); }}>
                     <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مبلغ الخلاص" : "Montant du paiement"}<input required inputMode="decimal" value={supplierPaymentAmount} onChange={(event) => setSupplierPaymentAmount(event.target.value)} placeholder="0,000" className="h-10 rounded-xl border bg-white px-3"/></label>
