@@ -148,17 +148,17 @@ export default function Lab() {
 
   const gsMutation = useMutation({
     mutationFn: async () => {
-      if (!gsOilLot || !gsOliveLot || !gsSample) throw new Error("Aucun Lot d’huile expérimental actif n’est lié à ce code d’achat.");
+      if (!gsOilLot || !gsOliveLot || !gsSample) throw new Error((ar ? "لا توجد دفعة زيت تجريبية نشطة مرتبطة برمز الشراء هذا." : "Aucun Lot d’huile expérimental actif n’est lié à ce code d’achat."));
       const editing = !!selectedGsAssessment;
       if (editing) {
         if (selectedGsAssessment?.status !== "AWAITING_INDEPENDENT_REVIEW" || selectedGsAssessment.oil_lot_id !== gsOilLot.id) {
-          throw new Error("Cette analyse a déjà fait l’objet d’une Décision et ne peut plus être modifiée.");
+          throw new Error((ar ? "صدر قرار بشأن هذا التحليل ولا يمكن تعديله بعد الآن." : "Cette analyse a déjà fait l’objet d’une Décision et ne peut plus être modifiée."));
         }
       } else if (!gsLotCanBeAnalysed || gsExistingAssessment) {
-        throw new Error("Une analyse est déjà en attente ou ce Lot d’huile ne peut plus être analysé.");
+        throw new Error((ar ? "يوجد تحليل آخر في الانتظار أو لم تعد هذه الدفعة قابلة للتحليل." : "Une analyse est déjà en attente ou ce Lot d’huile ne peut plus être analysé."));
       }
-      if (!specificationReference.trim()) throw new Error("La référence de la norme est obligatoire.");
-      if (acid == null) throw new Error("L’acidité est obligatoire.");
+      if (!specificationReference.trim()) throw new Error((ar ? "مرجع المواصفة إجباري." : "La référence de la norme est obligatoire."));
+      if (acid == null) throw new Error((ar ? "الحموضة إجبارية." : "L’acidité est obligatoire."));
       const payload = {
         oil_lot_id: gsOilLot.id, expected_lot_version: gsOilLot.version ?? 1,
         sample_reference: code, sample_date: selectedGsAssessment?.sample_date || gsSample.trial_date,
@@ -301,13 +301,13 @@ export default function Lab() {
               </div>
             )}
             {isGsCode && gsAutoSample.isLoading && !gsSample && (
-              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Création automatique de l’Échantillon de préproduction pour {code}… Aucun stock ne sera consommé.</div>
+              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">{ar ? "إنشاء عينة ما قبل الإنتاج آلياً للرمز" : "Création automatique de l’Échantillon de préproduction pour"} {code}… {ar ? "لن يتم استهلاك أي مخزون." : "Aucun stock ne sera consommé."}</div>
             )}
             {isGsCode && gsOilLot && gsSample && (
-              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">Code GS confirmé · {gsOwnerLabel} · Échantillon de laboratoire créé sans consommation du stock · {code}</div>
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">{ar ? "تم تأكيد رمز GS" : "Code GS confirmé"} · {gsOwnerLabel} · {ar ? "تم إنشاء عينة مخبرية دون استهلاك المخزون" : "Échantillon de laboratoire créé sans consommation du stock"} · {code}</div>
             )}
             {isGsCode && (gsExistingAssessment || gsCodeAssessmentPending) && !selectedGsAssessment && (
-              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">Une analyse existe déjà et attend la Décision indépendante. Cliquez sur son code dans le tableau pour la modifier.</div>
+              <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">{ar ? "يوجد تحليل في انتظار القرار المستقل. اضغط على رمزه في الجدول لتعديله." : "Une analyse existe déjà et attend la Décision indépendante. Cliquez sur son code dans le tableau pour la modifier."}</div>
             )}
             {isGsCode && gsCodeAssessmentReviewed && !selectedGsAssessment && (
               <div data-testid="lab-gs-analysis-already-reviewed" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
@@ -318,13 +318,13 @@ export default function Lab() {
               <div className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-medium text-cyan-900">Modification de l’analyse en attente · {code}</div>
             )}
             {isGsCode && !gsCodeAssessment && !gsLots.isLoading && !gsSamples.isLoading && !gsAutoSample.isLoading && !gsLots.isError && !gsSamples.isError && !gsOilLot && !gsAutoSample.isError && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Aucun lot de réception ouvert n’est associé à ce code d’achat, ou un échantillon existant doit être vérifié.</div>
+              <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{ar ? "لا توجد دفعة استلام مفتوحة مرتبطة برمز الشراء هذا، أو يجب التحقق من عينة موجودة." : "Aucun lot de réception ouvert n’est associé à ce code d’achat, ou un échantillon existant doit être vérifié."}</div>
             )}
             {isGsCode && gsAutoSample.isError && (
               <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{errMsg(gsAutoSample.error)}</div>
             )}
             {isGsCode && (gsLots.isError || gsSamples.isError || mill.isError) && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales.</div>
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{ar ? "تعذّر الوصول إلى GS أو لا تتوفر الصلاحية اللازمة. تحقق من صلاحيات التسيير التجاري." : "Accès GS impossible ou autorisation manquante. Vérifiez les permissions commerciales."}</div>
             )}
             {found && (
               <div data-testid="lab-client-found" className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-900">
@@ -410,7 +410,7 @@ export default function Lab() {
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
             <div className="border-b border-amber-100 px-5 py-4">
               <h2 className="font-heading text-lg font-bold text-stone-900">Lots d’huile en attente d’analyse</h2>
-              <p className="mt-1 text-sm text-stone-500">Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives.</p>
+              <p className="mt-1 text-sm text-stone-500">{ar ? "دفعات تحليلية مرتبطة برمز الشراء الموحد. لا تمثل مخزون زيت منتج ولا تستهلك الزيتون." : "Lots analytiques liés au code d’achat unique. Ils ne représentent pas un stock d’huile produite et ne consomment pas d’olives."}</p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-4">
               <Table>
@@ -570,7 +570,7 @@ export default function Lab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>N° essai</TableHead><TableHead>Code achat</TableHead><TableHead>Lot d’olives</TableHead><TableHead>Date de l’essai</TableHead><TableHead>Olives consommées (kg)</TableHead><TableHead>Huile échantillon (L)</TableHead><TableHead>Statut</TableHead><TableHead>Notes</TableHead>
+                <TableHead>{ar ? "رقم التجربة" : "N° essai"}</TableHead><TableHead>{ar ? "رمز الشراء" : "Code achat"}</TableHead><TableHead>{ar ? "دفعة الزيتون" : "Lot d’olives"}</TableHead><TableHead>{ar ? "تاريخ التجربة" : "Date de l’essai"}</TableHead><TableHead>{ar ? "الزيتون المستهلك (كغ)" : "Olives consommées (kg)"}</TableHead><TableHead>{ar ? "زيت العينة (لتر)" : "Huile échantillon (L)"}</TableHead><TableHead>{ar ? "الحالة" : "Statut"}</TableHead><TableHead>{ar ? "ملاحظات" : "Notes"}</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {(gsSamples.data ?? []).filter((sample) => !sample.auto_generated_for_purchase_analysis).map((sample) => {
