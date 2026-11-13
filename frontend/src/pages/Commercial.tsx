@@ -185,7 +185,7 @@ export default function Commercial() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
-  const requestedTab = searchParams.get("tab") as TabKey | null;
+  const requestedTab = searchParams.get("tab") as (TabKey | "quality") | null;
   const validTabs: (TabKey | "quality")[] = ["overview", "factures", "stock", "lots", "movements", "laboratory", "quality", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
   const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "quality" ? "laboratory" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
@@ -387,9 +387,9 @@ export default function Commercial() {
   const oilPurchaseStatement = useQuery({ queryKey: ["commercial", "oil-purchase-statement", oilPurchaseStatementCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/oil-purchases/customers/" + encodeURIComponent(oilPurchaseStatementCustomerId) + "/statement"), enabled: ready && (tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) && !!oilPurchaseStatementCustomerId });
   const oilPurchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && (tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) && !!oilPurchaseStatementCustomerId });
   const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "laboratory" || (tab === "stock" && stockView === "chargement")) });
-  const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
+  const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "laboratory" });
   const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "procurement" });
-  const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
+  const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "laboratory" || tab === "production") });
   const permissions = useQuery({ queryKey: ["commercial", "my-permissions"], queryFn: () => apiGet<{ permissions: string[] }>("/commercial/v1/me/permissions"), enabled: ready });
   const canEditRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.edit_records");
   const canDeleteRecords = isAdmin || (permissions.data?.permissions ?? []).includes("commercial.delete_records");
@@ -399,9 +399,9 @@ export default function Commercial() {
     queryFn: () => apiGet<AnyRecord>(`/commercial/v1/suppliers/${encodeURIComponent(selectedSupplierId)}/statement`),
     enabled: ready && tab === "procurement" && procurementView === "suppliers" && !!selectedSupplierId,
   });
-  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "quality" || tab === "custody" || tab === "transfers" || (tab === "stock" && stockView === "movements")) });
-  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "quality" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
-  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "quality" || tab === "stock" || tab === "sales") });
+  const locations = useQuery({ queryKey: ["commercial", "locations"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/locations", 500), enabled: ready && (tab === "procurement" || tab === "production" || tab === "laboratory" || tab === "custody" || tab === "transfers" || (tab === "stock" && stockView === "movements")) });
+  const varieties = useQuery({ queryKey: ["commercial", "varieties"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/varieties", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "custody" || tab === "laboratory" || tab === "sales" || (tab === "stock" && stockView === "chargement")) });
+  const purchases = useQuery({ queryKey: ["commercial", "purchases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/olive-purchases", 500), enabled: ready && (tab === "overview" || tab === "procurement" || tab === "laboratory" || tab === "stock" || tab === "sales") });
   const productionRuns = useQuery({ queryKey: ["commercial", "production-runs"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/production-runs", 500), enabled: ready && (tab === "production" || tab === "stock" || tab === "sales") });
   const buyers = useQuery({ queryKey: ["commercial", "buyers"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/buyers", 500), enabled: ready && tab === "sales" });
   const buyerAccountSummary = useQuery({ queryKey: ["commercial", "buyer-account-summary", selectedBuyerAccountId], queryFn: () => apiGet<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(selectedBuyerAccountId)}/account-summary`), enabled: ready && tab === "sales" && salesView === "buyers" && !!selectedBuyerAccountId });
@@ -484,7 +484,7 @@ export default function Commercial() {
     queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/sales-invoices/" + encodeURIComponent(selectedInvoiceId) + "/credit-applications", 500),
     enabled: ready && tab === "sales" && salesView === "sales" && !!selectedInvoiceId,
   });
-  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "quality" || (tab === "procurement" && procurementView === "customer-purchases")) });
+  const custodyClients = useQuery({ queryKey: ["commercial", "custody-clients"], queryFn: () => apiGetAllPages<AnyRecord>("/clients/options", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "laboratory" || (tab === "procurement" && procurementView === "customer-purchases")) });
   const custodyOwners = useQuery({ queryKey: ["commercial", "custody-owners"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/owners", 500), enabled: ready && (tab === "custody" || tab === "transfers" || tab === "stock" || tab === "production" || tab === "sales") });
   const custodyReceipts = useQuery({ queryKey: ["commercial", "custody-receipts"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/receipts", 500), enabled: ready && (tab === "custody" || (tab === "procurement" && procurementView === "customer-purchases")) });
   const custodyReleases = useQuery({ queryKey: ["commercial", "custody-releases"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/customer-custody/releases", 500), enabled: ready && tab === "custody" });
@@ -3080,7 +3080,7 @@ export default function Commercial() {
         </CardContent></Card>
       </div>}
 
-      {tab === "quality" && <QrScanDialog open={qualityQrScanOpen} onClose={() => setQualityQrScanOpen(false)} onScan={handleQualityQrScan} />}
+      {tab === "laboratory" && <QrScanDialog open={qualityQrScanOpen} onClose={() => setQualityQrScanOpen(false)} onScan={handleQualityQrScan} />}
       <style>{`@media print {
         body * { visibility: hidden !important; }
         .oil-purchase-statement-print, .oil-purchase-statement-print * { visibility: visible !important; }
