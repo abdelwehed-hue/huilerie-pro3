@@ -2392,20 +2392,61 @@ export default function Commercial() {
                 <StatCard tone="sky" label={lang === "ar" ? "مسودات" : "Brouillons"} value={supplierDraftPurchases.length} icon={<ClipboardList />} />
                 <StatCard tone="violet" label={lang === "ar" ? "قيمة المشتريات" : "Montant des achats"} value={money(supplierTotalAmount)} icon={<Wallet />} />
               </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <StatCard tone="emerald" label={lang === "ar" ? "إجمالي المشتريات المعتمدة" : "Achats approuvés"} value={money(supplierStatement.data?.total_purchases_tnd ?? 0)} icon={<ShoppingCart />} />
+                <StatCard tone="sky" label={lang === "ar" ? "إجمالي المدفوع" : "Total payé"} value={money(supplierStatement.data?.total_paid_tnd ?? 0)} icon={<Wallet />} />
+                <StatCard tone="rose" label={lang === "ar" ? "الدين المتبقي للمزوّد" : "Dette restante"} value={money(supplierStatement.data?.outstanding_tnd ?? 0)} icon={<ReceiptText />} />
+              </div>
+              <div className="no-print flex justify-end">
+                <Button type="button" variant="outline" onClick={() => window.print()} disabled={!supplierStatement.data}>
+                  <Printer className="mr-2 size-4"/>{lang === "ar" ? "طباعة كشف حساب المزوّد PDF" : "Imprimer le relevé fournisseur PDF"}
+                </Button>
+              </div>
+              <div className="print-area hidden rounded-2xl border border-stone-200 bg-white p-8 text-stone-900">
+                <div className="mb-5 flex items-start justify-between border-b pb-4">
+                  <div><div className="text-2xl font-bold">Oro Verde</div><div className="text-sm text-stone-500">{lang === "ar" ? "كشف حساب المزوّد" : "Relevé de compte fournisseur"}</div></div>
+                  <div className="text-end"><div className="text-lg font-bold">{value(selectedSupplier.name)}</div><div className="text-sm">{value(selectedSupplier.phone)}</div><div className="text-xs text-stone-500">{new Date().toLocaleDateString(lang === "ar" ? "ar-TN" : "fr-FR")}</div></div>
+                </div>
+                <div className="mb-4 grid grid-cols-3 gap-3 text-sm">
+                  <div><div className="text-stone-500">{lang === "ar" ? "المشتريات" : "Achats"}</div><b>{money(supplierStatement.data?.total_purchases_tnd ?? 0)}</b></div>
+                  <div><div className="text-stone-500">{lang === "ar" ? "المدفوع" : "Payé"}</div><b>{money(supplierStatement.data?.total_paid_tnd ?? 0)}</b></div>
+                  <div><div className="text-stone-500">{lang === "ar" ? "المتبقي" : "Solde dû"}</div><b>{money(supplierStatement.data?.outstanding_tnd ?? 0)}</b></div>
+                </div>
+                <table className="w-full border-collapse text-sm">
+                  <thead><tr className="border-b text-start"><th className="p-2">{lang === "ar" ? "التاريخ" : "Date"}</th><th className="p-2">{lang === "ar" ? "الوثيقة" : "Document"}</th><th className="p-2">{lang === "ar" ? "البيان" : "Opération"}</th><th className="p-2 text-end">{lang === "ar" ? "المبلغ" : "Montant"}</th><th className="p-2 text-end">{lang === "ar" ? "الرصيد" : "Solde"}</th></tr></thead>
+                  <tbody>{(supplierStatement.data?.entries ?? []).map((entry: AnyRecord) => <tr key={entry.document_number} className="border-b"><td className="p-2" dir="ltr">{date(entry.date)}</td><td className="p-2 font-mono">{value(entry.document_number)}</td><td className="p-2">{entry.entry_type === "PURCHASE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : (lang === "ar" ? "خلاص" : "Paiement")} {entry.method ? `· ${paymentMethodLabel(entry.method)}` : ""}</td><td className="p-2 text-end">{money(entry.amount_tnd)}</td><td className="p-2 text-end font-semibold">{money(entry.balance_tnd)}</td></tr>)}</tbody>
+                </table>
+              </div>
+              {supplierPaymentPurchase && <Card className="no-print border-2 border-emerald-200 bg-emerald-50/50">
+                <CardHeader><CardTitle>{lang === "ar" ? "تسجيل خلاص للمزوّد" : "Enregistrer un paiement fournisseur"}</CardTitle><CardDescription>{value(supplierPaymentPurchase.document_number)} · {money(supplierPaymentPurchase.total_amount_dt)}</CardDescription></CardHeader>
+                <CardContent>
+                  <form className="grid gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (parseTndInputToMillimes(supplierPaymentAmount) > 0) recordSupplierPayment.mutate(); }}>
+                    <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مبلغ الخلاص" : "Montant du paiement"}<input required inputMode="decimal" value={supplierPaymentAmount} onChange={(event) => setSupplierPaymentAmount(event.target.value)} placeholder="0,000" className="h-10 rounded-xl border bg-white px-3"/></label>
+                    <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "تاريخ الخلاص" : "Date du paiement"}<input required type="date" value={supplierPaymentDate} onChange={(event) => setSupplierPaymentDate(event.target.value)} className="h-10 rounded-xl border bg-white px-3"/></label>
+                    <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "طريقة الدفع" : "Mode de paiement"}<select value={supplierPaymentMethod} onChange={(event) => setSupplierPaymentMethod(event.target.value as "CASH" | "BANK_TRANSFER" | "CHEQUE")} className="h-10 rounded-xl border bg-white px-3"><option value="CASH">{lang === "ar" ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{lang === "ar" ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{lang === "ar" ? "صك" : "Chèque"}</option></select></label>
+                    <label className="grid gap-1 text-sm font-medium">{lang === "ar" ? "مرجع التحويل أو الصك" : "Référence du virement ou chèque"}<input value={supplierPaymentReference} onChange={(event) => setSupplierPaymentReference(event.target.value)} className="h-10 rounded-xl border bg-white px-3"/></label>
+                    <label className="grid gap-1 text-sm font-medium md:col-span-2">{l.notes}<input value={supplierPaymentNotes} onChange={(event) => setSupplierPaymentNotes(event.target.value)} className="h-10 rounded-xl border bg-white px-3"/></label>
+                    <div className="flex gap-2 md:col-span-2"><Button type="submit" disabled={recordSupplierPayment.isPending || parseTndInputToMillimes(supplierPaymentAmount) <= 0 || ((supplierPaymentMethod === "BANK_TRANSFER" || supplierPaymentMethod === "CHEQUE") && !supplierPaymentReference.trim())}>{lang === "ar" ? "تأكيد الخلاص" : "Valider le paiement"}</Button><Button type="button" variant="outline" onClick={() => setSupplierPaymentPurchase(null)}>{lang === "ar" ? "إلغاء" : "Annuler"}</Button></div>
+                  </form>
+                </CardContent>
+              </Card>}
               <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "سجل عمليات المزوّد" : "Historique des opérations"}</div>
                 <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
-                  <TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-start">{l.purchaseReference}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{l.variety}</TableHead><TableHead className="text-end">{l.totalQuantity}</TableHead><TableHead className="text-end">{l.totalAmount}</TableHead><TableHead className="text-start">{l.status}</TableHead><TableHead className="text-center">Bon de réception</TableHead>
+                  <TableHead className="text-start">{l.purchaseCode}</TableHead><TableHead className="text-start">{l.purchaseReference}</TableHead><TableHead className="text-start">{l.purchaseDate}</TableHead><TableHead className="text-end">{l.variety}</TableHead><TableHead className="text-end">{l.totalQuantity}</TableHead><TableHead className="text-end">{l.totalAmount}</TableHead><TableHead className="text-end">{lang === "ar" ? "المدفوع" : "Payé"}</TableHead><TableHead className="text-end">{lang === "ar" ? "المتبقي" : "Reste dû"}</TableHead><TableHead className="text-start">{l.status}</TableHead><TableHead className="text-center">Bon de réception</TableHead><TableHead className="text-center">{lang === "ar" ? "الخلاص" : "Paiement"}</TableHead>
                 </TableRow></TableHeader><TableBody>
                   {selectedSupplierPurchases.map((purchase) => <TableRow key={purchase.id}>
                     <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), "—")}</TableCell>
                     <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(purchase.document_number)}</TableCell><TableCell className="text-xs text-stone-500" dir="ltr">{date(purchase.purchase_date)}</TableCell>
                     <TableCell className="text-end">{value(purchase.lines?.map((line: AnyRecord) => line.variety_name ?? line.variety_fr ?? line.variety_ar ?? (varieties.data ?? []).find((variety) => variety.id === line.variety_id)?.[lang === "ar" ? "name_ar" : "name_fr"] ?? (varieties.data ?? []).find((variety) => variety.id === line.variety_id)?.name_fr).filter(Boolean).join(", "), "—")}</TableCell>
                     <TableCell className="text-end font-semibold text-lime-800">{number(purchase.total_quantity_kg)}</TableCell><TableCell className="text-end font-semibold text-violet-700">{money(purchase.total_amount_dt)}</TableCell>
+                    <TableCell className="text-end font-semibold text-emerald-700">{purchase.status === "APPROVED" ? money(supplierStatement.data?.purchase_balances?.find((balance: AnyRecord) => balance.purchase_id === purchase.id)?.paid_tnd ?? 0) : "—"}</TableCell>
+                    <TableCell className="text-end font-semibold text-rose-700">{purchase.status === "APPROVED" ? money(supplierStatement.data?.purchase_balances?.find((balance: AnyRecord) => balance.purchase_id === purchase.id)?.outstanding_tnd ?? purchase.total_amount_dt) : "—"}</TableCell>
                     <TableCell>{purchase.status === "APPROVED" ? l.approved : purchase.status === "CANCELLED" ? (lang === "ar" ? "ملغى" : "Annulé") : l.draft}</TableCell>
                     <TableCell className="text-center">{purchase.status === "APPROVED" ? <Button type="button" size="sm" variant="outline" onClick={() => { setSelectedPurchaseReceipt(purchase); selectTab("purchases"); }}><Printer className="mr-1 size-4" />{lang === "ar" ? "عرض الوصل" : "Voir le bon"}</Button> : "—"}</TableCell>
+                    <TableCell className="text-center">{purchase.status === "APPROVED" && Number(supplierStatement.data?.purchase_balances?.find((balance: AnyRecord) => balance.purchase_id === purchase.id)?.outstanding_tnd ?? purchase.total_amount_dt) > 0 ? <Button type="button" size="sm" onClick={() => { setSupplierPaymentPurchase(purchase); setSupplierPaymentAmount(""); setSupplierPaymentDate(new Date().toISOString().slice(0,10)); setSupplierPaymentMethod("CASH"); setSupplierPaymentReference(""); setSupplierPaymentNotes(""); }}>{lang === "ar" ? "تسجيل خلاص" : "Payer"}</Button> : purchase.status === "APPROVED" ? <span className="text-xs font-semibold text-emerald-700">{lang === "ar" ? "مدفوع" : "Payé"}</span> : "—"}</TableCell>
                   </TableRow>)}
-                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={8} text={l.noRows}/>}
+                  {!selectedSupplierPurchases.length && <EmptyRow colSpan={10} text={l.noRows}/>}
                 </TableBody></Table></div>
               </div>
             </div>}
