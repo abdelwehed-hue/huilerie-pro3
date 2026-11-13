@@ -2293,6 +2293,65 @@ export default function Commercial() {
       {tab === "stock" && stockView === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono font-bold text-stone-900">{lotCode((lots.data ?? []).find((lot) => lot.id === m.lot_id), m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)} {m.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{value((m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.source_location_id)?.code ?? (m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.source_location_id)?.name, "—")}</TableCell><TableCell>{value((m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.destination_location_id)?.code ?? (m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.destination_location_id)?.name, "—")}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
 
+      {tab === "laboratory" && <div className="space-y-4">
+        <Card>
+          <CardHeader><CardTitle>{lang === "ar" ? "متابعة الجودة" : "Suivi qualité"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "هذه الصفحة للمتابعة فقط. إجراء التحاليل وتسجيل النتائج واتخاذ قرار الاعتماد يتم حصرياً من صفحة Laboratoire، ولعيّنة ما قبل الإنتاج فقط." : "Consultation uniquement. Les analyses, la saisie des résultats et la décision de libération sont effectuées exclusivement dans Laboratoire, sur l’échantillon préproduction."}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {lang === "ar" ? "لا يُجرى أي تحليل للزيت بعد العصر. ينتقل اعتماد عيّنة ما قبل الإنتاج إلى دفعة الزيت الناتجة مع الاحتفاظ برابط التتبّع." : "Aucune analyse de l’huile après trituration. La libération de l’échantillon préproduction est conservée pour l’huile produite avec le même lien de traçabilité."}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{lang === "ar" ? "سجل تجارب العصر قبل الإنتاج" : "Historique des essais de trituration"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "سجل التجارب الفعلية فقط؛ عينات تحليل الشراء الآلية لا تظهر هنا لأنها لا تستهلك زيتونًا ولا تمثل عملية عصر." : "Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>{lang === "ar" ? "رقم التجربة" : "N° essai"}</TableHead>
+                <TableHead>{lang === "ar" ? "كود الشراء" : "Code achat"}</TableHead>
+                <TableHead>{lang === "ar" ? "دفعة الزيتون" : "Lot d’olives"}</TableHead>
+                <TableHead>{lang === "ar" ? "تاريخ التجربة" : "Date de l’essai"}</TableHead>
+                <TableHead>{lang === "ar" ? "كمية الزيتون المستهلكة (كغ)" : "Olives consommées (kg)"}</TableHead>
+                <TableHead>{lang === "ar" ? "كمية عينة الزيت (لتر)" : "Huile échantillon (L)"}</TableHead>
+                <TableHead>{lang === "ar" ? "الحالة" : "Statut"}</TableHead>
+                <TableHead>{lang === "ar" ? "ملاحظات" : "Notes"}</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {(preproductionSamples.data ?? []).filter((sample) => !sample.auto_generated_for_purchase_analysis).map((sample) => {
+                  const sourceLot = (lots.data ?? []).find((item) => item.id === sample.source_olive_lot_id);
+                  return <TableRow key={sample.id}>
+                    <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(sample.document_number)}</TableCell>
+                    <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(sample.batch_code)}</TableCell>
+                    <TableCell className="font-mono font-bold text-stone-900">{lotCode(sourceLot, sample.source_olive_lot_id)}</TableCell>
+                    <TableCell>{date(sample.trial_date)}</TableCell>
+                    <TableCell>{number(sample.input_olive_quantity_kg)}</TableCell>
+                    <TableCell>{number(sample.sample_oil_quantity_kg)}</TableCell>
+                    <TableCell><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${sample.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-700"}`}>{sample.status === "COMPLETED" ? (lang === "ar" ? "مكتملة" : "Terminée") : sample.status === "CANCELLED" ? (lang === "ar" ? "ملغاة" : "Annulée") : value(sample.status)}</span></TableCell>
+                    <TableCell className="max-w-xs whitespace-normal text-xs">{value(sample.notes)}</TableCell>
+                  </TableRow>;
+                })}
+                {(!preproductionSamples.isLoading && !(preproductionSamples.data ?? []).some((sample) => !sample.auto_generated_for_purchase_analysis)) && <EmptyRow colSpan={8} text={l.noRows} />}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <Card><CardHeader><CardTitle>{l.assessmentList}</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>{l.qualityLot}</TableHead><TableHead>{l.sampleReference}</TableHead><TableHead>{l.laboratory}</TableHead><TableHead>{l.submitter}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.created}</TableHead>{pumpSettings.data?.pump_system_enabled && <TableHead>{lang === "ar" ? "مضخّة التعبئة" : "Pompe de remplissage"}</TableHead>}<TableHead>{l.actions}</TableHead></TableRow></TableHeader>
+            <TableBody>{(quality.data ?? []).map((assessment) => <TableRow key={assessment.id}>
+              <TableCell className="font-mono font-bold text-stone-900"><span className="font-mono font-bold text-stone-900">{lotCode((lots.data ?? []).find((lot) => lot.id === assessment.oil_lot_id), assessment.oil_lot_id)}</span></TableCell>
+              <TableCell>{purchaseCodeDisplay(assessment.sample_reference)}</TableCell>
+              <TableCell>{value(assessment.laboratory_name)}</TableCell>
+              <TableCell>{value(assessment.created_by_name)}</TableCell>
+              <TableCell>{assessment.status === "AWAITING_INDEPENDENT_REVIEW" ? l.awaitingReview : l.reviewed + " · " + value(assessment.decision)}</TableCell>
+              <TableCell>{date(assessment.created_at)}</TableCell><TableCell><div className="flex flex-wrap items-center gap-2"><a href={`/commercial/certificate/${encodeURIComponent(assessment.id)}?from=quality`} className="text-sm font-medium text-emerald-700 underline">{l.viewCertificate}</a></div></TableCell>
+            </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
+          </Table>
+        </CardContent></Card>
+      </div>}
+
       {tab === "procurement" && procurementView === "suppliers" && <div className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
           <div className="rounded-2xl border border-teal-200 bg-white p-4 shadow-sm">
