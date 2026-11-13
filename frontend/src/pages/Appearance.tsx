@@ -16,12 +16,12 @@ export default function Appearance() {
   const ar = lang === "ar";
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title={ar ? "المظهر" : "Apparence"} sub={ar ? "خصص طريقة عرض التطبيق." : "Personnalisez l’affichage de votre application." accent="bg-indigo-500" />
+      <PageHeader title={ar ? "المظهر" : "Apparence"} sub={ar ? "خصص طريقة عرض التطبيق." : "Personnalisez l’affichage de votre application."} accent="bg-indigo-500" />
       <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6" aria-label={ar ? "اختيار المظهر" : "Choix du thème"}>
         <h2 className="mb-1 text-lg font-bold text-stone-900">{ar ? "مظهر التطبيق" : "Thème de l’application"}</h2>
         <p className="mb-5 text-sm text-stone-500">{ar ? "يُحفظ هذا الاختيار بشكل مستقل لحسابك على هذا الجهاز." : "Ce choix est enregistré séparément pour votre compte sur cet appareil."}</p>
         <div className="grid gap-3 sm:grid-cols-3">
-          {choices.map(({ value, title, description, icon: Icon }) => (
+          {choices.map(({ value, title, titleAr, description, descriptionAr, icon: Icon }) => (
             <button
               key={value}
               type="button"
