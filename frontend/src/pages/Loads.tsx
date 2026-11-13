@@ -16,7 +16,8 @@ import OilEntryDialog from "@/components/OilEntryDialog";
 import CancelLoadDialog from "@/components/CancelLoadDialog";
 
 export default function Loads() {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const isAdmin = useMe().data?.role === "admin";
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -129,7 +130,7 @@ export default function Loads() {
                   {l.status === "cancelled" ? (
                     <div className="max-w-56 text-end text-xs text-red-700" data-testid={`load-cancel-reason-${l.code}`}>{l.cancel_reason}</div>
                   ) : l.ownership_transferred ? (
-                    <div className="text-end text-xs font-semibold text-violet-700" data-testid={`load-transferred-info-${l.code}`}>Transférée à l’huilerie · 0 kg disponible</div>
+                    <div className="text-end text-xs font-semibold text-violet-700" data-testid={`load-transferred-info-${l.code}`}>{ar ? "تم تحويلها إلى المعصرة · 0 كغ متاح" : "Transférée à l’huilerie · 0 kg disponible"}</div>
                   ) : l.status === "delivered" ? (
                     <div className="text-end text-xs text-emerald-700" data-testid={`load-delivered-info-${l.code}`}>@{l.delivered_by}{l.delivered_at && <div dir="ltr">{fmtDate(l.delivered_at)}</div>}</div>
                   ) : (
