@@ -120,7 +120,7 @@ def _counter_candidate_code(counter: dict) -> str:
     document_type = str(counter.get("document_type") or "")
     if len(season) != 4 or not season.isdigit():
         raise HTTPException(400, "invalid_counter_season")
-    sequence = 0
+    sequence = 1
     if document_type == "BATCH":
         return f"{season}A{sequence:04d}"
     public_type = "F" if document_type == "FAC" else document_type
@@ -142,28 +142,55 @@ async def _counter_code_conflict(code: str, collection_names: set[str], session=
 
 @router.get("/admin/reset/counters/preview")
 async def preview_counter_reset(_: dict = Depends(require_admin)):
-    """Show the zero-code candidate for every existing commercial sequence."""
-    docs = await db["commercial_counters"].find(
-        {}, {"_id": 0, "season_code": 1, "document_type": 1, "last_sequence": 1}
-    ).sort([("season_code", 1), ("document_type", 1)]).to_list(500)
+    """Show the first code (sequence 0001 / 1) for Oroverde and GS counters."""
     names = set(await db.list_collection_names())
     counters = []
     skipped = []
+
+    # Traditional Oroverde load codes use counters._id = load_seq:<season>.
+    from lib.season import season_prefix
+    load_docs = await db["counters"].find(
+        {"_id": {"$regex": r"^load_seq:"}},
+        {"_id": 1, "seq": 1, "base": 1},
+    ).sort("_id", 1).to_list(500)
+    for doc in load_docs:
+        counter_id = str(doc.get("_id") or "")
+        season_id = counter_id.removeprefix("load_seq:")
+        try:
+            season_start, season_end = season_id.split("-", 1)
+            if len(season_start) != 4 or len(season_end) != 4 or int(season_end) != int(season_start) + 1:
+                raise ValueError("invalid_season")
+            prefix = season_prefix(season_id)
+            candidate = f"{prefix}1"
+        except (ValueError, TypeError):
+            skipped.append({"key": f"OROVERDE|{counter_id}", "reason": "invalid_load_counter_season"})
+            continue
+        conflict = await _counter_code_conflict(candidate, names)
+        counters.append({
+            "key": f"OROVERDE|{counter_id}",
+            "source": "oroverde",
+            "season_code": prefix,
+            "document_type": "LOAD",
+            "current_sequence": doc.get("seq", 0),
+            "first_code": candidate,
+            "conflict": conflict,
+            "can_reset": conflict is None,
+        })
+
+    docs = await db["commercial_counters"].find(
+        {}, {"_id": 0, "season_code": 1, "document_type": 1, "last_sequence": 1}
+    ).sort([("season_code", 1), ("document_type", 1)]).to_list(500)
     for doc in docs:
         key = f'{doc.get("season_code", "")}|{doc.get("document_type", "")}'
         try:
             candidate = _counter_candidate_code(doc)
         except HTTPException as exc:
-            # A malformed legacy counter must not prevent the remaining counters
-            # from being displayed and managed independently.
-            skipped.append({
-                "key": key,
-                "reason": str(exc.detail),
-            })
+            skipped.append({"key": key, "reason": str(exc.detail)})
             continue
         conflict = await _counter_code_conflict(candidate, names)
         counters.append({
             "key": key,
+            "source": "gs",
             "season_code": doc.get("season_code"),
             "document_type": doc.get("document_type"),
             "current_sequence": doc.get("last_sequence", 0),
@@ -176,7 +203,7 @@ async def preview_counter_reset(_: dict = Depends(require_admin)):
 
 @router.post("/admin/reset/counters")
 async def reset_commercial_counters(body: dict, admin: dict = Depends(require_admin)):
-    """Reset selected commercial sequences to -1 so their next issued code is 0000."""
+    """Reset selected Oroverde and GS counters so the next issued sequence is 1 / 0001."""
     requested = body.get("selected_counters")
     if not isinstance(requested, list) or not requested:
         raise HTTPException(400, "counter_selection_required")
@@ -187,7 +214,42 @@ async def reset_commercial_counters(body: dict, admin: dict = Depends(require_ad
 
     async def perform(session):
         changed = []
+        commercial_changed = []
         for key in requested:
+            if key.startswith("OROVERDE|"):
+                counter_id = key.split("|", 1)[1]
+                if not counter_id.startswith("load_seq:"):
+                    raise HTTPException(400, "invalid_counter_selection")
+                counter = await db["counters"].find_one({"_id": counter_id}, {"seq": 1, "base": 1}, session=session)
+                if not counter:
+                    raise HTTPException(404, "counter_not_found")
+                season_id = counter_id.removeprefix("load_seq:")
+                from lib.season import season_prefix
+                try:
+                    prefix = season_prefix(season_id)
+                    candidate = f"{prefix}1"
+                except Exception:
+                    raise HTTPException(400, "invalid_counter_season")
+                conflict = await _counter_code_conflict(candidate, names, session=session)
+                if conflict:
+                    raise HTTPException(409, {
+                        "code": "counter_first_code_already_exists",
+                        "candidate": candidate,
+                        "collection": conflict["collection"],
+                    })
+                result = await db["counters"].update_one(
+                    {"_id": counter_id},
+                    {"$set": {"seq": 0, "base": 0}},
+                    session=session,
+                )
+                if result.matched_count != 1:
+                    raise HTTPException(409, "counter_changed_retry")
+                changed.append({
+                    "source": "oroverde", "season_code": prefix, "document_type": "LOAD",
+                    "previous_sequence": counter.get("seq", 0), "next_code": candidate,
+                })
+                continue
+
             if "|" not in key:
                 raise HTTPException(400, "invalid_counter_selection")
             season_code, document_type = key.split("|", 1)
@@ -201,34 +263,36 @@ async def reset_commercial_counters(body: dict, admin: dict = Depends(require_ad
             conflict = await _counter_code_conflict(candidate, names, session=session)
             if conflict:
                 raise HTTPException(409, {
-                    "code": "counter_zero_code_already_exists",
+                    "code": "counter_first_code_already_exists",
                     "candidate": candidate,
                     "collection": conflict["collection"],
                 })
             result = await db["commercial_counters"].update_one(
                 {"season_code": season_code, "document_type": document_type},
-                {"$set": {"last_sequence": -1, "updated_at": now}},
+                {"$set": {"last_sequence": 0, "updated_at": now}},
                 session=session,
             )
             if result.matched_count != 1:
                 raise HTTPException(409, "counter_changed_retry")
-            changed.append({
-                "season_code": season_code,
-                "document_type": document_type,
-                "previous_sequence": counter.get("last_sequence", 0),
-                "next_code": candidate,
-            })
-        await db["commercial_audit_events"].insert_one({
-            "id": str(uuid.uuid4()), "entity_type": "commercial_counters",
-            "entity_id": "selected", "action": "COMMERCIAL_COUNTERS_RESET_TO_ZERO",
-            "actor_user_id": admin.get("id"), "created_at": now,
-            "details": {"counters": changed},
-        }, session=session)
+            entry = {
+                "source": "gs", "season_code": season_code, "document_type": document_type,
+                "previous_sequence": counter.get("last_sequence", 0), "next_code": candidate,
+            }
+            changed.append(entry)
+            commercial_changed.append(entry)
+
+        if commercial_changed:
+            await db["commercial_audit_events"].insert_one({
+                "id": str(uuid.uuid4()), "entity_type": "commercial_counters",
+                "entity_id": "selected", "action": "COMMERCIAL_COUNTERS_RESET_TO_ONE",
+                "actor_user_id": admin.get("id"), "created_at": now,
+                "details": {"counters": commercial_changed},
+            }, session=session)
         return changed
 
     changed = await run_transaction(perform)
     await db["admin_reset_audit"].insert_one({
-        "event": "COMMERCIAL_COUNTERS_RESET_TO_ZERO",
+        "event": "NUMBERING_COUNTERS_RESET_TO_ONE",
         "admin_id": admin.get("id"),
         "admin_username": admin.get("username"),
         "counters": changed,
