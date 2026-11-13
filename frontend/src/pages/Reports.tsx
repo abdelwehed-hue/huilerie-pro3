@@ -246,7 +246,7 @@ export default function Reports() {
               <TableHead className="text-start">{t("period")}</TableHead>
               <TableHead className="text-start">{t("worker_col")}</TableHead>
               <TableHead className="text-end">{t("loads")}</TableHead>
-              <TableHead className="text-start">Variétés</TableHead>
+              <TableHead className="text-start">{ar ? "الأصناف" : "Variétés"}</TableHead>
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-end">{t("oil_kg")}</TableHead>
               <TableHead className="text-end">{t("revenue")}</TableHead>
