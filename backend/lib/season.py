@@ -50,12 +50,16 @@ async def season_filter(season: str = "") -> dict:
 
 
 async def next_load_code(season: str) -> str:
-    """Atomic per-season sequence: 2627100, 2627101, ... (never reuses an existing code)."""
+    """Atomic per-season sequence; legacy sequences start at 100, reset sequences at 1."""
     prefix = season_prefix(season)
     while True:
         c = await db.counters.find_one_and_update(
-            {"_id": f"load_seq:{season}"}, {"$inc": {"seq": 1}}, upsert=True, return_document=ReturnDocument.AFTER)
-        code = f"{prefix}{CODE_SEQ_START - 1 + c['seq']}"
+            {"_id": f"load_seq:{season}"}, {"$inc": {"seq": 1}},
+            projection={"seq": 1, "base": 1}, upsert=True, return_document=ReturnDocument.AFTER)
+        # Legacy counters keep their historical base of 99 (first code 100).
+        # A deliberately reset counter stores base=0, so its first new code is 1.
+        base = int(c.get("base", CODE_SEQ_START - 1))
+        code = f"{prefix}{base + c['seq']}"
         if not await db.loads.find_one({"code": code}, {"_id": 1}):
             return code
 
