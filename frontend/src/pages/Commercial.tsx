@@ -1783,7 +1783,7 @@ export default function Commercial() {
     <div className="commercial-workspace mx-auto max-w-7xl space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : tab === "procurement" && procurementView === "customer-purchases" ? (lang === "ar" ? "شراء" : "Achat") : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">{tab === "overview" ? l.title : tab === "procurement" && procurementView === "customer-purchases" ? (lang === "ar" ? "شراء من الحرفاء" : "Achat depuis clients") : (tabs.find((item) => item.id === tab)?.label ?? l.title)}</h1>
           {tab === "overview" && <p className="mt-2 max-w-3xl text-sm text-stone-500 md:text-base">{l.subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
@@ -2348,7 +2348,7 @@ export default function Commercial() {
       {tab === "procurement" && <div className="flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white p-2 shadow-sm" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
         <Button type="button" size="sm" variant={procurementView === "suppliers" ? "default" : "outline"} role="tab" aria-selected={procurementView === "suppliers"} onClick={() => selectTab("suppliers")}><Truck className="mr-2 size-4" />{l.suppliers}</Button>
         <Button type="button" size="sm" variant={procurementView === "purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "purchases"} onClick={() => selectTab("purchases")}><ShoppingBasket className="mr-2 size-4" />{l.purchasesTab}</Button>
-        <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء" : "Achat"}</Button>
+        <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء من الحرفاء" : "Achat depuis clients"}</Button>
       </div>}
 
       {tab === "procurement" && procurementView === "suppliers" && <div className="space-y-5">
