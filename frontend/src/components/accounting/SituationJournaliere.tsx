@@ -57,14 +57,14 @@ function SummaryCard({ title, value, caption, icon: Icon, tone }: {
 }
 
 export default function SituationJournaliere() {
-  const [reportDate, setReportDate] = useState(localToday);
-  const [comparisonStartDate, setComparisonStartDate] = useState(() => shiftDay(localToday(), -6));
-  const [comparisonEndDate, setComparisonEndDate] = useState(localToday);
+  const [startDate, setStartDate] = useState(() => shiftDay(localToday(), -6));
+  const [endDate, setEndDate] = useState(localToday);
+  const validPeriod = !!startDate && !!endDate && startDate <= endDate;
   const report = useQuery({
-    queryKey: ["accounting-daily-situation", reportDate, comparisonStartDate, comparisonEndDate],
-    queryFn: () => apiGet<DailyReport>(`/accounting/daily-situation?report_date=${encodeURIComponent(reportDate)}&comparison_start_date=${encodeURIComponent(comparisonStartDate)}&comparison_end_date=${encodeURIComponent(comparisonEndDate)}`),
+    queryKey: ["accounting-daily-situation", startDate, endDate],
+    queryFn: () => apiGet<DailyReport>(`/accounting/daily-situation?report_start_date=${encodeURIComponent(startDate)}&report_end_date=${encodeURIComponent(endDate)}`),
     staleTime: 15_000,
-    enabled: !!reportDate && !!comparisonStartDate && !!comparisonEndDate && comparisonStartDate <= comparisonEndDate,
+    enabled: validPeriod,
   });
   const data = report.data;
   const rows = data?.events ?? [];
