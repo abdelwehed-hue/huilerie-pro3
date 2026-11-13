@@ -581,7 +581,7 @@ function CounterResetPanel() {
   const preview = useQuery({
     queryKey: ["admin", "reset-counter-preview"],
     queryFn: () => apiGet<{ counters: Array<{
-      key: string; season_code: string; document_type: string;
+      key: string; source?: "oroverde" | "gs"; season_code: string; document_type: string;
       current_sequence: number; first_code: string;
       conflict: { collection: string; record_id?: string } | null;
       can_reset: boolean;
@@ -602,8 +602,8 @@ function CounterResetPanel() {
     ),
     onSuccess: async (result) => {
       toast.success(ar
-        ? `تمت إعادة تعيين ${result.reset.length} عداداً. الأكواد التالية تبدأ من 0000.`
-        : `${result.reset.length} compteur(s) réinitialisé(s). La prochaine séquence commence à 0000.`);
+        ? `تمت إعادة تعيين ${result.reset.length} عداداً. أول كود جديد يبدأ بالرقم 1 (0001 في GS).`
+        : `${result.reset.length} compteur(s) réinitialisé(s). Le premier nouveau code commence par 1 (0001 pour GS).`);
       setSelected([]);
       await qc.invalidateQueries();
       await preview.refetch();
@@ -636,8 +636,8 @@ function CounterResetPanel() {
       <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
         <p className="font-semibold">{ar ? "تنبيه مهم" : "Attention — fonctionnement"}</p>
         <p className="mt-1">{ar
-          ? "بعد التصفير سيحاول النظام إصدار كود يبدأ بـ 0000. إذا كان هذا الكود موجوداً في أي سجل، يمنع النظام إعادة تعيين ذلك العداد. معرفات الحرفاء والمزودين حالياً UUID وليست عدادات رقمية؛ لن تتغير."
-          : "Après remise à zéro, le prochain code visé se termine par 0000. Si ce code existe déjà dans un dossier, le compteur concerné sera bloqué. Les identifiants des clients et fournisseurs sont actuellement des UUID, pas des séquences numériques : ils ne seront pas modifiés."}</p>
+          ? "بعد إعادة التعيين سيكون أول رقم هو 1 (0001 في أكواد GS). إذا كان أول كود موجوداً مسبقاً، يمنع النظام إعادة تعيين ذلك العداد. أكواد Oroverde وGS تظهر هنا، ومعرفات الحرفاء والمزودين UUID ولن تتغير."
+          : "Après réinitialisation, le premier numéro sera 1 (0001 pour les codes GS). Si ce premier code existe déjà, le compteur concerné sera bloqué. Les compteurs Oroverde et GS sont affichés ici. Les identifiants clients et fournisseurs sont des UUID et ne changent pas."}</p>
       </div>
       <div className="rounded-xl border border-stone-200 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -661,7 +661,7 @@ function CounterResetPanel() {
                 <span className="flex min-w-0 items-start gap-3">
                   <input type="checkbox" checked={checked} disabled={!item.can_reset} onChange={(e) => toggle(item.key, e.target.checked)} className="mt-1 size-4 shrink-0 accent-amber-700" />
                   <span className="min-w-0">
-                    <span className="block font-semibold text-stone-800">{labels[item.document_type] ?? item.document_type} · {item.season_code}</span>
+                    <span className="block font-semibold text-stone-800">{item.source === "oroverde" ? (ar ? "حمولات Oroverde" : "Chargements Oroverde") : (labels[item.document_type] ?? item.document_type)} · {item.season_code}</span>
                     <span className="mt-1 block font-mono text-xs text-amber-900">{item.first_code}</span>
                     {!item.can_reset && <span className="mt-1 block text-xs text-red-700">{ar ? `الكود موجود مسبقاً في ${item.conflict?.collection}` : `Code déjà utilisé dans ${item.conflict?.collection}`}</span>}
                   </span>
@@ -677,8 +677,8 @@ function CounterResetPanel() {
       </div>
       <Button type="button" disabled={!selected.length || reset.isPending || preview.isLoading || preview.isError} onClick={() => {
         const message = ar
-          ? `تأكيد إعادة تعيين ${selected.length} عداداً؟ الأكواد القديمة ستبقى كما هي، وأول كود جديد لكل عداد سيكون 0000.`
-          : `Confirmer la remise à zéro de ${selected.length} compteur(s) ? Les anciens codes resteront inchangés et le premier nouveau code sera 0000.`;
+          ? `تأكيد إعادة تعيين ${selected.length} عداداً؟ الأكواد القديمة ستبقى كما هي، وأول كود جديد لكل عداد سيبدأ بالرقم 1 (0001 في GS).`
+          : `Confirmer la remise à zéro de ${selected.length} compteur(s) ? Les anciens codes resteront inchangés et le premier nouveau code commencera par 1 (0001 pour GS).`;
         if (window.confirm(message)) reset.mutate();
       }} className="bg-amber-700 text-white hover:bg-amber-800">
         {reset.isPending ? (ar ? "جارٍ التصفير..." : "Réinitialisation…") : (ar ? "إعادة تعيين العدادات المحددة" : "Réinitialiser les compteurs sélectionnés")}
