@@ -43,7 +43,7 @@ export default function Lab() {
   const code = f.code.trim();
   const isGsCode = /^\d{4}A\d{4}$/i.test(code);
   const gsLots = useQuery({ queryKey: ["lab-gs-lots"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/lots?limit=500"), enabled: true, retry: false });
-  const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: isGsCode, retry: false });
+  const gsSamples = useQuery({ queryKey: ["lab-gs-preproduction-samples"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/preproduction-samples?limit=500"), enabled: true, retry: false });
   const gsAssessments = useQuery({ queryKey: ["lab-gs-quality-assessments"], queryFn: () => apiGet<Array<Record<string, any>>>("/commercial/v1/quality-assessments?limit=500"), retry: false });
   const gsCodeAssessments = (gsAssessments.data ?? [])
     .filter((assessment) => assessment.lot_purpose === "PREPRODUCTION_SAMPLE"
@@ -559,6 +559,41 @@ export default function Lab() {
           </TableBody>
         </Table>
       </div>
+      <section className="mt-8 space-y-4" data-testid="lab-gs-quality-followup">
+        <PageHeader title="Suivi qualité GS" sub="Historique des essais de trituration et suivi des analyses préproduction GS." accent="bg-amber-500" />
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="border-b border-amber-100 bg-amber-50/70 px-5 py-4">
+            <h2 className="font-heading text-lg font-bold text-amber-950">Historique des essais de trituration</h2>
+            <p className="mt-1 text-sm text-amber-900">Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>N° essai</TableHead><TableHead>Code achat</TableHead><TableHead>Lot d’olives</TableHead><TableHead>Date de l’essai</TableHead><TableHead>Olives consommées (kg)</TableHead><TableHead>Huile échantillon (L)</TableHead><TableHead>Statut</TableHead><TableHead>Notes</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {(gsSamples.data ?? []).filter((sample) => !sample.auto_generated_for_purchase_analysis).map((sample) => {
+                  const sourceLot = (gsLots.data ?? []).find((item) => item.id === sample.source_olive_lot_id);
+                  return <TableRow key={sample.id}>
+                    <TableCell className="font-mono font-bold">{String(sample.document_number || "—")}</TableCell>
+                    <TableCell><CodeBadge code={String(sample.batch_code || "—")} /></TableCell>
+                    <TableCell><CodeBadge code={String(sourceLot?.batch_code || sample.source_olive_lot_id || "—")} /></TableCell>
+                    <TableCell>{fmtDate(sample.trial_date)}</TableCell>
+                    <TableCell>{fmtNum(sample.input_olive_quantity_kg, 3)}</TableCell>
+                    <TableCell>{fmtNum(sample.sample_oil_quantity_kg, 3)}</TableCell>
+                    <TableCell><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${sample.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : sample.status === "CANCELLED" ? "bg-rose-100 text-rose-800" : "bg-stone-100 text-stone-700"}`}>{sample.status === "COMPLETED" ? "Terminée" : sample.status === "CANCELLED" ? "Annulée" : String(sample.status || "—")}</span></TableCell>
+                    <TableCell className="max-w-xs whitespace-normal text-xs">{sample.notes || "—"}</TableCell>
+                  </TableRow>;
+                })}
+                {(!gsSamples.isLoading && !(gsSamples.data ?? []).some((sample) => !sample.auto_generated_for_purchase_analysis)) && <TableRow><TableCell colSpan={8} className="py-8 text-center text-stone-500">{t("no_data")}</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        <div className="rounded-xl border border-cyan-200 bg-cyan-50/60 px-4 py-3 text-sm text-cyan-950">
+          Le tableau des analyses GS, les certificats et la Décision indépendante sont intégrés plus haut dans cette même page Laboratoire. Aucune analyse après trituration n’est autorisée.
+        </div>
+      </section>
       <QrScanDialog
         open={scanOpen}
         onClose={() => setScanOpen(false)}
