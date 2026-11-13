@@ -32,7 +32,8 @@ function classify(a: number, p: number | null, k232: number | null, k270: number
 const EMPTY = { code: "", acidity: "", peroxide: "", k232: "", k270: "", oil: "", notes: "", grade: "auto", oilType: "" };
 
 export default function Lab() {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const me = useMe();
   const qc = useQueryClient();
   const [f, setF] = useState(EMPTY);
@@ -171,7 +172,7 @@ export default function Lab() {
         : apiPost("/commercial/v1/quality-assessments", payload);
     },
     onSuccess: () => {
-      toast.success(selectedGsAssessment ? "Analyse mise à jour" : "Résultats transmis à la Décision indépendante");
+      toast.success(selectedGsAssessment ? (ar ? "تم تحديث التحليل" : "Analyse mise à jour") : (ar ? "تم إرسال النتائج إلى القرار المستقل" : "Résultats transmis à la Décision indépendante"));
       setF(EMPTY); setSpecificationReference(""); setSelectedGsAssessment(null);
       qc.invalidateQueries({ queryKey: ["commercial"] });
       qc.invalidateQueries({ queryKey: ["lab-gs-quality-assessments"] });
@@ -227,7 +228,7 @@ export default function Lab() {
   const releaseGsAssessment = useMutation({
     mutationFn: async () => {
       if (!selectedReviewAssessment) throw new Error("Analyse introuvable. Actualisez la page.");
-      if (reviewReason.trim().length < 10) throw new Error("La justification doit contenir au moins 10 caractères.");
+      if (reviewReason.trim().length < 10) throw new Error((ar ? "يجب ألا يقل التعليل عن 10 أحرف." : "La justification doit contenir au moins 10 caractères."));
       // Use the version captured when the assessment was submitted if its lot
       // is outside the independently limited lots response. The backend still
       // validates the live lot state/version transactionally before release.
@@ -235,7 +236,7 @@ export default function Lab() {
       return apiPost("/commercial/v1/quality-assessments/release", { assessment_id: selectedReviewAssessment.id, expected_lot_version: expectedLotVersion, decision: reviewDecision, decision_reason: reviewReason.trim(), idempotency_key: crypto.randomUUID() });
     },
     onSuccess: async () => {
-      toast.success("Décision indépendante enregistrée");
+      toast.success((ar ? "تم تسجيل القرار المستقل" : "Décision indépendante enregistrée"));
       setReviewAssessmentId(""); setReviewReason(""); setReviewDecision("RELEASED");
       await Promise.all([qc.invalidateQueries({ queryKey: ["lab-gs-quality-assessments"] }), qc.invalidateQueries({ queryKey: ["lab-gs-lots"] }), qc.invalidateQueries({ queryKey: ["commercial"] })]);
     },
@@ -245,8 +246,8 @@ export default function Lab() {
     const scanned = raw.trim(); let certificateId = ""; let codeValue = scanned;
     try { const parsed = new URL(scanned); const certificatePart = parsed.pathname.includes("/commercial/certificate/") ? parsed.pathname.split("/").pop() : ""; if (certificatePart) certificateId = decodeURIComponent(certificatePart); codeValue = parsed.searchParams.get("code")?.trim() || codeValue; } catch { /* QR contenant directement le code de traçabilité. */ }
     const match = reviewableGsAssessments.find((item) => (certificateId && item.id === certificateId) || reviewAssessmentCode(item).trim().toLowerCase() === codeValue.toLowerCase() || String(item.sample_reference ?? "").trim().toLowerCase() === codeValue.toLowerCase());
-    if (!match) { toast.error("Aucune analyse en attente ne correspond à ce QR code."); return; }
-    setReviewAssessmentId(match.id); toast.success("Analyse sélectionnée pour la revue indépendante");
+    if (!match) { toast.error((ar ? "لا يوجد تحليل قيد الانتظار يطابق رمز QR هذا." : "Aucune analyse en attente ne correspond à ce QR code.")); return; }
+    setReviewAssessmentId(match.id); toast.success((ar ? "تم اختيار التحليل للمراجعة المستقلة" : "Analyse sélectionnée pour la revue indépendante"));
   };
 
 
@@ -284,7 +285,7 @@ export default function Lab() {
             </div>
             {codeListOpen && (
               <div className="max-h-64 overflow-y-auto rounded-xl border border-cyan-200 bg-white shadow-lg" data-testid="lab-pending-code-options">
-                <div className="border-b bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600">Codes de réception et de lots non analysés</div>
+                <div className="border-b bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600">{ar ? "رموز الاستلام والدفعات غير المحللة" : "Codes de réception et de lots non analysés"}</div>
                 {pendingLoads.map((load) => (
                   <button key={load.id} type="button" onClick={() => { setSelectedGsAssessment(null); set("code")(load.code); setCodeListOpen(false); }} className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-left hover:bg-cyan-50">
                     <span className="font-mono text-sm font-semibold">{load.code}</span><span className="truncate text-xs text-stone-500">{load.client_name} · {load.olive_kg} kg</span>
@@ -295,7 +296,7 @@ export default function Lab() {
                     <span className="font-mono text-sm font-semibold">{pendingCode}</span><span className="text-xs text-amber-700">GS · En attente d’analyse</span>
                   </button>
                 ))}
-                {pendingLoads.length === 0 && pendingGsCodes.length === 0 && <div className="px-3 py-4 text-center text-sm text-stone-500">Aucun code en attente d’analyse</div>}
+                {pendingLoads.length === 0 && pendingGsCodes.length === 0 && <div className="px-3 py-4 text-center text-sm text-stone-500">{ar ? "لا توجد رموز في انتظار التحليل" : "Aucun code en attente d’analyse"}</div>}
                 <div className="px-3 py-2 text-xs text-stone-500">Vous pouvez aussi saisir un code manuellement dans le champ.</div>
               </div>
             )}
@@ -346,7 +347,7 @@ export default function Lab() {
               </div>
             )}
           </div>
-          <div className="space-y-2"><Label htmlFor="lab-specification">Référence de la norme</Label><Input id="lab-specification" required={isGsCode} minLength={isGsCode ? 2 : undefined} maxLength={160} value={specificationReference} disabled={gsAnalysisLocked} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." data-testid="lab-specification-reference-input" /></div>
+          <div className="space-y-2"><Label htmlFor="lab-specification">{ar ? "مرجع المواصفة" : "Référence de la norme"}</Label><Input id="lab-specification" required={isGsCode} minLength={isGsCode ? 2 : undefined} maxLength={160} value={specificationReference} disabled={gsAnalysisLocked} onChange={(e) => setSpecificationReference(e.target.value)} className="h-10 rounded-xl bg-white" placeholder="IOC / COI..." data-testid="lab-specification-reference-input" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="la">{t("acidity")}</Label>
@@ -413,7 +414,7 @@ export default function Lab() {
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-4">
               <Table>
-                <TableHeader><TableRow><TableHead>Code de traçabilité</TableHead><TableHead>Achat</TableHead><TableHead>Type d’olive</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>{ar ? "رمز التتبع" : "Code de traçabilité"}</TableHead><TableHead>{ar ? "الشراء" : "Achat"}</TableHead><TableHead>{ar ? "نوع الزيتون" : "Type d’olive"}</TableHead><TableHead>{ar ? "الحالة" : "Statut"}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {pendingGsCodes.map((pendingCode) => {
                     const purchase = (gsPurchases.data ?? []).find((item) => String(item.batch_code || "").trim().toUpperCase() === pendingCode.toUpperCase());
@@ -462,18 +463,18 @@ export default function Lab() {
       </div>
       
       {canReviewGsQuality && <section data-testid="lab-independent-quality-decision" className="mb-6 rounded-2xl border border-violet-200 bg-white shadow-sm">
-        <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">Décision indépendante</h2><p className="mt-1 text-sm text-violet-800">Réservée aux réviseurs autorisés et aux administrateurs. Un administrateur peut décider même s’il a enregistré l’analyse ; un autre utilisateur ne peut pas valider sa propre analyse.</p></div>
+        <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4"><h2 className="font-heading text-lg font-bold text-violet-950">{ar ? "القرار المستقل" : "Décision indépendante"}</h2><p className="mt-1 text-sm text-violet-800">Réservée aux réviseurs autorisés et aux administrateurs. Un administrateur peut décider même s’il a enregistré l’analyse ; un autre utilisateur ne peut pas valider sa propre analyse.</p></div>
         <div className="space-y-4 p-5">
-          <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 space-y-2 text-sm font-medium">Analyse à examiner
-            <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder="Choisir une analyse en attente">{selectedReviewAssessment ? `${reviewAssessmentCode(selectedReviewAssessment)} · ${selectedReviewAssessment.laboratory_name || "Laboratoire"} · ${fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}` : "Choisir une analyse en attente"}</SelectValue></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}><span className="font-mono font-semibold">{reviewAssessmentCode(assessment)}</span> · {assessment.laboratory_name || "Laboratoire"} · {fmtDate(assessment.tested_date || assessment.created_at)}</SelectItem>)}</SelectContent></Select>
+          <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 space-y-2 text-sm font-medium">{ar ? "التحليل المطلوب مراجعته" : "Analyse à examiner"}
+            <Select value={reviewAssessmentId || undefined} onValueChange={setReviewAssessmentId}><SelectTrigger className="h-10 w-full"><SelectValue placeholder={ar ? "اختر تحليلاً في الانتظار" : "Choisir une analyse en attente"}>{selectedReviewAssessment ? `${reviewAssessmentCode(selectedReviewAssessment)} · ${selectedReviewAssessment.laboratory_name || "Laboratoire"} · ${fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}` : "Choisir une analyse en attente"}</SelectValue></SelectTrigger><SelectContent>{reviewableGsAssessments.map((assessment) => <SelectItem key={assessment.id} value={assessment.id}><span className="font-mono font-semibold">{reviewAssessmentCode(assessment)}</span> · {assessment.laboratory_name || "Laboratoire"} · {fmtDate(assessment.tested_date || assessment.created_at)}</SelectItem>)}</SelectContent></Select>
           </label><Button type="button" variant="outline" onClick={() => setReviewQrOpen(true)}><ScanLine className="mr-2 size-4" />Scanner le QR</Button></div>
-          {selectedReviewAssessment && <div className="rounded-xl border bg-stone-50 p-3 text-sm"><div><strong>Code de traçabilité :</strong> <span className="font-mono">{reviewAssessmentCode(selectedReviewAssessment)}</span></div><div><strong>Laboratoire :</strong> {selectedReviewAssessment.laboratory_name || "—"}</div><div><strong>Date d’analyse :</strong> {fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div>Acidité : <strong>{selectedReviewAssessment.acidity ?? "—"}</strong></div><div>Peroxyde : <strong>{selectedReviewAssessment.peroxide ?? "—"}</strong></div><div>K232 : <strong>{selectedReviewAssessment.k232 ?? "—"}</strong></div><div>K270 : <strong>{selectedReviewAssessment.k270 ?? "—"}</strong></div><div>Classification : <strong>{selectedReviewAssessment.classification ?? "—"}</strong></div><div>Type : <strong>{selectedReviewAssessment.oil_type ?? "—"}</strong></div></div></div>}
-          <label className="block space-y-2 text-sm font-medium">Décision<Select value={reviewDecision} onValueChange={(value) => setReviewDecision(value as "RELEASED" | "REJECTED")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="RELEASED">Accepter le lot</SelectItem><SelectItem value="REJECTED">Refuser le lot</SelectItem></SelectContent></Select></label>
-          <label className="block space-y-2 text-sm font-medium">Justification (10 caractères minimum)<Textarea value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} minLength={10} maxLength={1000} className="min-h-24" /></label>
-          {gsAssessments.isLoading || gsLots.isLoading ? <p className="text-sm text-stone-500">Chargement des analyses et des codes de traçabilité…</p> : null}
-          {(gsAssessments.isError || gsLots.isError) && <p className="text-sm text-red-600">Impossible de charger les analyses ou les lots. Vérifiez votre connexion et vos droits d’accès, puis actualisez la page.</p>}
-          {!gsAssessments.isLoading && !gsLots.isLoading && !gsAssessments.isError && !gsLots.isError && reviewableGsAssessments.length === 0 && <p className="text-sm text-stone-500">Aucune analyse préproduction en attente de décision indépendante.</p>}
-          <Button type="button" disabled={!selectedReviewAssessment || reviewReason.trim().length < 10 || releaseGsAssessment.isPending} onClick={() => releaseGsAssessment.mutate()}>{releaseGsAssessment.isPending ? "Enregistrement…" : "Enregistrer la décision"}</Button>
+          {selectedReviewAssessment && <div className="rounded-xl border bg-stone-50 p-3 text-sm"><div><strong>{ar ? "رمز التتبع:" : "Code de traçabilité :"}</strong> <span className="font-mono">{reviewAssessmentCode(selectedReviewAssessment)}</span></div><div><strong>{ar ? "المخبر:" : "Laboratoire :"}</strong> {selectedReviewAssessment.laboratory_name || "—"}</div><div><strong>Date d’analyse :</strong> {fmtDate(selectedReviewAssessment.tested_date || selectedReviewAssessment.created_at)}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div>Acidité : <strong>{selectedReviewAssessment.acidity ?? "—"}</strong></div><div>Peroxyde : <strong>{selectedReviewAssessment.peroxide ?? "—"}</strong></div><div>K232 : <strong>{selectedReviewAssessment.k232 ?? "—"}</strong></div><div>K270 : <strong>{selectedReviewAssessment.k270 ?? "—"}</strong></div><div>Classification : <strong>{selectedReviewAssessment.classification ?? "—"}</strong></div><div>Type : <strong>{selectedReviewAssessment.oil_type ?? "—"}</strong></div></div></div>}
+          <label className="block space-y-2 text-sm font-medium">{ar ? "القرار" : "Décision"}<Select value={reviewDecision} onValueChange={(value) => setReviewDecision(value as "RELEASED" | "REJECTED")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="RELEASED">{ar ? "قبول الدفعة" : "Accepter le lot"}</SelectItem><SelectItem value="REJECTED">{ar ? "رفض الدفعة" : "Refuser le lot"}</SelectItem></SelectContent></Select></label>
+          <label className="block space-y-2 text-sm font-medium">{ar ? "التعليل (10 أحرف على الأقل)" : "Justification (10 caractères minimum)"}<Textarea value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} minLength={10} maxLength={1000} className="min-h-24" /></label>
+          {gsAssessments.isLoading || gsLots.isLoading ? <p className="text-sm text-stone-500">{ar ? "جارٍ تحميل التحاليل ورموز التتبع…" : "Chargement des analyses et des codes de traçabilité…"}</p> : null}
+          {(gsAssessments.isError || gsLots.isError) && <p className="text-sm text-red-600">{ar ? "تعذّر تحميل التحاليل أو الدفعات. تحقق من الاتصال والصلاحيات ثم حدّث الصفحة." : "Impossible de charger les analyses ou les lots. Vérifiez votre connexion et vos droits d’accès, puis actualisez la page."}</p>}
+          {!gsAssessments.isLoading && !gsLots.isLoading && !gsAssessments.isError && !gsLots.isError && reviewableGsAssessments.length === 0 && <p className="text-sm text-stone-500">{ar ? "لا توجد تحاليل ما قبل الإنتاج في انتظار القرار المستقل." : "Aucune analyse préproduction en attente de décision indépendante."}</p>}
+          <Button type="button" disabled={!selectedReviewAssessment || reviewReason.trim().length < 10 || releaseGsAssessment.isPending} onClick={() => releaseGsAssessment.mutate()}>{releaseGsAssessment.isPending ? (ar ? "جارٍ التسجيل…" : "Enregistrement…") : (ar ? "تسجيل القرار" : "Enregistrer la décision")}</Button>
         </div>
       </section>}
       <QrScanDialog open={reviewQrOpen} onClose={() => setReviewQrOpen(false)} onScan={(raw) => { handleReviewQrScan(raw); setReviewQrOpen(false); }} />
@@ -484,7 +485,7 @@ export default function Lab() {
             <TableRow>
               <TableHead className="text-start">{t("code")}</TableHead>
               <TableHead className="text-start">{t("client")}</TableHead>
-              <TableHead className="text-start">Référence de la norme</TableHead>
+              <TableHead className="text-start">{ar ? "مرجع المواصفة" : "Référence de la norme"}</TableHead>
               <TableHead className="text-end">{t("acidity")}</TableHead>
               <TableHead className="text-end">Perox.</TableHead>
               <TableHead className="text-end">K232</TableHead>
@@ -505,7 +506,7 @@ export default function Lab() {
               <TableRow key={`gs-${r.id}`} data-testid={`lab-gs-row-${r.batch_code || r.sample_reference}`}>
                 <TableCell>
                   {r.status === "AWAITING_INDEPENDENT_REVIEW" ? (
-                    <button type="button" title="Modifier l’analyse avant Décision" className="rounded-lg hover:opacity-80" onClick={() => {
+                    <button type="button" title={ar ? "تعديل التحليل قبل القرار" : "Modifier l’analyse avant Décision"} className="rounded-lg hover:opacity-80" onClick={() => {
                       setSelectedGsAssessment(r);
                       setF({ ...EMPTY, code: String(r.batch_code || r.sample_reference || ""), acidity: r.acidity == null ? "" : String(r.acidity), peroxide: r.peroxide == null ? "" : String(r.peroxide), k232: r.k232 == null ? "" : String(r.k232), k270: r.k270 == null ? "" : String(r.k270), oil: r.oil_content_pct == null ? "" : String(r.oil_content_pct), notes: r.notes || "", oilType: r.oil_type || "", grade: r.classification || "auto" });
                       setSpecificationReference(r.specification_reference || "");
@@ -513,9 +514,9 @@ export default function Lab() {
                     }}>
                       <CodeBadge code={String(r.batch_code || r.sample_reference)} />
                     </button>
-                  ) : <span title="Décision enregistrée : analyse verrouillée"><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
+                  ) : <span title={ar ? "تم تسجيل القرار: التحليل مقفل" : "Décision enregistrée : analyse verrouillée"}><CodeBadge code={String(r.batch_code || r.sample_reference)} /></span>}
                 </TableCell>
-                <TableCell className="font-medium">GS · Lot d’huile<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? "En attente de décision indépendante" : r.decision || r.status || "Analyse enregistrée"}</div></TableCell>
+                <TableCell className="font-medium">{ar ? "GS · دفعة زيت" : "GS · Lot d’huile"}<div className="max-w-48 truncate text-xs text-stone-500">{r.status === "AWAITING_INDEPENDENT_REVIEW" ? (ar ? "في انتظار القرار المستقل" : "En attente de décision indépendante") : r.decision || r.status || (ar ? "تم تسجيل التحليل" : "Analyse enregistrée")}</div></TableCell>
                 <TableCell className="text-sm font-medium">{r.specification_reference || "—"}</TableCell>
                 <TableCell className="text-end font-semibold">{fmtNum(r.acidity, 2)}</TableCell>
                 <TableCell className="text-end">{fmtNum(r.peroxide, 2)}</TableCell>
@@ -560,11 +561,11 @@ export default function Lab() {
         </Table>
       </div>
       <section className="mt-8 space-y-4" data-testid="lab-gs-quality-followup">
-        <PageHeader title="Suivi qualité GS" sub="Historique des essais de trituration et suivi des analyses préproduction GS." accent="bg-amber-500" />
+        <PageHeader title={ar ? "متابعة جودة GS" : "Suivi qualité GS"} sub={ar ? "سجل تجارب العصر ومتابعة تحاليل ما قبل الإنتاج في GS." : "Historique des essais de trituration et suivi des analyses préproduction GS."} accent="bg-amber-500" />
         <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
           <div className="border-b border-amber-100 bg-amber-50/70 px-5 py-4">
             <h2 className="font-heading text-lg font-bold text-amber-950">Historique des essais de trituration</h2>
-            <p className="mt-1 text-sm text-amber-900">Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel.</p>
+            <p className="mt-1 text-sm text-amber-900">{ar ? "تُعرض التجارب الفعلية فقط. تُستثنى عينات تحليل الشراء الآلية لأنها لا تستهلك الزيتون ولا تمثل تجربة عصر حقيقية." : "Essais physiques uniquement. Les échantillons automatiques d’analyse d’achat sont exclus car ils ne consomment pas d’olives et ne constituent pas un essai réel."}</p>
           </div>
           <div className="overflow-x-auto">
             <Table>
