@@ -63,39 +63,30 @@ export default function Help() {
           </div>
         </div>
         <Button type="button" variant="outline" onClick={() => navigate("/")}>
-          <ArrowLeft className="size-4" /> العودة إلى التطبيق / Retour à l’application
+          <ArrowLeft className="size-4 rtl:rotate-180" /> {ar ? "العودة إلى التطبيق" : "Retour à l’application"}
         </Button>
       </div>
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-950">
         <div className="mb-1 flex items-center gap-2 font-bold"><BookOpen className="size-5" /> {ar ? "كيف تستعمل هذه الصفحة؟" : "Comment utiliser cette page ?"}</div>
-        <p dir="rtl">اختر اسم القسم الذي تريد فهمه واقرأ الشرح بالعربية أو بالفرنسية. أسماء الصفحات مذكورة كما تظهر في التطبيق.</p>
-        <p className="mt-1" dir="ltr">Choisissez la rubrique souhaitée et lisez son explication dans la langue de votre choix. Les noms des pages sont repris tels qu’ils apparaissent dans l’application.</p>
+        <p dir={ar ? "rtl" : "ltr"}>{ar ? "اختر القسم الذي تريد فهمه واقرأ شرحه. أسماء الصفحات مذكورة كما تظهر في التطبيق." : "Choisissez la rubrique souhaitée et lisez son explication. Les noms des pages sont repris tels qu’ils apparaissent dans l’application."}</p>
       </div>
       {sections.map((section) => (
         <section key={section.ar} className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
           <div className="border-b border-stone-100 bg-stone-50 px-5 py-4">
-            <h2 className="text-xl font-bold text-stone-900">{section.ar} <span className="text-stone-400">/</span> {section.fr}</h2>
-            <p dir="rtl" className="mt-1 text-sm leading-6 text-stone-600">{section.arDescription}</p>
-            <p dir="ltr" className="mt-1 text-sm leading-6 text-stone-600">{section.frDescription}</p>
+            <h2 className="text-xl font-bold text-stone-900">{ar ? section.ar : section.fr}</h2>
+            <p dir={ar ? "rtl" : "ltr"} className="mt-1 text-sm leading-6 text-stone-600">{ar ? section.arDescription : section.frDescription}</p>
           </div>
           <div className="divide-y divide-stone-100">
             {section.items.map(([arName, frName, arDescription, frDescription]) => (
-              <div key={frName} className="grid gap-3 px-5 py-4 md:grid-cols-2 md:gap-6">
-                <div dir="rtl" className="text-right">
-                  <h3 className="font-semibold text-emerald-900">{arName}</h3>
-                  <p className="mt-1 text-sm leading-7 text-stone-700">{arDescription}</p>
-                </div>
-                <div dir="ltr" className="text-left">
-                  <h3 className="font-semibold text-sky-900">{frName}</h3>
-                  <p className="mt-1 text-sm leading-7 text-stone-700">{frDescription}</p>
-                </div>
+              <div key={frName} dir={ar ? "rtl" : "ltr"} className="px-5 py-4">
+                <h3 className="font-semibold text-emerald-900">{ar ? arName : frName}</h3>
+                <p className="mt-1 text-sm leading-7 text-stone-700">{ar ? arDescription : frDescription}</p>
               </div>
             ))}
           </div>
         </section>
       ))}
-      <p className="text-center text-xs leading-6 text-stone-500" dir="rtl">إذا لم تجد وظيفة أو كان الشرح لا يطابق ما يظهر في التطبيق، لا تنفّذ عملية غير واضحة قبل مراجعة المسؤول.</p>
-      <p className="text-center text-xs leading-6 text-stone-500" dir="ltr">Si une fonction n’est pas expliquée ou si le comportement affiché est différent, demandez confirmation au responsable avant d’effectuer une opération incertaine.</p>
+      <p className="text-center text-xs leading-6 text-stone-500" dir={ar ? "rtl" : "ltr"}>{ar ? "إذا لم تجد وظيفة أو كان الشرح لا يطابق ما يظهر في التطبيق، فلا تنفّذ عملية غير واضحة قبل مراجعة المسؤول." : "Si une fonction n’est pas expliquée ou si le comportement affiché est différent, demandez confirmation au responsable avant d’effectuer une opération incertaine."}</p>
     </div>
   );
 }
