@@ -409,6 +409,20 @@ export default function Commercial() {
   const paymentMethodLabel = (method: unknown) => method === "CASH" ? (lang === "ar" ? "نقداً" : "Espèces") : method === "BANK_TRANSFER" ? (lang === "ar" ? "تحويل بنكي" : "Virement bancaire") : method === "CHEQUE" ? (lang === "ar" ? "شيك" : "Chèque") : value(method);
   const supplierRows = suppliers.data ?? [];
   const purchaseRows = purchases.data ?? [];
+  // Resolve the canonical GS traceability code from the linked lot. Older
+  // purchase documents may not carry batch_code directly on the purchase row.
+  const purchaseTraceabilityCodes = (purchase: AnyRecord) => {
+    const linkedLotCodes = (lots.data ?? [])
+      .filter((lot) => lot.source_purchase_id === purchase.id && lot.batch_code)
+      .map((lot) => String(lot.batch_code));
+    const storedCodes = [
+      ...(Array.isArray(purchase.batch_codes) ? purchase.batch_codes : []),
+      purchase.batch_code,
+      purchase.traceability_code,
+      ...(Array.isArray(purchase.lines) ? purchase.lines.map((line: AnyRecord) => line.batch_code ?? line.traceability_code) : []),
+    ].filter(Boolean).map(String);
+    return Array.from(new Set([...linkedLotCodes, ...storedCodes])).join(", ");
+  };
   const selectedSupplier = supplierRows.find((supplier) => supplier.id === selectedSupplierId) ?? null;
   const selectedSupplierPurchases = purchaseRows.filter((purchase) => purchase.supplier_id === selectedSupplierId)
     .sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? "")));
@@ -1925,7 +1939,7 @@ export default function Commercial() {
                       ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
                       : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
             return <TableRow key={purchase.id}>
-              <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+              <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(purchaseTraceabilityCodes(purchase), purchase.document_number)}</TableCell>
               <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
               <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
               <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
@@ -2558,7 +2572,7 @@ export default function Commercial() {
         </Card>}
         <Card><CardHeader><CardTitle>{l.purchasesTab}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.purchaseCode}</TableHead><TableHead>{l.purchaseReference}</TableHead><TableHead>{l.supplier}</TableHead><TableHead>{l.purchaseDate}</TableHead><TableHead>{l.totalQuantity}</TableHead><TableHead>{l.totalAmount}</TableHead><TableHead>{l.status}</TableHead><TableHead>{l.actions}</TableHead></TableRow></TableHeader><TableBody>
           {(purchases.data ?? []).map((purchase) => <TableRow key={purchase.id}>
-            <TableCell className="font-mono font-bold text-stone-900">{purchase.status === "DRAFT" && canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{purchaseCodeDisplay(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</button> : purchaseCodeDisplay(purchase.batch_codes?.join(", ") || purchase.batch_code || purchase.lines?.map((line: AnyRecord) => line.batch_code).filter(Boolean).join(", "), purchase.document_number)}</TableCell>
+            <TableCell className="font-mono font-bold text-stone-900">{purchase.status === "DRAFT" && canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{purchaseCodeDisplay(purchaseTraceabilityCodes(purchase), purchase.document_number)}</button> : purchaseCodeDisplay(purchaseTraceabilityCodes(purchase), purchase.document_number)}</TableCell>
             <TableCell className="font-mono font-bold text-stone-900">{purchase.status === "DRAFT" && canEditRecords ? <button type="button" className="text-primary underline underline-offset-4 hover:opacity-80" onClick={() => startPurchaseEdit(purchase)} title={l.editPurchase}>{purchaseCodeDisplay(purchase.document_number)}</button> : purchaseCodeDisplay(purchase.document_number)}</TableCell>
             <TableCell>{value((suppliers.data ?? []).find((s) => s.id === purchase.supplier_id)?.name, purchase.supplier_id)}</TableCell>
             <TableCell>{date(purchase.purchase_date)}</TableCell>
