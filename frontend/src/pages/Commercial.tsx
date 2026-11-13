@@ -31,7 +31,7 @@ type CommercialStatus = {
   season_counters_provisioned: number;
   ready: boolean;
 };
-type TabKey = "overview" | "customer-purchases" | "factures" | "stock" | "lots" | "movements" | "quality" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
+type TabKey = "overview" | "customer-purchases" | "factures" | "stock" | "lots" | "movements" | "laboratory" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
 
 const labels = {
   fr: {
@@ -186,8 +186,8 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as TabKey | null;
-  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "quality", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
-  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
+  const validTabs: (TabKey | "quality")[] = ["overview", "factures", "stock", "lots", "movements", "laboratory", "quality", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "quality" ? "laboratory" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
@@ -386,7 +386,7 @@ export default function Commercial() {
   const oilPurchasePayments = useQuery({ queryKey: ["commercial", "oil-purchase-payments", selectedOilPurchaseId], queryFn: () => apiGetAllPages<AnyRecord>(`/commercial/v1/oil-purchases/${encodeURIComponent(selectedOilPurchaseId)}/payments`, 500), enabled: ready && (tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) && !!selectedOilPurchaseId });
   const oilPurchaseStatement = useQuery({ queryKey: ["commercial", "oil-purchase-statement", oilPurchaseStatementCustomerId], queryFn: () => apiGet<AnyRecord>("/commercial/v1/oil-purchases/customers/" + encodeURIComponent(oilPurchaseStatementCustomerId) + "/statement"), enabled: ready && (tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) && !!oilPurchaseStatementCustomerId });
   const oilPurchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && (tab === "transfers" || (tab === "procurement" && procurementView === "customer-purchases")) && !!oilPurchaseStatementCustomerId });
-  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "quality" || (tab === "stock" && stockView === "chargement")) });
+  const quality = useQuery({ queryKey: ["commercial", "quality"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/quality-assessments", 500), enabled: ready && (tab === "laboratory" || (tab === "stock" && stockView === "chargement")) });
   const millSettings = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "quality" });
   const purchaseMill = useQuery({ queryKey: ["mill"], queryFn: () => apiGet<AnyRecord>("/mill"), enabled: ready && tab === "procurement" });
   const preproductionSamples = useQuery({ queryKey: ["commercial", "preproduction-samples"], queryFn: () => apiGetAllPages<AnyRecord>("/commercial/v1/preproduction-samples", 500), enabled: ready && (tab === "quality" || tab === "production") });
@@ -1767,7 +1767,7 @@ export default function Commercial() {
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
     { id: "procurement", label: lang === "ar" ? "المشتريات" : "Achats", icon: ShoppingBasket },
-    { id: "quality", label: lang === "ar" ? "المخبر" : "Laboratoire", icon: Beaker },
+    { id: "laboratory", label: lang === "ar" ? "المخبر" : "Laboratoire", icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: "Chargement", icon: Truck },
     
@@ -2293,7 +2293,7 @@ export default function Commercial() {
       {tab === "stock" && stockView === "movements" && <Card><CardHeader><CardTitle>{l.movements}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>{l.document}</TableHead><TableHead>{l.movement}</TableHead><TableHead>{l.product}</TableHead><TableHead>{l.quantity}</TableHead><TableHead>{l.source}</TableHead><TableHead>{l.destination}</TableHead><TableHead>{l.created}</TableHead></TableRow></TableHeader><TableBody>{(movements.data ?? []).map((m) => <TableRow key={m.id}><TableCell className="font-mono font-bold text-stone-900">{lotCode((lots.data ?? []).find((lot) => lot.id === m.lot_id), m.document_number)}</TableCell><TableCell>{value(m.movement_kind)}</TableCell><TableCell>{m.product_kind === "OLIVE" ? l.olive : l.oil}</TableCell><TableCell>{number(m.quantity_kg)} {m.product_kind === "OIL" ? "L" : "kg"}</TableCell><TableCell>{value((m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.source_location_id)?.code ?? (m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.source_location_id)?.name, "—")}</TableCell><TableCell>{value((m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.destination_location_id)?.code ?? (m.product_kind === "OIL" ? (tanks.data ?? []) : (locations.data ?? [])).find((item) => item.id === m.destination_location_id)?.name, "—")}</TableCell><TableCell>{date(m.created_at)}</TableCell></TableRow>)}{(!movements.isLoading && !(movements.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody></Table></CardContent></Card>}
 
 
-      {tab === "quality" && <div className="space-y-4">
+      {tab === "laboratory" && <div className="space-y-4">
         <Card>
           <CardHeader><CardTitle>{lang === "ar" ? "متابعة الجودة" : "Suivi qualité"}</CardTitle>
             <CardDescription>{lang === "ar" ? "هذه الصفحة للمتابعة فقط. إجراء التحاليل وتسجيل النتائج واتخاذ قرار الاعتماد يتم حصرياً من صفحة Laboratoire، ولعيّنة ما قبل الإنتاج فقط." : "Consultation uniquement. Les analyses, la saisie des résultats et la décision de libération sont effectuées exclusivement dans Laboratoire, sur l’échantillon préproduction."}</CardDescription>
