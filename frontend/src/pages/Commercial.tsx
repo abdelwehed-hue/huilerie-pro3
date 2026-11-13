@@ -2346,7 +2346,7 @@ export default function Commercial() {
         </CardContent></Card>
       </div>}
 
-      {tab === "procurement" && <div className="flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white p-2 shadow-sm" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
+      {tab === "procurement" && <div className="sticky top-0 z-40 -mx-1 flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white/95 p-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-white/90" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
         <Button type="button" size="sm" variant={procurementView === "suppliers" ? "default" : "outline"} role="tab" aria-selected={procurementView === "suppliers"} onClick={() => selectTab("suppliers")}><Truck className="mr-2 size-4" />{l.suppliers}</Button>
         <Button type="button" size="sm" variant={procurementView === "purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "purchases"} onClick={() => selectTab("purchases")}><ShoppingBasket className="mr-2 size-4" />{l.purchasesTab}</Button>
         <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء من الحرفاء" : "Achat depuis clients"}</Button>
