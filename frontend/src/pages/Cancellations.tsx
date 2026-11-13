@@ -11,7 +11,8 @@ import { useMe } from "@/lib/useMe";
 import { CodeBadge, PageHeader, StatCard } from "@/components/shared";
 
 export default function Cancellations() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const ar = lang === "ar";
   const me = useMe();
   const isAdmin = me.data?.role === "admin";
   const [month, setMonth] = useState("");
@@ -39,7 +40,7 @@ export default function Cancellations() {
           <Input id="cm" type="month" data-testid="cancellations-month-input" value={month} onChange={(e) => setMonth(e.target.value)} className="h-10 w-48 rounded-xl bg-white" />
         </div>
         <div className="w-60">
-          <StatCard tone="rose" testId="cancellations-count" label="Annuler" value={rows.length} icon={<Ban />} sub={`${fmtNum(rows.reduce((a, r) => a + r.olive_kg, 0))} ${t("kg")}`} />
+          <StatCard tone="rose" testId="cancellations-count" label={ar ? "الإلغاءات" : "Annuler"} value={rows.length} icon={<Ban />} sub={`${fmtNum(rows.reduce((a, r) => a + r.olive_kg, 0))} ${t("kg")}`} />
         </div>
       </div>
       <div className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
@@ -51,7 +52,7 @@ export default function Cancellations() {
               <TableHead className="text-end">{t("olive_kg")}</TableHead>
               <TableHead className="text-start">Type / motif</TableHead>
               <TableHead className="text-start">Responsable</TableHead>
-              <TableHead className="text-start">Date</TableHead>
+              <TableHead className="text-start">{ar ? "التاريخ" : "Date"}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -66,7 +67,7 @@ export default function Cancellations() {
                 <TableCell className="max-w-72" data-testid={`cancellation-reason-${l.code}`}>
                   {l.ownership_transferred && !l.cancel_reason ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
-                      <ArrowRightLeft className="size-3.5" /> VENDUE À L'HUILERIE
+                      <ArrowRightLeft className="size-3.5" /> {ar ? "مباعة للمعصرة" : "VENDUE À L’HUILERIE"}
                     </span>
                   ) : (
                     <span className="text-red-700">{l.cancel_reason || "إلغاء الحمولة"}</span>
