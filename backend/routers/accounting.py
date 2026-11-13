@@ -78,13 +78,15 @@ async def accounting_overview(_: dict = Depends(require_admin)):
     invoice_match = {"load_id": {"$in": seasonal_load_ids}}
 
     (
-        invoices, olive_purchases, internal_movements, oil_purchases,
+        invoices, olive_purchases, supplier_payments, internal_movements, oil_purchases,
         sales_invoices, sale_payments, oil_payments, credit_notes, suppliers, owners,
         pressing_revenue, pressing_collected, gs_sales_revenue, gs_collected,
-        supplier_olive_total, customer_olive_total, customer_olive_paid, customer_oil_total, customer_oil_paid,
+        supplier_olive_total, supplier_olive_paid, supplier_olive_outstanding,
+        customer_olive_total, customer_olive_paid, customer_oil_total, customer_oil_paid,
     ) = await asyncio.gather(
         _recent("invoices", "day", match=invoice_match),
         _recent("commercial_olive_purchases", match=commercial_match),
+        _recent("commercial_supplier_olive_purchase_payments", "payment_date", match=commercial_match),
         _recent("commercial_internal_movements", match=commercial_match),
         _recent("commercial_oil_purchase_documents", match=commercial_match),
         _recent("commercial_sales_invoices", match=commercial_match),
@@ -98,6 +100,8 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         _sum("commercial_sales_invoices", "net_amount_dt", commercial_match),
         _sum("commercial_sales_invoices", "paid_amount_dt", commercial_match),
         _sum("commercial_olive_purchases", "total_amount_dt", {**commercial_match, "status": "APPROVED"}),
+        _sum("commercial_supplier_olive_purchase_payments", "amount_tnd", commercial_match),
+        _sum("commercial_olive_purchases", "outstanding_amount_dt", {**commercial_match, "status": "APPROVED"}),
         _sum("commercial_oil_purchase_documents", "agreed_amount_tnd", {
             **commercial_match, "product_kind": "OLIVE",
         }),
@@ -126,6 +130,7 @@ async def accounting_overview(_: dict = Depends(require_admin)):
         "season_code": season_code,
         "traditional_invoices": invoices,
         "supplier_olive_purchases": olive_purchases,
+        "supplier_olive_purchase_payments": supplier_payments,
         "customer_ownership_transfers": internal_movements,
         "customer_olive_purchases": [item for item in oil_purchases if item.get("product_kind") == "OLIVE"],
         "customer_oil_purchases": [item for item in oil_purchases if item.get("product_kind", "OIL") == "OIL"],
@@ -141,6 +146,8 @@ async def accounting_overview(_: dict = Depends(require_admin)):
             "gs_sales_revenue_total": gs_sales_revenue,
             "gs_sales_collected_total": gs_collected,
             "supplier_olive_purchase_total": supplier_olive_total,
+            "supplier_olive_paid_total": supplier_olive_paid,
+            "supplier_olive_outstanding_total": supplier_olive_outstanding,
             "customer_olive_purchase_total": customer_olive_total,
             "customer_olive_paid_total": customer_olive_paid,
             "customer_oil_purchase_total": customer_oil_total,
@@ -331,9 +338,10 @@ async def accounting_daily_situation(
     season = await active_season()
     season_code = season_prefix(season)
     load_ids = await db.loads.distinct("id", {"season_id": season})
-    invoices, supplier_purchases, customer_purchase_docs, sale_invoices, sale_payments, sale_reversals, customer_purchase_payments, passive_incomes, expenses = await asyncio.gather(
+    invoices, supplier_purchases, supplier_payments, customer_purchase_docs, sale_invoices, sale_payments, sale_reversals, customer_purchase_payments, passive_incomes, expenses = await asyncio.gather(
         db.invoices.find({"load_id": {"$in": load_ids}}, {"_id": 0}).to_list(None),
         db.commercial_olive_purchases.find({"season_code": season_code, "status": "APPROVED"}, {"_id": 0}).to_list(None),
+        db.commercial_supplier_olive_purchase_payments.find({"season_code": season_code}, {"_id": 0}).to_list(None),
         db.commercial_oil_purchase_documents.find({"season_code": season_code}, {"_id": 0}).to_list(None),
         db.commercial_sales_invoices.find({"season_code": season_code}, {"_id": 0}).to_list(None),
         db.commercial_sale_payments.find({"season_code": season_code}, {"_id": 0}).to_list(None),
@@ -383,8 +391,19 @@ async def accounting_daily_situation(
         _daily_event(events, day=purchase_day, category="Achat fournisseur", label="Achat d’olives",
                      reference=purchase.get("document_number", ""), amount=amount, kind="expense",
                      detail=purchase.get("supplier_name", ""))
-        # No supplier settlement ledger exists yet; never infer a cash payment.
-        current_payables += amount
+        current_payables += max(
+            Decimal("0"), _accounting_decimal(purchase.get("outstanding_amount_dt", amount))
+        )
+
+    for payment in supplier_payments:
+        payment_day = _accounting_day(payment.get("payment_date") or payment.get("created_at"))
+        _daily_event(
+            events, day=payment_day, category="Achat fournisseur",
+            label="Règlement fournisseur",
+            reference=payment.get("document_number") or payment.get("purchase_number", ""),
+            amount=payment.get("amount_tnd"), kind="disbursement",
+            detail=payment.get("supplier_name", ""),
+        )
 
     for purchase in customer_purchase_docs:
         purchase_day = _accounting_day(purchase.get("purchase_date") or purchase.get("created_at"))
@@ -477,5 +496,5 @@ async def accounting_daily_situation(
         },
         "events": day_events, "comparison": comparison,
         "accounting_basis": "SOURCE_DOCUMENTS_ACCRUAL_AND_CASH",
-        "supplier_payments_available": False,
+        "supplier_payments_available": True,
     }
