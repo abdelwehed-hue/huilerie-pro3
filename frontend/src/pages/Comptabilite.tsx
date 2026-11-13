@@ -149,18 +149,18 @@ export default function Comptabilite() {
   const expenses=expenseQuery.data??[];
   const expenseTotal=expenses.reduce((t,x)=>t+mills(x.amount_tnd),0n);
   const outgoingPayments: Row[] = [
-    ...(data.supplier_olive_purchase_payments || []).map(r => ({
+    ...(data?.supplier_olive_purchase_payments || []).map(r => ({
       ...r, outflow_date: r.payment_date || r.created_at, outflow_category: "Paiements fournisseurs",
       outflow_party: r.supplier_name || "—", outflow_reference: r.document_number || r.purchase_number || "—",
       outflow_method: r.method, outflow_amount: r.amount_tnd,
     })),
-    ...(data.customer_olive_purchase_payments || []).map(r => ({
+    ...(data?.customer_olive_purchase_payments || []).map(r => ({
       ...r, outflow_date: r.payment_date || r.paid_at || r.created_at || r.day,
       outflow_category: "Paiements achats clients — olives", outflow_party: r.customer_name || r.client_name || "—",
       outflow_reference: r.document_number || r.payment_number || r.id || "—",
       outflow_method: r.payment_method, outflow_amount: r.amount_tnd || r.amount_dt || r.amount,
     })),
-    ...(data.customer_oil_purchase_payments || []).map(r => ({
+    ...(data?.customer_oil_purchase_payments || []).map(r => ({
       ...r, outflow_date: r.payment_date || r.paid_at || r.created_at || r.day,
       outflow_category: "Paiements achats clients — huile", outflow_party: r.customer_name || r.client_name || "—",
       outflow_reference: r.document_number || r.payment_number || r.id || "—",
