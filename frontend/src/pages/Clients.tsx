@@ -15,7 +15,8 @@ import { CodeBadge, GradeBadge, PageHeader, StatCard, StatusPill } from "@/compo
 import { cn } from "@/lib/utils";
 
 export default function Clients() {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const [params, setParams] = useSearchParams();
   const phone = params.get("phone") ?? "";
   const [q, setQ] = useState("");
@@ -137,7 +138,7 @@ export default function Clients() {
                       <TableHead className="text-end">{t("yield")}</TableHead>
                       <TableHead className="text-start">{t("lab")}</TableHead>
                       <TableHead className="text-start">{t("status")}</TableHead>
-                      <TableHead className="text-start">Facture</TableHead>
+                      <TableHead className="text-start">{ar ? "الفاتورة" : "Facture"}</TableHead>
                       {h.amount != null && <TableHead className="text-end">{t("amount")}</TableHead>}
                     </TableRow>
                   </TableHeader>
