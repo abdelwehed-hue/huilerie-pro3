@@ -2449,6 +2449,19 @@ export default function Commercial() {
                   {!selectedSupplierPurchases.length && <EmptyRow colSpan={11} text={l.noRows}/>}
                 </TableBody></Table></div>
               </div>
+              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                <div className="border-b border-stone-100 px-5 py-4 font-heading text-lg font-bold">{lang === "ar" ? "كشف حساب المزوّد — المشتريات والدفعات" : "Relevé fournisseur — achats et paiements"}</div>
+                <div className="overflow-x-auto"><Table><TableHeader className="bg-stone-50"><TableRow>
+                  <TableHead>{lang === "ar" ? "التاريخ" : "Date"}</TableHead><TableHead>{lang === "ar" ? "الوثيقة" : "Document"}</TableHead><TableHead>{lang === "ar" ? "العملية" : "Opération"}</TableHead><TableHead className="text-end">{lang === "ar" ? "المبلغ" : "Montant"}</TableHead><TableHead className="text-end">{lang === "ar" ? "الرصيد المتبقي" : "Solde dû"}</TableHead>
+                </TableRow></TableHeader><TableBody>
+                  {(supplierStatement.data?.entries ?? []).map((entry: AnyRecord) => <TableRow key={entry.document_number}>
+                    <TableCell className="text-xs" dir="ltr">{date(entry.date)}</TableCell><TableCell className="font-mono font-semibold">{purchaseCodeDisplay(entry.document_number)}</TableCell>
+                    <TableCell>{entry.entry_type === "PURCHASE" ? (lang === "ar" ? "شراء زيتون" : "Achat d’olives") : <span className="font-semibold text-emerald-700">{lang === "ar" ? "خلاص" : "Paiement"} · {paymentMethodLabel(entry.method)}</span>}</TableCell>
+                    <TableCell className={`text-end font-semibold ${entry.entry_type === "PAYMENT" ? "text-emerald-700" : "text-stone-900"}`}>{money(entry.amount_tnd)}</TableCell><TableCell className="text-end font-bold text-rose-700">{money(entry.balance_tnd)}</TableCell>
+                  </TableRow>)}
+                  {!(supplierStatement.data?.entries ?? []).length && <EmptyRow colSpan={5} text={l.noRows}/>}
+                </TableBody></Table></div>
+              </div>
             </div>}
           </div>
         </div>
