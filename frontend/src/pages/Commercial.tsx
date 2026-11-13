@@ -1767,7 +1767,7 @@ export default function Commercial() {
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
     { id: "overview", label: l.overview, icon: Activity },
     { id: "procurement", label: lang === "ar" ? "المشتريات" : "Achats", icon: ShoppingBasket },
-    { id: "quality", label: l.quality, icon: Beaker },
+    { id: "quality", label: lang === "ar" ? "المخبر" : "Laboratoire", icon: Beaker },
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: "Chargement", icon: Truck },
     
