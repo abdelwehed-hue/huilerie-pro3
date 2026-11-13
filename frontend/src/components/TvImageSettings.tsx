@@ -38,7 +38,7 @@ export default function TvImageSettings() {
   }, [settings.data]);
   const uploadMusic = async (file?: File) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".mp3") || (file.type && !["audio/mpeg", "audio/mp3", "application/octet-stream"].includes(file.type))) { toast.error("Choisissez un fichier MP3."); return; }
+    if (!file.name.toLowerCase().endsWith(".mp3") || (file.type && !["audio/mpeg", "audio/mp3", "application/octet-stream"].includes(file.type))) { toast.error((ar ? "اختر ملف MP3." : "Choisissez un fichier MP3.")); return; }
     if (file.size > 20 * 1024 * 1024) { toast.error((ar ? "يجب ألا يتجاوز ملف MP3 حجم 20 ميغابايت." : "Le fichier MP3 ne doit pas dépasser 20 Mo.")); return; }
     setMusicUploading(true);
     try {
@@ -91,7 +91,7 @@ export default function TvImageSettings() {
       if (!ctx) {
         URL.revokeObjectURL(url);
         setProcessing(false);
-        toast.error("Impossible de traiter cette image.");
+        toast.error((ar ? "تعذّر معالجة هذه الصورة." : "Impossible de traiter cette image."));
         return;
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -104,12 +104,12 @@ export default function TvImageSettings() {
       URL.revokeObjectURL(url);
       setSelected(data.length <= 700000 ? data : null);
       setProcessing(false);
-      if (data.length > 700000) toast.error("Image trop volumineuse. Choisissez une image plus petite.");
+      if (data.length > 700000) toast.error((ar ? "حجم الصورة كبير جداً. اختر صورة أصغر." : "Image trop volumineuse. Choisissez une image plus petite."));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
       setProcessing(false);
-      toast.error("Impossible d’ouvrir cette image.");
+      toast.error((ar ? "تعذّر فتح هذه الصورة." : "Impossible d’ouvrir cette image."));
     };
     img.src = url;
   };
@@ -126,12 +126,12 @@ export default function TvImageSettings() {
             <div className="space-y-1">
               <Label htmlFor="tv-video-source">{ar ? "مصدر الفيديو" : "Source de la vidéo"}</Label>
               <select id="tv-video-source" value={videoSource} onChange={(e) => setVideoSource(e.target.value as "youtube" | "direct")} className="w-full rounded-lg border bg-white px-3 py-2 text-sm">
-                <option value="youtube">Lien YouTube</option>
+                <option value="youtube">{ar ? "رابط YouTube" : "Lien YouTube"}</option>
                 <option value="direct">{ar ? "رابط مباشر MP4 / WebM (مستضاف خارجياً)" : "Lien direct MP4 / WebM (hébergé ailleurs)"}</option>
               </select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="tv-display-mode">Mode d’affichage</Label>
+              <Label htmlFor="tv-display-mode">{ar ? "طريقة العرض" : "Mode d’affichage"}</Label>
               <select id="tv-display-mode" value={displayMode} onChange={(e) => setDisplayMode(e.target.value as "background" | "split" | "fullscreen")} className="w-full rounded-lg border bg-white px-3 py-2 text-sm">
                 <option value="background">{ar ? "فيديو في الخلفية + الوصولات" : "Vidéo en arrière-plan + reçus"}</option>
                 <option value="split">{ar ? "فيديو على اليسار + الوصولات على اليمين" : "Vidéo à gauche + reçus à droite"}</option>
@@ -145,28 +145,28 @@ export default function TvImageSettings() {
             <input id="tv-receipt-duration" type="number" min={3} max={30} value={receiptDuration} onChange={(e) => setReceiptDuration(Math.max(3, Math.min(30, Number(e.target.value) || 8)))} className="w-24 rounded-lg border px-3 py-2" />
           </div>
           <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-red-600 hover:bg-red-700">
-            {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres vidéo"}
+            {saveVideo.isPending ? (ar ? "جارٍ الحفظ..." : "Enregistrement...") : (ar ? "حفظ إعدادات الفيديو" : "Enregistrer les paramètres vidéo")}
           </Button>
           <p className="text-xs text-stone-500">{ar ? "اترك الرابط فارغاً إلى حين إدخاله. يمكن استعمال YouTube أو رابط مباشر لملف MP4/WebM مستضاف على خدمة أخرى. لا يتم رفع ملف الفيديو أو تخزينه في MongoDB." : "Le lien reste vide tant que vous ne l’avez pas renseigné. YouTube ou une URL directe MP4/WebM hébergée sur un autre service sont acceptés. Aucun fichier vidéo n’est envoyé ni stocké dans MongoDB."}</p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-white p-4 space-y-4" data-testid="tv-music-settings">
           <div className="flex items-center gap-2 font-semibold text-stone-800"><Music2 className="size-5 text-emerald-700" /> Musique de fond sur l’écran TV</div>
-          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /> Activer la musique de fond</label>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /> {ar ? "تفعيل الموسيقى الخلفية" : "Activer la musique de fond"}</label>
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3"><Label htmlFor="tv-music-volume">Niveau sonore</Label><span className="text-sm font-semibold tabular-nums">{musicVolume}%</span></div>
+            <div className="flex items-center justify-between gap-3"><Label htmlFor="tv-music-volume">{ar ? "مستوى الصوت" : "Niveau sonore"}</Label><span className="text-sm font-semibold tabular-nums">{musicVolume}%</span></div>
             <input id="tv-music-volume" type="range" min="0" max="100" step="1" value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))} disabled={!musicEnabled} className="w-full accent-emerald-700" />
           </div>
           <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm text-stone-600">
-            <div className="font-medium text-stone-800">Fichier musical MP3</div>
+            <div className="font-medium text-stone-800">{ar ? "ملف الموسيقى MP3" : "Fichier musical MP3"}</div>
             <p className="mt-1">{settings.data?.tv_music_filename ? (ar ? `الملف الحالي: ${settings.data.tv_music_filename}` : `Fichier actuel : ${settings.data.tv_music_filename}`) : (ar ? "لم تتم إضافة ملف MP3." : "Aucun fichier MP3 ajouté.")}</p>
             <label className={cn(buttonVariants({ variant: "outline" }), "mt-3 cursor-pointer rounded-xl bg-white")}>
               <Upload className="size-4" /> {musicUploading ? (ar ? "جارٍ الرفع..." : "Téléversement...") : (ar ? "رفع ملف MP3" : "Télécharger un fichier MP3")}
               <input type="file" accept=".mp3,audio/mpeg" className="hidden" disabled={musicUploading} data-testid="tv-music-input" onChange={(e) => { void uploadMusic(e.target.files?.[0]); e.target.value = ""; }} />
             </label>
-            <p className="mt-2 text-xs text-stone-500">MP3 uniquement · 20 Mo maximum · stockage permanent dans MongoDB.</p>
+            <p className="mt-2 text-xs text-stone-500">{ar ? "ملفات MP3 فقط · 20 ميغابايت كحد أقصى · تخزين دائم في MongoDB." : "MP3 uniquement · 20 Mo maximum · stockage permanent dans MongoDB."}</p>
           </div>
           <Button type="button" disabled={!settings.data || saveVideo.isPending} onClick={() => saveVideo.mutate()} className="rounded-xl bg-emerald-700 hover:bg-emerald-800">
-            {saveVideo.isPending ? "Enregistrement..." : "Enregistrer les paramètres musicaux"}
+            {saveVideo.isPending ? (ar ? "جارٍ الحفظ..." : "Enregistrement...") : (ar ? "حفظ إعدادات الموسيقى" : "Enregistrer les paramètres musicaux")}
           </Button>
           <p className="text-xs text-stone-500">{ar ? "سيتم تشغيل الموسيقى باستمرار بعد إضافة الملف. قد يطلب متصفح التلفاز تفعيل الصوت يدوياً لأول مرة." : "La musique sera lue en continu dès qu’un fichier sera ajouté. Le navigateur du téléviseur peut demander une première activation manuelle du son."}</p>
         </div>
@@ -180,9 +180,9 @@ export default function TvImageSettings() {
             <Upload className="size-4" /> {ar ? "اختيار صورة" : "Choisir une image"}
             <input type="file" accept="image/*" className="hidden" data-testid="tv-image-input" onChange={(e) => { pickImage(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
-          {current && <Button type="button" variant="ghost" onClick={() => setSelected("")} className="rounded-xl text-red-600"><Trash2 className="size-4" /> Retirer l’image</Button>}
+          {current && <Button type="button" variant="ghost" onClick={() => setSelected("")} className="rounded-xl text-red-600"><Trash2 className="size-4" /> {ar ? "إزالة الصورة" : "Retirer l’image"}</Button>}
           <Button type="button" disabled={!settings.data || selected === null || processing || save.isPending} onClick={() => selected !== null && settings.data && save.mutate(selected)} className="rounded-xl bg-violet-700 hover:bg-violet-800">
-            {processing ? "Préparation..." : save.isPending ? "Enregistrement..." : "Enregistrer l’image"}
+            {processing ? (ar ? "جارٍ التحضير..." : "Préparation...") : save.isPending ? (ar ? "جارٍ الحفظ..." : "Enregistrement...") : (ar ? "حفظ الصورة" : "Enregistrer l’image")}
           </Button>
         </div>
         <p className="text-sm text-stone-600">{ar ? "يتم ضغط الصورة وحفظها في الإعدادات، ثم عرضها على الأجهزة التي تفتح صفحة التلفاز." : "L’image est compressée et enregistrée dans les paramètres, puis affichée sur les appareils qui ouvrent la page TV."}</p>
