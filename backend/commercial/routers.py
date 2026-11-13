@@ -802,6 +802,20 @@ async def get_supplier_payable_statement(
         entry.pop("_sort", None)
     total_purchases = sum((amount(item.get("total_amount_dt")) for item in purchases), Decimal("0.000"))
     total_paid = sum((amount(item.get("amount_tnd")) for item in payments), Decimal("0.000"))
+    purchase_balances = []
+    for purchase in purchases:
+        purchase_paid = sum((
+            amount(payment.get("amount_tnd")) for payment in payments
+            if payment.get("purchase_id") == purchase.get("id")
+        ), Decimal("0.000"))
+        purchase_total = amount(purchase.get("total_amount_dt"))
+        purchase_remaining = purchase_total - purchase_paid
+        purchase_balances.append({
+            "purchase_id": purchase.get("id"),
+            "paid_tnd": purchase_paid,
+            "outstanding_tnd": purchase_remaining,
+            "payment_status": "PAID" if purchase_remaining == 0 else ("PARTIALLY_PAID" if purchase_paid > 0 else "UNPAID"),
+        })
     return _safe({
         "supplier": supplier,
         "purchase_count": len(purchases),
@@ -809,6 +823,7 @@ async def get_supplier_payable_statement(
         "total_purchases_tnd": total_purchases,
         "total_paid_tnd": total_paid,
         "outstanding_tnd": total_purchases - total_paid,
+        "purchase_balances": purchase_balances,
         "entries": entries,
     })
 
