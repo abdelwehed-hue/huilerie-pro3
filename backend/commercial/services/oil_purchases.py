@@ -388,3 +388,114 @@ async def record_oil_purchase_payment(
         },
     }, session=session)
     return payment
+
+
+async def record_supplier_olive_purchase_payment(
+    db: Any, purchase_id: str, draft: Any, *,
+    season_code: str, actor_user: dict[str, Any], actor_user_id: str,
+    payment_id: str, audit_event_id: str, created_at: datetime, session: Any,
+) -> dict[str, Any]:
+    """Record an immutable supplier settlement and update its payable snapshot atomically."""
+    require_commercial_permission(actor_user, "commercial.manage_purchases")
+    if not actor_user_id or not payment_id or not audit_event_id or created_at.tzinfo is None:
+        raise ValueError("Authenticated actor, stable IDs, and timezone-aware timestamp are required")
+    purchases = db["commercial_olive_purchases"]
+    purchase = await purchases.find_one({"id": purchase_id}, {"_id": 0}, session=session)
+    if not purchase:
+        raise ValueError("Supplier olive purchase does not exist")
+    if purchase.get("status") != "APPROVED":
+        raise ValueError("Only approved and received supplier purchases can be paid")
+    supplier = await db["commercial_suppliers"].find_one(
+        {"id": purchase.get("supplier_id")}, {"_id": 0, "id": 1, "name": 1, "phone": 1},
+        session=session,
+    )
+    if not supplier:
+        raise ValueError("Supplier linked to this purchase no longer exists")
+    scope = f"{season_code}:{actor_user_id}"
+    fingerprint = _fingerprint(draft)
+    payments = db["commercial_supplier_olive_purchase_payments"]
+    prior = await payments.find_one(
+        {"idempotency_scope": scope, "idempotency_key": draft.idempotency_key},
+        {"_id": 0}, session=session,
+    )
+    if prior:
+        if prior.get("request_fingerprint") != fingerprint or prior.get("purchase_id") != purchase_id:
+            raise ValueError("Payment idempotency key was used for a different supplier payment")
+        return prior
+
+    total = _decimal(purchase.get("total_amount_dt"))
+    existing_paid = _decimal(purchase.get("paid_amount_dt", Decimal128("0.000")))
+    outstanding_snapshot = _decimal(purchase.get("outstanding_amount_dt", Decimal128(str(total - existing_paid))))
+    ledger_docs = await payments.find(
+        {"purchase_id": purchase_id}, {"_id": 0, "amount_tnd": 1}, session=session
+    ).to_list(None)
+    ledger_paid = _money(sum((_decimal(item.get("amount_tnd")) for item in ledger_docs), Decimal("0")))
+    if ledger_paid != _money(existing_paid) or outstanding_snapshot != _money(total - existing_paid):
+        raise ValueError("Supplier purchase payment ledger does not reconcile; review before recording another payment")
+    if int(purchase.get("version", 1)) != draft.expected_purchase_version:
+        raise ValueError("Supplier purchase version changed; refresh before recording payment")
+    amount = _money(draft.amount_tnd)
+    if amount > outstanding_snapshot:
+        raise ValueError("Payment exceeds the outstanding amount owed to the supplier")
+
+    number = await reserve_document_number(
+        db["commercial_counters"], season_code, "RFS", session=session
+    )
+    now = created_at.astimezone(timezone.utc)
+    paid = _money(existing_paid + amount)
+    remaining = _money(total - paid)
+    status = "PAID" if remaining == 0 else ("PARTIALLY_PAID" if paid > 0 else "UNPAID")
+    payment = {
+        "id": payment_id,
+        "season_code": season_code,
+        "document_type": "RFS",
+        "document_number": number,
+        "purchase_id": purchase_id,
+        "purchase_number": purchase.get("document_number"),
+        "supplier_id": supplier["id"],
+        "supplier_name": supplier.get("name"),
+        "amount_tnd": Decimal128(amount),
+        "payment_date": draft.payment_date.isoformat(),
+        "method": draft.method,
+        "reference": draft.reference,
+        "currency": "TND",
+        "notes": draft.notes,
+        "idempotency_scope": scope,
+        "idempotency_key": draft.idempotency_key,
+        "request_fingerprint": fingerprint,
+        "created_by": actor_user_id,
+        "created_at": now,
+    }
+    await payments.insert_one(payment, session=session)
+    updated = await purchases.update_one(
+        {"id": purchase_id, "status": "APPROVED", "version": draft.expected_purchase_version},
+        {"$set": {
+            "paid_amount_dt": Decimal128(paid),
+            "outstanding_amount_dt": Decimal128(remaining),
+            "payment_status": status,
+            "updated_at": now,
+        }, "$inc": {"version": 1}},
+        session=session,
+    )
+    if updated.matched_count != 1:
+        raise ValueError("Supplier purchase changed concurrently; payment was rolled back")
+    await db["commercial_audit_events"].insert_one({
+        "id": audit_event_id,
+        "entity_type": "commercial_olive_purchase",
+        "entity_id": purchase_id,
+        "action": "SUPPLIER_PAYMENT_RECORDED",
+        "actor_user_id": actor_user_id,
+        "created_at": now,
+        "details": {
+            "payment_id": payment_id,
+            "payment_number": number,
+            "supplier_id": supplier["id"],
+            "amount_tnd": Decimal128(amount),
+            "previous_paid_amount_tnd": Decimal128(existing_paid),
+            "new_paid_amount_tnd": Decimal128(paid),
+            "previous_outstanding_amount_tnd": Decimal128(outstanding_snapshot),
+            "new_outstanding_amount_tnd": Decimal128(remaining),
+            "payment_status": status,
+        },
+    }, session=session)
+    return payment
