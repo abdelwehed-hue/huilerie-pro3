@@ -579,7 +579,7 @@ export default function Commercial() {
   });
   const recordSupplierPayment = useMutation({
     mutationFn: () => {
-      if (!supplierPaymentPurchase) throw new Error("Achat fournisseur non sélectionné");
+      if (!supplierPaymentPurchase) throw new Error(lang === "ar" ? "لم يتم اختيار شراء المزوّد." : "Achat fournisseur non sélectionné");
       return apiPost<AnyRecord>(`/commercial/v1/olive-purchases/${encodeURIComponent(supplierPaymentPurchase.id)}/supplier-payments`, {
         payment_date: supplierPaymentDate,
         amount_tnd: tndInputToDinars(supplierPaymentAmount),
@@ -850,7 +850,7 @@ export default function Commercial() {
         throw new Error("Movement quantity exceeds the available source balance");
       }
       if (internalMovementKind === "OWNERSHIP_TRANSFER" && quantity !== Number(balance.quantity_kg)) {
-        throw new Error("Le transfert de propriété doit porter sur la totalité du stock disponible");
+        throw new Error(lang === "ar" ? "يجب أن يشمل نقل الملكية كامل المخزون المتاح." : "Le transfert de propriété doit porter sur la totalité du stock disponible");
       }
       const agreedAmount = unitPriceTndToTotalDinars(ownershipAgreedAmount, internalMovementQuantity);
       const destinationOwner = internalMovementKind === "TRANSFER"
@@ -1004,7 +1004,7 @@ export default function Commercial() {
       const assessment = (quality.data ?? []).find((item) => item.id === reviewAssessmentId);
       if (!assessment) throw new Error("Quality assessment is no longer available");
       const lot = (lots.data ?? []).find((item) => item.id === assessment.oil_lot_id);
-      if (!lot) throw new Error("Le lot d’huile lié à cette analyse est introuvable. Actualisez la page.");
+      if (!lot) throw new Error(lang === "ar" ? "تعذّر العثور على دفعة الزيت المرتبطة بهذا التحليل. حدّث الصفحة." : "Le lot d’huile lié à cette analyse est introuvable. Actualisez la page.");
       return apiPost<AnyRecord>("/commercial/v1/quality-assessments/release", {
         assessment_id: assessment.id,
         expected_lot_version: lot.version ?? 1,
@@ -1033,7 +1033,7 @@ export default function Commercial() {
       };
       if (editingBuyerId) {
         const buyer = (buyers.data ?? []).find((item) => item.id === editingBuyerId);
-        if (!buyer) throw new Error("Acheteur introuvable ou actualisé");
+        if (!buyer) throw new Error(lang === "ar" ? "المشتري غير موجود أو تم تحديث بياناته." : "Acheteur introuvable ou actualisé");
         return apiPut<AnyRecord>(`/commercial/v1/buyers/${encodeURIComponent(editingBuyerId)}`, {
           ...payload, expected_version: buyer.version ?? 1,
         });
@@ -2503,8 +2503,8 @@ export default function Commercial() {
                 <TableHead className="whitespace-nowrap text-start">Date d’achat</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Code d’achat</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Fournisseur</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Téléphone</TableHead>
-                <TableHead className="whitespace-nowrap text-start">Variété</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "الهاتف" : "Téléphone"}</TableHead>
+                <TableHead className="whitespace-nowrap text-start">{lang === "ar" ? "الصنف" : "Variété"}</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Olive kg</TableHead>
                 <TableHead className="whitespace-nowrap text-end">Huile L</TableHead>
                 <TableHead className="whitespace-nowrap text-start">Laboratoire</TableHead>
