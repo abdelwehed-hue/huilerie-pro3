@@ -1796,6 +1796,12 @@ export default function Commercial() {
         </div>
       </div>
 
+      {tab === "procurement" && <div className="sticky top-0 z-40 -mx-1 flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white/95 p-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-white/90" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
+        <Button type="button" size="sm" variant={procurementView === "suppliers" ? "default" : "outline"} role="tab" aria-selected={procurementView === "suppliers"} onClick={() => selectTab("suppliers")}><Truck className="mr-2 size-4" />{l.suppliers}</Button>
+        <Button type="button" size="sm" variant={procurementView === "purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "purchases"} onClick={() => selectTab("purchases")}><ShoppingBasket className="mr-2 size-4" />{l.purchasesTab}</Button>
+        <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء من الحرفاء" : "Achat depuis clients"}</Button>
+      </div>}
+
       {status.isError && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
@@ -2344,12 +2350,6 @@ export default function Commercial() {
             </TableRow>)}{(!quality.isLoading && !(quality.data?.length)) && <EmptyRow colSpan={7} text={l.noRows} />}</TableBody>
           </Table>
         </CardContent></Card>
-      </div>}
-
-      {tab === "procurement" && <div className="sticky top-0 z-40 -mx-1 flex flex-wrap gap-2 rounded-xl border border-stone-200 bg-white/95 p-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-white/90" role="tablist" aria-label={lang === "ar" ? "أقسام المشتريات" : "Sections des achats"}>
-        <Button type="button" size="sm" variant={procurementView === "suppliers" ? "default" : "outline"} role="tab" aria-selected={procurementView === "suppliers"} onClick={() => selectTab("suppliers")}><Truck className="mr-2 size-4" />{l.suppliers}</Button>
-        <Button type="button" size="sm" variant={procurementView === "purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "purchases"} onClick={() => selectTab("purchases")}><ShoppingBasket className="mr-2 size-4" />{l.purchasesTab}</Button>
-        <Button type="button" size="sm" variant={procurementView === "customer-purchases" ? "default" : "outline"} role="tab" aria-selected={procurementView === "customer-purchases"} onClick={() => selectTab("customer-purchases")}><ShoppingCart className="mr-2 size-4" />{lang === "ar" ? "شراء من الحرفاء" : "Achat depuis clients"}</Button>
       </div>}
 
       {tab === "procurement" && procurementView === "suppliers" && <div className="space-y-5">
