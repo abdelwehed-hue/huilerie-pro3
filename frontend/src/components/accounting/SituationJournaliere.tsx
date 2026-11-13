@@ -80,60 +80,60 @@ export default function SituationJournaliere() {
     <div className="flex flex-wrap items-end justify-between gap-3 no-print">
       <div>
         <h2 className="text-xl font-bold text-stone-900">{ar ? "الوضعية اليومية" : "Situation journalière"}</h2>
-        <p className="mt-1 text-sm text-stone-500">Rapport calculé automatiquement à partir des opérations enregistrées · saison {data?.season ?? "active"}</p>
+        <p className="mt-1 text-sm text-stone-500">{ar ? "تقرير يُحتسب آلياً انطلاقاً من العمليات المسجلة · الموسم" : "Rapport calculé automatiquement à partir des opérations enregistrées · saison"} {data?.season ?? (ar ? "الحالي" : "active")}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
           <CalendarDays className="size-4 text-stone-500" />
-          <span className="font-medium text-stone-700">Du</span>
+          <span className="font-medium text-stone-700">{ar ? "من" : "Du"}</span>
           <input aria-label={ar ? "تاريخ البداية" : "Date de début"} type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} className="bg-transparent outline-none" />
         </label>
         <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
           <CalendarDays className="size-4 text-stone-500" />
-          <span className="font-medium text-stone-700">Au</span>
+          <span className="font-medium text-stone-700">{ar ? "إلى" : "Au"}</span>
           <input aria-label={ar ? "تاريخ النهاية" : "Date de fin"} type="date" value={endDate} min={startDate || undefined} onChange={event => setEndDate(event.target.value)} className="bg-transparent outline-none" />
         </label>
-        <button onClick={() => void report.refetch()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm"><RefreshCw className="size-4" /> Actualiser</button>
-        <button onClick={() => window.print()} disabled={!data} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Printer className="size-4" /> Imprimer / PDF</button>
+        <button onClick={() => void report.refetch()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm"><RefreshCw className="size-4" /> {ar ? "تحديث" : "Actualiser"}</button>
+        <button onClick={() => window.print()} disabled={!data} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Printer className="size-4" /> {ar ? "طباعة / PDF" : "Imprimer / PDF"}</button>
       </div>
     </div>
 
-    {!validPeriod && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">La date « Du » doit être antérieure ou égale à la date « Au ».</p>}
+    {!validPeriod && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{ar ? "يجب أن يكون تاريخ «من» قبل تاريخ «إلى» أو مساوياً له." : "La date « Du » doit être antérieure ou égale à la date « Au »."}</p>}
     {report.isPending && <p className="rounded-lg border bg-white p-5 text-sm text-stone-600">{ar ? "جارٍ تحميل التقرير اليومي…" : "Chargement du rapport journalier…"}</p>}
     {report.isError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{ar ? "تعذّر تحميل الوضعية اليومية." : "Impossible de charger la situation journalière."} {report.error.message}</div>}
 
     {data && <>
       <div className="hidden print:block">
         <h1 className="text-2xl font-bold">Oro Verde — {ar ? "الوضعية اليومية" : "Situation journalière"}</h1>
-        <p className="text-sm text-stone-600">Période : {startDate} → {endDate} · Saison : {data.season}</p>
+        <p className="text-sm text-stone-600">{ar ? "الفترة:" : "Période :"} {startDate} → {endDate} · {ar ? "الموسم:" : "Saison :"} {data.season}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <SummaryCard title="Total des revenus" value={data.summary.total_revenue} caption="Factures de prestation, ventes GS et revenus passifs" icon={TrendingUp} tone="border-emerald-200 bg-emerald-50/60" />
-        <SummaryCard title="Total des dépenses" value={data.summary.total_expenses} caption="Achats fournisseurs et achats clients, plus dépenses enregistrées" icon={TrendingDown} tone="border-rose-200 bg-rose-50/60" />
-        <SummaryCard title="Résultat net" value={data.summary.net_result} caption="Revenus moins dépenses" icon={Wallet} tone="border-sky-200 bg-sky-50/60" />
-        <SummaryCard title="Encaissements" value={data.summary.encaissements} caption="Argent réellement reçu pendant la période" icon={Wallet} tone="border-violet-200 bg-violet-50/60" />
-        <SummaryCard title="Décaissements" value={data.summary.decaissements} caption="Paiements réellement enregistrés pendant la période" icon={Wallet} tone="border-orange-200 bg-orange-50/60" />
-        <SummaryCard title="Créances clients — solde actuel" value={data.summary.current_receivables} caption="Soldes encore à recevoir sur les factures" icon={TrendingUp} tone="border-amber-200 bg-amber-50/60" />
-        <SummaryCard title="Dettes — solde actuel" value={data.summary.current_payables} caption="Soldes encore dus aux fournisseurs et aux clients" icon={TrendingDown} tone="border-fuchsia-200 bg-fuchsia-50/60" />
+        <SummaryCard title={ar ? "إجمالي المداخيل" : "Total des revenus"} value={data.summary.total_revenue} caption={ar ? "فواتير الخدمات ومبيعات GS والمداخيل الأخرى" : "Factures de prestation, ventes GS et revenus passifs"} icon={TrendingUp} tone="border-emerald-200 bg-emerald-50/60" />
+        <SummaryCard title={ar ? "إجمالي المصاريف" : "Total des dépenses"} value={data.summary.total_expenses} caption={ar ? "مشتريات المزوّدين والحرفاء والمصاريف المسجلة" : "Achats fournisseurs et achats clients, plus dépenses enregistrées"} icon={TrendingDown} tone="border-rose-200 bg-rose-50/60" />
+        <SummaryCard title={ar ? "النتيجة الصافية" : "Résultat net"} value={data.summary.net_result} caption={ar ? "المداخيل ناقص المصاريف" : "Revenus moins dépenses"} icon={Wallet} tone="border-sky-200 bg-sky-50/60" />
+        <SummaryCard title={ar ? "المقبوضات" : "Encaissements"} value={data.summary.encaissements} caption={ar ? "الأموال المقبوضة فعلياً خلال الفترة" : "Argent réellement reçu pendant la période"} icon={Wallet} tone="border-violet-200 bg-violet-50/60" />
+        <SummaryCard title={ar ? "المدفوعات" : "Décaissements"} value={data.summary.decaissements} caption={ar ? "الدفعات المسجلة فعلياً خلال الفترة" : "Paiements réellement enregistrés pendant la période"} icon={Wallet} tone="border-orange-200 bg-orange-50/60" />
+        <SummaryCard title={ar ? "ديون الحرفاء — الرصيد الحالي" : "Créances clients — solde actuel"} value={data.summary.current_receivables} caption={ar ? "المبالغ المتبقية للاستخلاص من الفواتير" : "Soldes encore à recevoir sur les factures"} icon={TrendingUp} tone="border-amber-200 bg-amber-50/60" />
+        <SummaryCard title={ar ? "الديون — الرصيد الحالي" : "Dettes — solde actuel"} value={data.summary.current_payables} caption={ar ? "المبالغ المتبقية للمزوّدين والحرفاء" : "Soldes encore dus aux fournisseurs et aux clients"} icon={TrendingDown} tone="border-fuchsia-200 bg-fuchsia-50/60" />
       </div>
 
       {Number(data.summary.unallocated_legacy_receipts) > 0 && <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <p>Des règlements historiques totalisant <strong>{amount(data.summary.unallocated_legacy_receipts)}</strong> ne possèdent pas de date de paiement exploitable. Ils ne sont pas attribués artificiellement à la période.</p>
+        <p>{ar ? "توجد دفعات سابقة بقيمة" : "Des règlements historiques totalisant"} <strong>{amount(data.summary.unallocated_legacy_receipts)}</strong> {ar ? "لا يتوفر لها تاريخ دفع صالح، لذلك لم تُنسب افتراضياً إلى هذه الفترة." : "ne possèdent pas de date de paiement exploitable. Ils ne sont pas attribués artificiellement à la période."}</p>
       </div>}
       {!data.supplier_payments_available && <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <p>Les règlements fournisseurs sont désormais intégrés. Chaque paiement enregistré dans GS apparaît comme un décaissement à sa date réelle.</p>
+        <p>{ar ? "تم إدراج دفعات المزوّدين. يظهر كل دفع مسجل في GS كمدفوعات بتاريخ الدفع الفعلي." : "Les règlements fournisseurs sont désormais intégrés. Chaque paiement enregistré dans GS apparaît comme un décaissement à sa date réelle."}</p>
       </div>}
 
       <Card>
-        <CardHeader><CardTitle>Opérations du {startDate} au {endDate}</CardTitle><CardDescription>Toutes les opérations enregistrées entre ces deux dates. Les factures constituent les revenus/dépenses comptables; les règlements sont affichés séparément dans la trésorerie.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>{ar ? "العمليات من" : "Opérations du"} {startDate} {ar ? "إلى" : "au"} {endDate}</CardTitle><CardDescription>{ar ? "جميع العمليات المسجلة بين هذين التاريخين. تُحتسب الفواتير ضمن المداخيل والمصاريف المحاسبية، وتُعرض الدفعات بشكل منفصل ضمن حركة الخزينة." : "Toutes les opérations enregistrées entre ces deux dates. Les factures constituent les revenus/dépenses comptables; les règlements sont affichés séparément dans la trésorerie."}</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           {[
-            {title:"Revenus", items:revenues, color:"text-emerald-700"},
-            {title:"Dépenses", items:expenses, color:"text-rose-700"},
-            {title:"Encaissements", items:receipts, color:"text-violet-700"},
-            {title:"Décaissements", items:disbursements, color:"text-orange-700"},
+            {title: ar ? "المداخيل" : "Revenus", items:revenues, color:"text-emerald-700"},
+            {title: ar ? "المصاريف" : "Dépenses", items:expenses, color:"text-rose-700"},
+            {title: ar ? "المقبوضات" : "Encaissements", items:receipts, color:"text-violet-700"},
+            {title: ar ? "المدفوعات" : "Décaissements", items:disbursements, color:"text-orange-700"},
           ].map(group => <section key={group.title}>
             <h3 className={`mb-2 font-semibold ${group.color}`}>{group.title}</h3>
             {group.items.length === 0 ? <p className="rounded-lg bg-stone-50 p-3 text-sm text-stone-500">{ar ? "لا توجد عمليات في هذا القسم." : "Aucune opération pour cette rubrique."}</p> :
@@ -150,7 +150,7 @@ export default function SituationJournaliere() {
         <CardContent><div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm">
           <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-3 py-2">{ar ? "التاريخ" : "Date"}</th><th className="px-3 py-2 text-right">{ar ? "المداخيل" : "Revenus"}</th><th className="px-3 py-2 text-right">{ar ? "المصاريف" : "Dépenses"}</th><th className="px-3 py-2 text-right">{ar ? "النتيجة الصافية" : "Résultat net"}</th></tr></thead>
           <tbody>{data.comparison.map(day=><tr key={day.date} className={`border-b last:border-0 ${day.date===endDate?"bg-emerald-50 font-semibold":""}`}><td className="px-3 py-2">{day.date}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.revenue)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.expense)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.net)}</td></tr>)}</tbody>
-        </table></div>{data.comparison.length===0&&<p className="py-3 text-sm text-stone-500">Aucune journée dans cette période.</p>}</CardContent>
+        </table></div>{data.comparison.length===0&&<p className="py-3 text-sm text-stone-500">{ar ? "لا توجد أيام ضمن هذه الفترة." : "Aucune journée dans cette période."}</p>}</CardContent>
       </Card>
     </>}
   </div>;
