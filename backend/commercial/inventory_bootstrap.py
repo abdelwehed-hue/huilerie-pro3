@@ -206,6 +206,13 @@ INVENTORY_INDEXES = {
         IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_oil_purchase_payment_idempotency"),
         IndexModel([("purchase_document_id", ASCENDING), ("payment_date", DESCENDING)], name="oil_purchase_payment_document_date"),
     ],
+    "commercial_supplier_olive_purchase_payments": [
+        IndexModel([("id", ASCENDING)], unique=True, name="uq_supplier_olive_payment_id"),
+        IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)], unique=True, name="uq_supplier_olive_payment_number"),
+        IndexModel([("idempotency_scope", ASCENDING), ("idempotency_key", ASCENDING)], unique=True, name="uq_supplier_olive_payment_idempotency"),
+        IndexModel([("supplier_id", ASCENDING), ("payment_date", ASCENDING)], name="supplier_olive_payment_supplier_date"),
+        IndexModel([("purchase_id", ASCENDING), ("payment_date", DESCENDING)], name="supplier_olive_payment_purchase_date"),
+    ],
     "commercial_stock_movements": [
         IndexModel([("id", ASCENDING)], unique=True, name="uq_stock_movement_id"),
         IndexModel([("season_code", ASCENDING), ("document_number", ASCENDING)],
