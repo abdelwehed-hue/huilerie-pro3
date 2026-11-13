@@ -107,7 +107,7 @@ function BottomNav({ isAdmin, revealEnabled, pendingLabCount, premium }: { isAdm
                 {n.key === "lab" && (pendingLabCount ?? 0) > 0 && (
                   <span
                     data-testid="nav-lab-pending-count"
-                    aria-label={`${pendingLabCount} lots en attente d’analyse`}
+                    aria-label={lang === "ar" ? `${pendingLabCount} دفعات في انتظار التحليل` : `${pendingLabCount} lots en attente d’analyse`}
                     className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-[#1E2B20] bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm"
                   >
                     {pendingLabCount}
@@ -125,17 +125,19 @@ function BottomNav({ isAdmin, revealEnabled, pendingLabCount, premium }: { isAdm
 
 function HeaderAppearanceMenu() {
   const { mode, setMode } = useTheme();
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   const [open, setOpen] = useState(false);
   const options = [
-    { value: "light" as const, label: "Mode clair", Icon: Sun },
-    { value: "dark" as const, label: "Mode sombre", Icon: Moon },
-    { value: "system" as const, label: "Mode automatique", Icon: Monitor },
+    { value: "light" as const, label: ar ? "الوضع الفاتح" : "Mode clair", Icon: Sun },
+    { value: "dark" as const, label: ar ? "الوضع الداكن" : "Mode sombre", Icon: Moon },
+    { value: "system" as const, label: ar ? "الوضع التلقائي" : "Mode automatique", Icon: Monitor },
   ];
   return (
     <div className="relative shrink-0" data-testid="header-appearance-menu">
       <button
         type="button"
-        aria-label="Choisir le thème"
+        aria-label={ar ? "اختيار المظهر" : "Choisir le thème"}
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid="header-appearance-trigger"
@@ -146,8 +148,8 @@ function HeaderAppearanceMenu() {
       </button>
       {open && (
         <>
-          <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-30 cursor-default" onClick={() => setOpen(false)} />
-          <div role="menu" aria-label="Apparence" className="absolute left-0 top-full z-40 mt-2 w-52 rounded-xl border border-stone-200 bg-white p-1.5 shadow-xl shadow-stone-900/10">
+          <button type="button" aria-label={ar ? "إغلاق القائمة" : "Fermer le menu"} className="fixed inset-0 z-30 cursor-default" onClick={() => setOpen(false)} />
+          <div role="menu" aria-label={ar ? "المظهر" : "Apparence"} className="absolute left-0 top-full z-40 mt-2 w-52 rounded-xl border border-stone-200 bg-white p-1.5 shadow-xl shadow-stone-900/10">
             {options.map(({ value, label, Icon }) => (
               <button
                 key={value}
@@ -335,10 +337,10 @@ export default function AppShell() {
 
   if (me.isPending) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#F9F8F3]" role="status" aria-label="Vérification de la session">
+      <div className="grid min-h-screen place-items-center bg-[#F9F8F3]" role="status" aria-label={lang === "ar" ? "التحقق من الجلسة" : "Vérification de la session"}>
         <div className="text-center text-stone-600">
           <Droplets className="mx-auto mb-3 size-8 text-lime-700" />
-          <p>Vérification de la session…</p>
+          <p>{lang === "ar" ? "جارٍ التحقق من الجلسة…" : "Vérification de la session…"}</p>
         </div>
       </div>
     );
@@ -375,8 +377,8 @@ export default function AppShell() {
                 variant="outline"
                 size="icon"
                 onClick={() => { void endSession(); }}
-                title="Fermer la session"
-                aria-label="Fermer la session"
+                title={lang === "ar" ? "إنهاء الجلسة" : "Fermer la session"}
+                aria-label={lang === "ar" ? "إنهاء الجلسة" : "Fermer la session"}
                 data-testid="header-logout"
                 className="absolute right-3 top-1 z-10 size-8 shrink-0 rounded-xl border-stone-200 bg-white text-stone-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:right-6"
               >
@@ -391,13 +393,13 @@ export default function AppShell() {
                   size="sm"
                   disabled={tvSoundMutation.isPending || tvControl.isPending}
                   onClick={() => tvSoundMutation.mutate(!(tvControl.data?.sound_enabled ?? false))}
-                  title={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
-                  aria-label={tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV"}
+                  title={lang === "ar" ? (tvControl.data?.sound_enabled ? "إيقاف صوت شاشة التلفاز" : "تشغيل صوت شاشة التلفاز") : (tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV")}
+                  aria-label={lang === "ar" ? (tvControl.data?.sound_enabled ? "إيقاف صوت شاشة التلفاز" : "تشغيل صوت شاشة التلفاز") : (tvControl.data?.sound_enabled ? "Désactiver le son sur l’écran TV" : "Activer le son sur l’écran TV")}
                   data-testid="tv-remote-sound-toggle"
                   className={cn("h-8 gap-1 rounded-lg px-2", tvControl.data?.sound_enabled ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-white text-stone-600")}
                 >
                   {tvControl.data?.sound_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-                  <span className="hidden text-xs font-semibold sm:inline">{tvControl.data?.sound_enabled ? "Son TV activé" : "Activer le son TV"}</span>
+                  <span className="hidden text-xs font-semibold sm:inline">{lang === "ar" ? (tvControl.data?.sound_enabled ? "صوت التلفاز مفعّل" : "تشغيل صوت التلفاز") : (tvControl.data?.sound_enabled ? "Son TV activé" : "Activer le son TV")}</span>
                 </Button>
               )}
               <LangToggle />
