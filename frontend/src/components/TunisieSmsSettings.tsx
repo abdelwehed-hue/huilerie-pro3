@@ -45,10 +45,10 @@ export default function TunisieSmsSettings() {
       <div><h3 className="font-heading text-lg font-bold text-amber-950">TunisieSMS</h3>
       <p className="text-xs text-amber-900/80">{ar ? "إعداد مستقل. لن يتغير الإرسال الحالي عبر Twilio." : "Configuration séparée. L’envoi actuel via Twilio n’est pas modifié."}</p></div></div>
     <form onSubmit={(e) => { e.preventDefault(); save.mutate({ account_id: val("account_id").trim(), api_key: val("api_key").trim(), sender: val("sender").trim(), api_url: val("api_url").trim() }); }} className="grid gap-4 sm:grid-cols-2">
-      {field("account_id", "Identifiant du compte")}
-      {field("api_key", "Clé API", true)}
-      {field("sender", "Nom / expéditeur SMS")}
-      {field("api_url", "URL API (selon votre compte)")}
+      {field("account_id", ar ? "معرّف الحساب" : "Identifiant du compte")}
+      {field("api_key", ar ? "مفتاح API" : "Clé API", true)}
+      {field("sender", ar ? "الاسم / مرسل SMS" : "Nom / expéditeur SMS")}
+      {field("api_url", ar ? "رابط API (حسب حسابك)" : "URL API (selon votre compte)")}
       <div className="sm:col-span-2"><Button type="submit" disabled={save.isPending} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Save className="size-4" /> {ar ? "حفظ إعدادات TunisieSMS" : "Enregistrer TunisieSMS"}</Button></div>
     </form>
     <div className="grid max-w-2xl gap-3 border-t border-amber-200 pt-4 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
@@ -58,7 +58,7 @@ export default function TunisieSmsSettings() {
           toast.error((ar ? "احفظ إعدادات TunisieSMS أولاً." : "Enregistrez d’abord les paramètres TunisieSMS.")); return;
         }
         testSms.mutate();
-      }} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Send className="size-4" /> {testSms.isPending ? "Envoi..." : "Envoyer un SMS de test"}</Button>
+      }} className="h-10 rounded-xl bg-amber-700 hover:bg-amber-800"><Send className="size-4" /> {testSms.isPending ? (ar ? "جارٍ الإرسال..." : "Envoi...") : (ar ? "إرسال SMS تجريبي" : "Envoyer un SMS de test")}</Button>
     </div>
     <p className="text-xs text-stone-600">{ar ? "يبقى Twilio دون تغيير. تستخدم الرسالة التجريبية إعدادات TunisieSMS المحفوظة." : "Twilio reste inchangé. Le SMS de test utilise les paramètres TunisieSMS enregistrés."}</p>
   </section>;
