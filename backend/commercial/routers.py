@@ -852,6 +852,11 @@ async def create_supplier_olive_purchase_payment(
     _, season_code = await _require_commercial_ready()
     payment_id, audit_id = str(uuid.uuid4()), str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    payment_collection = db["commercial_supplier_olive_purchase_payments"]
+    await payment_collection.create_index([("id", 1)], unique=True, name="uq_supplier_olive_payment_id")
+    await payment_collection.create_index([("season_code", 1), ("document_number", 1)], unique=True, name="uq_supplier_olive_payment_number")
+    await payment_collection.create_index([("idempotency_scope", 1), ("idempotency_key", 1)], unique=True, name="uq_supplier_olive_payment_idempotency")
+    await payment_collection.create_index([("purchase_id", 1), ("payment_date", -1)], name="supplier_olive_payment_purchase_date")
     async def operation(session):
         await db["commercial_counters"].update_one(
             {"season_code": season_code, "document_type": "RFS"},
