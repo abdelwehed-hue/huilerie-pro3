@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
-import { fmtMoney } from "@/lib/i18n";
+import { fmtMoney, useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Printer, RefreshCw, TrendingDown, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
 
@@ -57,6 +57,8 @@ function SummaryCard({ title, value, caption, icon: Icon, tone }: {
 }
 
 export default function SituationJournaliere() {
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   const [startDate, setStartDate] = useState(() => shiftDay(localToday(), -6));
   const [endDate, setEndDate] = useState(localToday);
   const validPeriod = !!startDate && !!endDate && startDate <= endDate;
@@ -77,19 +79,19 @@ export default function SituationJournaliere() {
     <style>{`@media print { body * { visibility: hidden !important; } .daily-report-print, .daily-report-print * { visibility: visible !important; } .daily-report-print { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; padding: 12px !important; background: white !important; } .no-print { display: none !important; } }`}</style>
     <div className="flex flex-wrap items-end justify-between gap-3 no-print">
       <div>
-        <h2 className="text-xl font-bold text-stone-900">Situation journalière</h2>
+        <h2 className="text-xl font-bold text-stone-900">{ar ? "الوضعية اليومية" : "Situation journalière"}</h2>
         <p className="mt-1 text-sm text-stone-500">Rapport calculé automatiquement à partir des opérations enregistrées · saison {data?.season ?? "active"}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
           <CalendarDays className="size-4 text-stone-500" />
           <span className="font-medium text-stone-700">Du</span>
-          <input aria-label="Date de début" type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} className="bg-transparent outline-none" />
+          <input aria-label={ar ? "تاريخ البداية" : "Date de début"} type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} className="bg-transparent outline-none" />
         </label>
         <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
           <CalendarDays className="size-4 text-stone-500" />
           <span className="font-medium text-stone-700">Au</span>
-          <input aria-label="Date de fin" type="date" value={endDate} min={startDate || undefined} onChange={event => setEndDate(event.target.value)} className="bg-transparent outline-none" />
+          <input aria-label={ar ? "تاريخ النهاية" : "Date de fin"} type="date" value={endDate} min={startDate || undefined} onChange={event => setEndDate(event.target.value)} className="bg-transparent outline-none" />
         </label>
         <button onClick={() => void report.refetch()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm"><RefreshCw className="size-4" /> Actualiser</button>
         <button onClick={() => window.print()} disabled={!data} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Printer className="size-4" /> Imprimer / PDF</button>
@@ -97,12 +99,12 @@ export default function SituationJournaliere() {
     </div>
 
     {!validPeriod && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">La date « Du » doit être antérieure ou égale à la date « Au ».</p>}
-    {report.isPending && <p className="rounded-lg border bg-white p-5 text-sm text-stone-600">Chargement du rapport journalier…</p>}
-    {report.isError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">Impossible de charger la situation journalière. {report.error.message}</div>}
+    {report.isPending && <p className="rounded-lg border bg-white p-5 text-sm text-stone-600">{ar ? "جارٍ تحميل التقرير اليومي…" : "Chargement du rapport journalier…"}</p>}
+    {report.isError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{ar ? "تعذّر تحميل الوضعية اليومية." : "Impossible de charger la situation journalière."} {report.error.message}</div>}
 
     {data && <>
       <div className="hidden print:block">
-        <h1 className="text-2xl font-bold">Oro Verde — Situation journalière</h1>
+        <h1 className="text-2xl font-bold">Oro Verde — {ar ? "الوضعية اليومية" : "Situation journalière"}</h1>
         <p className="text-sm text-stone-600">Période : {startDate} → {endDate} · Saison : {data.season}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -134,9 +136,9 @@ export default function SituationJournaliere() {
             {title:"Décaissements", items:disbursements, color:"text-orange-700"},
           ].map(group => <section key={group.title}>
             <h3 className={`mb-2 font-semibold ${group.color}`}>{group.title}</h3>
-            {group.items.length === 0 ? <p className="rounded-lg bg-stone-50 p-3 text-sm text-stone-500">Aucune opération pour cette rubrique.</p> :
+            {group.items.length === 0 ? <p className="rounded-lg bg-stone-50 p-3 text-sm text-stone-500">{ar ? "لا توجد عمليات في هذا القسم." : "Aucune opération pour cette rubrique."}</p> :
               <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-sm">
-                <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-2 py-2">Origine</th><th className="px-2 py-2">Détail</th><th className="px-2 py-2">Référence</th><th className="px-2 py-2 text-right">Montant</th></tr></thead>
+                <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-2 py-2">{ar ? "المصدر" : "Origine"}</th><th className="px-2 py-2">{ar ? "التفاصيل" : "Détail"}</th><th className="px-2 py-2">{ar ? "المرجع" : "Référence"}</th><th className="px-2 py-2 text-right">{ar ? "المبلغ" : "Montant"}</th></tr></thead>
                 <tbody>{group.items.map((item,index)=><tr key={`${item.kind}-${item.reference}-${index}`} className="border-b last:border-0"><td className="px-2 py-2">{item.category}</td><td className="px-2 py-2">{item.label}{item.detail ? <span className="block text-xs text-stone-500">{item.detail}</span> : null}</td><td className="px-2 py-2">{item.reference}</td><td className="px-2 py-2 text-right font-semibold tabular-nums">{amount(item.amount)}</td></tr>)}</tbody>
               </table></div>}
           </section>)}
@@ -144,9 +146,9 @@ export default function SituationJournaliere() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Comparaison quotidienne de la même période</CardTitle><CardDescription>Ventilation jour par jour de la période sélectionnée en haut du rapport.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>{ar ? "المقارنة اليومية للفترة نفسها" : "Comparaison quotidienne de la même période"}</CardTitle><CardDescription>{ar ? "تفصيل يومي للفترة المحددة في أعلى التقرير." : "Ventilation jour par jour de la période sélectionnée en haut du rapport."}</CardDescription></CardHeader>
         <CardContent><div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm">
-          <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-3 py-2">Date</th><th className="px-3 py-2 text-right">Revenus</th><th className="px-3 py-2 text-right">Dépenses</th><th className="px-3 py-2 text-right">Résultat net</th></tr></thead>
+          <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-3 py-2">{ar ? "التاريخ" : "Date"}</th><th className="px-3 py-2 text-right">{ar ? "المداخيل" : "Revenus"}</th><th className="px-3 py-2 text-right">{ar ? "المصاريف" : "Dépenses"}</th><th className="px-3 py-2 text-right">{ar ? "النتيجة الصافية" : "Résultat net"}</th></tr></thead>
           <tbody>{data.comparison.map(day=><tr key={day.date} className={`border-b last:border-0 ${day.date===endDate?"bg-emerald-50 font-semibold":""}`}><td className="px-3 py-2">{day.date}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.revenue)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.expense)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.net)}</td></tr>)}</tbody>
         </table></div>{data.comparison.length===0&&<p className="py-3 text-sm text-stone-500">Aucune journée dans cette période.</p>}</CardContent>
       </Card>
