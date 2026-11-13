@@ -29,7 +29,7 @@ export default function CommercialLocationsSettings() {
   const [notes, setNotes] = useState("");
   const ar = lang === "ar";
   const labels = ar ? {
-    title: "Emplacements", description: "إدارة مواقع استقبال وتخزين الزيتون ومناطق التحضير.", code: "الرمز", name: "اسم الموقع",
+    title: "المواقع", description: "إدارة مواقع استقبال وتخزين الزيتون ومناطق التحضير.", code: "الرمز", name: "اسم الموقع",
     kind: "النوع", olive: "مخزن الزيتون", staging: "منطقة التحضير", notes: "ملاحظات", add: "إضافة الموقع",
     saved: "تمت إضافة الموقع", error: "تعذرت إضافة الموقع", status: "الحالة", active: "نشط", inactive: "غير نشط",
     empty: "لا توجد مواقع مسجلة", loading: "جار تحميل المواقع…", notReady: "يلزم تهيئة الوحدة التجارية أولاً.",
