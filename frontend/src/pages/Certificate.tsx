@@ -10,7 +10,8 @@ import { CodeBadge, GradeBadge } from "@/components/shared";
 
 export default function Certificate() {
   const { id = "" } = useParams();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const ar = lang === "ar";
   const q = useQuery({
     queryKey: ["certificate", id],
     queryFn: () => apiGet<Cert>(`/lab/${id}/certificate`),
@@ -80,7 +81,7 @@ export default function Certificate() {
               <div><dt className="text-stone-500">{t("analysis_date")}</dt><dd className="font-semibold" dir="ltr">{fmtDate(a.created_at)}</dd></div>
               <div><dt className="text-stone-500">{t("analyst")}</dt><dd className="font-semibold">{a.created_by}</dd></div>
               <div><dt className="text-stone-500">{t("oil_type")}</dt><dd className="font-semibold" data-testid="certificate-oil-type">{a.oil_type || "—"}</dd></div>
-              <div><dt className="text-stone-500">Référence de la norme</dt><dd className="font-semibold" data-testid="certificate-specification-reference">{a.specification_reference || "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "مرجع المواصفة" : "Référence de la norme"}</dt><dd className="font-semibold" data-testid="certificate-specification-reference">{a.specification_reference || "—"}</dd></div>
             </dl>
 
             <table className="mt-6 w-full text-sm">
