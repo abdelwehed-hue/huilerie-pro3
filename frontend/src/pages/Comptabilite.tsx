@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import SituationJournaliere from "@/components/accounting/SituationJournaliere";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
-import { fmtMoney } from "@/lib/i18n";
+import { fmtMoney, useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard, type Tone } from "@/components/shared";
 import { RefreshCw, TrendingUp, Wallet, Package, AlertTriangle, ReceiptText, Plus, Trash2, type LucideIcon } from "lucide-react";
@@ -112,6 +112,8 @@ function DataTable({ title, description, rows, columns, empty }: {
 }
 
 export default function Comptabilite() {
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   const query = useQuery({
     queryKey: ["accounting-overview"],
     queryFn: () => apiGet<Overview>("/accounting/overview"),
@@ -195,11 +197,11 @@ export default function Comptabilite() {
     };
   }, [data]);
 
-  if (query.isPending) return <div className="mx-auto max-w-7xl p-6 text-stone-600">Chargement des données comptables…</div>;
+  if (query.isPending) return <div className="mx-auto max-w-7xl p-6 text-stone-600">{ar ? "جارٍ تحميل البيانات المحاسبية…" : "Chargement des données comptables…"}</div>;
   if (query.isError || !data) return <div className="mx-auto max-w-7xl p-6">
     <Card className="border-red-200"><CardContent className="flex items-center gap-3 p-5 text-red-800">
-      <AlertTriangle className="size-5" /> Impossible de charger les données comptables. Vérifiez la session et réessayez.
-      <button className="ms-auto inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm" onClick={() => void query.refetch()}><RefreshCw className="size-4" /> Réessayer</button>
+      <AlertTriangle className="size-5" /> {ar ? "تعذّر تحميل البيانات المحاسبية. تحقق من الجلسة ثم أعد المحاولة." : "Impossible de charger les données comptables. Vérifiez la session et réessayez."}
+      <button className="ms-auto inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm" onClick={() => void query.refetch()}><RefreshCw className="size-4" /> {ar ? "إعادة المحاولة" : "Réessayer"}</button>
     </CardContent></Card>
   </div>;
 
@@ -209,64 +211,64 @@ export default function Comptabilite() {
   return <div className="mx-auto max-w-7xl space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <div className="flex items-center gap-2"><ReceiptText className="size-6 text-emerald-700" /><h1 className="text-2xl font-bold text-stone-900">Comptabilité</h1></div>
-        <p className="mt-1 text-sm text-stone-500">Vue consolidée Oro Verde et Gestion Commerciale · saison active : {data.active_season} · lecture seule</p>
+        <div className="flex items-center gap-2"><ReceiptText className="size-6 text-emerald-700" /><h1 className="text-2xl font-bold text-stone-900">{ar ? "المحاسبة" : "Comptabilité"}</h1></div>
+        <p className="mt-1 text-sm text-stone-500">{ar ? "عرض موحّد لـ Oro Verde والتسيير التجاري · الموسم الحالي:" : "Vue consolidée Oro Verde et Gestion Commerciale · saison active :"} {data.active_season} · {ar ? "للقراءة فقط" : "lecture seule"}</p>
       </div>
       <button onClick={() => void query.refetch()} className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"><RefreshCw className="size-4" /> Actualiser</button>
     </div>
 
     <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3 no-print">
-      <button type="button" onClick={() => setActiveTab("overview")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "overview" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>Vue générale</button>
-      <button type="button" onClick={() => setActiveTab("daily")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "daily" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>Situation journalière</button>
+      <button type="button" onClick={() => setActiveTab("overview")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "overview" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>{ar ? "نظرة عامة" : "Vue générale"}</button>
+      <button type="button" onClick={() => setActiveTab("daily")} className={`rounded-lg px-4 py-2 text-sm font-semibold ${activeTab === "daily" ? "bg-emerald-700 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}>{ar ? "الوضعية اليومية" : "Situation journalière"}</button>
     </div>
 
     {activeTab === "overview" && <>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Montants réellement encaissés sur les prestations · saison active" icon={TrendingUp} tone="olive" />
-      <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Montants réellement encaissés sur les ventes · saison active" icon={TrendingUp} tone="sky" />
-      <Metric title="Achats d’olives fournisseurs" value={fmt(calculated.stockPurchases)} detail="Montant total des achats approuvés · GS" icon={Package} tone="gold" />
-      <Metric title="Paiements fournisseurs" value={fmt(calculated.supplierPaid)} detail="Sommes réellement réglées aux fournisseurs" icon={Wallet} tone="rose" />
-      <Metric title="Dettes fournisseurs" value={fmt(calculated.supplierOutstanding)} detail="Solde restant à payer aux fournisseurs" icon={AlertTriangle} tone="orange" />
-      <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="orange" />
-      <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="gold" />
-      <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="violet" />
-      <Metric title="Paiements achats clients" value={fmt(calculated.olivePaid + calculated.oilPaid)} detail="Paiements RPA pour huile et olives · saison active" icon={Wallet} tone="rose" />
+      <Metric title={ar ? "مداخيل الخدمات" : "Revenus de prestation"} value={fmt(calculated.serviceRevenue)} detail={ar ? "المبالغ المقبوضة فعلياً مقابل الخدمات · الموسم الحالي" : "Montants réellement encaissés sur les prestations · saison active"} icon={TrendingUp} tone="olive" />
+      <Metric title={ar ? "مبيعات الزيت GS" : "Ventes d’huile GS"} value={fmt(calculated.salesRevenue)} detail={ar ? "المبالغ المقبوضة فعلياً من المبيعات · الموسم الحالي" : "Montants réellement encaissés sur les ventes · saison active"} icon={TrendingUp} tone="sky" />
+      <Metric title={ar ? "مشتريات الزيتون من المزوّدين" : "Achats d’olives fournisseurs"} value={fmt(calculated.stockPurchases)} detail={ar ? "إجمالي المشتريات المصادق عليها · GS" : "Montant total des achats approuvés · GS"} icon={Package} tone="gold" />
+      <Metric title={ar ? "دفعات المزوّدين" : "Paiements fournisseurs"} value={fmt(calculated.supplierPaid)} detail={ar ? "المبالغ المدفوعة فعلياً للمزوّدين" : "Sommes réellement réglées aux fournisseurs"} icon={Wallet} tone="rose" />
+      <Metric title={ar ? "ديون المزوّدين" : "Dettes fournisseurs"} value={fmt(calculated.supplierOutstanding)} detail={ar ? "الرصيد المتبقي للدفع للمزوّدين" : "Solde restant à payer aux fournisseurs"} icon={AlertTriangle} tone="orange" />
+      <Metric title={ar ? "شراء الزيتون من الحرفاء" : "Achats d’olives aux clients"} value={fmt(calculated.customerOlivePurchaseTotal)} detail={ar ? "سندات BAH · معروضة بشكل منفصل عن مشتريات المزوّدين" : "Bons BAH · présentés séparément des achats fournisseurs"} icon={Package} tone="orange" />
+      <Metric title={ar ? "شراء الزيت من الحرفاء" : "Achats d’huile aux clients"} value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="gold" />
+      <Metric title={ar ? "مقبوضات الحرفاء" : "Encaissements clients"} value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail={ar ? "الدفعات المستلمة على الفواتير · الموسم الحالي" : "Règlements cumulés sur factures · saison active"} icon={Wallet} tone="violet" />
+      <Metric title={ar ? "دفعات مشتريات الحرفاء" : "Paiements achats clients"} value={fmt(calculated.olivePaid + calculated.oilPaid)} detail={ar ? "دفعات RPA مقابل الزيت والزيتون · الموسم الحالي" : "Paiements RPA pour huile et olives · saison active"} icon={Wallet} tone="rose" />
     </div>
 
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-emerald-200 bg-emerald-50/40">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-emerald-900"><TrendingUp className="size-5" /> Revenus actifs</CardTitle><CardDescription>Encaissements réellement reçus sur les prestations et les ventes GS</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-emerald-900"><TrendingUp className="size-5" /> {ar ? "المداخيل الفعلية" : "Revenus actifs"}</CardTitle><CardDescription>{ar ? "المبالغ المقبوضة فعلياً من الخدمات ومبيعات GS" : "Encaissements réellement reçus sur les prestations et les ventes GS"}</CardDescription></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between gap-3"><span>Prestation de trituration</span><strong>{fmt(calculated.serviceRevenue)}</strong></div>
           <div className="flex justify-between gap-3"><span>Vente d’huile — GS</span><strong>{fmt(calculated.salesRevenue)}</strong></div>
-          <div className="mt-2 flex justify-between border-t border-emerald-200 pt-3 text-base font-bold text-emerald-900"><span>Total</span><span>{fmt(calculated.serviceRevenue + calculated.salesRevenue)}</span></div>
+          <div className="mt-2 flex justify-between border-t border-emerald-200 pt-3 text-base font-bold text-emerald-900"><span>{ar ? "الإجمالي" : "Total"}</span><span>{fmt(calculated.serviceRevenue + calculated.salesRevenue)}</span></div>
         </CardContent>
       </Card>
       <Card className="border-sky-200 bg-sky-50/40">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-sky-900"><TrendingUp className="size-5" /> Revenus passifs</CardTitle><CardDescription>Enregistrement des revenus complémentaires de la saison active</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-sky-900"><TrendingUp className="size-5" /> {ar ? "المداخيل الأخرى" : "Revenus passifs"}</CardTitle><CardDescription>{ar ? "تسجيل المداخيل الإضافية للموسم الحالي" : "Enregistrement des revenus complémentaires de la saison active"}</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1"><span className="font-medium">Type de revenu</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.income_type} onChange={e=>setPassiveForm(v=>({...v,income_type:e.target.value}))}><option value="RENT">Location de local / entrepôt</option><option value="EQUIPMENT_RENTAL">Location de matériel</option><option value="INTEREST">Intérêts</option><option value="INVESTMENT">Investissement</option><option value="OTHER">Autre revenu</option></select></label>
-            <label className="space-y-1"><span className="font-medium">Date</span><input type="date" required className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.income_date} onChange={e=>setPassiveForm(v=>({...v,income_date:e.target.value}))}/></label>
-            <label className="space-y-1 sm:col-span-2"><span className="font-medium">Description</span><input required minLength={2} maxLength={180} className="w-full rounded-lg border bg-white px-3 py-2" placeholder="Ex. Location du dépôt" value={passiveForm.description} onChange={e=>setPassiveForm(v=>({...v,description:e.target.value}))}/></label>
-            <label className="space-y-1"><span className="font-medium">Montant (TND)</span><input type="number" min="0.001" step="0.001" required className="w-full rounded-lg border bg-white px-3 py-2" placeholder="0.000" value={passiveForm.amount_tnd} onChange={e=>setPassiveForm(v=>({...v,amount_tnd:e.target.value}))}/></label>
-            <label className="space-y-1"><span className="font-medium">Mode de paiement</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.payment_method} onChange={e=>setPassiveForm(v=>({...v,payment_method:e.target.value}))}><option value="CASH">Espèces</option><option value="BANK_TRANSFER">Virement bancaire</option><option value="CHEQUE">Chèque</option><option value="OTHER">Autre</option></select></label>
+            <label className="space-y-1"><span className="font-medium">{ar ? "نوع المدخول" : "Type de revenu"}</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.income_type} onChange={e=>setPassiveForm(v=>({...v,income_type:e.target.value}))}><option value="RENT">Location de local / entrepôt</option><option value="EQUIPMENT_RENTAL">Location de matériel</option><option value="INTEREST">Intérêts</option><option value="INVESTMENT">Investissement</option><option value="OTHER">Autre revenu</option></select></label>
+            <label className="space-y-1"><span className="font-medium">{ar ? "التاريخ" : "Date"}</span><input type="date" required className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.income_date} onChange={e=>setPassiveForm(v=>({...v,income_date:e.target.value}))}/></label>
+            <label className="space-y-1 sm:col-span-2"><span className="font-medium">{ar ? "الوصف" : "Description"}</span><input required minLength={2} maxLength={180} className="w-full rounded-lg border bg-white px-3 py-2" placeholder={ar ? "مثال: كراء المستودع" : "Ex. Location du dépôt"} value={passiveForm.description} onChange={e=>setPassiveForm(v=>({...v,description:e.target.value}))}/></label>
+            <label className="space-y-1"><span className="font-medium">{ar ? "المبلغ" : "Montant (TND)"}</span><input type="number" min="0.001" step="0.001" required className="w-full rounded-lg border bg-white px-3 py-2" placeholder="0.000" value={passiveForm.amount_tnd} onChange={e=>setPassiveForm(v=>({...v,amount_tnd:e.target.value}))}/></label>
+            <label className="space-y-1"><span className="font-medium">{ar ? "طريقة الدفع" : "Mode de paiement"}</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.payment_method} onChange={e=>setPassiveForm(v=>({...v,payment_method:e.target.value}))}><option value="CASH">{ar ? "نقداً" : "Espèces"}</option><option value="BANK_TRANSFER">{ar ? "تحويل بنكي" : "Virement bancaire"}</option><option value="CHEQUE">{ar ? "شيك" : "Chèque"}</option><option value="OTHER">{ar ? "أخرى" : "Autre"}</option></select></label>
             <label className="space-y-1 sm:col-span-2"><span className="font-medium">Notes (facultatif)</span><textarea rows={2} maxLength={500} className="w-full rounded-lg border bg-white px-3 py-2" value={passiveForm.notes} onChange={e=>setPassiveForm(v=>({...v,notes:e.target.value}))}/></label>
           </div>
           <button type="button" disabled={createPassiveIncome.isPending || !passiveForm.description.trim() || !passiveForm.amount_tnd} onClick={()=>createPassiveIncome.mutate(passiveForm)} className="inline-flex items-center gap-2 rounded-lg bg-sky-700 px-4 py-2 font-semibold text-white disabled:opacity-50"><Plus className="size-4"/>{createPassiveIncome.isPending ? "Enregistrement…" : "Ajouter le revenu"}</button>
           {createPassiveIncome.isError && <p className="text-red-700">Erreur : {createPassiveIncome.error.message}</p>}
           {passiveQuery.isError && <p className="text-red-700">Impossible de charger les revenus passifs.</p>}
           <div className="overflow-x-auto rounded-lg border border-sky-200 bg-white"><table className="w-full min-w-[620px] text-sm">
-            <thead><tr className="border-b bg-sky-50 text-left text-xs"><th className="px-3 py-2">Date</th><th className="px-3 py-2">Type / description</th><th className="px-3 py-2">Paiement</th><th className="px-3 py-2 text-right">Montant</th><th className="px-3 py-2">Action</th></tr></thead>
-            <tbody>{passiveIncomes.length===0 ? <tr><td colSpan={5} className="px-3 py-4 text-center text-stone-500">{passiveQuery.isPending ? "Chargement…" : "Aucun revenu passif enregistré pour cette saison."}</td></tr> : passiveIncomes.map(item=><tr key={item.id} className="border-b last:border-0"><td className="px-3 py-2">{item.income_date}</td><td className="px-3 py-2"><div className="font-medium">{passiveTypeLabels[item.income_type] || item.income_type}</div><div>{item.description}</div>{item.notes && <div className="text-xs text-stone-500">{item.notes}</div>}</td><td className="px-3 py-2">{paymentLabels[item.payment_method] || item.payment_method}</td><td className="px-3 py-2 text-right font-semibold">{fmt(item.amount_tnd)}</td><td className="px-3 py-2"><button type="button" title="Supprimer" disabled={deletePassiveIncome.isPending} onClick={()=>{if(window.confirm("Supprimer ce revenu passif ?")) deletePassiveIncome.mutate(item.id);}} className="rounded-md p-2 text-red-700 hover:bg-red-50"><Trash2 className="size-4"/></button></td></tr>)}</tbody>
+            <thead><tr className="border-b bg-sky-50 text-left text-xs"><th className="px-3 py-2">{ar ? "التاريخ" : "Date"}</th><th className="px-3 py-2">{ar ? "النوع / الوصف" : "Type / description"}</th><th className="px-3 py-2">{ar ? "الدفع" : "Paiement"}</th><th className="px-3 py-2 text-right">{ar ? "المبلغ" : "Montant"}</th><th className="px-3 py-2">{ar ? "إجراء" : "Action"}</th></tr></thead>
+            <tbody>{passiveIncomes.length===0 ? <tr><td colSpan={5} className="px-3 py-4 text-center text-stone-500">{passiveQuery.isPending ? "Chargement…" : (ar ? "لا توجد مداخيل أخرى مسجلة لهذا الموسم." : "Aucun revenu passif enregistré pour cette saison.")}</td></tr> : passiveIncomes.map(item=><tr key={item.id} className="border-b last:border-0"><td className="px-3 py-2">{item.income_date}</td><td className="px-3 py-2"><div className="font-medium">{passiveTypeLabels[item.income_type] || item.income_type}</div><div>{item.description}</div>{item.notes && <div className="text-xs text-stone-500">{item.notes}</div>}</td><td className="px-3 py-2">{paymentLabels[item.payment_method] || item.payment_method}</td><td className="px-3 py-2 text-right font-semibold">{fmt(item.amount_tnd)}</td><td className="px-3 py-2"><button type="button" title={ar ? "حذف" : "Supprimer"} disabled={deletePassiveIncome.isPending} onClick={()=>{if(window.confirm((ar ? "هل تريد حذف هذا المدخول؟" : "Supprimer ce revenu passif ?"))) deletePassiveIncome.mutate(item.id);}} className="rounded-md p-2 text-red-700 hover:bg-red-50"><Trash2 className="size-4"/></button></td></tr>)}</tbody>
           </table></div>
-          {deletePassiveIncome.isError && <p className="text-red-700">La suppression a échoué : {deletePassiveIncome.error.message}</p>}
-          <div className="flex justify-between border-t border-sky-200 pt-3 text-base font-bold text-sky-900"><span>Total des revenus passifs</span><span>{fmt(passiveIncomeTotal)}</span></div>
+          {deletePassiveIncome.isError && <p className="text-red-700">{ar ? "فشل الحذف:" : "La suppression a échoué :"} {deletePassiveIncome.error.message}</p>}
+          <div className="flex justify-between border-t border-sky-200 pt-3 text-base font-bold text-sky-900"><span>{ar ? "إجمالي المداخيل الأخرى" : "Total des revenus passifs"}</span><span>{fmt(passiveIncomeTotal)}</span></div>
         </CardContent>
       </Card>
 
       <Card className="border-orange-200 bg-orange-50/30">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-orange-900"><Wallet className="size-5" /> Dépenses — paiements d’achats</CardTitle><CardDescription>Argent réellement sorti de l’entreprise pour régler les achats auprès des fournisseurs et des clients. Les achats non encore payés ne sont pas inclus.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-orange-900"><Wallet className="size-5" /> {ar ? "المصاريف — دفعات المشتريات" : "Dépenses — paiements d’achats"}</CardTitle><CardDescription>{ar ? "الأموال التي خرجت فعلياً من الشركة لتسديد مشتريات المزوّدين والحرفاء. لا تشمل المشتريات غير المدفوعة." : "Argent réellement sorti de l’entreprise pour régler les achats auprès des fournisseurs et des clients. Les achats non encore payés ne sont pas inclus."}</CardDescription></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="overflow-x-auto rounded-lg border border-orange-200 bg-white">
             <table className="w-full min-w-[760px] text-sm">
@@ -289,22 +291,22 @@ export default function Comptabilite() {
       </Card>
 
       <Card className="border-rose-200 bg-rose-50/30">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-rose-900"><Wallet className="size-5"/> Dépenses</CardTitle><CardDescription>Charges de fonctionnement de la saison active</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-rose-900"><Wallet className="size-5"/> {ar ? "المصاريف" : "Dépenses"}</CardTitle><CardDescription>{ar ? "مصاريف تشغيل الموسم الحالي" : "Charges de fonctionnement de la saison active"}</CardDescription></CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1"><span className="font-medium">Catégorie</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.expense_type} onChange={e=>setExpenseForm(v=>({...v,expense_type:e.target.value}))}><option value="ELECTRICITY">Électricité</option><option value="WAGES">Salaires</option><option value="MAINTENANCE">Entretien et réparation</option><option value="FUEL">Carburant</option><option value="TRANSPORT">Transport</option><option value="SUPPLIES">Fournitures</option><option value="RENT">Loyer</option><option value="INSURANCE">Assurance</option><option value="TAXES">Taxes et impôts</option><option value="OTHER">Autre dépense</option></select></label>
+            <label className="space-y-1"><span className="font-medium">{ar ? "الفئة" : "Catégorie"}</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.expense_type} onChange={e=>setExpenseForm(v=>({...v,expense_type:e.target.value}))}><option value="ELECTRICITY">Électricité</option><option value="WAGES">Salaires</option><option value="MAINTENANCE">Entretien et réparation</option><option value="FUEL">Carburant</option><option value="TRANSPORT">Transport</option><option value="SUPPLIES">Fournitures</option><option value="RENT">Loyer</option><option value="INSURANCE">Assurance</option><option value="TAXES">Taxes et impôts</option><option value="OTHER">Autre dépense</option></select></label>
             <label className="space-y-1"><span className="font-medium">Date</span><input type="date" className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.expense_date} onChange={e=>setExpenseForm(v=>({...v,expense_date:e.target.value}))}/></label>
             <label className="space-y-1 sm:col-span-2"><span className="font-medium">Description</span><input required minLength={2} className="w-full rounded-lg border bg-white px-3 py-2" placeholder="Ex. Facture STEG du mois" value={expenseForm.description} onChange={e=>setExpenseForm(v=>({...v,description:e.target.value}))}/></label>
             <label className="space-y-1"><span className="font-medium">Montant (TND)</span><input type="number" min="0.001" step="0.001" className="w-full rounded-lg border bg-white px-3 py-2" placeholder="0.000" value={expenseForm.amount_tnd} onChange={e=>setExpenseForm(v=>({...v,amount_tnd:e.target.value}))}/></label>
             <label className="space-y-1"><span className="font-medium">Mode de paiement</span><select className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.payment_method} onChange={e=>setExpenseForm(v=>({...v,payment_method:e.target.value}))}><option value="CASH">Espèces</option><option value="BANK_TRANSFER">Virement bancaire</option><option value="CHEQUE">Chèque</option><option value="OTHER">Autre</option></select></label>
-            <label className="space-y-1 sm:col-span-2"><span className="font-medium">Bénéficiaire / fournisseur</span><input className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.beneficiary} onChange={e=>setExpenseForm(v=>({...v,beneficiary:e.target.value}))}/></label>
+            <label className="space-y-1 sm:col-span-2"><span className="font-medium">{ar ? "المستفيد / المزوّد" : "Bénéficiaire / fournisseur"}</span><input className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.beneficiary} onChange={e=>setExpenseForm(v=>({...v,beneficiary:e.target.value}))}/></label>
             <label className="space-y-1 sm:col-span-2"><span className="font-medium">Notes</span><textarea rows={2} className="w-full rounded-lg border bg-white px-3 py-2" value={expenseForm.notes} onChange={e=>setExpenseForm(v=>({...v,notes:e.target.value}))}/></label>
           </div>
           <button disabled={createExpense.isPending||!expenseForm.description.trim()||!expenseForm.amount_tnd} onClick={()=>createExpense.mutate(expenseForm)} className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-4 py-2 font-semibold text-white disabled:opacity-50"><Plus className="size-4"/>{createExpense.isPending?"Enregistrement…":"Ajouter la dépense"}</button>
           {createExpense.isError&&<p className="text-red-700">Erreur : {createExpense.error.message}</p>}{expenseQuery.isError&&<p className="text-red-700">Impossible de charger les dépenses.</p>}
-          <div className="overflow-x-auto rounded-lg border border-rose-200 bg-white"><table className="w-full min-w-[600px] text-sm"><thead><tr className="border-b bg-rose-50 text-left text-xs"><th className="px-3 py-2">Date</th><th className="px-3 py-2">Catégorie / description</th><th className="px-3 py-2">Paiement</th><th className="px-3 py-2 text-right">Montant</th><th className="px-3 py-2">Action</th></tr></thead><tbody>{expenses.length===0?<tr><td colSpan={5} className="px-3 py-4 text-center text-stone-500">{expenseQuery.isPending?"Chargement…":"Aucune dépense enregistrée."}</td></tr>:expenses.map(x=><tr key={x.id} className="border-b"><td className="px-3 py-2">{x.expense_date}</td><td className="px-3 py-2"><b>{expenseTypeLabels[x.expense_type]||x.expense_type}</b><div>{x.description}</div>{x.beneficiary&&<small>{x.beneficiary}</small>}{x.notes&&<div className="text-xs text-stone-500">{x.notes}</div>}</td><td className="px-3 py-2">{paymentLabels[x.payment_method]||x.payment_method}</td><td className="px-3 py-2 text-right font-semibold">{fmt(x.amount_tnd)}</td><td className="px-3 py-2"><button title="Supprimer" disabled={deleteExpense.isPending} onClick={()=>{if(window.confirm("Supprimer cette dépense ?"))deleteExpense.mutate(x.id);}} className="rounded-md p-2 text-red-700"><Trash2 className="size-4"/></button></td></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto rounded-lg border border-rose-200 bg-white"><table className="w-full min-w-[600px] text-sm"><thead><tr className="border-b bg-rose-50 text-left text-xs"><th className="px-3 py-2">Date</th><th className="px-3 py-2">Catégorie / description</th><th className="px-3 py-2">Paiement</th><th className="px-3 py-2 text-right">Montant</th><th className="px-3 py-2">Action</th></tr></thead><tbody>{expenses.length===0?<tr><td colSpan={5} className="px-3 py-4 text-center text-stone-500">{expenseQuery.isPending?"Chargement…":(ar ? "لا توجد مصاريف مسجلة." : "Aucune dépense enregistrée.")}</td></tr>:expenses.map(x=><tr key={x.id} className="border-b"><td className="px-3 py-2">{x.expense_date}</td><td className="px-3 py-2"><b>{expenseTypeLabels[x.expense_type]||x.expense_type}</b><div>{x.description}</div>{x.beneficiary&&<small>{x.beneficiary}</small>}{x.notes&&<div className="text-xs text-stone-500">{x.notes}</div>}</td><td className="px-3 py-2">{paymentLabels[x.payment_method]||x.payment_method}</td><td className="px-3 py-2 text-right font-semibold">{fmt(x.amount_tnd)}</td><td className="px-3 py-2"><button title="Supprimer" disabled={deleteExpense.isPending} onClick={()=>{if(window.confirm("Supprimer cette dépense ?"))deleteExpense.mutate(x.id);}} className="rounded-md p-2 text-red-700"><Trash2 className="size-4"/></button></td></tr>)}</tbody></table></div>
           {deleteExpense.isError&&<p className="text-red-700">La suppression a échoué : {deleteExpense.error.message}</p>}
-          <div className="flex justify-between border-t border-rose-200 pt-3 text-base font-bold text-rose-900"><span>Total des dépenses</span><span>{fmt(expenseTotal)}</span></div>
+          <div className="flex justify-between border-t border-rose-200 pt-3 text-base font-bold text-rose-900"><span>{ar ? "إجمالي المصاريف" : "Total des dépenses"}</span><span>{fmt(expenseTotal)}</span></div>
         </CardContent>
       </Card>
     </div>
