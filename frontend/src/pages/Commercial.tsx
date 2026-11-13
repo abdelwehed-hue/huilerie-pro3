@@ -187,7 +187,7 @@ export default function Commercial() {
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as (TabKey | "quality") | null;
   const validTabs: (TabKey | "quality")[] = ["overview", "factures", "stock", "lots", "movements", "laboratory", "quality", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
-  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : (requestedTab === "quality" || requestedTab === "laboratory") ? "overview" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "quality" ? "laboratory" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab) : "overview";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
@@ -1770,7 +1770,7 @@ export default function Commercial() {
 
     { id: "production", label: l.productionTab, icon: Factory },
     { id: "stock", label: "Chargement", icon: Truck },
-    
+    { id: "laboratory", label: l.quality, icon: Beaker },
     { id: "transfers", label: l.internalMovementsTab, icon: RefreshCw },
     { id: "reports", label: "Rapport", icon: FileText },
     { id: "sales", label: salesText.sales, icon: ShoppingCart },
