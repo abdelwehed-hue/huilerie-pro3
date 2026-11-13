@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 const sections = [
   {
@@ -49,14 +50,16 @@ const sections = [
 
 export default function Help() {
   const navigate = useNavigate();
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-800"><CircleHelp className="size-7" /></div>
           <div>
-            <h1 className="text-3xl font-bold text-stone-900">مركز المساعدة <span className="text-stone-400">/</span> Centre d’aide</h1>
-            <p className="mt-1 text-sm text-stone-600">شرح وظائف التطبيق بالعربية والفرنسية · Guide des fonctions en arabe et en français</p>
+            <h1 className="text-3xl font-bold text-stone-900">{ar ? "مركز المساعدة" : "Centre d’aide"}</h1>
+            <p className="mt-1 text-sm text-stone-600">{ar ? "شرح وظائف التطبيق" : "Guide des fonctions de l’application"}</p>
           </div>
         </div>
         <Button type="button" variant="outline" onClick={() => navigate("/")}>
@@ -64,7 +67,7 @@ export default function Help() {
         </Button>
       </div>
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-950">
-        <div className="mb-1 flex items-center gap-2 font-bold"><BookOpen className="size-5" /> كيف تستعمل هذه الصفحة؟ / Comment utiliser cette page ?</div>
+        <div className="mb-1 flex items-center gap-2 font-bold"><BookOpen className="size-5" /> {ar ? "كيف تستعمل هذه الصفحة؟" : "Comment utiliser cette page ?"}</div>
         <p dir="rtl">اختر اسم القسم الذي تريد فهمه واقرأ الشرح بالعربية أو بالفرنسية. أسماء الصفحات مذكورة كما تظهر في التطبيق.</p>
         <p className="mt-1" dir="ltr">Choisissez la rubrique souhaitée et lisez son explication dans la langue de votre choix. Les noms des pages sont repris tels qu’ils apparaissent dans l’application.</p>
       </div>
