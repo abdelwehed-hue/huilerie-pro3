@@ -30,6 +30,11 @@ const localToday = () => {
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
 };
+const shiftDay = (day: string, offset: number) => {
+  const value = new Date(`${day}T12:00:00`);
+  value.setDate(value.getDate() + offset);
+  return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,"0")}-${String(value.getDate()).padStart(2,"0")}`;
+};
 const amount = (value: unknown) => {
   const raw = String(value ?? "0").trim();
   const match = raw.match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
@@ -53,10 +58,13 @@ function SummaryCard({ title, value, caption, icon: Icon, tone }: {
 
 export default function SituationJournaliere() {
   const [reportDate, setReportDate] = useState(localToday);
+  const [comparisonStartDate, setComparisonStartDate] = useState(() => shiftDay(localToday(), -6));
+  const [comparisonEndDate, setComparisonEndDate] = useState(localToday);
   const report = useQuery({
-    queryKey: ["accounting-daily-situation", reportDate],
-    queryFn: () => apiGet<DailyReport>(`/accounting/daily-situation?report_date=${encodeURIComponent(reportDate)}`),
+    queryKey: ["accounting-daily-situation", reportDate, comparisonStartDate, comparisonEndDate],
+    queryFn: () => apiGet<DailyReport>(`/accounting/daily-situation?report_date=${encodeURIComponent(reportDate)}&comparison_start_date=${encodeURIComponent(comparisonStartDate)}&comparison_end_date=${encodeURIComponent(comparisonEndDate)}`),
     staleTime: 15_000,
+    enabled: !!reportDate && !!comparisonStartDate && !!comparisonEndDate && comparisonStartDate <= comparisonEndDate,
   });
   const data = report.data;
   const rows = data?.events ?? [];
@@ -130,11 +138,18 @@ export default function SituationJournaliere() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Comparaison des 7 jours</CardTitle><CardDescription>Évolution quotidienne des revenus, dépenses et résultat net jusqu’à la date sélectionnée.</CardDescription></CardHeader>
+        <CardHeader className="space-y-3">
+          <div><CardTitle>Comparaison sur une période</CardTitle><CardDescription>Choisissez les dates de début et de fin pour comparer les revenus, les dépenses et le résultat net de chaque journée.</CardDescription></div>
+          <div className="flex flex-wrap items-end gap-3 no-print">
+            <label className="grid gap-1 text-sm"><span className="font-medium text-stone-700">Du</span><input type="date" value={comparisonStartDate} max={comparisonEndDate || undefined} onChange={event=>setComparisonStartDate(event.target.value)} className="rounded-lg border bg-white px-3 py-2"/></label>
+            <label className="grid gap-1 text-sm"><span className="font-medium text-stone-700">Au</span><input type="date" value={comparisonEndDate} min={comparisonStartDate || undefined} onChange={event=>setComparisonEndDate(event.target.value)} className="rounded-lg border bg-white px-3 py-2"/></label>
+            {comparisonStartDate > comparisonEndDate && <p className="text-sm text-red-700">La date de début doit précéder la date de fin.</p>}
+          </div>
+        </CardHeader>
         <CardContent><div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm">
           <thead><tr className="border-b text-left text-xs text-stone-500"><th className="px-3 py-2">Date</th><th className="px-3 py-2 text-right">Revenus</th><th className="px-3 py-2 text-right">Dépenses</th><th className="px-3 py-2 text-right">Résultat net</th></tr></thead>
           <tbody>{data.comparison.map(day=><tr key={day.date} className={`border-b last:border-0 ${day.date===data.date?"bg-emerald-50 font-semibold":""}`}><td className="px-3 py-2">{day.date}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.revenue)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.expense)}</td><td className="px-3 py-2 text-right tabular-nums">{amount(day.net)}</td></tr>)}</tbody>
-          </table></div></CardContent>
+        </table></div>{data.comparison.length===0&&<p className="py-3 text-sm text-stone-500">Aucune journée dans cette période.</p>}</CardContent>
       </Card>
     </>}
   </div>;
