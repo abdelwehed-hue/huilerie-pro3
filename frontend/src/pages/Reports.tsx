@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 
 export default function Reports() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const ar = lang === "ar";
   const me = useMe();
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
   const [start, setStart] = useState("");
@@ -150,11 +151,11 @@ export default function Reports() {
             <span className="whitespace-nowrap text-sm font-bold tabular-nums text-emerald-800">{fmtMoney(invoiceTotals.total)} {t("dt")}</span>
           </div>
           <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Montant payé</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">{ar ? "المبلغ المدفوع" : "Montant payé"}</span>
             <span className="whitespace-nowrap text-sm font-bold tabular-nums text-blue-800">{fmtMoney(invoiceTotals.paid)} {t("dt")}</span>
           </div>
           <div className="flex min-w-[120px] flex-col justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">Reste à payer</span>
+            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">{ar ? "المتبقي للدفع" : "Reste à payer"}</span>
             <span className="whitespace-nowrap text-sm font-bold tabular-nums text-rose-700">{fmtMoney(invoiceTotals.balance)} {t("dt")}</span>
           </div>
         </div>
@@ -191,7 +192,7 @@ export default function Reports() {
               <TableRow>
                 <TableHead className="text-start">{t("period")}</TableHead>
                 <TableHead className="text-end">{t("loads")}</TableHead>
-                <TableHead className="text-start">Variétés</TableHead>
+                <TableHead className="text-start">{ar ? "الأصناف" : "Variétés"}</TableHead>
                 <TableHead className="text-end">{t("olive_kg")}</TableHead>
                 <TableHead className="text-end">{t("oil_kg")}</TableHead>
                 <TableHead className="text-end">{t("revenue")}</TableHead>
