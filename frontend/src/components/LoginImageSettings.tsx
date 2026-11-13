@@ -10,7 +10,8 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export default function LoginImageSettings() {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => apiGet<AppSettings>("/settings") });
   const [selected, setSelected] = useState<string | null>(null);
@@ -71,17 +72,17 @@ export default function LoginImageSettings() {
         <div className="grid size-10 place-items-center rounded-xl bg-violet-600 text-white"><ImageIcon className="size-5" /></div>
         <div>
           <h2 className="font-heading text-xl font-bold">Page Login</h2>
-          <p className="text-sm text-violet-800">Choisissez l’image affichée sur la page de connexion.</p>
+          <p className="text-sm text-violet-800">{ar ? "اختر الصورة التي تظهر في صفحة تسجيل الدخول." : "Choisissez l’image affichée sur la page de connexion."}</p>
         </div>
       </div>
       <div className="space-y-3">
-        <Label>Image actuelle / aperçu</Label>
+        <Label>{ar ? "الصورة الحالية / المعاينة" : "Image actuelle / aperçu"}</Label>
         <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-white p-2" data-testid="login-image-preview">
-          {current ? <img src={current} alt="Aperçu de la page de connexion" className="max-h-80 w-full object-contain" /> : <div className="py-10 text-sm text-stone-500">Aucune image personnalisée sélectionnée.</div>}
+          {current ? <img src={current} alt={ar ? "معاينة صفحة تسجيل الدخول" : "Aperçu de la page de connexion"} className="max-h-80 w-full object-contain" /> : <div className="py-10 text-sm text-stone-500">{ar ? "لم يتم اختيار صورة مخصصة." : "Aucune image personnalisée sélectionnée."}</div>}
         </div>
         <div className="flex flex-wrap gap-3">
           <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer rounded-xl bg-white")}>
-            <Upload className="size-4" /> Choisir une image
+            <Upload className="size-4" /> {ar ? "اختيار صورة" : "Choisir une image"}
             <input type="file" accept="image/*" className="hidden" data-testid="login-image-input" onChange={(e) => { pickImage(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
           {current && <Button type="button" variant="ghost" onClick={() => setSelected("")} className="rounded-xl text-red-600"><Trash2 className="size-4" /> Retirer l’image</Button>}
@@ -89,7 +90,7 @@ export default function LoginImageSettings() {
             {processing ? "Préparation..." : save.isPending ? "Enregistrement..." : "Enregistrer l’image"}
           </Button>
         </div>
-        <p className="text-sm text-stone-600">L’image est compressée avant l’enregistrement et sera utilisée sur les appareils qui ouvrent l’application.</p>
+        <p className="text-sm text-stone-600">{ar ? "يتم ضغط الصورة قبل حفظها، ثم تُستخدم على الأجهزة التي تفتح التطبيق." : "L’image est compressée avant l’enregistrement et sera utilisée sur les appareils qui ouvrent l’application."}</p>
       </div>
     </div>
   );
