@@ -407,7 +407,7 @@ export default function IntakePanel({ stacked = false }: { stacked?: boolean }) 
         )}
         {receptionType === "supplier" && supplierId && !newSupplier && (
           <div className="rounded-xl border border-blue-200 bg-white p-4" data-testid="intake-supplier-history">
-            <div className="mb-3 flex items-center gap-2 font-semibold text-blue-950"><History className="size-4 text-blue-700" /> Historique du fournisseur</div>
+            <div className="mb-3 flex items-center gap-2 font-semibold text-blue-950"><History className="size-4 text-blue-700" /> {ar ? "سجل المزوّد" : "Historique du fournisseur"}</div>
             <div className="mb-3 grid grid-cols-2 gap-2 text-center text-xs">
               <div className="rounded-lg bg-blue-50 p-2"><div className="text-stone-500">{ar ? "المشتريات المسجلة" : "Achats enregistrés"}</div><div className="text-base font-bold text-blue-900">{supplierPurchases.length}</div></div>
               <div className="rounded-lg bg-sky-50 p-2"><div className="text-stone-500">{ar ? "الكمية الإجمالية" : "Quantité totale"}</div><div className="text-base font-bold text-sky-900">{fmtNum(supplierPurchases.reduce((sum, purchase) => sum + Number(purchase.total_quantity_kg ?? 0), 0))} kg</div></div>
