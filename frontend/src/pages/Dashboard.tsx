@@ -27,7 +27,8 @@ function KpiCard({ label, value, icon, testId, tint }: { label: string; value: R
 }
 
 export default function Dashboard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const ar = lang === "ar";
   const me = useMe();
   const navigate = useNavigate();
   const isAdmin = me.data?.role === "admin";
@@ -122,7 +123,7 @@ export default function Dashboard() {
               <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("olive_kg")}</TableHead>
               <TableHead className="text-end text-[15px] font-semibold text-[#31536F]">{t("oil_kg")}</TableHead>
               <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{t("status")}</TableHead>
-              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">Facture</TableHead>
+              <TableHead className="text-start text-[15px] font-semibold text-[#31536F]">{ar ? "الفاتورة" : "Facture"}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
