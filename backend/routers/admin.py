@@ -161,7 +161,7 @@ async def preview_counter_reset(_: dict = Depends(require_admin)):
             if len(season_start) != 4 or len(season_end) != 4 or int(season_end) != int(season_start) + 1:
                 raise ValueError("invalid_season")
             prefix = season_prefix(season_id)
-            candidate = f"{prefix}1"
+            candidate = f"{prefix}{1:03d}"
         except (ValueError, TypeError):
             skipped.append({"key": f"OROVERDE|{counter_id}", "reason": "invalid_load_counter_season"})
             continue
