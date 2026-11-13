@@ -51,7 +51,8 @@ function NewClientDialog({ open, onClose, onCreated }: { open: boolean; onClose:
 }
 
 export default function IntakePanel({ stacked = false }: { stacked?: boolean }) {
-  const { t, errMsg } = useI18n();
+  const { t, errMsg, lang } = useI18n();
+  const ar = lang === "ar";
   const qc = useQueryClient();
   const [bags, setBags] = useState("");
   const [variety, setVariety] = useState("");
