@@ -21,6 +21,7 @@ type Overview = {
   season_code: string;
   traditional_invoices: Row[];
   supplier_olive_purchases: Row[];
+  supplier_olive_purchase_payments: Row[];
   customer_ownership_transfers: Row[];
   customer_olive_purchases: Row[];
   customer_oil_purchases: Row[];
@@ -36,6 +37,8 @@ type Overview = {
     gs_sales_revenue_total: number | string;
     gs_sales_collected_total: number | string;
     supplier_olive_purchase_total: number | string;
+    supplier_olive_paid_total: number | string;
+    supplier_olive_outstanding_total: number | string;
     customer_olive_purchase_total: number | string;
     customer_olive_paid_total: number | string;
     customer_oil_purchase_total: number | string;
@@ -157,6 +160,8 @@ export default function Comptabilite() {
       // Cash-basis accounting: only amounts actually collected count as GS sales revenue.
       salesRevenue: mills(summary?.gs_sales_collected_total),
       stockPurchases: mills(summary?.supplier_olive_purchase_total),
+      supplierPaid: mills(summary?.supplier_olive_paid_total),
+      supplierOutstanding: mills(summary?.supplier_olive_outstanding_total),
       // All accounting card totals use the same decimal-TND -> integer-millimes conversion.
       customerOlivePurchaseTotal: mills(summary?.customer_olive_purchase_total),
       customerOilPurchaseTotal: mills(summary?.customer_oil_purchase_total),
@@ -199,7 +204,9 @@ export default function Comptabilite() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="Revenus de prestation" value={fmt(calculated.serviceRevenue)} detail="Montants réellement encaissés sur les prestations · saison active" icon={TrendingUp} tone="olive" />
       <Metric title="Ventes d’huile GS" value={fmt(calculated.salesRevenue)} detail="Montants réellement encaissés sur les ventes · saison active" icon={TrendingUp} tone="sky" />
-      <Metric title="Achats de stock" value={fmt(calculated.stockPurchases)} detail="Achats d’olives approuvés auprès des fournisseurs uniquement" icon={Package} tone="gold" />
+      <Metric title="Achats d’olives fournisseurs" value={fmt(calculated.stockPurchases)} detail="Montant total des achats approuvés · GS" icon={Package} tone="gold" />
+      <Metric title="Paiements fournisseurs" value={fmt(calculated.supplierPaid)} detail="Sommes réellement réglées aux fournisseurs" icon={Wallet} tone="rose" />
+      <Metric title="Dettes fournisseurs" value={fmt(calculated.supplierOutstanding)} detail="Solde restant à payer aux fournisseurs" icon={AlertTriangle} tone="orange" />
       <Metric title="Achats d’olives aux clients" value={fmt(calculated.customerOlivePurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="orange" />
       <Metric title="Achats d’huile aux clients" value={fmt(calculated.customerOilPurchaseTotal)} detail="Bons BAH · présentés séparément des achats fournisseurs" icon={Package} tone="gold" />
       <Metric title="Encaissements clients" value={fmt(calculated.serviceCollected + calculated.gsCollected)} detail="Règlements cumulés sur factures · saison active" icon={Wallet} tone="violet" />
@@ -259,8 +266,12 @@ export default function Comptabilite() {
       </Card>
     </div>
 
-    <DataTable title="Achats d’olives auprès des fournisseurs" description="Achats de stock GS de la saison active — affichage des opérations récentes. Les règlements fournisseurs ne sont pas consolidés." rows={calculated.supplierPurchases} empty="Aucun achat fournisseur approuvé." columns={[
-      {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant",render:r=>fmt(r.total_amount_dt)}
+    <DataTable title="Achats d’olives auprès des fournisseurs" description="Tous les achats approuvés de la saison active, avec leur montant, les règlements déjà effectués et le solde restant dû." rows={calculated.supplierPurchases} empty="Aucun achat fournisseur approuvé." columns={[
+      {label:"Date",render:r=>dateOf(r)}, {label:"Bon",render:r=>r.document_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || "—"}, {label:"Quantité (kg)",render:r=>fmt(r.total_quantity_kg)}, {label:"Montant acheté",render:r=>fmt(r.total_amount_dt)}, {label:"Payé",render:r=>fmt(r.paid_amount_dt)}, {label:"Reste dû",render:r=>fmt(r.outstanding_amount_dt ?? r.total_amount_dt)}, {label:"Statut",render:r=>r.payment_status === "PAID" ? "Payé" : r.payment_status === "PARTIALLY_PAID" ? "Partiellement payé" : "Non payé"}
+    ]} />
+
+    <DataTable title="Règlements aux fournisseurs" description="Chaque paiement réellement enregistré dans GS, relié au bon d’achat correspondant. Ces règlements diminuent la dette et la trésorerie; ils ne sont pas comptés une seconde fois comme achat." rows={data.supplier_olive_purchase_payments || []} empty="Aucun règlement fournisseur enregistré pour cette saison." columns={[
+      {label:"Date",render:r=>String(r.payment_date || r.created_at || "—").slice(0,10)}, {label:"Référence paiement",render:r=>r.document_number || "—"}, {label:"Bon d’achat",render:r=>r.purchase_number || "—"}, {label:"Fournisseur",render:r=>r.supplier_name || "—"}, {label:"Mode",render:r=>paymentLabels[r.method] || r.method || "—"}, {label:"Référence bancaire",render:r=>r.reference || "—"}, {label:"Montant payé",render:r=>fmt(r.amount_tnd)}
     ]} />
 
     <DataTable title="Achats d’olives aux clients" description="Bons BAH de transfert de propriété de la saison active. La garde client est exclue." rows={calculated.customerOlivePurchases} empty="Aucun achat d’olives auprès d’un client enregistré." columns={[
@@ -298,7 +309,7 @@ export default function Comptabilite() {
       <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-950">
         <AlertTriangle className="mt-0.5 size-5 shrink-0" />
         <div><strong>Contrôle comptable — première version.</strong>
-          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les indicateurs financiers et les tableaux sont limités à la saison active ({data.active_season}); les tableaux affichent uniquement les opérations les plus récentes (limite : {data.recent_limit}). Les ventes GS sont totalisées depuis le net des factures après avoirs acceptés; les avoirs sont listés séparément pour audit sans double déduction. Les retours physiques en attente ou refusés ne réduisent pas le revenu. Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs ne disposent pas encore d’un registre de règlements consolidé : leurs soldes de trésorerie ne sont donc pas estimés.</p>
+          <p className="mt-1">Cette page lit les documents opérationnels existants sans les modifier. Les indicateurs financiers et les tableaux sont limités à la saison active ({data.active_season}); les tableaux affichent uniquement les opérations les plus récentes (limite : {data.recent_limit}). Les ventes GS sont totalisées depuis le net des factures après avoirs acceptés; les avoirs sont listés séparément pour audit sans double déduction. Les retours physiques en attente ou refusés ne réduisent pas le revenu. Les achats d’olives et d’huile sont présentés comme acquisitions de stock, pas comme charges consommées automatiquement. La garde des clients n’est jamais comptée comme achat. Les paiements initiaux et ultérieurs règlent une dette ou une créance et ne créent pas un deuxième produit ou une deuxième charge. Les achats fournisseurs sont affichés avec leurs paiements et leurs soldes dus; chaque règlement est présenté séparément dans la trésorerie sans doubler la charge d’achat.</p>
         </div>
       </CardContent>
     </Card>
