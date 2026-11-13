@@ -80,7 +80,7 @@ export function LangToggle({ className }: { className?: string }) {
 }
 
 function BottomNav({ isAdmin, revealEnabled, pendingLabCount, premium }: { isAdmin: boolean; revealEnabled: boolean; pendingLabCount: number | undefined; premium: boolean }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   return (
     <div className={cn("no-print group fixed inset-x-0 bottom-0 z-40", revealEnabled ? "h-3" : "")}>
       <nav
