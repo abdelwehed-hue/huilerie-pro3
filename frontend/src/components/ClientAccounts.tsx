@@ -243,7 +243,7 @@ export default function ClientAccounts() {
               <td className="p-2">{cash(row.total)}</td><td className="p-2">{cash(row.paid)}</td><td className="p-2">{cash(row.balance)}</td>
             </tr>)}
               <tr className="border-t-2 bg-stone-50 font-bold">
-                <td className="whitespace-nowrap p-2">Total Final</td>
+                <td className="whitespace-nowrap p-2">{ar ? "المجموع النهائي" : "Total Final"}</td>
                 <td className="p-2"></td>
                 <td className="p-2"></td>
                 <td className="p-2"></td>
