@@ -13,7 +13,8 @@ export default function CommercialCertificate() {
   const { id = "" } = useParams();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("from") === "quality" ? "/commercial?tab=quality" : searchParams.get("from") === "lab" ? "/lab" : "/commercial?tab=quality";
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const ar = lang === "ar";
   const assessmentQuery = useQuery({
     queryKey: ["commercial-certificate", id],
     queryFn: () => apiGet<AnyRecord[]>(`/commercial/v1/quality-assessments?limit=500`),
@@ -92,17 +93,17 @@ export default function CommercialCertificate() {
             </p>
             <dl className="mt-8 grid grid-cols-2 gap-4 rounded-xl bg-stone-50 p-5 text-sm md:grid-cols-4">
               <div><dt className="text-stone-500">Lot d'huile</dt><dd className="font-semibold font-mono"><CodeBadge code={String(lot.batch_code || assessment.batch_code || lot.document_number || "—")} /></dd></div>
-              <div><dt className="text-stone-500">Date de prélèvement</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.sample_date)}</dd></div>
-              <div><dt className="text-stone-500">Date d'analyse</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.tested_date)}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "تاريخ أخذ العينة" : "Date de prélèvement"}</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.sample_date)}</dd></div>
+              <div><dt className="text-stone-500"> {ar ? "تاريخ التحليل" : "Date d’analyse"}</dt><dd className="font-semibold" dir="ltr">{fmtDate(assessment.tested_date)}</dd></div>
               <div><dt className="text-stone-500">Laboratoire</dt><dd className="font-semibold">{assessment.laboratory_name || "—"}</dd></div>
-              <div><dt className="text-stone-500">Référence échantillon</dt><dd className="font-semibold">{assessment.sample_reference ? <CodeBadge code={String(assessment.sample_reference)} /> : "—"}</dd></div>
-              <div><dt className="text-stone-500">Référence norme</dt><dd className="font-semibold">{assessment.specification_reference || "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "مرجع العينة" : "Référence échantillon"}</dt><dd className="font-semibold">{assessment.sample_reference ? <CodeBadge code={String(assessment.sample_reference)} /> : "—"}</dd></div>
+              <div><dt className="text-stone-500">{ar ? "مرجع المواصفة" : "Référence norme"}</dt><dd className="font-semibold">{assessment.specification_reference || "—"}</dd></div>
               <div><dt className="text-stone-500">Type d'huile</dt><dd className="font-semibold">{assessment.oil_type || "—"}</dd></div>
             </dl>
             <table className="mt-6 w-full text-sm">
               <thead><tr className="border-b-2 border-stone-200 text-stone-500">
-                <th className="py-2 text-start font-semibold">Paramètre</th>
-                <th className="py-2 text-end font-semibold">Résultat</th>
+                <th className="py-2 text-start font-semibold">{ar ? "المعيار" : "Paramètre"}</th>
+                <th className="py-2 text-end font-semibold">{ar ? "النتيجة" : "Résultat"}</th>
                 <th className="py-2 text-end font-semibold">{t("limit_ev")}</th>
               </tr></thead>
               <tbody>{rows.map((row) => <tr key={row.label} className="border-b border-stone-100">
@@ -119,7 +120,7 @@ export default function CommercialCertificate() {
               <div className="w-40 border-t border-dashed border-stone-400 pt-2 text-center text-xs text-stone-500">{t("signature")}</div>
             </div>
             {assessment.notes && <p className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{t("notes")}: {assessment.notes}</p>}
-            <p className="mt-5 text-xs text-stone-500">Cette attestation présente les résultats enregistrés. La libération du lot relève d'une validation qualité indépendante.</p>
+            <p className="mt-5 text-xs text-stone-500">{ar ? "تعرض هذه الشهادة النتائج المسجلة. ويخضع اعتماد الدفعة لمصادقة مستقلة على الجودة." : "Cette attestation présente les résultats enregistrés. La libération du lot relève d’une validation qualité indépendante."}</p>
           </div>
         </div>
       )}
