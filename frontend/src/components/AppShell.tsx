@@ -88,7 +88,7 @@ function BottomNav({ isAdmin, revealEnabled, pendingLabCount, premium }: { isAdm
         className={cn(cn("absolute inset-x-0 bottom-0 translate-y-1 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-xl transition-opacity duration-700 ease-in-out motion-reduce:transition-none", premium ? "border-t border-emerald-900/10 bg-[#FFFDF5]/95" : "border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80"), revealEnabled ? "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto" : "opacity-100")}
       >
         <div
-          className="mx-auto flex w-full max-w-7xl items-stretch justify-start gap-1 overflow-x-auto overscroll-x-contain px-2 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="mx-auto flex w-full max-w-7xl items-stretch [justify-content:safe_center] gap-1 overflow-x-auto overscroll-x-contain px-2 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
         >
           {NAV.filter((n) => !("admin" in n) || isAdmin).map((n) => (
