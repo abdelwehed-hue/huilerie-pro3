@@ -367,7 +367,7 @@ export default function AppShell() {
               aria-live="polite"
             >
               <Clock3 className="size-4 text-amber-700" />
-              <span className="hidden text-sm font-semibold sm:inline">Non terminé</span>
+              <span className="hidden text-sm font-semibold sm:inline">{lang === "ar" ? "غير منتهية" : "Non terminé"}</span>
               <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-amber-600 px-1.5 py-0.5 text-xs font-bold text-white">
                 {todayLoads.data?.non_terminated ?? "—"}
               </span>
