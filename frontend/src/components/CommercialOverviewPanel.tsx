@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Beaker, Boxes, CheckCircle2, ClipboardList, Factory, FileText, MapPin, ShoppingBasket, ShoppingCart, Warehouse } from "lucide-react";
+import { Activity, AlertTriangle, Beaker, CheckCircle2, ClipboardList, MapPin, ShoppingBasket, Warehouse } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,14 +72,6 @@ export default function CommercialOverviewPanel() {
       pending: (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length,
     };
   }, [balances.data, lots.data]);
-  const links = [
-    { label: ar ? "المشتريات" : "Achats", tab: "procurement", Icon: ShoppingCart, tone: "border-emerald-200 bg-emerald-50 text-emerald-950" },
-    { label: ar ? "المخزون والخزانات" : "Stocks & cuves", tab: "stock", Icon: Warehouse, tone: "border-sky-200 bg-sky-50 text-sky-950" },
-    { label: ar ? "الدفعات" : "Lots", tab: "lots", Icon: Boxes, tone: "border-amber-200 bg-amber-50 text-amber-950" },
-    { label: ar ? "الإنتاج" : "Production", tab: "production", Icon: Factory, tone: "border-lime-200 bg-lime-50 text-lime-950" },
-    { label: ar ? "المبيعات" : "Ventes", tab: "sales", Icon: ShoppingBasket, tone: "border-blue-200 bg-blue-50 text-blue-950" },
-    { label: ar ? "الفواتير" : "Factures", tab: "factures", Icon: FileText, tone: "border-violet-200 bg-violet-50 text-violet-950" },
-  ];
   const error = status.isError;
 
   return (
@@ -126,14 +117,6 @@ export default function CommercialOverviewPanel() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-            {links.map(({ label, tab, Icon, tone }) => (
-              <Link key={tab} to={`/commercial?tab=${tab}`} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center text-sm font-bold transition-transform hover:-translate-y-0.5 hover:shadow-sm ${tone}`}>
-                <Icon className="size-6" />
-                {label}
-              </Link>
-            ))}
-          </div>
         </div>
       )}
     </section>
