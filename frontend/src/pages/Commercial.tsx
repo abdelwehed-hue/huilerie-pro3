@@ -1521,15 +1521,6 @@ export default function Commercial() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const bootstrap = useMutation({
-    mutationFn: () => apiPost<CommercialStatus>("/commercial/v1/bootstrap"),
-    onSuccess: async () => {
-      toast.success(l.bootstrapSuccess);
-      await queryClient.invalidateQueries({ queryKey: ["commercial"] });
-    },
-    onError: () => toast.error(l.bootstrapError),
-  });
-
   const totalOlives = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OLIVE").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const totalOil = useMemo(() => (balances.data ?? []).filter((b) => b.product_kind === "OIL").reduce((sum, b) => sum + Number(b.quantity_kg ?? 0), 0), [balances.data]);
   const qualityPending = (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length;
@@ -1894,22 +1885,6 @@ export default function Commercial() {
         </Card>;
       })()}
 
-      {!ready && (
-        <Card className="border-amber-300 bg-amber-50/70">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-950"><AlertTriangle className="size-5" />{l.notReady}</CardTitle>
-            <CardDescription className="text-amber-900">{l.bootstrapHint}</CardDescription>
-          </CardHeader>
-          {isAdmin ? (
-            <CardContent><Button disabled={bootstrap.isPending || status.isLoading} onClick={() => bootstrap.mutate()}>
-              <Factory className="size-4" /> {bootstrap.isPending ? l.bootstrapping : l.bootstrap}
-            </Button></CardContent>
-          ) : (
-            <CardContent className="text-sm text-amber-900">{l.adminOnly}</CardContent>
-          )}
-        </Card>
-      )}
-
       
 
       <nav aria-label="GESTION COMMERCIALE" data-testid="commercial-bottom-nav" className="no-print fixed inset-x-0 bottom-0 z-40 translate-y-[26px] border-t border-[#CFE3C4]/30 bg-[#1E2B20]/80 shadow-[0_-8px_24px_rgba(20,35,22,0.20)] backdrop-blur-none">
@@ -1944,7 +1919,6 @@ export default function Commercial() {
             <Card className="commercial-card commercial-card--violet"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.oil}</CardDescription><Beaker className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{number(totalOil)} L</CardTitle></CardHeader></Card>
             <Card className="commercial-card commercial-card--rose"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.quality}</CardDescription><ShieldCheck className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{ready ? qualityPending : "—"}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader></Card>
           </div>
-          <Card><CardHeader><CardTitle>{l.readiness}</CardTitle><CardDescription>{ready ? l.ready : l.notReady}</CardDescription></CardHeader><CardContent className="flex items-center gap-2 text-sm">{ready ? <ShieldCheck className="size-5 text-emerald-600" /> : <AlertTriangle className="size-5 text-amber-600" />}{ready ? l.ready : l.warning}</CardContent></Card>
         </div>
       )}
 
