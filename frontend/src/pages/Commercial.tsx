@@ -207,7 +207,7 @@ export default function Commercial() {
     }, { replace: true });
   };
   const [showTankLevels, setShowTankLevels] = useState(false);
-  const [selectedOverviewTankId, setSelectedOverviewTankId] = useState("");
+  const [selectedOverviewTankId, setSelectedOverviewTankId] = useState(() => searchParams.get("tank") || "");
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierTaxId, setSupplierTaxId] = useState("");
