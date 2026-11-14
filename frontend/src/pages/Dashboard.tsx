@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import IntakePanel from "@/components/IntakePanel";
 import QrScanDialog from "@/components/QrScanDialog";
 import CommercialOverviewPanel from "@/components/CommercialOverviewPanel";
+import OlivePurchaseTracking from "@/components/OlivePurchaseTracking";
 
 function KpiCard({ label, value, icon, testId, tint }: { label: string; value: React.ReactNode; icon: React.ReactNode; testId: string; tint: string }) {
   return (
@@ -148,6 +149,8 @@ export default function Dashboard() {
           </TableBody>
         </Table>
       </div>
+
+      <OlivePurchaseTracking />
 
       <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet">
