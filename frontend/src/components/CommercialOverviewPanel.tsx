@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Beaker, Boxes, CheckCircle2, ClipboardList, Factory, FileText, MapPin, ShoppingBasket, ShoppingCart, Warehouse } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type CommercialStatus = {
   active_season?: string;
@@ -15,6 +15,17 @@ type CommercialStatus = {
   ready?: boolean;
 };
 type Row = Record<string, any>;
+
+async function apiGetAllPages<T>(path: string, pageSize: number): Promise<T[]> {
+  const rows: T[] = [];
+  for (let skip = 0, page = 0; page <= 100; skip += pageSize, page += 1) {
+    const separator = path.includes("?") ? "&" : "?";
+    const chunk = await apiGet<T[]>(`${path}${separator}limit=${pageSize}&skip=${skip}`);
+    rows.push(...chunk);
+    if (chunk.length < pageSize) return rows;
+  }
+  throw new Error("Commercial list exceeded the safe pagination limit.");
+}
 
 function Metric({ label, value, icon: Icon, tone }: { label: string; value: React.ReactNode; icon: React.ElementType; tone: string }) {
   return (
@@ -39,17 +50,18 @@ export default function CommercialOverviewPanel() {
     refetchInterval: 30_000,
     retry: false,
   });
+  const ready = status.data?.ready === true;
   const balances = useQuery({
     queryKey: ["commercial", "balances"],
-    queryFn: () => apiGet<Row[]>("/commercial/v1/stock-balances?limit=1000"),
-    enabled: status.data?.ready === true,
+    queryFn: () => apiGetAllPages<Row>("/commercial/v1/stock-balances", 1000),
+    enabled: ready,
     refetchInterval: 30_000,
     retry: false,
   });
   const lots = useQuery({
     queryKey: ["commercial", "lots"],
-    queryFn: () => apiGet<Row[]>("/commercial/v1/lots?limit=500"),
-    enabled: status.data?.ready === true,
+    queryFn: () => apiGetAllPages<Row>("/commercial/v1/lots", 500),
+    enabled: ready,
     refetchInterval: 30_000,
     retry: false,
   });
@@ -69,7 +81,6 @@ export default function CommercialOverviewPanel() {
     { label: ar ? "المبيعات" : "Ventes", tab: "sales", Icon: ShoppingBasket, tone: "border-blue-200 bg-blue-50 text-blue-950" },
     { label: ar ? "الفواتير" : "Factures", tab: "factures", Icon: FileText, tone: "border-violet-200 bg-violet-50 text-violet-950" },
   ];
-  const ready = status.data?.ready === true;
   const error = status.isError;
 
   return (
@@ -104,10 +115,16 @@ export default function CommercialOverviewPanel() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={balances.isLoading ? "—" : `${totals.olives.toLocaleString(ar ? "fr-FR" : "fr-FR")} kg`} icon={ShoppingBasket} tone="border-lime-200 bg-lime-50 text-lime-950" />
-            <Metric label={ar ? "مخزون الزيت" : "Stock d’huile"} value={balances.isLoading ? "—" : `${totals.oil.toLocaleString("fr-FR")} L`} icon={Beaker} tone="border-yellow-200 bg-yellow-50 text-yellow-950" />
-            <Metric label={ar ? "دفعات تنتظر الجودة" : "Lots en attente qualité"} value={lots.isLoading ? "—" : totals.pending} icon={CheckCircle2} tone="border-rose-200 bg-rose-50 text-rose-950" />
+            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.olives.toLocaleString("fr-FR")} kg`} icon={ShoppingBasket} tone="border-lime-200 bg-lime-50 text-lime-950" />
+            <Metric label={ar ? "مخزون الزيت" : "Stock d’huile"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.oil.toLocaleString("fr-FR")} L`} icon={Beaker} tone="border-yellow-200 bg-yellow-50 text-yellow-950" />
+            <Metric label={ar ? "دفعات تنتظر الجودة" : "Lots en attente qualité"} value={!ready || lots.isLoading || lots.isError ? "—" : totals.pending} icon={CheckCircle2} tone="border-rose-200 bg-rose-50 text-rose-950" />
           </div>
+          {(balances.isError || lots.isError) && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle className="size-5 shrink-0" />
+              {ar ? "تعذّر تحميل بعض مؤشرات المخزون أو الجودة؛ لم تُعرض أرقام تقديرية." : "Certains indicateurs de stock ou de qualité sont indisponibles ; aucun chiffre estimé n’est affiché."}
+            </div>
+          )}
 
           <div className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${ready ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
             {ready ? <CheckCircle2 className="size-5" /> : <AlertTriangle className="size-5" />}
