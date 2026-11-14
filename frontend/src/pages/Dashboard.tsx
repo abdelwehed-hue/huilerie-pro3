@@ -13,6 +13,8 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import IntakePanel from "@/components/IntakePanel";
 import QrScanDialog from "@/components/QrScanDialog";
+import CommercialOverviewPanel from "@/components/CommercialOverviewPanel";
+import OlivePurchaseTracking from "@/components/OlivePurchaseTracking";
 
 function KpiCard({ label, value, icon, testId, tint }: { label: string; value: React.ReactNode; icon: React.ReactNode; testId: string; tint: string }) {
   return (
@@ -111,6 +113,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <CommercialOverviewPanel />
+
       <h2 className="dashboard-home__section-title mb-4 mt-10 font-heading text-2xl font-bold text-stone-900">{t("today_arrivals")}</h2>
       <div className="dashboard-home__table overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm">
         <Table data-testid="today-arrivals-table">
@@ -145,6 +149,8 @@ export default function Dashboard() {
           </TableBody>
         </Table>
       </div>
+
+      <OlivePurchaseTracking />
 
       <Sheet open={intakeOpen} onOpenChange={setIntakeOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto bg-[#F9F8F3] p-4 sm:max-w-lg" data-testid="new-reception-sheet">

@@ -1948,52 +1948,6 @@ export default function Commercial() {
         </div>
       )}
 
-      {tab === "overview" && ready && <Card className="commercial-card">
-        <CardHeader><CardTitle>{lang === "ar" ? "متابعة عمليات شراء الزيتون" : "Suivi des achats d’olives"}</CardTitle>
-          <CardDescription>{lang === "ar" ? "تتبع كود الشراء وموقعه في مراحل الإنتاج" : "Suivi du code d’achat et de son avancement dans le processus de production"}</CardDescription>
-        </CardHeader>
-        <CardContent><div className="overflow-x-auto"><Table>
-          <TableHeader><TableRow>
-            <TableHead>{lang === "ar" ? "كود الشراء" : "Code d’achat"}</TableHead>
-            <TableHead>{lang === "ar" ? "تاريخ الشراء" : "Date d’achat"}</TableHead>
-            <TableHead>{l.supplier}</TableHead>
-            <TableHead>{lang === "ar" ? "صنف الزيتون" : "Variété d’olives"}</TableHead>
-            <TableHead>{l.status}</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>{[...purchaseRows].sort((a, b) => String(b.purchase_date ?? b.created_at ?? "").localeCompare(String(a.purchase_date ?? a.created_at ?? ""))).map((purchase) => {
-            const linkedLots = (lots.data ?? []).filter((lot) => lot.source_purchase_id === purchase.id || (purchase.batch_codes ?? [purchase.batch_code]).filter(Boolean).includes(lot.batch_code));
-            const productionForPurchase = (productionRuns.data ?? []).filter((run) => linkedLots.some((lot) => lot.id === run.input_lot_id || lot.id === run.source_lot_id));
-            const varietyIds = Array.from(new Set(linkedLots.map((lot) => lot.variety_id).concat((purchase.lines ?? []).map((line: AnyRecord) => line.variety_id)).filter(Boolean)));
-            const varietyLabels = varietyIds.map((id) => {
-              const variety = (varieties.data ?? []).find((item) => item.id === id);
-              return variety ? (lang === "ar" ? variety.name_ar || variety.name_fr : variety.name_fr || variety.name_ar) : "";
-            }).filter(Boolean);
-            const availableOlives = linkedLots.some((lot) => (balances.data ?? []).some((balance) => balance.product_kind === "OLIVE" && balance.lot_id === lot.id && Number(balance.quantity_kg ?? 0) > 0));
-            const stage = purchase.status === "DRAFT"
-              ? (lang === "ar" ? "مسودة شراء" : "Brouillon d’achat")
-              : purchase.status === "CANCELLED"
-                ? (lang === "ar" ? "شراء ملغى" : "Achat annulé")
-                : productionForPurchase.length
-                  ? (lang === "ar" ? "تم تسجيل الإنتاج" : "Production enregistrée")
-                  : availableOlives
-                    ? (lang === "ar" ? "مخزون زيتون — بانتظار الإنتاج" : "Stock d’olives — en attente de production")
-                    : linkedLots.length
-                      ? (lang === "ar" ? "الدفعة موجودة — لا يوجد رصيد زيتون متبقٍ" : "Lot créé — olives consommées ou transférées")
-                      : (lang === "ar" ? "شراء مصادق عليه — بانتظار الاستلام" : "Achat approuvé — réception à suivre");
-            return <TableRow key={purchase.id}>
-              <TableCell className="font-mono font-bold text-stone-900">{purchaseCodeDisplay(purchaseTraceabilityCodes(purchase), purchase.document_number)}</TableCell>
-              <TableCell>{date(purchase.purchase_date ?? purchase.created_at)}</TableCell>
-              <TableCell>{value((supplierRows).find((supplier) => supplier.id === purchase.supplier_id)?.name)}</TableCell>
-              <TableCell>{varietyLabels.join(" / ") || "—"}</TableCell>
-              <TableCell><span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">{stage}</span></TableCell>
-            </TableRow>;
-          })}
-          {(!purchases.isLoading && !purchaseRows.length) && <EmptyRow colSpan={5} text={l.noRows} />}
-          </TableBody></Table></div></CardContent>
-      </Card>}
-
-      
-
       {tab === "stock" && <div className="space-y-4">
         <div role="tablist" aria-label={lang === "ar" ? "أقسام المخزون" : "Sections du stock"} className="inline-flex flex-wrap gap-2 rounded-xl border bg-muted/40 p-1">
           <Button type="button" size="sm" variant={stockView === "chargement" ? "default" : "ghost"} role="tab" aria-selected={stockView === "chargement"} onClick={() => setStockView("chargement")}>{lang === "ar" ? "الاستلام" : "Chargement"}</Button>
