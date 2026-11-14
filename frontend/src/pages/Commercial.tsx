@@ -23,14 +23,6 @@ import Comptabilite from "@/pages/Comptabilite";
 import { QRCodeSVG } from "qrcode.react";
 
 type AnyRecord = Record<string, any>;
-type CommercialStatus = {
-  active_season: string;
-  season_code: string;
-  tanks_provisioned: number;
-  active_olive_locations: number;
-  season_counters_provisioned: number;
-  ready: boolean;
-};
 type TabKey = "overview" | "customer-purchases" | "factures" | "stock" | "lots" | "movements" | "laboratory" | "procurement" | "suppliers" | "purchases" | "chargement" | "production" | "custody" | "transfers" | "buyers" | "sales" | "reports" | "accounting";
 
 const labels = {
