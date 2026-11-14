@@ -133,33 +133,37 @@ export default function CommercialOverviewPanel() {
           </div>
 
           {showTankLevels && (
-            <div id="dashboard-tank-levels" className="overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-sm">
-              <div className="border-b border-sky-100 bg-sky-50 px-4 py-3">
-                <h3 className="font-bold text-sky-950">{ar ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</h3>
-                <p className="text-sm text-sky-800/80">{ar ? "كمية الزيت الحالية في كل خزان" : "Quantité d’huile actuellement stockée dans chaque cuve"}</p>
+            <div id="dashboard-tank-levels" className="overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/80 p-4 shadow-sm md:p-5">
+              <div className="mb-5">
+                <h3 className="text-lg font-extrabold text-blue-900">{ar ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</h3>
+                <p className="mt-1 text-sm font-semibold text-blue-800/90">{ar ? "كمية الزيت الحالية المخزنة في كل خزان" : "Quantité d’huile actuellement stockée dans chaque cuve"}</p>
               </div>
               {tanks.isLoading || balances.isLoading ? (
-                <p className="p-5 text-center text-sm text-stone-500">{ar ? "جار تحميل مستويات الخزانات…" : "Chargement des niveaux des cuves…"}</p>
+                <p className="rounded-xl bg-white/60 p-5 text-center text-sm text-stone-500">{ar ? "جار تحميل مستويات الخزانات…" : "Chargement des niveaux des cuves…"}</p>
               ) : tanks.isError || balances.isError ? (
-                <p className="p-5 text-center text-sm text-amber-800">{ar ? "تعذّر تحميل مستويات الخزانات." : "Impossible de charger les niveaux des cuves."}</p>
+                <p className="rounded-xl bg-white/60 p-5 text-center text-sm text-amber-800">{ar ? "تعذّر تحميل مستويات الخزانات." : "Impossible de charger les niveaux des cuves."}</p>
               ) : tankOilStocks.length === 0 ? (
-                <p className="p-5 text-center text-sm text-stone-500">{ar ? "لا توجد خزانات نشطة." : "Aucune cuve active."}</p>
+                <p className="rounded-xl bg-white/60 p-5 text-center text-sm text-stone-500">{ar ? "لا توجد خزانات نشطة." : "Aucune cuve active."}</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] text-sm">
-                    <thead className="bg-sky-50/70 text-sky-950"><tr>
-                      <th className="px-4 py-3 text-start font-semibold">{ar ? "الخزان" : "Cuve"}</th>
-                      <th className="px-4 py-3 text-end font-semibold">{ar ? "مستوى الزيت" : "Niveau d’huile"}</th>
-                      <th className="px-4 py-3 text-end font-semibold">{ar ? "السعة" : "Capacité"}</th>
-                    </tr></thead>
-                    <tbody>{tankOilStocks.map(({ tank, index, quantity }) => (
-                      <tr key={tank.id} className="border-t border-sky-100">
-                        <td className="px-4 py-3 font-semibold text-stone-800">{ar ? "خزان" : "Cuve"} {String(tank.code ?? tank.name ?? index + 1)}</td>
-                        <td className="px-4 py-3 text-end font-bold tabular-nums text-sky-800">{quantity.toLocaleString("fr-FR")} L</td>
-                        <td className="px-4 py-3 text-end tabular-nums text-stone-600">{Number(tank.capacity_kg ?? 0) > 0 ? `${Number(tank.capacity_kg).toLocaleString("fr-FR")} L` : (ar ? "غير محددة" : "Non définie")}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-9">
+                  {tankOilStocks.map(({ tank, index, quantity }) => {
+                    const capacity = Number(tank.capacity_kg ?? 0);
+                    const fillPercent = Math.max(0, Math.min(100, capacity > 0 ? quantity / capacity * 100 : 0));
+                    const tankLabel = String(tank.code ?? tank.name ?? `T${String(index + 1).padStart(2, "0")}`);
+                    return (
+                      <div key={tank.id} className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-[#D8E7D5] bg-white/55 px-2 pb-3 pt-4">
+                        <div className="flex h-44 w-full max-w-[84px] items-end overflow-hidden rounded-xl border border-sky-200 bg-white shadow-inner">
+                          <div className="w-full rounded-t-lg bg-gradient-to-t from-cyan-600 via-cyan-500 to-cyan-300 transition-[height] duration-700 ease-out" style={{ height: `${fillPercent}%`, minHeight: quantity > 0 ? "5px" : "0" }} />
+                        </div>
+                        <div className="w-full truncate text-center text-base font-extrabold text-slate-800">{ar ? "خزان" : "Cuve"} {tankLabel}</div>
+                        <div className="text-sm font-bold tabular-nums text-sky-800">{quantity.toLocaleString("fr-FR")} L</div>
+                        {capacity > 0 && <div className="text-xs font-semibold tabular-nums text-stone-600">{Math.round(fillPercent)}%</div>}
+                        <Link to={`/commercial?tab=overview&tank=${encodeURIComponent(String(tank.id))}`} className="mt-1 text-xs font-bold text-sky-700 hover:text-sky-900 hover:underline">
+                          {ar ? "عرض العمليات" : "Voir opérations"}
+                        </Link>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
