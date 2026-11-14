@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Beaker, CheckCircle2, ClipboardList, MapPin, ShoppingBasket, Warehouse } from "lucide-react";
@@ -44,6 +44,7 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: Reac
 export default function CommercialOverviewPanel() {
   const { lang } = useI18n();
   const ar = lang === "ar";
+  const [showTankLevels, setShowTankLevels] = useState(false);
   const status = useQuery({
     queryKey: ["commercial", "status"],
     queryFn: () => apiGet<CommercialStatus>("/commercial/v1/status"),
@@ -65,6 +66,13 @@ export default function CommercialOverviewPanel() {
     refetchInterval: 30_000,
     retry: false,
   });
+  const tanks = useQuery({
+    queryKey: ["commercial", "tanks"],
+    queryFn: () => apiGet<Row[]>("/commercial/v1/tanks"),
+    enabled: ready,
+    refetchInterval: 30_000,
+    retry: false,
+  });
   const totals = useMemo(() => {
     const rows = balances.data ?? [];
     return {
@@ -73,6 +81,15 @@ export default function CommercialOverviewPanel() {
       pending: (lots.data ?? []).filter((lot) => lot.product_kind === "OIL" && lot.quality_status !== "RELEASED").length,
     };
   }, [balances.data, lots.data]);
+  const tankOilStocks = useMemo(() => (tanks.data ?? [])
+    .filter((tank) => tank.active !== false)
+    .map((tank, index) => ({
+      tank,
+      index,
+      quantity: (balances.data ?? [])
+        .filter((balance) => balance.product_kind === "OIL" && balance.location_id === tank.id)
+        .reduce((sum, balance) => sum + Number(balance.quantity_kg ?? 0), 0),
+    })), [tanks.data, balances.data]);
   const error = status.isError;
 
   return (
@@ -100,17 +117,53 @@ export default function CommercialOverviewPanel() {
       ) : (
         <div className="space-y-4 p-4 md:p-5">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <Metric label={ar ? "الموسم النشط" : "Saison active"} value={status.data.season_code || status.data.active_season || "—"} icon={Activity} tone="border-emerald-200 bg-emerald-50 text-emerald-950" />
-            <Metric label={ar ? "الخزانات المهيأة" : "Cuves configurées"} value={status.data.tanks_provisioned == null ? "—/9" : `${status.data.tanks_provisioned}/9` } icon={Warehouse} tone="border-sky-200 bg-sky-50 text-sky-950" />
-            <Metric label={ar ? "مواقع نشطة" : "Emplacements actifs"} value={status.data.active_olive_locations ?? "—"} icon={MapPin} tone="border-amber-200 bg-amber-50 text-amber-950" />
-            <Metric label={ar ? "عدادات الوثائق" : "Compteurs de documents"} value={status.data.season_counters_provisioned ?? "—"} icon={ClipboardList} tone="border-violet-200 bg-violet-50 text-violet-950" />
+            <Metric label={ar ? "الموسم النشط" : "Saison active"} value={status.data.season_code || status.data.active_season || "—"} icon={Activity} tone="commercial-card commercial-card--green" />
+            <button type="button" onClick={() => setShowTankLevels((open) => !open)} aria-expanded={showTankLevels} aria-controls="dashboard-tank-levels" className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2">
+              <Metric label={ar ? "الخزانات المهيأة" : "Cuves configurées"} value={status.data.tanks_provisioned == null ? "—/9" : `${status.data.tanks_provisioned}/9`} icon={Warehouse} tone="commercial-card commercial-card--blue" />
+              <span className="sr-only">{showTankLevels ? (ar ? "إخفاء مستويات الزيت" : "Masquer les niveaux") : (ar ? "عرض مستويات الزيت" : "Afficher les niveaux")}</span>
+            </button>
+            <Metric label={ar ? "مواقع نشطة" : "Emplacements actifs"} value={status.data.active_olive_locations ?? "—"} icon={MapPin} tone="commercial-card commercial-card--teal" />
+            <Metric label={ar ? "عدادات الوثائق" : "Compteurs de documents"} value={status.data.season_counters_provisioned ?? "—"} icon={ClipboardList} tone="commercial-card commercial-card--amber" />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.olives.toLocaleString("fr-FR")} kg`} icon={ShoppingBasket} tone="border-lime-200 bg-lime-50 text-lime-950" />
-            <Metric label={ar ? "مخزون الزيت" : "Stock d’huile"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.oil.toLocaleString("fr-FR")} L`} icon={Beaker} tone="border-yellow-200 bg-yellow-50 text-yellow-950" />
-            <Metric label={ar ? "دفعات تنتظر الجودة" : "Lots en attente qualité"} value={!ready || lots.isLoading || lots.isError ? "—" : totals.pending} icon={CheckCircle2} tone="border-rose-200 bg-rose-50 text-rose-950" />
+            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.olives.toLocaleString("fr-FR")} kg`} icon={ShoppingBasket} tone="commercial-card commercial-card--lime" />
+            <Metric label={ar ? "مخزون الزيت" : "Stock d’huile"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.oil.toLocaleString("fr-FR")} L`} icon={Beaker} tone="commercial-card commercial-card--amber" />
+            <Metric label={ar ? "دفعات تنتظر الجودة" : "Lots en attente qualité"} value={!ready || lots.isLoading || lots.isError ? "—" : totals.pending} icon={CheckCircle2} tone="commercial-card commercial-card--rose" />
           </div>
+
+          {showTankLevels && (
+            <div id="dashboard-tank-levels" className="overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-sm">
+              <div className="border-b border-sky-100 bg-sky-50 px-4 py-3">
+                <h3 className="font-bold text-sky-950">{ar ? "مستوى الزيت في الخزانات" : "Niveau d’huile dans les cuves"}</h3>
+                <p className="text-sm text-sky-800/80">{ar ? "كمية الزيت الحالية في كل خزان" : "Quantité d’huile actuellement stockée dans chaque cuve"}</p>
+              </div>
+              {tanks.isLoading || balances.isLoading ? (
+                <p className="p-5 text-center text-sm text-stone-500">{ar ? "جار تحميل مستويات الخزانات…" : "Chargement des niveaux des cuves…"}</p>
+              ) : tanks.isError || balances.isError ? (
+                <p className="p-5 text-center text-sm text-amber-800">{ar ? "تعذّر تحميل مستويات الخزانات." : "Impossible de charger les niveaux des cuves."}</p>
+              ) : tankOilStocks.length === 0 ? (
+                <p className="p-5 text-center text-sm text-stone-500">{ar ? "لا توجد خزانات نشطة." : "Aucune cuve active."}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] text-sm">
+                    <thead className="bg-sky-50/70 text-sky-950"><tr>
+                      <th className="px-4 py-3 text-start font-semibold">{ar ? "الخزان" : "Cuve"}</th>
+                      <th className="px-4 py-3 text-end font-semibold">{ar ? "مستوى الزيت" : "Niveau d’huile"}</th>
+                      <th className="px-4 py-3 text-end font-semibold">{ar ? "السعة" : "Capacité"}</th>
+                    </tr></thead>
+                    <tbody>{tankOilStocks.map(({ tank, index, quantity }) => (
+                      <tr key={tank.id} className="border-t border-sky-100">
+                        <td className="px-4 py-3 font-semibold text-stone-800">{ar ? "خزان" : "Cuve"} {String(tank.code ?? tank.name ?? index + 1)}</td>
+                        <td className="px-4 py-3 text-end font-bold tabular-nums text-sky-800">{quantity.toLocaleString("fr-FR")} L</td>
+                        <td className="px-4 py-3 text-end tabular-nums text-stone-600">{Number(tank.capacity_kg ?? 0) > 0 ? `${Number(tank.capacity_kg).toLocaleString("fr-FR")} L` : (ar ? "غير محددة" : "Non définie")}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {(balances.isError || lots.isError) && (
             <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <AlertTriangle className="size-5 shrink-0" />
