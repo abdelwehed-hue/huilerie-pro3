@@ -93,7 +93,7 @@ export default function CommercialOverviewPanel() {
   const error = status.isError;
 
   return (
-    <section className="mt-8 overflow-hidden rounded-3xl border border-[#D8DDC9] bg-white shadow-sm" dir={ar ? "rtl" : "ltr"} data-testid="dashboard-commercial-overview">
+    <section className="commercial-workspace mt-8 overflow-hidden rounded-3xl border border-[#D8DDC9] bg-white shadow-sm" dir={ar ? "rtl" : "ltr"} data-testid="dashboard-commercial-overview">
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[#315B25] px-5 py-4 text-white">
         <div className="flex items-center gap-3">
           <Activity className="size-6" />
@@ -127,7 +127,7 @@ export default function CommercialOverviewPanel() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.olives.toLocaleString("fr-FR")} kg`} icon={ShoppingBasket} tone="commercial-card commercial-card--lime" />
+            <Metric label={ar ? "مخزون الزيتون" : "Stock d’olives"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.olives.toLocaleString("fr-FR")} kg`} icon={ShoppingBasket} tone="commercial-card commercial-card--olive" />
             <Metric label={ar ? "مخزون الزيت" : "Stock d’huile"} value={!ready || balances.isLoading || balances.isError ? "—" : `${totals.oil.toLocaleString("fr-FR")} L`} icon={Beaker} tone="commercial-card commercial-card--amber" />
             <Metric label={ar ? "دفعات تنتظر الجودة" : "Lots en attente qualité"} value={!ready || lots.isLoading || lots.isError ? "—" : totals.pending} icon={CheckCircle2} tone="commercial-card commercial-card--rose" />
           </div>
