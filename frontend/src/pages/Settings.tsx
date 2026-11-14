@@ -730,7 +730,8 @@ export default function SettingsPage() {
   }
   return (
     <div>
-      <PageHeader title={t("settings")} accent="bg-violet-500" />\n      <DashboardThemeSettings />
+      <PageHeader title={t("settings")} accent="bg-violet-500" />
+      <DashboardThemeSettings />
       <Tabs defaultValue="users">
         <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
           <TabsTrigger value="users" data-testid="settings-tab-users" className="flex h-auto min-h-10 min-w-0 flex-row gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1 text-sm font-semibold text-stone-700 shadow-sm transition-all hover:border-sky-300 hover:bg-sky-50 data-[state=active]:border-sky-600 data-[state=active]:bg-sky-200 data-[state=active]:text-sky-950 data-[state=active]:shadow-md">
