@@ -186,8 +186,8 @@ export default function Commercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qrBatchCode = searchParams.get("batch") || "";
   const requestedTab = searchParams.get("tab") as (TabKey | "quality") | null;
-  const validTabs: TabKey[] = ["overview", "factures", "stock", "lots", "movements", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
-  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab as TabKey) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab as TabKey) : "overview";
+  const validTabs: TabKey[] = ["factures", "stock", "lots", "movements", "procurement", "suppliers", "purchases", "customer-purchases", "chargement", "production", "transfers", "buyers", "sales", "reports", "accounting"];
+  const initialTab: TabKey = qrBatchCode ? "stock" : requestedTab && validTabs.includes(requestedTab as TabKey) ? (requestedTab === "lots" || requestedTab === "movements" || requestedTab === "chargement" ? "stock" : requestedTab === "suppliers" || requestedTab === "purchases" || requestedTab === "customer-purchases" ? "procurement" : requestedTab === "buyers" ? "sales" : requestedTab as TabKey) : "stock";
   const isAdmin = me.data?.role === "admin";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>(initialTab);
@@ -1765,7 +1765,6 @@ export default function Commercial() {
 
   // Operational sequence: supplier → olive intake/purchase → lot tracking → pressing → oil storage → quality → movements → delivery/sale.
   const tabs: { id: TabKey; label: string; icon: typeof Warehouse }[] = [
-    { id: "overview", label: l.overview, icon: Activity },
     { id: "procurement", label: lang === "ar" ? "المشتريات" : "Achats", icon: ShoppingBasket },
 
     { id: "production", label: l.productionTab, icon: Factory },
