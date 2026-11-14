@@ -126,11 +126,6 @@ export default function CommercialOverviewPanel() {
             </div>
           )}
 
-          <div className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${ready ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
-            {ready ? <CheckCircle2 className="size-5" /> : <AlertTriangle className="size-5" />}
-            <span>{ar ? "حالة الوحدة: " : "État du module : "}{ready ? (ar ? "جاهز" : "Prêt") : (ar ? "يتطلب التهيئة" : "Initialisation requise")}</span>
-          </div>
-
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
             {links.map(({ label, tab, Icon, tone }) => (
               <Link key={tab} to={`/commercial?tab=${tab}`} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center text-sm font-bold transition-transform hover:-translate-y-0.5 hover:shadow-sm ${tone}`}>
