@@ -1944,7 +1944,6 @@ export default function Commercial() {
             <Card className="commercial-card commercial-card--violet"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.oil}</CardDescription><Beaker className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{number(totalOil)} L</CardTitle></CardHeader></Card>
             <Card className="commercial-card commercial-card--rose"><CardHeader><div className="flex items-center justify-between gap-2"><CardDescription>{l.quality}</CardDescription><ShieldCheck className="commercial-card-icon size-7" /></div><CardTitle className="text-3xl">{ready ? qualityPending : "—"}</CardTitle><CardDescription>{l.qualityRule}</CardDescription></CardHeader></Card>
           </div>
-          <Card><CardHeader><CardTitle>{l.readiness}</CardTitle><CardDescription>{ready ? l.ready : l.notReady}</CardDescription></CardHeader><CardContent className="flex items-center gap-2 text-sm">{ready ? <ShieldCheck className="size-5 text-emerald-600" /> : <AlertTriangle className="size-5 text-amber-600" />}{ready ? l.ready : l.warning}</CardContent></Card>
         </div>
       )}
 
