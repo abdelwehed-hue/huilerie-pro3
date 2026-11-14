@@ -109,7 +109,7 @@ export default function CommercialOverviewPanel() {
         <div className="space-y-4 p-4 md:p-5">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <Metric label={ar ? "الموسم النشط" : "Saison active"} value={status.data.season_code || status.data.active_season || "—"} icon={Activity} tone="border-emerald-200 bg-emerald-50 text-emerald-950" />
-            <Metric label={ar ? "الخزانات المهيأة" : "Cuves configurées"} value={`${status.data.tanks_provisioned ?? 0}/9`} icon={Warehouse} tone="border-sky-200 bg-sky-50 text-sky-950" />
+            <Metric label={ar ? "الخزانات المهيأة" : "Cuves configurées"} value={status.data.tanks_provisioned == null ? "—/9" : `${status.data.tanks_provisioned}/9` } icon={Warehouse} tone="border-sky-200 bg-sky-50 text-sky-950" />
             <Metric label={ar ? "مواقع نشطة" : "Emplacements actifs"} value={status.data.active_olive_locations ?? "—"} icon={MapPin} tone="border-amber-200 bg-amber-50 text-amber-950" />
             <Metric label={ar ? "عدادات الوثائق" : "Compteurs de documents"} value={status.data.season_counters_provisioned ?? "—"} icon={ClipboardList} tone="border-violet-200 bg-violet-50 text-violet-950" />
           </div>
